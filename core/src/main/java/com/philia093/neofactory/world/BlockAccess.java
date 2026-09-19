@@ -41,7 +41,10 @@ public interface BlockAccess {
      * Returns {@code true} when a position stops player movement.
      * <p>
      * The object layer wins over the floor layer, an empty object layer cell is
-     * therefore walkable as long as the floor below it is walkable too.
+     * therefore walkable as long as the floor below it is walkable too. Ground
+     * surfaces are not solid, so a plain grass, sand or stone cell lets the player
+     * pass: only an obstacle in the object layer or impassable ground such as
+     * bedrock blocks the way, see {@code Blocks}.
      *
      * @param x block coordinate along the first horizontal axis
      * @param y block coordinate along the second horizontal axis

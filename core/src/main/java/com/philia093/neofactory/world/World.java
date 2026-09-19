@@ -76,15 +76,10 @@ public final class World implements BlockAccess {
                     spawnX, spawnY, this.spawnX, this.spawnY);
         }
 
-        int centerChunkX = Chunk.chunkOf(this.spawnX);
-        int centerChunkY = Chunk.chunkOf(this.spawnY);
-        for (int chunkY = centerChunkY - SPAWN_CHUNK_RADIUS;
-                chunkY <= centerChunkY + SPAWN_CHUNK_RADIUS; chunkY++) {
-            for (int chunkX = centerChunkX - SPAWN_CHUNK_RADIUS;
-                    chunkX <= centerChunkX + SPAWN_CHUNK_RADIUS; chunkX++) {
-                loadChunk(chunkX, chunkY);
-            }
-        }
+        // The area is finished before anything looks for a free cell inside it:
+        // an unfinished chunk would plant its trees later and could bury whatever
+        // already stands there, the player included.
+        ensureChunksAround(this.spawnX, this.spawnY, SPAWN_CHUNK_RADIUS);
         LOGGER.info("World {} created with {} chunks around spawn ({}, {})",
                 seed, chunks.size(), this.spawnX, this.spawnY);
     }
@@ -158,10 +153,14 @@ public final class World implements BlockAccess {
     }
 
     /**
-     * Makes sure every chunk inside a square around a block position exists.
+     * Makes sure every chunk inside a square around a block position is finished.
      * <p>
      * Called by the game loop after the player moved, so that walking keeps
-     * revealing new terrain.
+     * revealing new terrain. A chunk that already exists is only skipped when it is
+     * {@link Chunk#isComplete() complete}: a chunk that was created by reading a
+     * single block still misses floors, and if it were skipped it would be filled
+     * in later, block by block, which would plant its trees right next to or even
+     * on top of the player.
      *
      * @param blockX block X coordinate to center the square on
      * @param blockY block Y coordinate to center the square on
@@ -174,7 +173,8 @@ public final class World implements BlockAccess {
                 chunkY++) {
             for (int chunkX = centerChunkX - chunkRadius; chunkX <= centerChunkX + chunkRadius;
                     chunkX++) {
-                if (!chunks.containsKey(chunkKey(chunkX, chunkY))) {
+                Chunk chunk = chunks.get(chunkKey(chunkX, chunkY));
+                if (chunk == null || !chunk.isComplete()) {
                     loadChunk(chunkX, chunkY);
                 }
             }
@@ -254,8 +254,9 @@ public final class World implements BlockAccess {
     /**
      * Finds a walkable cell near a position to place the player on.
      * <p>
-     * The search walks outwards in growing rings and accepts the first cell whose
-     * floor is solid and whose object layer is free.
+     * The search walks outwards in growing rings and accepts the first cell that
+     * has a floor and does not block movement, so the player never starts inside a
+     * tree or over a hole.
      *
      * @param x preferred block X coordinate
      * @param y preferred block Y coordinate
@@ -270,8 +271,8 @@ public final class World implements BlockAccess {
                     }
                     int candidateX = x + dx;
                     int candidateY = y + dy;
-                    if (!getBlock(candidateX, candidateY, Chunk.LAYER_OBJECT).isSolid()
-                            && getBlock(candidateX, candidateY, Chunk.LAYER_FLOOR).isSolid()) {
+                    if (!getBlock(candidateX, candidateY, Chunk.LAYER_FLOOR).isAir()
+                            && !isSolid(candidateX, candidateY)) {
                         return new int[] {candidateX, candidateY};
                     }
                 }

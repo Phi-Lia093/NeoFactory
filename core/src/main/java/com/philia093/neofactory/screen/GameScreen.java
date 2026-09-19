@@ -197,13 +197,16 @@ public class GameScreen extends NeoFactoryScreen {
      * Makes sure every chunk visible at the current zoom is loaded.
      * <p>
      * The radius is derived from the viewport size rather than being a constant,
-     * so zooming out reveals the terrain instead of showing empty space.
+     * so zooming out reveals the terrain instead of showing empty space. One chunk
+     * is added on top of the visible area: terrain and decorations are planted
+     * when a chunk is finished, so the margin keeps new trees from appearing out of
+     * nothing inside the view.
      */
     private void loadChunksAroundPlayer() {
         float visibleBlocksX = worldViewport.getWorldWidth() * zoom / Constants.TILE_SIZE;
         float visibleBlocksY = worldViewport.getWorldHeight() * zoom / Constants.TILE_SIZE;
         float halfBlocks = Math.max(visibleBlocksX, visibleBlocksY) * 0.5f;
-        int chunkRadius = (int) Math.ceil(halfBlocks / Constants.CHUNK_SIZE) + 1;
+        int chunkRadius = (int) Math.ceil(halfBlocks / Constants.CHUNK_SIZE) + 2;
 
         world.ensureChunksAround(player.position().x / Constants.TILE_SIZE,
                 player.position().y / Constants.TILE_SIZE, chunkRadius);

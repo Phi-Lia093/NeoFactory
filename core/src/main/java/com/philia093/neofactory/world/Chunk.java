@@ -188,6 +188,17 @@ public final class Chunk {
         return decorated;
     }
 
+    /**
+     * {@code true} when the chunk is finished.
+     * <p>
+     * A chunk may exist without being finished, because a single block read
+     * generates only the cell it touched. Such a chunk still misses floors and has
+     * no decorations, so it has to be completed before the player sees it.
+     */
+    public boolean isComplete() {
+        return isFullyGenerated() && decorated;
+    }
+
     /** Remembers that the decorations of this chunk were planted. */
     public void markDecorated() {
         decorated = true;

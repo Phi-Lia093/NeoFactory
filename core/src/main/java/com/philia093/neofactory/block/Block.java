@@ -59,7 +59,13 @@ public final class Block {
         return texture;
     }
 
-    /** {@code true} when the block stops player movement. */
+    /**
+     * {@code true} when the block stops player movement.
+     * <p>
+     * The flag describes a block that stands in a cell. Ground surfaces, which
+     * fill the floor layer, are walkable and therefore not solid even when they
+     * are made of stone, see {@link Blocks}.
+     */
     public boolean isSolid() {
         return solid;
     }

@@ -10,6 +10,16 @@ import com.badlogic.gdx.graphics.Color;
  * same id forever so that stored worlds stay readable. New blocks must always be
  * appended at the end of the list and the value of {@link #NEXT_FREE_ID} has to
  * be bumped accordingly.
+ * <p>
+ * <b>Solidity:</b> solid means that a block stops player movement. Ground
+ * surfaces are walkable and therefore never solid, no matter which material they
+ * are made of: the player stands on the
+ * {@link com.philia093.neofactory.util.Constants#LAYER_FLOOR floor} layer and only
+ * bumps into the {@link com.philia093.neofactory.util.Constants#LAYER_OBJECT
+ * object} layer, or into impassable ground such as {@link #BEDROCK}. A ground
+ * block that forgets {@code .solid(false)} would keep the builder default of
+ * {@code true} and freeze the player on the spot, because then every cell of the
+ * world counts as an obstacle.
  */
 public final class Blocks {
 
@@ -120,20 +130,27 @@ public final class Blocks {
                 .build();
         BlockRegistry.register(AIR);
 
+        // Impassable ground: the player may not walk onto it, which makes it the
+        // block of a future world border.
         BEDROCK = Block.builder(BEDROCK_ID, "bedrock")
                 .texture("bedrock")
+                .solid(true)
                 .hardness(-1.0f)
                 .build();
         BlockRegistry.register(BEDROCK);
 
+        // Everything from here down to the ores is a ground surface: the player
+        // walks over it, so it must not be solid.
         STONE = Block.builder(STONE_ID, "stone")
                 .texture("stone")
+                .solid(false)
                 .hardness(1.5f)
                 .build();
         BlockRegistry.register(STONE);
 
         DIRT = Block.builder(DIRT_ID, "dirt")
                 .texture("dirt")
+                .solid(false)
                 .hardness(0.5f)
                 .build();
         BlockRegistry.register(DIRT);
@@ -142,6 +159,7 @@ public final class Blocks {
         // colour is applied at draw time through the tint.
         GRASS = Block.builder(GRASS_ID, "grass")
                 .texture("grass_top")
+                .solid(false)
                 .tint(new Color(0.60f, 0.80f, 0.36f, 1.0f))
                 .hardness(0.6f)
                 .build();
@@ -149,18 +167,21 @@ public final class Blocks {
 
         SAND = Block.builder(SAND_ID, "sand")
                 .texture("sand")
+                .solid(false)
                 .hardness(0.5f)
                 .build();
         BlockRegistry.register(SAND);
 
         GRAVEL = Block.builder(GRAVEL_ID, "gravel")
                 .texture("gravel")
+                .solid(false)
                 .hardness(0.6f)
                 .build();
         BlockRegistry.register(GRAVEL);
 
         CLAY = Block.builder(CLAY_ID, "clay")
                 .texture("clay")
+                .solid(false)
                 .hardness(0.6f)
                 .build();
         BlockRegistry.register(CLAY);
@@ -181,6 +202,7 @@ public final class Blocks {
         // center of a tree clearly distinguishable from its leaves.
         LOG_OAK = Block.builder(LOG_OAK_ID, "log_oak")
                 .texture("log_oak_top")
+                .solid(true)
                 .hardness(2.0f)
                 .build();
         BlockRegistry.register(LOG_OAK);
@@ -189,6 +211,7 @@ public final class Blocks {
         // canopy.
         LEAVES_OAK = Block.builder(LEAVES_OAK_ID, "leaves_oak")
                 .texture("leaves_oak")
+                .solid(true)
                 .tint(new Color(0.62f, 1.0f, 0.42f, 1.0f))
                 .transparent(true)
                 .hardness(0.2f)
@@ -197,30 +220,37 @@ public final class Blocks {
 
         PLANKS_OAK = Block.builder(PLANKS_OAK_ID, "planks_oak")
                 .texture("planks_oak")
+                .solid(true)
                 .hardness(2.0f)
                 .build();
         BlockRegistry.register(PLANKS_OAK);
 
         SANDSTONE = Block.builder(SANDSTONE_ID, "sandstone")
                 .texture("sandstone_top")
+                .solid(false)
                 .hardness(0.8f)
                 .build();
         BlockRegistry.register(SANDSTONE);
 
+        // Ores are ground as well: the rocky biome replaces its stone floor with
+        // them, so they must stay walkable.
         COAL_ORE = Block.builder(COAL_ORE_ID, "coal_ore")
                 .texture("coal_ore")
+                .solid(false)
                 .hardness(3.0f)
                 .build();
         BlockRegistry.register(COAL_ORE);
 
         IRON_ORE = Block.builder(IRON_ORE_ID, "iron_ore")
                 .texture("iron_ore")
+                .solid(false)
                 .hardness(3.0f)
                 .build();
         BlockRegistry.register(IRON_ORE);
 
         SNOW = Block.builder(SNOW_ID, "snow")
                 .texture("snow")
+                .solid(false)
                 .hardness(0.4f)
                 .build();
         BlockRegistry.register(SNOW);
