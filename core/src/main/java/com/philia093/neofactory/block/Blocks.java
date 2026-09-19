@@ -1,0 +1,241 @@
+package com.philia093.neofactory.block;
+
+import com.badlogic.gdx.graphics.Color;
+
+/**
+ * Declaration of every block type used by the game.
+ * <p>
+ * Because the world is viewed from above every block is defined by a single
+ * texture, which is the face a bird would see. Ids are stable: a block keeps the
+ * same id forever so that stored worlds stay readable. New blocks must always be
+ * appended at the end of the list and the value of {@link #NEXT_FREE_ID} has to
+ * be bumped accordingly.
+ */
+public final class Blocks {
+
+    // ------------------------------------------------------------------
+    // Ids. Keep the existing values unchanged and append new ones at the end.
+    // ------------------------------------------------------------------
+
+    public static final int AIR_ID = 0;
+    public static final int BEDROCK_ID = 1;
+    public static final int STONE_ID = 2;
+    public static final int DIRT_ID = 3;
+    public static final int GRASS_ID = 4;
+    public static final int SAND_ID = 5;
+    public static final int GRAVEL_ID = 6;
+    public static final int CLAY_ID = 7;
+    public static final int WATER_ID = 8;
+    public static final int LOG_OAK_ID = 9;
+    public static final int LEAVES_OAK_ID = 10;
+    public static final int PLANKS_OAK_ID = 11;
+    public static final int SANDSTONE_ID = 12;
+    public static final int COAL_ORE_ID = 13;
+    public static final int IRON_ORE_ID = 14;
+    public static final int SNOW_ID = 15;
+    public static final int TALL_GRASS_ID = 16;
+
+    /** Next unused block id, used to verify that a new block got a fresh id. */
+    public static final int NEXT_FREE_ID = 17;
+
+    // ------------------------------------------------------------------
+    // Block instances. They are filled by registerAll().
+    // ------------------------------------------------------------------
+
+    /** The empty block, it is never drawn and never blocks movement. */
+    public static Block AIR;
+
+    /** Unbreakable block, used at the border of the world. */
+    public static Block BEDROCK;
+
+    /** Plain stone, used by rocky biomes and as the filler of the floor layer. */
+    public static Block STONE;
+
+    /** Dirt, the main filler block of grassy biomes. */
+    public static Block DIRT;
+
+    /** Grass floor block, the ground of plains and forests. */
+    public static Block GRASS;
+
+    /** Sand, the ground of deserts and beaches. */
+    public static Block SAND;
+
+    /** Gravel, found in patches and along rocky ground. */
+    public static Block GRAVEL;
+
+    /** Clay, found in small patches of wet ground. */
+    public static Block CLAY;
+
+    /**
+     * Still water.
+     * <p>
+     * The definition is kept so that the reserved id stays stable, but nothing
+     * generates water yet: fluids are meant to become a {@code Fluid} subclass of
+     * {@link Block} with its own spreading rules.
+     */
+    public static Block WATER;
+
+    /** Oak trunk, placed in the center of a tree decoration. */
+    public static Block LOG_OAK;
+
+    /** Oak leaves, the canopy blocks placed around a trunk. */
+    public static Block LEAVES_OAK;
+
+    /** Oak planks, a block the player can place in the future. */
+    public static Block PLANKS_OAK;
+
+    /** Sandstone, found below sand. */
+    public static Block SANDSTONE;
+
+    /** Coal ore, embedded in stone. */
+    public static Block COAL_ORE;
+
+    /** Iron ore, embedded in stone. */
+    public static Block IRON_ORE;
+
+    /** Snow, the ground of cold biomes. */
+    public static Block SNOW;
+
+    /** Tall grass, a decorative block of the object layer. */
+    public static Block TALL_GRASS;
+
+    private Blocks() {
+        // Utility class: never instantiated.
+    }
+
+    /**
+     * Creates every block instance and pushes it into the {@link BlockRegistry}.
+     * Must be called exactly once during startup, before any world is created.
+     */
+    public static void registerAll() {
+        if (AIR != null) {
+            return;
+        }
+
+        AIR = Block.builder(AIR_ID, "air")
+                .texture(Block.NO_TEXTURE)
+                .solid(false)
+                .transparent(true)
+                .hardness(0.0f)
+                .build();
+        BlockRegistry.register(AIR);
+
+        BEDROCK = Block.builder(BEDROCK_ID, "bedrock")
+                .texture("bedrock")
+                .hardness(-1.0f)
+                .build();
+        BlockRegistry.register(BEDROCK);
+
+        STONE = Block.builder(STONE_ID, "stone")
+                .texture("stone")
+                .hardness(1.5f)
+                .build();
+        BlockRegistry.register(STONE);
+
+        DIRT = Block.builder(DIRT_ID, "dirt")
+                .texture("dirt")
+                .hardness(0.5f)
+                .build();
+        BlockRegistry.register(DIRT);
+
+        // grass_top.png is a grey scale sheet in the style of Minecraft, the biome
+        // colour is applied at draw time through the tint.
+        GRASS = Block.builder(GRASS_ID, "grass")
+                .texture("grass_top")
+                .tint(new Color(0.60f, 0.80f, 0.36f, 1.0f))
+                .hardness(0.6f)
+                .build();
+        BlockRegistry.register(GRASS);
+
+        SAND = Block.builder(SAND_ID, "sand")
+                .texture("sand")
+                .hardness(0.5f)
+                .build();
+        BlockRegistry.register(SAND);
+
+        GRAVEL = Block.builder(GRAVEL_ID, "gravel")
+                .texture("gravel")
+                .hardness(0.6f)
+                .build();
+        BlockRegistry.register(GRAVEL);
+
+        CLAY = Block.builder(CLAY_ID, "clay")
+                .texture("clay")
+                .hardness(0.6f)
+                .build();
+        BlockRegistry.register(CLAY);
+
+        // Water references the animated still water sheet. Only its first frame
+        // is used for now, the tint keeps it clearly readable.
+        WATER = Block.builder(WATER_ID, "water")
+                .texture("water_still")
+                .solid(false)
+                .liquid(true)
+                .transparent(true)
+                .tint(new Color(0.55f, 0.75f, 1.0f, 0.75f))
+                .hardness(-1.0f)
+                .build();
+        BlockRegistry.register(WATER);
+
+        // Seen from above an oak trunk shows its growth rings, which makes the
+        // center of a tree clearly distinguishable from its leaves.
+        LOG_OAK = Block.builder(LOG_OAK_ID, "log_oak")
+                .texture("log_oak_top")
+                .hardness(2.0f)
+                .build();
+        BlockRegistry.register(LOG_OAK);
+
+        // The leaf texture is grey scale as well, the tint turns it into an oak
+        // canopy.
+        LEAVES_OAK = Block.builder(LEAVES_OAK_ID, "leaves_oak")
+                .texture("leaves_oak")
+                .tint(new Color(0.62f, 1.0f, 0.42f, 1.0f))
+                .transparent(true)
+                .hardness(0.2f)
+                .build();
+        BlockRegistry.register(LEAVES_OAK);
+
+        PLANKS_OAK = Block.builder(PLANKS_OAK_ID, "planks_oak")
+                .texture("planks_oak")
+                .hardness(2.0f)
+                .build();
+        BlockRegistry.register(PLANKS_OAK);
+
+        SANDSTONE = Block.builder(SANDSTONE_ID, "sandstone")
+                .texture("sandstone_top")
+                .hardness(0.8f)
+                .build();
+        BlockRegistry.register(SANDSTONE);
+
+        COAL_ORE = Block.builder(COAL_ORE_ID, "coal_ore")
+                .texture("coal_ore")
+                .hardness(3.0f)
+                .build();
+        BlockRegistry.register(COAL_ORE);
+
+        IRON_ORE = Block.builder(IRON_ORE_ID, "iron_ore")
+                .texture("iron_ore")
+                .hardness(3.0f)
+                .build();
+        BlockRegistry.register(IRON_ORE);
+
+        SNOW = Block.builder(SNOW_ID, "snow")
+                .texture("snow")
+                .hardness(0.4f)
+                .build();
+        BlockRegistry.register(SNOW);
+
+        // Like the ground the blades are grey scale and receive their colour from
+        // the tint.
+        TALL_GRASS = Block.builder(TALL_GRASS_ID, "tall_grass")
+                .texture("tallgrass")
+                .tint(new Color(0.75f, 0.95f, 0.45f, 1.0f))
+                .solid(false)
+                .transparent(true)
+                .hardness(0.1f)
+                .build();
+        BlockRegistry.register(TALL_GRASS);
+
+        BlockRegistry.freeze();
+    }
+}

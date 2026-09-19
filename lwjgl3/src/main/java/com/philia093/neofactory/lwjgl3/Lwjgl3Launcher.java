@@ -19,8 +19,11 @@ public class Lwjgl3Launcher {
         configuration.setTitle(NeoFactoryGame.WINDOW_NAME);
         configuration.useVsync(true);
         configuration.setForegroundFPS(Lwjgl3ApplicationConfiguration.getDisplayMode().refreshRate + 1);
-        configuration.setWindowedMode(1080, 720);
-        configuration.setWindowSizeLimits(1080, 720, 1080, 720);
+        configuration.setWindowedMode(1280, 800);
+        // The window may be resized and maximized freely, it only refuses to shrink
+        // below a size that still shows a useful part of the world.
+        configuration.setResizable(true);
+        configuration.setWindowSizeLimits(640, 480, -1, -1);
 //        configuration.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
 //        configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.ANGLE_GLES20, 0, 0);
         return configuration;
