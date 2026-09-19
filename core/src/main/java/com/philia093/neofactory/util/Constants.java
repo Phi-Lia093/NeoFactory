@@ -63,6 +63,9 @@ public final class Constants {
     /** Largest camera zoom, the most distant view, a block shrinks to a third. */
     public static final float ZOOM_MAX = 3.0f;
 
+    /** Cell size in pixels of a single item icon. */
+    public static final int ITEM_ICON_SIZE = 16;
+
     /** Multiplicative zoom step applied per mouse wheel notch. */
     public static final float ZOOM_STEP = 1.1f;
 

@@ -2,6 +2,7 @@ package com.philia093.neofactory.entity;
 
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
@@ -46,6 +47,9 @@ public class Player {
     /** Walking direction requested by the keyboard, normalized or zero. */
     private final Vector2 moveInput = new Vector2();
 
+    /** Items the player carries, see {@link PlayerInventory}. */
+    private final PlayerInventory inventory = new PlayerInventory();
+
     /**
      * Creates a player at a position.
      *
@@ -88,6 +92,16 @@ public class Player {
         return facing;
     }
 
+    /**
+     * Inventory of the player.
+     * <p>
+     * The first nine slots form the hotbar, the remaining ones are the storage the
+     * inventory screen shows.
+     */
+    public PlayerInventory inventory() {
+        return inventory;
+    }
+
     /** Block X coordinate the player currently stands in. */
     public int blockX() {
         return MathUtils.floor(position.x / Constants.TILE_SIZE);
@@ -127,6 +141,17 @@ public class Player {
             return;
         }
         facing.set(dx, dy).nor();
+    }
+
+    /**
+     * Stops the player right away.
+     * <p>
+     * Called while a screen covers the world, for example the inventory, so the
+     * player does not keep walking while the keyboard drives the interface.
+     */
+    public void halt() {
+        setMoveInput(0.0f, 0.0f);
+        velocity.setZero();
     }
 
     /** {@code true} when the player stands in water or another liquid. */

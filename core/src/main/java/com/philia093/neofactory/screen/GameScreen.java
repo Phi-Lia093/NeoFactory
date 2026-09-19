@@ -1,15 +1,24 @@
 package com.philia093.neofactory.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.gui.HotbarGui;
+import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.input.InputHandler;
+import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.render.BlockTextureCache;
+import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.render.PlayerRenderer;
 import com.philia093.neofactory.render.WorldRenderer;
 import com.philia093.neofactory.util.Constants;
@@ -24,8 +33,13 @@ import org.apache.logging.log4j.Logger;
  * looks straight down on the world and follows the player, which is why the
  * player stays in the middle of the window while the terrain scrolls past.
  * <p>
- * Controls: {@code WASD} walks, the mouse aims, the wheel zooms, {@code F11}
- * switches to fullscreen and {@code ESC} closes the game.
+ * Controls: {@code WASD} walks, the mouse aims, the wheel zooms, keys {@code 1} to
+ * {@code 9} select a hotbar slot, {@code E} opens and closes the inventory,
+ * {@code F11} switches to fullscreen and {@code ESC} closes the inventory or, when
+ * it is closed already, the game.
+ * <p>
+ * While the inventory is open the world keeps running, but the keyboard only drives
+ * the interface and the player stands still.
  */
 public class GameScreen extends NeoFactoryScreen {
 
@@ -54,6 +68,30 @@ public class GameScreen extends NeoFactoryScreen {
     private final WorldRenderer worldRenderer;
     private final PlayerRenderer playerRenderer;
 
+    /** Hotbar drawn at the bottom of the window, shown while the player walks. */
+    private final HotbarGui hotbarGui;
+
+    /** Inventory screen, opened and closed with the inventory key. */
+    private final InventoryGui inventoryGui;
+
+    /** Position of the mouse in the virtual pixels of the interface, reused every frame. */
+    private final Vector2 interfaceMouse = new Vector2();
+
+    /**
+     * Forwards mouse presses to the inventory screen.
+     * <p>
+     * The screen works in the virtual pixels of the interface, so the position of the
+     * mouse is converted through the viewport first. While the screen is closed the
+     * press is passed on, so the world may use it.
+     */
+    private final InputAdapter interfaceInput = new InputAdapter() {
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            uiViewport.unproject(screenX, screenY, interfaceMouse);
+            return inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button);
+        }
+    };
+
     /** Current camera zoom, {@code 1} is the neutral view again the values shrink. */
     private float zoom = 1.0f;
 
@@ -68,6 +106,7 @@ public class GameScreen extends NeoFactoryScreen {
         super(game);
 
         BlockTextureCache textures = game.textures();
+        PixelFont font = game.font();
         this.batch = new SpriteBatch();
         this.camera = new OrthographicCamera();
 
@@ -82,11 +121,15 @@ public class GameScreen extends NeoFactoryScreen {
 
         this.worldRenderer = new WorldRenderer(batch, textures);
         this.playerRenderer = new PlayerRenderer(batch, textures);
+        this.hotbarGui = new HotbarGui(textures, font, uiViewport);
+        this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
 
+        fillDebugInventory(player.inventory());
         loadChunksAroundPlayer();
         centerCameraOnPlayer();
 
-        LOGGER.info("Player spawned at block ({}, {})", player.blockX(), player.blockY());
+        LOGGER.info("Player spawned at block ({}, {}) holding {}",
+                player.blockX(), player.blockY(), player.inventory());
     }
 
     /** World shown by this screen. */
@@ -106,9 +149,10 @@ public class GameScreen extends NeoFactoryScreen {
 
     @Override
     public void show() {
-        // The input handler is asked first so that it can swallow the keys it
-        // handles, the stage receives everything else.
-        Gdx.input.setInputProcessor(new InputMultiplexer(inputHandler, stage));
+        // The inventory is asked first, because it swallows the mouse while it is
+        // open; the input handler then receives the keys it handles and the stage
+        // gets everything else.
+        Gdx.input.setInputProcessor(new InputMultiplexer(interfaceInput, inputHandler, stage));
     }
 
     @Override
@@ -126,10 +170,36 @@ public class GameScreen extends NeoFactoryScreen {
         playerRenderer.render(player);
         batch.end();
 
-        stage.act(delta);
-        stage.draw();
+        renderInterface(delta);
 
         logDebugStatistics();
+    }
+
+    /**
+     * Draws the interface on top of the world.
+     * <p>
+     * The interface viewport blows the interface up by a whole number and owns its
+     * coordinates, so the batch is switched to its projection and the mouse is
+     * converted into the same virtual pixels before anything is drawn. That way a
+     * click on the screen always matches the slot the player sees, in fullscreen and
+     * after a resize as well.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    private void renderInterface(float delta) {
+        uiViewport.apply();
+        uiViewport.unproject(Gdx.input.getX(), Gdx.input.getY(), interfaceMouse);
+
+        batch.setProjectionMatrix(uiViewport.getCamera().combined);
+        batch.begin();
+        hotbarGui.render(batch, player.inventory(),
+                interfaceMouse.x, interfaceMouse.y, !inventoryGui.isOpen());
+        inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+        batch.end();
+        batch.setColor(Color.WHITE);
+
+        stage.act(delta);
+        stage.draw();
     }
 
     @Override
@@ -149,28 +219,60 @@ public class GameScreen extends NeoFactoryScreen {
 
     /**
      * Applies the player input, advances the simulation and reveals new terrain.
+     * <p>
+     * While the inventory is open the world still runs, but only the interface is
+     * driven: the player is stopped and neither the movement keys nor the wheel are
+     * forwarded. The collected wheel notches are dropped in that case, so closing
+     * the screen never jumps the camera.
      *
      * @param delta time since the last frame in seconds
      */
     private void handleInputAndUpdate(float delta) {
+        handleInterfaceKeys();
+
         if (inputHandler.consumeExitRequest()) {
-            LOGGER.info("Exit requested through the keyboard, closing the game");
-            Gdx.app.exit();
-            return;
+            if (inventoryGui.isOpen()) {
+                // The escape key leaves the screen first and the game afterwards.
+                inventoryGui.close();
+            } else {
+                LOGGER.info("Exit requested through the keyboard, closing the game");
+                Gdx.app.exit();
+                return;
+            }
         }
         if (inputHandler.consumeFullscreenToggle()) {
             toggleFullscreen();
         }
-        applyZoomInput();
 
-        inputHandler.update(player, camera);
-        player.update(world, delta, zoom);
+        float zoomSteps = inputHandler.consumeZoomSteps();
+        if (inventoryGui.isOpen()) {
+            player.halt();
+        } else {
+            applyZoom(zoomSteps);
+            inputHandler.update(player, camera);
+            player.update(world, delta, zoom);
+        }
         loadChunksAroundPlayer();
     }
 
-    /** Turns the collected wheel notches into a clamped, multiplicative zoom. */
-    private void applyZoomInput() {
-        float steps = inputHandler.consumeZoomSteps();
+    /** Applies the keys that belong to the interface instead of the world. */
+    private void handleInterfaceKeys() {
+        if (inputHandler.consumeInventoryToggle()) {
+            inventoryGui.toggle();
+            LOGGER.info("Inventory {}", inventoryGui.isOpen() ? "opened" : "closed");
+        }
+        int hotbarSlot = inputHandler.consumeHotbarSelection();
+        if (hotbarSlot >= 0) {
+            player.inventory().setSelectedSlot(hotbarSlot);
+        }
+    }
+
+    /**
+     * Turns the collected wheel notches into a clamped, multiplicative zoom.
+     *
+     * @param steps wheel notches collected since the last frame
+     */
+    private void applyZoom(float steps) {
         if (steps == 0.0f) {
             return;
         }
@@ -219,10 +321,65 @@ public class GameScreen extends NeoFactoryScreen {
             return;
         }
         debugFrameCounter = 0;
-        LOGGER.info("Block ({}, {}) | zoom {} | tiles {} | chunks {} | fps {}",
+        LOGGER.info("Block ({}, {}) | zoom {} | tiles {} | chunks {} | hotbar {} | inventory {} | gui {} | fps {}",
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
                 worldRenderer.drawnTileCount(), world.chunkCount(),
+                player.inventory().selectedSlot(),
+                inventoryGui.isOpen() ? "open" : "closed",
+                uiViewport.scale(),
                 Gdx.graphics.getFramesPerSecond());
     }
-}
 
+    /**
+     * Fills the inventory with a fixed set of stacks.
+     * <p>
+     * Temporary: the game has no save game and no way to obtain items yet, so a hand
+     * written kit is what makes the hotbar and the inventory screen show something.
+     * The kit covers block items, materials, food, tools and armour, which is one
+     * example of every kind of icon the game knows.
+     *
+     * @param inventory inventory to fill
+     */
+    private void fillDebugInventory(PlayerInventory inventory) {
+        inventory.add(ItemStack.of(Items.DIAMOND_PICKAXE, 1));
+        inventory.add(ItemStack.of(Items.DIAMOND_SWORD, 1));
+        inventory.add(ItemStack.of(Items.IRON_SWORD, 1));
+        inventory.add(ItemStack.of(Items.GRASS, 64));
+        inventory.add(ItemStack.of(Items.DIRT, 64));
+        inventory.add(ItemStack.of(Items.STONE, 64));
+        inventory.add(ItemStack.of(Items.SAND, 21));
+        inventory.add(ItemStack.of(Items.SNOW, 9));
+        inventory.add(ItemStack.of(Items.BEDROCK, 1));
+
+        inventory.add(ItemStack.of(Items.LOG_OAK, 12));
+        inventory.add(ItemStack.of(Items.PLANKS_OAK, 40));
+        inventory.add(ItemStack.of(Items.LEAVES_OAK, 8));
+        inventory.add(ItemStack.of(Items.TALL_GRASS, 16));
+        inventory.add(ItemStack.of(Items.COAL_ORE, 5));
+        inventory.add(ItemStack.of(Items.IRON_ORE, 5));
+        inventory.add(ItemStack.of(Items.SANDSTONE, 7));
+        inventory.add(ItemStack.of(Items.IRON_INGOT, 24));
+        inventory.add(ItemStack.of(Items.GOLD_INGOT, 6));
+
+        inventory.add(ItemStack.of(Items.DIAMOND, 7));
+        inventory.add(ItemStack.of(Items.EMERALD, 2));
+        inventory.add(ItemStack.of(Items.COAL, 30));
+        inventory.add(ItemStack.of(Items.CHARCOAL, 4));
+        inventory.add(ItemStack.of(Items.STICK, 32));
+        inventory.add(ItemStack.of(Items.REDSTONE_DUST, 64));
+        inventory.add(ItemStack.of(Items.GLOWSTONE_DUST, 11));
+        inventory.add(ItemStack.of(Items.CLAY_BALL, 13));
+        inventory.add(ItemStack.of(Items.FLINT, 3));
+        inventory.add(ItemStack.of(Items.FEATHER, 9));
+        inventory.add(ItemStack.of(Items.LEATHER, 6));
+        inventory.add(ItemStack.of(Items.BONE, 4));
+        inventory.add(ItemStack.of(Items.STRING, 8));
+        inventory.add(ItemStack.of(Items.PAPER, 12));
+        inventory.add(ItemStack.of(Items.WHEAT, 18));
+        inventory.add(ItemStack.of(Items.SEEDS_WHEAT, 16));
+        inventory.add(ItemStack.of(Items.GUNPOWDER, 5));
+        inventory.add(ItemStack.of(Items.BLAZE_ROD, 2));
+        inventory.add(ItemStack.of(Items.BLAZE_POWDER, 3));
+        inventory.add(ItemStack.of(Items.SUGAR, 17));
+    }
+}

@@ -6,7 +6,10 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.item.ItemRegistry;
+import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.render.BlockTextureCache;
+import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.screen.ScreenManager;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
@@ -16,8 +19,9 @@ import org.apache.logging.log4j.Logger;
  * Entry point of the game.
  * <p>
  * The game owns the resources shared by every screen: the {@link AssetManager},
- * the texture cache and the {@link ScreenManager}. Screens never dispose those
- * resources themselves, the game releases them once the application shuts down.
+ * the {@link BlockTextureCache} with the pictures, the {@link PixelFont} used to
+ * draw text and the {@link ScreenManager}. Screens never dispose those resources
+ * themselves, the game releases them once the application shuts down.
  */
 public class NeoFactoryGame extends Game {
 
@@ -28,6 +32,7 @@ public class NeoFactoryGame extends Game {
 
     private AssetManager assets;
     private BlockTextureCache textures;
+    private PixelFont font;
     private ScreenManager screenManager;
 
     @Override
@@ -37,10 +42,19 @@ public class NeoFactoryGame extends Game {
         assets = new AssetManager();
         textures = new BlockTextureCache(assets);
 
-        // Every block must exist before a world is created.
+        // Every block has to exist before a world is created, and every item looks
+        // its block up while it is registered.
         Blocks.registerAll();
         LOGGER.info("Registered {} block types, next free id is {}",
                 BlockRegistry.count(), Blocks.NEXT_FREE_ID);
+
+        Items.registerAll();
+        LOGGER.info("Registered {} item types, next free id is {}",
+                ItemRegistry.count(), Items.NEXT_FREE_ID);
+
+        // The font belongs to the game, because the title screen and the world may
+        // both draw text with it.
+        font = new PixelFont(textures);
 
         screenManager = new ScreenManager(this);
         screenManager.show(ScreenManager.ScreenType.GAME);
@@ -51,9 +65,14 @@ public class NeoFactoryGame extends Game {
         return assets;
     }
 
-    /** Texture cache providing the block and map regions. */
+    /** Texture cache providing the block, item and interface pictures. */
     public BlockTextureCache textures() {
         return textures;
+    }
+
+    /** Font used to draw text with the bitmaps of the {@code font} folder. */
+    public PixelFont font() {
+        return font;
     }
 
     /** Manager creating and switching the screens of the game. */
@@ -79,6 +98,14 @@ public class NeoFactoryGame extends Game {
         if (screenManager != null) {
             screenManager.dispose();
             screenManager = null;
+        }
+        if (font != null) {
+            font.dispose();
+            font = null;
+        }
+        if (textures != null) {
+            textures.dispose();
+            textures = null;
         }
         if (assets != null) {
             assets.dispose();

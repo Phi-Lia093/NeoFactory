@@ -5,8 +5,8 @@ import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.philia093.neofactory.NeoFactoryGame;
+import com.philia093.neofactory.gui.GuiViewport;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,8 +28,16 @@ public abstract class NeoFactoryScreen extends ScreenAdapter {
     /** Stage holding the user interface actors of this screen. */
     protected final Stage stage;
 
-    /** Viewport of the stage, also used to compute the world size on screen. */
-    protected final ScreenViewport uiViewport;
+    /**
+     * Viewport of the user interface, shared by the stage and by everything the
+     * screens draw themselves.
+     * <p>
+     * It blows the interface up by a whole number, see {@link GuiViewport}. Text and
+     * slots stay readable on a large window, and because drawing and hit testing both
+     * run through this viewport a click lands on the slot the player sees, also in
+     * fullscreen or after the window was resized.
+     */
+    protected final GuiViewport uiViewport;
 
     /** Window width to restore when leaving fullscreen mode, {@code -1} while unknown. */
     private int windowedWidth = -1;
@@ -44,7 +52,7 @@ public abstract class NeoFactoryScreen extends ScreenAdapter {
      */
     protected NeoFactoryScreen(NeoFactoryGame game) {
         this.game = game;
-        this.uiViewport = new ScreenViewport();
+        this.uiViewport = new GuiViewport();
         this.stage = new Stage(uiViewport);
     }
 
@@ -60,8 +68,10 @@ public abstract class NeoFactoryScreen extends ScreenAdapter {
 
     @Override
     public void resize(int width, int height) {
-        // The camera is kept as is, only the viewport is updated.
-        uiViewport.update(width, height, false);
+        // The camera is kept as is, only the viewport is updated. Centring it on the
+        // new size is what keeps the interface in the middle of the window after a
+        // resize or after switching to fullscreen.
+        uiViewport.update(width, height, true);
     }
 
     @Override

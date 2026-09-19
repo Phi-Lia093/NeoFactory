@@ -14,11 +14,12 @@ import com.philia093.neofactory.entity.Player;
  * through the camera, which turns the cursor position into a world position and
  * therefore sets the facing direction of the player.
  * <p>
- * The class extends {@link InputAdapter} because two actions cannot be polled
- * safely: a key that is still held down would toggle fullscreen on every frame
- * and the mouse wheel produces no lasting state at all. Both are therefore
- * collected from events and handed to the game loop through
- * {@link #consumeZoomSteps()} and {@link #consumeFullscreenToggle()}.
+ * The class extends {@link InputAdapter} because several actions cannot be polled
+ * safely: a key that is still held down would toggle fullscreen on every frame,
+ * open and close the inventory in the same frame or cycle the hotbar without end.
+ * They are therefore collected from events and handed to the game loop through
+ * {@link #consumeZoomSteps()}, {@link #consumeFullscreenToggle()},
+ * {@link #consumeInventoryToggle()} and {@link #consumeHotbarSelection()}.
  */
 public class InputHandler extends InputAdapter {
 
@@ -40,6 +41,18 @@ public class InputHandler extends InputAdapter {
     /** Key that switches between windowed and fullscreen mode. */
     private static final int KEY_FULLSCREEN = Input.Keys.F11;
 
+    /** Key that opens and closes the inventory screen. */
+    private static final int KEY_INVENTORY = Input.Keys.E;
+
+    /** First of the nine keys that select a hotbar slot. */
+    private static final int KEY_HOTBAR_FIRST = Input.Keys.NUM_1;
+
+    /** Last of the nine keys that select a hotbar slot. */
+    private static final int KEY_HOTBAR_LAST = Input.Keys.NUM_9;
+
+    /** Value of {@link #hotbarSelection} while no hotbar key was pressed. */
+    private static final int NO_HOTBAR_SELECTION = -1;
+
     /** Reused vector holding the unprojected mouse position. */
     private final Vector3 cursor = new Vector3();
 
@@ -51,6 +64,12 @@ public class InputHandler extends InputAdapter {
 
     /** Set when the exit key was pressed, cleared by the consumer. */
     private boolean exitRequested;
+
+    /** Set when the inventory key was pressed, cleared by the consumer. */
+    private boolean inventoryToggle;
+
+    /** Hotbar slot selected by a number key, cleared by the consumer. */
+    private int hotbarSelection = NO_HOTBAR_SELECTION;
 
     /**
      * Reads the current input state and applies it to the player.
@@ -85,6 +104,14 @@ public class InputHandler extends InputAdapter {
             exitRequested = true;
             return true;
         }
+        if (keycode == KEY_INVENTORY) {
+            inventoryToggle = true;
+            return true;
+        }
+        if (keycode >= KEY_HOTBAR_FIRST && keycode <= KEY_HOTBAR_LAST) {
+            hotbarSelection = keycode - KEY_HOTBAR_FIRST;
+            return true;
+        }
         return false;
     }
 
@@ -108,6 +135,28 @@ public class InputHandler extends InputAdapter {
         boolean requested = fullscreenToggle;
         fullscreenToggle = false;
         return requested;
+    }
+
+    /**
+     * Returns and clears the inventory request, if the key was pressed.
+     *
+     * @return {@code true} when the inventory screen should be toggled
+     */
+    public boolean consumeInventoryToggle() {
+        boolean requested = inventoryToggle;
+        inventoryToggle = false;
+        return requested;
+    }
+
+    /**
+     * Returns and clears the hotbar slot selected by a number key.
+     *
+     * @return the slot, {@code 0} to {@code 8}, or {@code -1} when no key was pressed
+     */
+    public int consumeHotbarSelection() {
+        int selection = hotbarSelection;
+        hotbarSelection = NO_HOTBAR_SELECTION;
+        return selection;
     }
 
     /**
