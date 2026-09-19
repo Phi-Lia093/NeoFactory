@@ -11,15 +11,18 @@ import com.badlogic.gdx.graphics.Color;
  * appended at the end of the list and the value of {@link #NEXT_FREE_ID} has to
  * be bumped accordingly.
  * <p>
- * <b>Solidity:</b> solid means that a block stops player movement. Ground
- * surfaces are walkable and therefore never solid, no matter which material they
- * are made of: the player stands on the
- * {@link com.philia093.neofactory.util.Constants#LAYER_FLOOR floor} layer and only
- * bumps into the {@link com.philia093.neofactory.util.Constants#LAYER_OBJECT
- * object} layer, or into impassable ground such as {@link #BEDROCK}. A ground
- * block that forgets {@code .solid(false)} would keep the builder default of
- * {@code true} and freeze the player on the spot, because then every cell of the
- * world counts as an obstacle.
+ * <b>Solidity:</b> two flags decide whether the player can enter a cell.
+ * {@code solid} means the block is an obstacle the moment it occupies a cell: a
+ * wall of planks, a trunk, a canopy or {@link #BEDROCK}. {@code ground} means the
+ * block can be the ground of a cell and is therefore walked over, no matter which
+ * material it is made of: stone, sand and grass are hard, yet the player stands on
+ * them. {@link #AIR} is ground as well, which keeps a hole the player dug passable.
+ * <p>
+ * A block that is neither declares itself an obstacle in both layers. Forgetting
+ * {@code .ground(true)} on a ground block would freeze the player, because then
+ * every cell of the world would count as an obstacle, and forgetting
+ * {@code .solid(true)} on a block such as {@link #PLANKS_OAK} would let the player
+ * build walls to walk straight through.
  */
 public final class Blocks {
 
@@ -125,6 +128,7 @@ public final class Blocks {
         AIR = Block.builder(AIR_ID, "air")
                 .texture(Block.NO_TEXTURE)
                 .solid(false)
+                .ground(true)
                 .transparent(true)
                 .hardness(0.0f)
                 .build();
@@ -140,17 +144,19 @@ public final class Blocks {
         BlockRegistry.register(BEDROCK);
 
         // Everything from here down to the ores is a ground surface: the player
-        // walks over it, so it must not be solid.
+        // walks over it, so it is ground. A placed block of the same kind stands in
+        // the object layer and blocks the way there.
         STONE = Block.builder(STONE_ID, "stone")
                 .texture("stone")
-                .solid(false)
+                .ground(true)
                 .hardness(1.5f)
+                .harvestLevel(1)
                 .build();
         BlockRegistry.register(STONE);
 
         DIRT = Block.builder(DIRT_ID, "dirt")
                 .texture("dirt")
-                .solid(false)
+                .ground(true)
                 .hardness(0.5f)
                 .build();
         BlockRegistry.register(DIRT);
@@ -159,7 +165,7 @@ public final class Blocks {
         // colour is applied at draw time through the tint.
         GRASS = Block.builder(GRASS_ID, "grass")
                 .texture("grass_top")
-                .solid(false)
+                .ground(true)
                 .tint(new Color(0.60f, 0.80f, 0.36f, 1.0f))
                 .hardness(0.6f)
                 .build();
@@ -167,30 +173,32 @@ public final class Blocks {
 
         SAND = Block.builder(SAND_ID, "sand")
                 .texture("sand")
-                .solid(false)
+                .ground(true)
                 .hardness(0.5f)
                 .build();
         BlockRegistry.register(SAND);
 
         GRAVEL = Block.builder(GRAVEL_ID, "gravel")
                 .texture("gravel")
-                .solid(false)
+                .ground(true)
                 .hardness(0.6f)
                 .build();
         BlockRegistry.register(GRAVEL);
 
         CLAY = Block.builder(CLAY_ID, "clay")
                 .texture("clay")
-                .solid(false)
+                .ground(true)
                 .hardness(0.6f)
                 .build();
         BlockRegistry.register(CLAY);
 
         // Water references the animated still water sheet. Only its first frame
-        // is used for now, the tint keeps it clearly readable.
+        // is used for now, the tint keeps it clearly readable. The player walks into
+        // it and is slowed down later, so it is not solid but is ground.
         WATER = Block.builder(WATER_ID, "water")
                 .texture("water_still")
                 .solid(false)
+                .ground(true)
                 .liquid(true)
                 .transparent(true)
                 .tint(new Color(0.55f, 0.75f, 1.0f, 0.75f))
@@ -227,8 +235,9 @@ public final class Blocks {
 
         SANDSTONE = Block.builder(SANDSTONE_ID, "sandstone")
                 .texture("sandstone_top")
-                .solid(false)
+                .ground(true)
                 .hardness(0.8f)
+                .harvestLevel(1)
                 .build();
         BlockRegistry.register(SANDSTONE);
 
@@ -236,31 +245,35 @@ public final class Blocks {
         // them, so they must stay walkable.
         COAL_ORE = Block.builder(COAL_ORE_ID, "coal_ore")
                 .texture("coal_ore")
-                .solid(false)
+                .ground(true)
                 .hardness(3.0f)
+                .harvestLevel(1)
                 .build();
         BlockRegistry.register(COAL_ORE);
 
         IRON_ORE = Block.builder(IRON_ORE_ID, "iron_ore")
                 .texture("iron_ore")
-                .solid(false)
+                .ground(true)
                 .hardness(3.0f)
+                .harvestLevel(1)
                 .build();
         BlockRegistry.register(IRON_ORE);
 
         SNOW = Block.builder(SNOW_ID, "snow")
                 .texture("snow")
-                .solid(false)
+                .ground(true)
                 .hardness(0.4f)
                 .build();
         BlockRegistry.register(SNOW);
 
         // Like the ground the blades are grey scale and receive their colour from
-        // the tint.
+        // the tint. A player may place them into the ground as well, so they are
+        // ground: a tuft of grass is never a wall.
         TALL_GRASS = Block.builder(TALL_GRASS_ID, "tall_grass")
                 .texture("tallgrass")
                 .tint(new Color(0.75f, 0.95f, 0.45f, 1.0f))
                 .solid(false)
+                .ground(true)
                 .transparent(true)
                 .hardness(0.1f)
                 .build();

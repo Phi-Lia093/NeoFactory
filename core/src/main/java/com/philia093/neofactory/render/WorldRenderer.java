@@ -29,6 +29,14 @@ public class WorldRenderer implements Disposable {
     /** Extra blocks drawn outside the camera view to hide popping at the edges. */
     private static final int VIEW_MARGIN = 2;
 
+    /**
+     * Colour a hole in the ground is filled with, shared and never mutated.
+     * <p>
+     * The world has no depth, so a dug out cell would show the sky through the
+     * floor. Pure black reads as a hole instead of as a missing tile.
+     */
+    private static final Color HOLE_COLOR = new Color(0.0f, 0.0f, 0.0f, 1.0f);
+
     /** SpriteBatch shared with the caller, it is not owned by this class. */
     private final SpriteBatch batch;
     private final BlockTextureCache textures;
@@ -136,11 +144,36 @@ public class WorldRenderer implements Disposable {
             for (int localX = fromLocalX; localX <= toLocalX; localX++) {
                 Block block = chunk.getBlock(localX, localY, layer);
                 if (block.isAir()) {
+                    if (layer == Chunk.LAYER_FLOOR && chunk.isCellGenerated(localX, localY)) {
+                        // The ground of a finished cell is always filled by the
+                        // generator, so an empty one was dug out by the player.
+                        drawHole(originX + localX, originY + localY);
+                    }
                     continue;
                 }
                 drawTile(block, originX + localX, originY + localY);
             }
         }
+    }
+
+    /**
+     * Draws the black gap of a hole in the ground.
+     * <p>
+     * The player can walk over a hole like over any other floor, only the look
+     * changes: without the gap the sky colour would shine through the ground.
+     *
+     * @param x block X coordinate of the hole
+     * @param y block Y coordinate of the hole
+     */
+    private void drawHole(int x, int y) {
+        TextureRegion pixel = textures.whitePixel();
+        if (pixel == null) {
+            return;
+        }
+        float size = Constants.TILE_SIZE;
+        batch.setColor(HOLE_COLOR);
+        batch.draw(pixel, x * size, y * size, size, size);
+        drawnTiles++;
     }
 
     /**

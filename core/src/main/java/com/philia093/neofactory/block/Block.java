@@ -24,20 +24,24 @@ public final class Block {
     private final String name;
     private final String texture;
     private final boolean solid;
+    private final boolean ground;
     private final boolean liquid;
     private final boolean transparent;
     private final Color tint;
     private final float hardness;
+    private final int harvestLevel;
 
     private Block(Builder builder) {
         this.id = builder.id;
         this.name = builder.name;
         this.texture = builder.texture;
         this.solid = builder.solid;
+        this.ground = builder.ground;
         this.liquid = builder.liquid;
         this.transparent = builder.transparent;
         this.tint = builder.tint;
         this.hardness = builder.hardness;
+        this.harvestLevel = builder.harvestLevel;
     }
 
     /** Unique numeric id, also used as the palette index inside chunks. */
@@ -62,12 +66,30 @@ public final class Block {
     /**
      * {@code true} when the block stops player movement.
      * <p>
-     * The flag describes a block that stands in a cell. Ground surfaces, which
-     * fill the floor layer, are walkable and therefore not solid even when they
-     * are made of stone, see {@link Blocks}.
+     * The flag describes a block that stands in a cell: a wall of planks or a tree
+     * trunk is solid, tall grass and water are not. A hard material such as stone is
+     * solid as well, so a block the player built is always an obstacle. Whether the
+     * same block may be walked over as the ground of a cell is a separate question,
+     * see {@link #isGround()}.
      */
     public boolean isSolid() {
         return solid;
+    }
+
+    /**
+     * {@code true} when the block can be the ground of a cell.
+     * <p>
+     * A ground surface fills the floor layer - grass, sand, stone, the ores, snow -
+     * and the player walks over it, so it never stops movement no matter how hard
+     * the material is. Air counts as ground as well, which is what keeps a dug out
+     * hole passable.
+     * <p>
+     * Everything else, bedrock and every object such as a trunk or a wall, is not
+     * ground: it blocks the cell as soon as it is either the layer the player stands
+     * in or the ground below it, see {@code BlockAccess.isSolid(int, int)}.
+     */
+    public boolean isGround() {
+        return ground;
     }
 
     /** {@code true} when the block is a fluid such as water. */
@@ -92,10 +114,25 @@ public final class Block {
 
     /**
      * Time in seconds a player needs to break this block.
-     * Only relevant once block breaking is implemented.
+     * <p>
+     * A negative value marks a block that can never be broken, which is how
+     * bedrock and water are declared. The value is read by
+     * {@link com.philia093.neofactory.world.interaction.MiningRule}, the rule that
+     * is active right now breaks instantly and only respects that sign.
      */
     public float hardness() {
         return hardness;
+    }
+
+    /**
+     * Mining level a tool needs to harvest this block.
+     * <p>
+     * Level {@code 0} is a bare hand or any tool. The value is compared with
+     * {@link com.philia093.neofactory.item.Item#toolLevel()} of the held item by
+     * {@link com.philia093.neofactory.world.interaction.HardnessMining}.
+     */
+    public int harvestLevel() {
+        return harvestLevel;
     }
 
     /** {@code true} when this block has a texture that can be drawn. */
@@ -136,10 +173,12 @@ public final class Block {
         private final String name;
         private String texture = NO_TEXTURE;
         private boolean solid = true;
+        private boolean ground = false;
         private boolean liquid = false;
         private boolean transparent = false;
         private Color tint = new Color(Color.WHITE);
         private float hardness = 1.0f;
+        private int harvestLevel;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -154,6 +193,19 @@ public final class Block {
 
         public Builder solid(boolean solid) {
             this.solid = solid;
+            return this;
+        }
+
+        /**
+         * Marks the block as a ground surface the player walks over.
+         * <p>
+         * A block that is not ground blocks the cell it occupies, see
+         * {@link Block#isGround()}.
+         *
+         * @param ground {@code true} for a block that fills the floor layer
+         */
+        public Builder ground(boolean ground) {
+            this.ground = ground;
             return this;
         }
 
@@ -174,6 +226,19 @@ public final class Block {
 
         public Builder hardness(float hardness) {
             this.hardness = hardness;
+            return this;
+        }
+
+        /**
+         * Sets the mining level a tool needs to harvest this block.
+         *
+         * @param harvestLevel required level, {@code 0} for hand and any tool
+         */
+        public Builder harvestLevel(int harvestLevel) {
+            if (harvestLevel < 0) {
+                throw new IllegalArgumentException("Harvest level must not be negative: " + harvestLevel);
+            }
+            this.harvestLevel = harvestLevel;
             return this;
         }
 

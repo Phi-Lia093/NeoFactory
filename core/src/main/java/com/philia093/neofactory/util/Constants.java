@@ -54,6 +54,26 @@ public final class Constants {
      */
     public static final float PLAYER_ICON_SCALE = 2.0f;
 
+    /**
+     * Distance in blocks the player can reach.
+     * <p>
+     * A block closer than this to the player center may be broken or built on by
+     * pointing at it. A cell further away is not used: the action falls back to the
+     * block the line of sight meets inside the reach, see the interaction classes of
+     * the world package.
+     */
+    public static final float PLAYER_REACH = 4.5f;
+
+    /**
+     * Seconds the shortest break may last.
+     * <p>
+     * While blocks are broken instantly this is what paces a held button, so that
+     * holding it digs a trail of blocks instead of a whole chunk in one frame. A
+     * rule that needs more time for a block ignores this value, because a break
+     * never finishes faster than the rule allows.
+     */
+    public static final float MINIMUM_BREAK_TIME = 0.2f;
+
     /** Amount of blocks visible on the shorter screen axis at zoom level one. */
     public static final float VIEW_BLOCKS = 32.0f;
 

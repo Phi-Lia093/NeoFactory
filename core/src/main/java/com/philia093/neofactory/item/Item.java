@@ -38,6 +38,9 @@ public class Item {
     /** Amount a unique item, such as a tool or a piece of armour, stacks to. */
     public static final int SINGLE_ITEM_STACK = 1;
 
+    /** Mining speed of a bare hand, also the default of every item. */
+    public static final float HAND_MINING_SPEED = 1.0f;
+
     private final int id;
     private final String name;
     private final String displayName;
@@ -45,6 +48,8 @@ public class Item {
     private final int iconFrame;
     private final Color tint;
     private final int maxStackSize;
+    private final int toolLevel;
+    private final float miningSpeed;
 
     /**
      * Creates an item that is not linked to a block.
@@ -59,6 +64,8 @@ public class Item {
         this.iconFrame = builder.iconFrame;
         this.tint = builder.tint != null ? new Color(builder.tint) : new Color(Color.WHITE);
         this.maxStackSize = builder.maxStackSize;
+        this.toolLevel = builder.toolLevel;
+        this.miningSpeed = builder.miningSpeed;
     }
 
     /**
@@ -80,6 +87,8 @@ public class Item {
         this.iconFrame = builder.iconFrame;
         this.tint = builder.tint != null ? new Color(builder.tint) : new Color(block.tint());
         this.maxStackSize = builder.maxStackSize;
+        this.toolLevel = builder.toolLevel;
+        this.miningSpeed = builder.miningSpeed;
     }
 
     /** Unique numeric id of this item type. */
@@ -115,6 +124,33 @@ public class Item {
     /** Amount of this item that fits into a single inventory slot. */
     public int maxStackSize() {
         return maxStackSize;
+    }
+
+    /**
+     * Mining level of this item as a tool.
+     * <p>
+     * A bare hand counts as level {@code 0}, so an item that is not a tool keeps
+     * that value. The level is compared with
+     * {@link com.philia093.neofactory.block.Block#harvestLevel()} to decide whether
+     * a block drops its item, see
+     * {@link com.philia093.neofactory.world.interaction.HardnessMining}.
+     * <p>
+     * Whether the tool <i>type</i> fits the block is not modelled yet: a level is
+     * only given to the tools that already know their material, so a sword never
+     * harvests stone by accident.
+     */
+    public int toolLevel() {
+        return toolLevel;
+    }
+
+    /**
+     * Speed this item breaks blocks with.
+     * <p>
+     * {@code 1} is the speed of a bare hand, a diamond pickaxe reaches {@code 8}.
+     * Only read by a mining rule that lets a break take time.
+     */
+    public float miningSpeed() {
+        return miningSpeed;
     }
 
     /** {@code true} when the item stacks, which every item but a tool or armour piece does. */
@@ -203,6 +239,8 @@ public class Item {
         private int iconFrame;
         private Color tint;
         private int maxStackSize = DEFAULT_MAX_STACK;
+        private int toolLevel;
+        private float miningSpeed = HAND_MINING_SPEED;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -246,6 +284,37 @@ public class Item {
                 throw new IllegalArgumentException("Stack size must be positive: " + maxStackSize);
             }
             this.maxStackSize = maxStackSize;
+            return this;
+        }
+
+        /**
+         * Makes this item a tool of a mining level.
+         * <p>
+         * The level is what
+         * {@link com.philia093.neofactory.world.interaction.HardnessMining} compares
+         * with the level a block needs. Only tools whose material is known carry a
+         * level, see {@link #toolLevel()}.
+         *
+         * @param toolLevel mining level, {@code 0} for an item that is not a tool
+         */
+        public Builder toolLevel(int toolLevel) {
+            if (toolLevel < 0) {
+                throw new IllegalArgumentException("Tool level must not be negative: " + toolLevel);
+            }
+            this.toolLevel = toolLevel;
+            return this;
+        }
+
+        /**
+         * Sets the speed this item breaks blocks with.
+         *
+         * @param miningSpeed speed, {@code 1} for a bare hand
+         */
+        public Builder miningSpeed(float miningSpeed) {
+            if (miningSpeed <= 0.0f) {
+                throw new IllegalArgumentException("Mining speed must be positive: " + miningSpeed);
+            }
+            this.miningSpeed = miningSpeed;
             return this;
         }
 

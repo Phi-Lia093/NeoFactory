@@ -53,6 +53,12 @@ public class InputHandler extends InputAdapter {
     /** Value of {@link #hotbarSelection} while no hotbar key was pressed. */
     private static final int NO_HOTBAR_SELECTION = -1;
 
+    /** First of the keys that address the layer below the feet. */
+    private static final int KEY_GROUND_LAYER_LEFT = Input.Keys.SHIFT_LEFT;
+
+    /** Second of the keys that address the layer below the feet. */
+    private static final int KEY_GROUND_LAYER_RIGHT = Input.Keys.SHIFT_RIGHT;
+
     /** Reused vector holding the unprojected mouse position. */
     private final Vector3 cursor = new Vector3();
 
@@ -168,6 +174,42 @@ public class InputHandler extends InputAdapter {
         boolean requested = exitRequested;
         exitRequested = false;
         return requested;
+    }
+
+    /**
+     * {@code true} while the player asks for the layer below the feet.
+     * <p>
+     * The key is read instead of collected, because it is a modifier and not an
+     * action: while it is held, breaking and building apply to the ground the
+     * player walks on instead of the layer the player stands in.
+     *
+     * @return {@code true} while a shift key is held
+     */
+    public boolean isGroundLayerDown() {
+        return Gdx.input.isKeyPressed(KEY_GROUND_LAYER_LEFT)
+                || Gdx.input.isKeyPressed(KEY_GROUND_LAYER_RIGHT);
+    }
+
+    /**
+     * {@code true} while the mouse button that breaks blocks is held.
+     * <p>
+     * Breaking repeats as long as the button stays down, so the state is read
+     * every frame instead of being collected from an event.
+     *
+     * @return {@code true} while the left button is down
+     */
+    public boolean isBreakingDown() {
+        return Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+    }
+
+    /**
+     * {@code true} when a mouse button builds the held block.
+     *
+     * @param button mouse button that was pressed
+     * @return {@code true} for the right button
+     */
+    public static boolean isBuildButton(int button) {
+        return button == Input.Buttons.RIGHT;
     }
 
     /**

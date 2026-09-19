@@ -14,15 +14,24 @@ import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.input.InputHandler;
+import com.philia093.neofactory.item.InventoryDrops;
+import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.render.PlayerRenderer;
+import com.philia093.neofactory.render.SelectionRenderer;
 import com.philia093.neofactory.render.WorldRenderer;
 import com.philia093.neofactory.util.Constants;
+import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.BlockPlacer;
+import com.philia093.neofactory.world.interaction.BlockTarget;
+import com.philia093.neofactory.world.interaction.BlockTargeting;
+import com.philia093.neofactory.world.interaction.InstantMining;
+import com.philia093.neofactory.world.interaction.MiningController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,6 +46,17 @@ import org.apache.logging.log4j.Logger;
  * {@code 9} select a hotbar slot, {@code E} opens and closes the inventory,
  * {@code F11} switches to fullscreen and {@code ESC} closes the inventory or, when
  * it is closed already, the game.
+ * <p>
+ * The left mouse button breaks the block the player aims at while it is held, the
+ * right button builds the held block. Both actions apply to the layer the player
+ * stands in; holding {@code SHIFT} moves them to the layer below the feet, which is
+ * the ground the player walks on. Aiming further away than the reach of the player
+ * falls back to the line of sight, see {@link BlockTargeting}.
+ * <p>
+ * An action never skips a layer: the ground below the feet can only be dug or filled
+ * while the layer the player stands in is empty, and a block can only be built into
+ * that layer while it has ground below. The colour of the frame tells which kind of
+ * column the player aims at, see {@link SelectionRenderer}.
  * <p>
  * While the inventory is open the world keeps running, but the keyboard only drives
  * the interface and the player stands still.
@@ -74,21 +94,42 @@ public class GameScreen extends NeoFactoryScreen {
     /** Inventory screen, opened and closed with the inventory key. */
     private final InventoryGui inventoryGui;
 
+    /** Frame drawn around the block the player aims at. */
+    private final SelectionRenderer selectionRenderer;
+
+    /** Sink that receives the items of a broken block, see {@link ItemDrops}. */
+    private final ItemDrops drops;
+
+    /** Breaks the targeted block while the left button is held. */
+    private final MiningController mining;
+
+    /** Cell a break or a build would touch, {@code null} while nothing is aimed at. */
+    private BlockTarget target;
+
+    /** Position of the mouse in world units, reused every frame. */
+    private final Vector2 worldMouse = new Vector2();
+
     /** Position of the mouse in the virtual pixels of the interface, reused every frame. */
     private final Vector2 interfaceMouse = new Vector2();
 
     /**
-     * Forwards mouse presses to the inventory screen.
+     * Forwards mouse presses to the inventory screen and builds blocks.
      * <p>
      * The screen works in the virtual pixels of the interface, so the position of the
-     * mouse is converted through the viewport first. While the screen is closed the
-     * press is passed on, so the world may use it.
+     * mouse is converted through the viewport first. While the screen is open it gets
+     * the press; while it is closed the world does, see {@link #buildBlock()}.
      */
     private final InputAdapter interfaceInput = new InputAdapter() {
         @Override
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
             uiViewport.unproject(screenX, screenY, interfaceMouse);
-            return inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button);
+            if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
+            if (InputHandler.isBuildButton(button)) {
+                return buildBlock();
+            }
+            return false;
         }
     };
 
@@ -123,6 +164,12 @@ public class GameScreen extends NeoFactoryScreen {
         this.playerRenderer = new PlayerRenderer(batch, textures);
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
+        this.selectionRenderer = new SelectionRenderer(batch, textures);
+
+        // Items of a broken block go straight into the inventory until dropped item
+        // entities exist; switching that is one line here, see InventoryDrops.
+        this.drops = new InventoryDrops(player.inventory());
+        this.mining = new MiningController(new InstantMining(), drops);
 
         fillDebugInventory(player.inventory());
         loadChunksAroundPlayer();
@@ -168,6 +215,7 @@ public class GameScreen extends NeoFactoryScreen {
         batch.begin();
         worldRenderer.render(world, camera);
         playerRenderer.render(player);
+        selectionRenderer.render(world, target);
         batch.end();
 
         renderInterface(delta);
@@ -247,12 +295,62 @@ public class GameScreen extends NeoFactoryScreen {
         float zoomSteps = inputHandler.consumeZoomSteps();
         if (inventoryGui.isOpen()) {
             player.halt();
+            target = null;
         } else {
             applyZoom(zoomSteps);
             inputHandler.update(player, camera);
             player.update(world, delta, zoom);
+            updateInteraction(delta);
         }
         loadChunksAroundPlayer();
+    }
+
+    /**
+     * Aims at a cell and mines it while the left button is held.
+     * <p>
+     * The mouse is unprojected through the viewport of the world, which is the same
+     * mapping the camera uses, so the frame the player sees matches the cell that is
+     * really addressed. The shift key moves the action from the layer the player
+     * stands in to the layer below the feet, see {@link InputHandler#isGroundLayerDown()}.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    private void updateInteraction(float delta) {
+        worldMouse.set(Gdx.input.getX(), Gdx.input.getY());
+        worldViewport.unproject(worldMouse);
+
+        int layer = inputHandler.isGroundLayerDown() ? Chunk.LAYER_FLOOR : Chunk.LAYER_OBJECT;
+        target = BlockTargeting.select(world, player, worldMouse.x, worldMouse.y, layer);
+
+        boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
+                inputHandler.isBreakingDown());
+        if (broken) {
+            LOGGER.info("Broke block ({}, {}) of layer {}", target.x(), target.y(), target.layer());
+        }
+    }
+
+    /**
+     * Builds the held block into the targeted cell.
+     * <p>
+     * Called from the mouse event while the inventory screen is closed, so a click
+     * builds exactly one block, see
+     * {@link BlockPlacer#place(World, Player, BlockTarget, PlayerInventory)}.
+     *
+     * @return {@code true} when a block was built
+     */
+    private boolean buildBlock() {
+        if (target == null) {
+            return false;
+        }
+        String itemName = player.inventory().heldStack().item().displayName();
+        int x = target.x();
+        int y = target.y();
+        int layer = target.layer();
+        if (!BlockPlacer.place(world, player, target, player.inventory())) {
+            return false;
+        }
+        LOGGER.info("Built {} into block ({}, {}) of layer {}", itemName, x, y, layer);
+        return true;
     }
 
     /** Applies the keys that belong to the interface instead of the world. */
@@ -321,13 +419,24 @@ public class GameScreen extends NeoFactoryScreen {
             return;
         }
         debugFrameCounter = 0;
-        LOGGER.info("Block ({}, {}) | zoom {} | tiles {} | chunks {} | hotbar {} | inventory {} | gui {} | fps {}",
+        LOGGER.info("Block ({}, {}) | zoom {} | tiles {} | chunks {} | hotbar {} | inventory {} "
+                        + "| target {} | gui {} | fps {}",
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
                 worldRenderer.drawnTileCount(), world.chunkCount(),
                 player.inventory().selectedSlot(),
                 inventoryGui.isOpen() ? "open" : "closed",
+                targetText(),
                 uiViewport.scale(),
                 Gdx.graphics.getFramesPerSecond());
+    }
+
+    /** Short description of the targeted cell, used by the status log. */
+    private String targetText() {
+        if (target == null) {
+            return "none";
+        }
+        return target.x() + "," + target.y() + " layer " + target.layer()
+                + (target.fromRay() ? " (sight)" : " (mouse)");
     }
 
     /**

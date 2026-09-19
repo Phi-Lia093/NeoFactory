@@ -92,6 +92,24 @@ public final class Items {
     // Tools.
     // ------------------------------------------------------------------
 
+    /**
+     * Mining level of the iron tools.
+     * <p>
+     * Compared with {@link com.philia093.neofactory.block.Block#harvestLevel()},
+     * see {@code HardnessMining}. The levels are {@code 2} for iron and {@code 3}
+     * for diamond, a bare hand counts as {@code 0}.
+     */
+    public static final int IRON_TOOL_LEVEL = 2;
+
+    /** Mining level of the diamond tools. */
+    public static final int DIAMOND_TOOL_LEVEL = 3;
+
+    /** Speed iron tools break blocks with, a bare hand reaches {@code 1}. */
+    public static final float IRON_TOOL_SPEED = 6.0f;
+
+    /** Speed diamond tools break blocks with. */
+    public static final float DIAMOND_TOOL_SPEED = 8.0f;
+
     public static final int IRON_PICKAXE_ID = 48;
     public static final int IRON_AXE_ID = 49;
     public static final int IRON_SHOVEL_ID = 50;
@@ -455,15 +473,24 @@ public final class Items {
                 .texture(Item.ITEM_FOLDER + "melon")
                 .build());
 
-        // Tools. They are unique, so a full stack holds a single piece.
-        IRON_PICKAXE = register(uniqueItem(IRON_PICKAXE_ID, "iron_pickaxe", "Iron Pickaxe"));
-        IRON_AXE = register(uniqueItem(IRON_AXE_ID, "iron_axe", "Iron Axe"));
-        IRON_SHOVEL = register(uniqueItem(IRON_SHOVEL_ID, "iron_shovel", "Iron Shovel"));
+        // Tools. They are unique, so a full stack holds a single piece. The mining
+        // tools know their level and their speed, which a rule with break times
+        // reads, see HardnessMining. Swords and hoes carry neither, because the tool
+        // type that decides whether a tool fits a block is not modelled yet.
+        IRON_PICKAXE = register(toolItem(IRON_PICKAXE_ID, "iron_pickaxe", "Iron Pickaxe",
+                IRON_TOOL_LEVEL, IRON_TOOL_SPEED));
+        IRON_AXE = register(toolItem(IRON_AXE_ID, "iron_axe", "Iron Axe",
+                IRON_TOOL_LEVEL, IRON_TOOL_SPEED));
+        IRON_SHOVEL = register(toolItem(IRON_SHOVEL_ID, "iron_shovel", "Iron Shovel",
+                IRON_TOOL_LEVEL, IRON_TOOL_SPEED));
         IRON_HOE = register(uniqueItem(IRON_HOE_ID, "iron_hoe", "Iron Hoe"));
         IRON_SWORD = register(uniqueItem(IRON_SWORD_ID, "iron_sword", "Iron Sword"));
-        DIAMOND_PICKAXE = register(uniqueItem(DIAMOND_PICKAXE_ID, "diamond_pickaxe", "Diamond Pickaxe"));
-        DIAMOND_AXE = register(uniqueItem(DIAMOND_AXE_ID, "diamond_axe", "Diamond Axe"));
-        DIAMOND_SHOVEL = register(uniqueItem(DIAMOND_SHOVEL_ID, "diamond_shovel", "Diamond Shovel"));
+        DIAMOND_PICKAXE = register(toolItem(DIAMOND_PICKAXE_ID, "diamond_pickaxe", "Diamond Pickaxe",
+                DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED));
+        DIAMOND_AXE = register(toolItem(DIAMOND_AXE_ID, "diamond_axe", "Diamond Axe",
+                DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED));
+        DIAMOND_SHOVEL = register(toolItem(DIAMOND_SHOVEL_ID, "diamond_shovel", "Diamond Shovel",
+                DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED));
         DIAMOND_HOE = register(uniqueItem(DIAMOND_HOE_ID, "diamond_hoe", "Diamond Hoe"));
         DIAMOND_SWORD = register(uniqueItem(DIAMOND_SWORD_ID, "diamond_sword", "Diamond Sword"));
 
@@ -509,6 +536,30 @@ public final class Items {
                 .displayName(displayName)
                 .texture(Item.ITEM_FOLDER + name)
                 .maxStackSize(Item.SINGLE_ITEM_STACK)
+                .build();
+    }
+
+    /**
+     * Builds a tool that breaks blocks.
+     * <p>
+     * A tool is unique like every other one, it only carries the mining level and
+     * the speed a rule with break times reads.
+     *
+     * @param id numeric item id
+     * @param name technical name, also the name of the icon
+     * @param displayName name shown to the player
+     * @param toolLevel mining level of the tool
+     * @param miningSpeed speed the tool breaks blocks with
+     * @return the item definition, stacking to a single piece
+     */
+    private static Item toolItem(int id, String name, String displayName, int toolLevel,
+            float miningSpeed) {
+        return Item.builder(id, name)
+                .displayName(displayName)
+                .texture(Item.ITEM_FOLDER + name)
+                .maxStackSize(Item.SINGLE_ITEM_STACK)
+                .toolLevel(toolLevel)
+                .miningSpeed(miningSpeed)
                 .build();
     }
 }

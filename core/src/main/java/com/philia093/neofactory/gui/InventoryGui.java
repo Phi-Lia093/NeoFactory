@@ -381,7 +381,7 @@ public class InventoryGui {
                 + (InventoryLayout.GRID_COLUMNS - 1) * InventoryLayout.SLOT_PITCH
                 + InventoryLayout.SLOT_SIZE) / 2;
         font.draw(batch, INVENTORY_LABEL,
-                containerX() + font.centeredX(INVENTORY_LABEL, storageCenter),
+                containerX() + font.centeredX(INVENTORY_LABEL, storageCenter)+20,
                 labelTop(InventoryLayout.INVENTORY_LABEL_Y));
     }
 

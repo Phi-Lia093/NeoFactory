@@ -81,7 +81,7 @@ public final class InventoryLayout {
     public static final int CRAFTING_LABEL_Y = 6;
 
     /** Y coordinate of the label above the storage grid. */
-    public static final int INVENTORY_LABEL_Y = 72;
+    public static final int INVENTORY_LABEL_Y = 68;
 
     /** Texture of the hotbar widget, without extension. */
     public static final String HOTBAR_TEXTURE = BlockTextureCache.GUI_FOLDER + "widgets";
