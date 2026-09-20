@@ -32,6 +32,9 @@ import com.philia093.neofactory.world.interaction.BlockTarget;
 import com.philia093.neofactory.world.interaction.BlockTargeting;
 import com.philia093.neofactory.world.interaction.InstantMining;
 import com.philia093.neofactory.world.interaction.MiningController;
+import com.philia093.neofactory.world.save.LevelData;
+import com.philia093.neofactory.world.save.SaveSummary;
+import com.philia093.neofactory.world.save.WorldSaver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -45,7 +48,7 @@ import org.apache.logging.log4j.Logger;
  * Controls: {@code WASD} walks, the mouse aims, the wheel zooms, keys {@code 1} to
  * {@code 9} select a hotbar slot, {@code E} opens and closes the inventory,
  * {@code F11} switches to fullscreen and {@code ESC} closes the inventory or, when
- * it is closed already, the game.
+ * it is closed already, opens the pause menu, see {@link PauseScreen}.
  * <p>
  * The left mouse button breaks the block the player aims at while it is held, the
  * right button builds the held block. Both actions apply to the layer the player
@@ -60,26 +63,32 @@ import org.apache.logging.log4j.Logger;
  * <p>
  * While the inventory is open the world keeps running, but the keyboard only drives
  * the interface and the player stands still.
+ * <p>
+ * The screen belongs to one save game: it is created when a world is opened and
+ * thrown away when the player leaves it, see
+ * {@link ScreenManager#loadWorld(com.philia093.neofactory.world.save.SaveSummary)}.
+ * Leaving or closing the game writes the world, and it is written again every few
+ * minutes while it is played, see {@link #save()}.
  */
 public class GameScreen extends NeoFactoryScreen {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    /** Seed used when the game is started without a save game. */
-    private static final int DEFAULT_SEED = 20260918;
-
-    /** Block X coordinate of the default spawn. */
-    private static final int SPAWN_X = 0;
-
-    /** Block Y coordinate of the default spawn. */
-    private static final int SPAWN_Y = 0;
-
     /** Interval in frames between two status log lines. */
     private static final int DEBUG_LOG_INTERVAL = 120;
+
+    /** Seconds between two automatic saves while the world is played. */
+    private static final float AUTOSAVE_INTERVAL = 300.0f;
 
     private final OrthographicCamera camera;
     private final ExtendViewport worldViewport;
     private final SpriteBatch batch;
+
+    /** Save game this world belongs to. */
+    private final SaveSummary summary;
+
+    /** Everything about the world that is not a block, written on every save. */
+    private final LevelData data;
 
     private final World world;
     private final Player player;
@@ -105,6 +114,9 @@ public class GameScreen extends NeoFactoryScreen {
 
     /** Cell a break or a build would touch, {@code null} while nothing is aimed at. */
     private BlockTarget target;
+
+    /** Seconds since the world was written the last time. */
+    private float autosaveTimer;
 
     /** Position of the mouse in world units, reused every frame. */
     private final Vector2 worldMouse = new Vector2();
@@ -136,6 +148,7 @@ public class GameScreen extends NeoFactoryScreen {
     /** Current camera zoom, {@code 1} is the neutral view again the values shrink. */
     private float zoom = 1.0f;
 
+    /** Frame counter of the status log. */
     private int debugFrameCounter;
 
     /**
@@ -143,11 +156,25 @@ public class GameScreen extends NeoFactoryScreen {
      *
      * @param game game instance owning this screen
      */
-    public GameScreen(NeoFactoryGame game) {
+    /**
+     * Creates the screen of a world.
+     *
+     * @param game game instance owning this screen
+     * @param summary save game this world belongs to
+     * @param world world to play in
+     * @param data level data of the world
+     * @param fresh {@code true} for a world that was just created, which starts at its
+     *              spawn point and receives the starter kit
+     */
+    public GameScreen(NeoFactoryGame game, SaveSummary summary, World world, LevelData data,
+            boolean fresh) {
         super(game);
 
         BlockTextureCache textures = game.textures();
         PixelFont font = game.font();
+        this.summary = summary;
+        this.data = data;
+        this.world = world;
         this.batch = new SpriteBatch();
         this.camera = new OrthographicCamera();
 
@@ -156,8 +183,7 @@ public class GameScreen extends NeoFactoryScreen {
         float visibleUnits = Constants.TILE_SIZE * Constants.VIEW_BLOCKS;
         this.worldViewport = new ExtendViewport(visibleUnits, visibleUnits, camera);
 
-        this.world = new World(DEFAULT_SEED, SPAWN_X, SPAWN_Y);
-        this.player = Player.spawnOnGround(world, world.spawnX(), world.spawnY());
+        this.player = createPlayer(fresh);
         this.inputHandler = new InputHandler();
 
         this.worldRenderer = new WorldRenderer(batch, textures);
@@ -171,12 +197,64 @@ public class GameScreen extends NeoFactoryScreen {
         this.drops = new InventoryDrops(player.inventory());
         this.mining = new MiningController(new InstantMining(), drops);
 
-        fillDebugInventory(player.inventory());
+        if (fresh) {
+            // A new world starts at its spawn point and gets a starter kit, because
+            // there is no crafting yet to turn the first blocks into tools.
+            fillDebugInventory(player.inventory());
+        }
+
         loadChunksAroundPlayer();
         centerCameraOnPlayer();
 
-        LOGGER.info("Player spawned at block ({}, {}) holding {}",
-                player.blockX(), player.blockY(), player.inventory());
+        LOGGER.info("World '{}' ready, player at block ({}, {}) holding {}",
+                summary.displayName(), player.blockX(), player.blockY(), player.inventory());
+    }
+
+    /**
+     * Places the player where the world left it, or at the spawn point of a new world.
+     *
+     * @param fresh {@code true} for a world that was just created
+     * @return the player
+     */
+    private Player createPlayer(boolean fresh) {
+        boolean storedPosition = !fresh && (data.playerX() != 0.0f || data.playerY() != 0.0f);
+        if (!storedPosition) {
+            Player spawned = Player.spawnOnGround(world, world.spawnX(), world.spawnY());
+            data.setSpawn(spawned.blockX(), spawned.blockY());
+            return spawned;
+        }
+        Player player = new Player(data.playerX(), data.playerY());
+        player.facing().set(data.rotationX(), data.rotationY());
+        if (player.facing().isZero()) {
+            player.facing().set(1.0f, 0.0f);
+        }
+        data.applyInventory(player.inventory());
+        return player;
+    }
+
+    /** Save game this world belongs to. */
+    public SaveSummary summary() {
+        return summary;
+    }
+
+    /**
+     * Writes the world into its save game.
+     * <p>
+     * Called when the player leaves the world, when the game closes, from the pause
+     * menu and every few minutes while the world is played. The player state is taken
+     * from the live player first, so the position and the inventory are always part of
+     * the file.
+     *
+     * @return amount of chunks that were written
+     */
+    public int save() {
+        data.setLastPlayed(System.currentTimeMillis());
+        data.capturePlayer(player.position().x, player.position().y,
+                player.facing().x, player.facing().y, player.inventory());
+        int chunks = WorldSaver.save(game.screens().storage(), summary, data, world,
+                player.inventory());
+        autosaveTimer = 0.0f;
+        return chunks;
     }
 
     /** World shown by this screen. */
@@ -221,6 +299,46 @@ public class GameScreen extends NeoFactoryScreen {
         renderInterface(delta);
 
         logDebugStatistics();
+        countPlayTime(delta);
+    }
+
+    /**
+     * Draws one frame of the world without advancing it.
+     * <p>
+     * Used by the pause menu, which draws the world behind its own widgets so the
+     * player still sees where they are. Simulation and input stay untouched, and the
+     * played time is not counted while the world is frozen.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    public void renderFrozen(float delta) {
+        clearScreen();
+
+        worldViewport.apply();
+        centerCameraOnPlayer();
+
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
+        worldRenderer.render(world, camera);
+        playerRenderer.render(player);
+        selectionRenderer.render(world, target);
+        batch.end();
+
+        renderInterface(delta);
+    }
+
+    /**
+     * Counts the played time and writes the world now and then.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    private void countPlayTime(float delta) {
+        data.addPlayedMillis((long) (delta * 1000.0f));
+        autosaveTimer += delta;
+        if (autosaveTimer >= AUTOSAVE_INTERVAL) {
+            LOGGER.info("Autosaving world '{}'", summary.displayName());
+            save();
+        }
     }
 
     /**
@@ -260,6 +378,13 @@ public class GameScreen extends NeoFactoryScreen {
 
     @Override
     public void dispose() {
+        // The world is written before the screen goes away, which covers leaving a
+        // world and closing the game alike.
+        try {
+            save();
+        } catch (RuntimeException e) {
+            LOGGER.error("Unable to save the world while closing it", e);
+        }
         batch.dispose();
         worldRenderer.dispose();
         super.dispose();
@@ -278,13 +403,13 @@ public class GameScreen extends NeoFactoryScreen {
     private void handleInputAndUpdate(float delta) {
         handleInterfaceKeys();
 
-        if (inputHandler.consumeExitRequest()) {
+        if (inputHandler.consumePauseToggle()) {
             if (inventoryGui.isOpen()) {
-                // The escape key leaves the screen first and the game afterwards.
+                // The escape key closes whatever is on top first.
                 inventoryGui.close();
             } else {
-                LOGGER.info("Exit requested through the keyboard, closing the game");
-                Gdx.app.exit();
+                LOGGER.info("Pause menu requested through the keyboard");
+                game.screens().show(ScreenManager.ScreenType.PAUSE);
                 return;
             }
         }
@@ -419,8 +544,9 @@ public class GameScreen extends NeoFactoryScreen {
             return;
         }
         debugFrameCounter = 0;
-        LOGGER.info("Block ({}, {}) | zoom {} | tiles {} | chunks {} | hotbar {} | inventory {} "
-                        + "| target {} | gui {} | fps {}",
+        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | tiles {} | chunks {} | hotbar {} "
+                        + "| inventory {} | target {} | gui {} | fps {}",
+                summary.displayName(),
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
                 worldRenderer.drawnTileCount(), world.chunkCount(),
                 player.inventory().selectedSlot(),

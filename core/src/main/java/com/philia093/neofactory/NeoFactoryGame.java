@@ -57,7 +57,7 @@ public class NeoFactoryGame extends Game {
         font = new PixelFont(textures);
 
         screenManager = new ScreenManager(this);
-        screenManager.show(ScreenManager.ScreenType.GAME);
+        screenManager.show(ScreenManager.ScreenType.TITLE);
     }
 
     /** Shared asset manager, screens load their pictures through it. */

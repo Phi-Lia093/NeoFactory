@@ -194,6 +194,21 @@ public final class World implements BlockAccess {
     }
 
     /**
+     * Returns a chunk that is ready to be filled from a save game.
+     * <p>
+     * The chunk is allocated but nothing is generated inside it, because the caller
+     * writes every cell together with the flags that tell the generator the cell is
+     * done. Generating first would only be undone by the stored data.
+     *
+     * @param chunkX chunk coordinate along the first horizontal axis
+     * @param chunkY chunk coordinate along the second horizontal axis
+     * @return the chunk, empty until the caller fills it
+     */
+    public Chunk chunkForLoading(int chunkX, int chunkY) {
+        return chunkForWrite(chunkX, chunkY);
+    }
+
+    /**
      * Reads a block without generating anything.
      * <p>
      * Returns {@link Blocks#AIR} for unloaded chunks. Used by the decorators,

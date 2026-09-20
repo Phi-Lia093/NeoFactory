@@ -145,6 +145,17 @@ public class PixelFont implements Disposable {
         this.color.set(color);
     }
 
+    /**
+     * Height of a glyph in pixels.
+     * <p>
+     * A line is one pixel higher than a glyph, see {@link #lineHeight()}. A caller
+     * that centres text on a button or a row needs the height of the glyph itself,
+     * not of the line.
+     */
+    public float glyphHeight() {
+        return GLYPH_HEIGHT * scale;
+    }
+
     /** Height of a line in pixels, useful to stack several lines of text. */
     public float lineHeight() {
         return LINE_HEIGHT * scale;

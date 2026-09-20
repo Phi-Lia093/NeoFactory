@@ -35,8 +35,8 @@ public class InputHandler extends InputAdapter {
     /** Movement key for walking towards negative Y. */
     private static final int KEY_DOWN = Input.Keys.S;
 
-    /** Key that requests a graceful exit of the game. */
-    private static final int KEY_EXIT = Input.Keys.ESCAPE;
+    /** Key that opens and closes the pause menu of the world. */
+    private static final int KEY_PAUSE = Input.Keys.ESCAPE;
 
     /** Key that switches between windowed and fullscreen mode. */
     private static final int KEY_FULLSCREEN = Input.Keys.F11;
@@ -68,8 +68,8 @@ public class InputHandler extends InputAdapter {
     /** Set when the fullscreen key was pressed, cleared by the consumer. */
     private boolean fullscreenToggle;
 
-    /** Set when the exit key was pressed, cleared by the consumer. */
-    private boolean exitRequested;
+    /** Set when the pause key was pressed, cleared by the consumer. */
+    private boolean pauseToggle;
 
     /** Set when the inventory key was pressed, cleared by the consumer. */
     private boolean inventoryToggle;
@@ -106,8 +106,8 @@ public class InputHandler extends InputAdapter {
             fullscreenToggle = true;
             return true;
         }
-        if (keycode == KEY_EXIT) {
-            exitRequested = true;
+        if (keycode == KEY_PAUSE) {
+            pauseToggle = true;
             return true;
         }
         if (keycode == KEY_INVENTORY) {
@@ -166,13 +166,13 @@ public class InputHandler extends InputAdapter {
     }
 
     /**
-     * Returns and clears the exit request, if the key was pressed.
+     * Returns and clears the pause request, if the key was pressed.
      *
-     * @return {@code true} when the game should close
+     * @return {@code true} when the pause menu should be toggled
      */
-    public boolean consumeExitRequest() {
-        boolean requested = exitRequested;
-        exitRequested = false;
+    public boolean consumePauseToggle() {
+        boolean requested = pauseToggle;
+        pauseToggle = false;
         return requested;
     }
 
