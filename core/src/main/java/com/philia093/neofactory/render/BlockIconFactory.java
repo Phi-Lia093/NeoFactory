@@ -1,5 +1,7 @@
 package com.philia093.neofactory.render;
 
+import com.philia093.neofactory.util.Constants;
+
 /**
  * Turns the picture of a block into the icon of a block item.
  * <p>
@@ -38,6 +40,21 @@ public final class BlockIconFactory {
 
     /** Largest value a colour channel may hold. */
     private static final int CHANNEL_MAX = 0xFF;
+
+    /**
+     * How much finer an icon is folded than the cell that shows it.
+     * <p>
+     * A tile folded at the size of its own cell has hard steps along the slanted edges of
+     * the cube: every step is a whole pixel of the icon, which the interface then scales up
+     * again. Folding the cube at {@value #FOLD_SCALE} times that size makes those steps that
+     * much finer, and a texture that is finer than the cell it is drawn into is what lets
+     * the graphics card soften the edges, see
+     * {@link com.philia093.neofactory.render.BlockTextureCache}.
+     */
+    public static final int FOLD_SCALE = 4;
+
+    /** Side length an icon is folded at, {@value #FOLD_SCALE} times the cell it fills. */
+    public static final int FOLDED_SIZE = Constants.ITEM_ICON_SIZE * FOLD_SCALE;
 
     private BlockIconFactory() {
         // Utility class: never instantiated.
@@ -127,6 +144,58 @@ public final class BlockIconFactory {
             }
         }
         return icon;
+    }
+
+    /**
+     * Shrinks an icon by a whole number, averaging the pixels that share a cell.
+     * <p>
+     * This is the counterpart of folding a cube finer than the cell that shows it, see
+     * {@link #FOLD_SCALE}: every step of a slanted edge is a few pixels wide there, and
+     * averaging those pixels turns the steps into soft edges, which is the anti aliasing a
+     * small icon needs. The colour of a cell is the average of its pixels weighted by their
+     * opacity, so an empty place beside a visible one does not pull the colour towards
+     * black - it only lowers the opacity of the cell.
+     *
+     * @param icon pixels of the icon, row by row, packed as RGBA8888
+     * @param size side length of the icon in pixels, a multiple of {@code factor}
+     * @param factor amount of pixels that share a cell of the result
+     * @return the pixels of the smaller icon, row by row, packed as RGBA8888
+     */
+    public static int[] downscale(int[] icon, int size, int factor) {
+        if (factor <= 1) {
+            return icon.clone();
+        }
+        int smaller = Math.max(1, size / factor);
+        int[] shrunken = new int[smaller * smaller];
+        int perCell = factor * factor;
+        for (int y = 0; y < smaller; y++) {
+            for (int x = 0; x < smaller; x++) {
+                int sumRed = 0;
+                int sumGreen = 0;
+                int sumBlue = 0;
+                int sumAlpha = 0;
+                int weight = 0;
+                for (int stepY = 0; stepY < factor; stepY++) {
+                    for (int stepX = 0; stepX < factor; stepX++) {
+                        int colour = icon[(y * factor + stepY) * size + x * factor + stepX];
+                        int opacity = alpha(colour);
+                        if (opacity == 0) {
+                            continue;
+                        }
+                        sumRed += red(colour) * opacity;
+                        sumGreen += green(colour) * opacity;
+                        sumBlue += blue(colour) * opacity;
+                        sumAlpha += opacity;
+                        weight += opacity;
+                    }
+                }
+                if (weight > 0) {
+                    shrunken[y * smaller + x] = rgba(sumRed / weight, sumGreen / weight,
+                            sumBlue / weight, sumAlpha / perCell);
+                }
+            }
+        }
+        return shrunken;
     }
 
     /**

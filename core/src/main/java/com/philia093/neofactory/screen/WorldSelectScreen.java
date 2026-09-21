@@ -153,9 +153,11 @@ public class WorldSelectScreen extends WidgetScreen {
         try {
             game.screens().loadWorld(summary);
         } catch (SaveException e) {
-            // The damaged file was moved aside by the loader, the list is reloaded.
+            // The loader reports why it refused the file: a damaged one was moved
+            // aside, a file of another save format stays where it is. Either way the
+            // list is reloaded, because a world that cannot be opened may be gone.
             LOGGER.error("World '{}' could not be opened", summary.displayName(), e);
-            status.setText("World could not be opened, the damaged file was moved aside");
+            status.setText("World could not be opened, see the log for the reason");
             refresh();
         }
     }

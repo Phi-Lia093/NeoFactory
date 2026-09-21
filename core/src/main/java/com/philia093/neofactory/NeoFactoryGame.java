@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntityRegistry;
+import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.entity.EntityRegistry;
 import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.item.ItemRegistry;
@@ -68,6 +70,12 @@ public class NeoFactoryGame extends Game {
         EntityRegistry.freeze();
         LOGGER.info("Registered {} entity types, next free id is {}",
                 EntityRegistry.count(), EntityTypes.NEXT_FREE_ID);
+
+        // A chunk stores the name of a block entity, so those types have to exist before
+        // any chunk is read, exactly like the entity types above. The blocks name them,
+        // see Block.blockEntityTypeName().
+        BlockEntityTypes.registerAll();
+        BlockEntityRegistry.freeze();
 
         // The font belongs to the game, because the title screen and the world may
         // both draw text with it.

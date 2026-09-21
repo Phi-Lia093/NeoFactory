@@ -2,16 +2,20 @@ package com.philia093.neofactory.world;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.entity.EntityManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static com.philia093.neofactory.util.Constants.SPAWN_CHUNK_RADIUS;
@@ -388,7 +392,15 @@ public final class World implements BlockAccess {
     @Override
     public void setBlock(int x, int y, int layer, Block block) {
         Chunk chunk = preparedChunk(x, y);
-        chunk.setBlock(Chunk.localOf(x), Chunk.localOf(y), layer, block);
+        int localX = Chunk.localOf(x);
+        int localY = Chunk.localOf(y);
+        BlockEntity previous = chunk.blockEntity(localX, localY, layer);
+        if (previous != null && !previous.type().name().equals(block.blockEntityTypeName())) {
+            // The block that carried the entity is being replaced, so the entity goes with
+            // it: a machine that stayed behind would keep running where nothing stands.
+            chunk.removeBlockEntity(localX, localY, layer);
+        }
+        chunk.setBlock(localX, localY, layer, block);
         // This is the public write path of the world: everything reaching it is a
         // player change and has to survive unloading and saving.
         chunk.markModified();
@@ -413,6 +425,168 @@ public final class World implements BlockAccess {
             return Blocks.AIR;
         }
         return chunk.getBlock(Chunk.localOf(x), Chunk.localOf(y), layer);
+    }
+
+    /**
+     * Returns the state of a cell.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
+     *              {@link Chunk#LAYER_OBJECT}
+     * @return the state, {@code 0} for a cell nothing wrote a state to
+     */
+    public int getMeta(int x, int y, int layer) {
+        Chunk chunk = preparedChunk(x, y);
+        return chunk.meta(Chunk.localOf(x), Chunk.localOf(y), layer);
+    }
+
+    /**
+     * Writes the state of a cell.
+     * <p>
+     * Like {@link #setBlock(int, int, int, Block)} this is the public write path of
+     * the world: everything reaching it is a player change and has to survive
+     * unloading and saving.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
+     *              {@link Chunk#LAYER_OBJECT}
+     * @param state state to store
+     */
+    public void setMeta(int x, int y, int layer, int state) {
+        Chunk chunk = preparedChunk(x, y);
+        chunk.setMeta(Chunk.localOf(x), Chunk.localOf(y), layer, state);
+        chunk.markModified();
+    }
+
+    /**
+     * Reads the state of a cell without generating anything.
+     * <p>
+     * Returns {@code 0} for unloaded chunks, so a renderer or a network may ask a
+     * cell next to the player what it holds without pulling a whole chunk into
+     * memory, see {@link #peekBlock(int, int, int)}.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
+     *              {@link Chunk#LAYER_OBJECT}
+     * @return the stored state, {@code 0} when the chunk is not loaded
+     */
+    public int peekMeta(int x, int y, int layer) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+        if (chunk == null) {
+            return 0;
+        }
+        return chunk.meta(Chunk.localOf(x), Chunk.localOf(y), layer);
+    }
+
+    /**
+     * Returns the block entity of a cell without generating anything.
+     * <p>
+     * This is what asks a machine what it holds, and what the interaction code asks
+     * before a block is broken, so it never pulls a chunk into memory: a cell whose chunk
+     * is not loaded has no entity to report.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
+     *              {@link Chunk#LAYER_OBJECT}
+     * @return the entity, or {@code null} when the cell carries none
+     */
+    public BlockEntity blockEntity(int x, int y, int layer) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+        if (chunk == null) {
+            return null;
+        }
+        return chunk.blockEntity(Chunk.localOf(x), Chunk.localOf(y), layer);
+    }
+
+    /**
+     * Puts a block entity into the world at the cell it was placed at.
+     * <p>
+     * The cell counts as a player change, because a machine carries what somebody put
+     * into it, so it has to survive unloading and saving like a block does.
+     *
+     * @param entity entity to add, its position is already set
+     * @return the entity that was stored there before, {@code null} when the cell was free
+     */
+    public BlockEntity addBlockEntity(BlockEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        Chunk chunk = preparedChunk(entity.x(), entity.y());
+        BlockEntity previous = chunk.setBlockEntity(entity);
+        chunk.markModified();
+        return previous;
+    }
+
+    /**
+     * Takes the block entity of a cell out of the world.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
+     *              {@link Chunk#LAYER_OBJECT}
+     * @return the entity that was removed, {@code null} when the cell carried none
+     */
+    public BlockEntity removeBlockEntity(int x, int y, int layer) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+        if (chunk == null) {
+            return null;
+        }
+        BlockEntity removed = chunk.removeBlockEntity(Chunk.localOf(x), Chunk.localOf(y), layer);
+        if (removed != null) {
+            chunk.markModified();
+        }
+        return removed;
+    }
+
+    /** Amount of block entities in the chunks that are loaded right now. */
+    public int blockEntityCount() {
+        int total = 0;
+        for (Chunk chunk : chunks.values()) {
+            total += chunk.blockEntityCount();
+        }
+        return total;
+    }
+
+    /** Chunks that hold block entities, reused by every tick. */
+    private final List<Chunk> ticking = new ArrayList<>();
+
+    /**
+     * Advances every block entity of the loaded chunks by one tick.
+     * <p>
+     * Only loaded chunks are ticked, so the work of the world follows the view distance
+     * instead of the distance walked, exactly like the terrain does. A chunk that is
+     * dropped from memory takes its machines with it: they are written into their file
+     * first, see {@link #unloadChunksOutside(int, int, int)}, and start working again
+     * where they left off once the player returns.
+     * <p>
+     * The chunks are collected before anything is ticked and the entities are walked by
+     * index, because a machine is allowed to change the world while it works: it may start
+     * a machine next to it or load a chunk, and neither may break the loop that runs it.
+     *
+     * @param tickDelta length of one tick in seconds, see {@link TickClock#TICK_SECONDS}
+     * @return amount of block entities that were advanced
+     */
+    public int tick(float tickDelta) {
+        if (tickDelta <= 0.0f) {
+            return 0;
+        }
+        ticking.clear();
+        for (Chunk chunk : chunks.values()) {
+            if (chunk.hasBlockEntities()) {
+                ticking.add(chunk);
+            }
+        }
+        int ticked = 0;
+        for (Chunk chunk : ticking) {
+            List<BlockEntity> entities = chunk.blockEntities();
+            for (int index = 0; index < entities.size(); index++) {
+                entities.get(index).tick(this, tickDelta);
+                ticked++;
+            }
+        }
+        return ticked;
     }
 
 

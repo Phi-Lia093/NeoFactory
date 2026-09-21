@@ -1,6 +1,7 @@
 package com.philia093.neofactory.recipe;
 
 import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.machine.MachineRecipe;
 
 import java.util.Objects;
 
@@ -13,7 +14,7 @@ import java.util.Objects;
  * same machine can smelt a stone slowly and dry a sponge quickly without any code of
  * its own.
  */
-public final class SmeltingRecipe implements Recipe {
+public final class SmeltingRecipe implements MachineRecipe {
 
     /** Seconds a smelting recipe takes when its file does not say. */
     public static final float DEFAULT_SECONDS = 10.0f;

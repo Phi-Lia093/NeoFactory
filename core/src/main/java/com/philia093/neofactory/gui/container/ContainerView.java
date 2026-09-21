@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.philia093.neofactory.gui.GuiItemRenderer;
 import com.philia093.neofactory.gui.GuiViewport;
 import com.philia093.neofactory.gui.panel.ArrowElement;
+import com.philia093.neofactory.gui.panel.ContainerAppearance;
 import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.render.BlockTextureCache;
@@ -61,6 +62,14 @@ public final class ContainerView {
     /** Pictures of the panel and of its elements. */
     private final PanelTextures panel;
 
+    /**
+     * Pictures the container itself is drawn from.
+     * <p>
+     * The standard panel is used until a screen asks for another one, see
+     * {@link #setAppearance(ContainerAppearance)}.
+     */
+    private ContainerAppearance appearance;
+
     /** Arrow of the interface, used by a container that shows a progress. */
     private final ArrowElement arrows;
 
@@ -77,10 +86,29 @@ public final class ContainerView {
         this.viewport = viewport;
         this.items = new GuiItemRenderer(textures, font);
         this.panel = new PanelTextures(textures);
+        this.appearance = panel;
         this.arrows = new ArrowElement(panel);
     }
 
-    /** Pictures of the panel, so a screen can draw its own extras. */
+    /**
+     * Chooses the pictures the container is drawn from.
+     * <p>
+     * A machine screen uses its own panel, which is empty where the machine stands its
+     * slots and carries the slots of the player inventory in its lower half, see
+     * {@link com.philia093.neofactory.gui.panel.MachineTextures}.
+     *
+     * @param appearance pictures to draw with, {@code null} restores the standard panel
+     */
+    public void setAppearance(ContainerAppearance appearance) {
+        this.appearance = appearance == null ? panel : appearance;
+    }
+
+    /** Pictures the container is drawn from right now. */
+    public ContainerAppearance appearance() {
+        return appearance;
+    }
+
+    /** Pictures of the panel and of its elements, also the source of the arrows. */
     public PanelTextures panelTextures() {
         return panel;
     }
@@ -149,9 +177,10 @@ public final class ContainerView {
         int height = layout.panelHeight();
 
         batch.setColor(Color.WHITE);
-        panel.drawPanel(batch, x, y, width, height);
+        appearance.drawPanel(batch, x, y, width, height);
         for (Slot slot : layout.slots()) {
-            panel.drawSlot(batch, x + slot.x(), slotY(y, height, slot));
+            appearance.drawSlot(batch, x + slot.x(), slotY(y, height, slot),
+                    slot.iconColumn(), slot.iconRow());
         }
         if (decorator != null) {
             decorator.draw(batch, x, y, width, height);

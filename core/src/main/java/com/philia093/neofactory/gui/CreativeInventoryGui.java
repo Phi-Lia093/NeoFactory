@@ -25,10 +25,11 @@ import com.philia093.neofactory.util.Constants;
  * The screen is the creative mode twin of {@link InventoryGui}: the player picks an
  * item out of the grid instead of taking what is already owned, and the grid never runs
  * empty - a stack that was taken is there again right away, see
- * {@link CreativeInventory#sourceAt(int)}. The tabs stand above the panel, the wheel
- * scrolls the list and the search box filters it by name; an empty box lists everything.
- * Every tab carries the icon of its group, drawn with the item itself because the tabs of
- * the art are empty shapes.
+ * {@link CreativeInventory#sourceAt(int)}. The tabs frame the panel: the first row hangs
+ * from its upper edge and, when a screen holds more tabs than one row takes, the second
+ * one sits on its lower edge. The wheel scrolls the list and the search box filters it by
+ * name; an empty box lists everything. Every tab carries the icon of its group, drawn with
+ * the item itself because the tabs of the art are empty shapes.
  * <p>
  * The panel, the tabs and the scroll bar come from {@code gui/inventory_icons.png} and
  * are drawn at the places {@link CreativeLayout} names, which is also where a click is
@@ -42,10 +43,10 @@ import com.philia093.neofactory.util.Constants;
  * stack that is dragged out of the panel lands on the ground like in any other container,
  * which is the one way a creative player gets rid of something for good.
  * <p>
- * The last tab hands over to the inventory of the player: instead of a list of items it
- * shows the very screen {@link InventoryGui} draws, so a player keeps the crafting field
- * while being in creative mode. {@link #showsPlayerInventory()} tells the two apart, and
- * only one of the two panels is ever up.
+ * Every tab shares the very same panel, so choosing another tab neither moves nor resizes
+ * the screen: the last one swaps the grid of items for the slots of the player inventory,
+ * see {@link #showsPlayerInventory()}, which keeps what the player owns at hand while the
+ * other tabs hand out what the game holds.
  * <p>
  * All coordinates are virtual pixels of {@link GuiViewport}.
  */
@@ -90,17 +91,21 @@ public final class CreativeInventoryGui {
     /** What the screen shows, see {@link CreativeInventory}. */
     private final CreativeInventory creative;
 
-    /** The clicks of the grid and of the hotbar, see {@link ContainerMenu}. */
+    /** The clicks of whatever the chosen tab shows, see {@link ContainerMenu}. */
     private final ContainerMenu menu;
 
+    /** The grid of items with the hotbar row below it. */
+    private final ContainerLayout gridLayout;
+
     /**
-     * The screen of the player inventory.
+     * The inventory of the player with the hotbar row below it.
      * <p>
-     * The last tab hands the panel over to it instead of showing a grid of items, so a
-     * creative player keeps the crafting field and handles their own items exactly the
-     * way they do in survival mode.
+     * The last tab shows these slots instead of the grid of items. Both layouts place
+     * their slots at the very same coordinates - the grid of items and the storage of the
+     * player are both nine wide and start on the same rows - so the panel never moves or
+     * changes its size when the player chooses another tab, only what it holds changes.
      */
-    private final InventoryGui playerScreen;
+    private final ContainerLayout playerLayout;
 
     /** {@code true} while the scroll bar is dragged. */
     private boolean draggingScroll;
@@ -129,8 +134,9 @@ public final class CreativeInventoryGui {
         this.panels = new PanelTextures(cache);
         this.pixel = cache.whitePixel();
         this.creative = new CreativeInventory();
-        this.menu = new ContainerMenu(layout(), player);
-        this.playerScreen = new InventoryGui(cache, font, player, viewport);
+        this.gridLayout = gridLayout();
+        this.playerLayout = playerLayout();
+        this.menu = new ContainerMenu(gridLayout, player);
         // The grid only hands items out, so a slot that was emptied asks for the next
         // stack; this supply is endless, which is what a creative player owns.
         this.menu.setResultFiller(slot -> creative.sourceAt(slot.index()));
@@ -140,13 +146,36 @@ public final class CreativeInventoryGui {
     }
 
     /** The grid of items and the hotbar row, both inside the panel. */
-    private ContainerLayout layout() {
-        ContainerLayout grid = new ContainerLayout();
-        grid.addGrid(CreativeLayout.GRID_X, CreativeLayout.GRID_Y, CreativeLayout.COLUMNS,
+    private ContainerLayout gridLayout() {
+        ContainerLayout layout = new ContainerLayout();
+        layout.addGrid(CreativeLayout.GRID_X, CreativeLayout.GRID_Y, CreativeLayout.COLUMNS,
                 CreativeLayout.ROWS, creative.grid(), 0, Slot.Rule.OUTPUT);
-        grid.addGrid(CreativeLayout.GRID_X, CreativeLayout.HOTBAR_Y, CreativeLayout.HOTBAR_COLUMNS,
+        layout.addGrid(CreativeLayout.GRID_X, CreativeLayout.HOTBAR_Y, CreativeLayout.HOTBAR_COLUMNS,
                 1, player, 0, Slot.Rule.NORMAL);
-        return grid;
+        return layout;
+    }
+
+    /**
+     * The inventory of the player and the hotbar row, both inside the panel.
+     * <p>
+     * The storage of the player is three rows of nine, so it fills the upper rows of the
+     * grid and leaves the last two of them empty. The slots are laid out exactly where
+     * the grid of items has its own, so the panel keeps its size and its place while the
+     * player walks from one tab to the next.
+     */
+    private ContainerLayout playerLayout() {
+        ContainerLayout layout = new ContainerLayout();
+        layout.addGrid(CreativeLayout.GRID_X, CreativeLayout.GRID_Y, CreativeLayout.COLUMNS,
+                PlayerInventory.STORAGE_ROWS, player, PlayerInventory.HOTBAR_SLOTS,
+                Slot.Rule.NORMAL);
+        layout.addGrid(CreativeLayout.GRID_X, CreativeLayout.HOTBAR_Y, CreativeLayout.HOTBAR_COLUMNS,
+                1, player, 0, Slot.Rule.NORMAL);
+        return layout;
+    }
+
+    /** The slots the chosen tab works with. */
+    private ContainerLayout layoutOf(CreativeTab tab) {
+        return tab.kind() == CreativeTab.Kind.INVENTORY ? playerLayout : gridLayout;
     }
 
     /** {@code true} while the screen is up. */
@@ -163,35 +192,30 @@ public final class CreativeInventoryGui {
         }
     }
 
-    /** Opens the screen on the tab that was shown last. */
+    /** Opens the screen on the tab that was shown last, with the slots it carries. */
     public void open() {
+        menu.setLayout(layoutOf(creative.selectedTab()));
         menu.open();
-        if (creative.showsPlayerInventory()) {
-            playerScreen.open();
-        }
     }
 
     /** Closes the screen and gives the carried stack to the player. */
     public void close() {
         menu.close();
         if (menu.isOpen()) {
-            // The carried stack did not fit into a full inventory, so the screen stays up
-            // - and the panel that belongs to the shown tab stays up with it.
+            // The carried stack did not fit into a full inventory, so the screen stays up.
             return;
         }
-        playerScreen.close();
         draggingScroll = false;
         searchFocused = false;
     }
 
     /**
-     * Sets the sink both screens hand a stack to when a click lands beside the panel.
+     * Sets the sink the screen hands a stack to when a click lands beside the panel.
      *
      * @param dropper sink to use, {@code null} to give the items back to the player
      */
     public void setDropper(ContainerMenu.StackDropper dropper) {
         menu.setDropper(dropper);
-        playerScreen.setDropper(dropper);
     }
 
     /** Counts the time for the blinking cursor of the search box. */
@@ -209,35 +233,39 @@ public final class CreativeInventoryGui {
         return searchFocused;
     }
 
+    /**
+     * {@code true} when a key belongs to the search box and to nothing else.
+     * <p>
+     * The game asks this before it reads its own hotkeys, so a letter that the player types
+     * into the box neither opens the chat nor closes the screen. A key the box leaves to
+     * the game - escape, for one - keeps working as a hotkey, see
+     * {@link CreativeInventory#isSearchKey(int)}.
+     *
+     * @param keyCode key that was pressed, see {@link Input.Keys}
+     * @return {@code true} when the search box takes the key
+     */
+    public boolean takesKey(int keyCode) {
+        return searchFocused && menu.isOpen() && CreativeInventory.isSearchKey(keyCode);
+    }
+
     /** {@code true} while the last tab shows the inventory of the player instead. */
     public boolean showsPlayerInventory() {
         return creative.showsPlayerInventory();
     }
 
-    /** X coordinate of the left edge of the panel that is shown. */
+    /** X coordinate of the left edge of the panel, centred in the interface. */
     public float panelX() {
-        return creative.showsPlayerInventory()
-                ? playerScreen.panelX()
-                : CreativeLayout.panelX(viewport.guiWidth());
+        return CreativeLayout.panelX(viewport.guiWidth());
     }
 
-    /** Y coordinate of the lower edge of the panel that is shown. */
+    /** Y coordinate of the lower edge of the panel, centred in the interface. */
     public float panelY() {
-        return creative.showsPlayerInventory()
-                ? playerScreen.panelY()
-                : CreativeLayout.panelY(viewport.guiHeight());
+        return CreativeLayout.panelY(viewport.guiHeight());
     }
 
-    /** Y coordinate of the upper edge of the panel that is shown. */
+    /** Y coordinate of the upper edge of the panel. */
     private float panelTop() {
-        return panelY() + panelHeight();
-    }
-
-    /** Height of the panel that is shown, the inventory of the player is the taller one. */
-    private int panelHeight() {
-        return creative.showsPlayerInventory()
-                ? playerScreen.panelHeight()
-                : CreativeLayout.PANEL_HEIGHT;
+        return panelY() + CreativeLayout.PANEL_HEIGHT;
     }
 
     /** X coordinate of the mouse inside the panel. */
@@ -274,12 +302,6 @@ public final class CreativeInventoryGui {
             selectTab(tab);
             return true;
         }
-        if (creative.showsPlayerInventory()) {
-            // The panel belongs to the screen of the player inventory, so it handles its
-            // own clicks, including a drag that ends beside the panel and drops a stack
-            // into the world.
-            return playerScreen.touchDown(guiX, guiY, button);
-        }
         if (creative.isSearching() && CreativeLayout.isOnSearchBox(x, y)) {
             searchFocused = true;
             return true;
@@ -310,10 +332,6 @@ public final class CreativeInventoryGui {
             creative.setFirstRow(CreativeLayout.rowAtScrollY(localY(guiY), creative.maxRow()));
             return;
         }
-        if (creative.showsPlayerInventory()) {
-            playerScreen.touchDragged(guiX, guiY);
-            return;
-        }
         int x = localX(guiX);
         int y = localY(guiY);
         menu.touchDragged(x, y);
@@ -336,21 +354,22 @@ public final class CreativeInventoryGui {
             draggingScroll = false;
             return true;
         }
-        if (creative.showsPlayerInventory()) {
-            return playerScreen.touchUp(guiX, guiY, button);
-        }
         return menu.touchUp(localX(guiX), localY(guiY), button, isShiftHeld());
     }
 
     /**
      * Scrolls the list of items by a whole row.
+     * <p>
+     * The tab of the player inventory holds no list of its own, so its wheel does nothing:
+     * it is the very same call either way, because the list the screen scrolls is empty
+     * there, see {@link CreativeInventory#maxRow()}.
      *
      * @param amount notches of the wheel, positive when the wheel turns up, {@code 0} on
      *               a frame without a notch
      * @return {@code true} when the screen consumed the wheel
      */
     public boolean scrolled(float amount) {
-        if (!menu.isOpen() || creative.showsPlayerInventory()) {
+        if (!menu.isOpen()) {
             return false;
         }
         creative.scrollBy(amount);
@@ -358,11 +377,12 @@ public final class CreativeInventoryGui {
     }
 
     /**
-     * Chooses a tab and hands the panel over when the chosen tab asks for it.
+     * Chooses a tab and lays the panel out for it.
      * <p>
-     * The last tab shows the inventory of the player, so the screen that draws that
-     * inventory is opened or closed together with it. Both screens are never open at the
-     * same time, which is what keeps a click from reaching two panels at once.
+     * Every tab shows the same panel, so choosing one only swaps the slots behind it: the
+     * grid of items for the inventory of the player and back, see {@link #layoutOf}. The
+     * stack that the mouse carries stays on the mouse, so a player who takes something out
+     * of the grid and then walks to their own inventory keeps holding it.
      *
      * @param index index of the tab inside {@link CreativeInventory#tabs()}
      */
@@ -373,11 +393,7 @@ public final class CreativeInventoryGui {
         creative.select(index);
         searchFocused = creative.isSearching();
         draggingScroll = false;
-        if (creative.showsPlayerInventory()) {
-            playerScreen.open();
-        } else if (playerScreen.isOpen()) {
-            playerScreen.close();
-        }
+        menu.setLayout(layoutOf(creative.selectedTab()));
     }
 
     /**
@@ -428,6 +444,10 @@ public final class CreativeInventoryGui {
     /**
      * Draws the screen: the tabs, the panel, the items, the scroll bar and what the
      * mouse carries.
+     * <p>
+     * The tabs are painted first and the panel over them, the way the original game stacks
+     * them: what reaches into the panel is covered by it, so the frame of the panel stays
+     * clean and only the part of a tab outside it is seen.
      *
      * @param batch batch switched to the projection of the interface viewport
      * @param mouseX X coordinate of the mouse inside the interface
@@ -440,17 +460,8 @@ public final class CreativeInventoryGui {
         float x = panelX();
         float top = panelTop();
 
-        if (creative.showsPlayerInventory()) {
-            // The panel, the items and the tooltips of the player inventory belong to the
-            // screen that owns them; only the tabs are drawn here, on top of the panel edge.
-            playerScreen.render(batch, mouseX, mouseY);
-            drawTabs(batch, x, top);
-            batch.setColor(Color.WHITE);
-            return;
-        }
-
-        drawPanel(batch, x, panelY());
         drawTabs(batch, x, top);
+        drawPanel(batch, x, panelY());
         if (creative.isSearching()) {
             drawSearchBox(batch, x, top);
         }
@@ -473,20 +484,28 @@ public final class CreativeInventoryGui {
         batch.draw(panel, x, y, CreativeLayout.PANEL_WIDTH, CreativeLayout.PANEL_HEIGHT);
     }
 
-    /** Draws the tabs above the panel, the chosen one lit, and the icon of every tab. */
+    /**
+     * Draws the tabs that frame the panel, the chosen one lit, and the icon of every tab.
+     * <p>
+     * The first row hangs from the upper edge of the panel and the second one, if the
+     * screen needs it, sits on its lower edge and is painted with the same picture turned
+     * by half a circle and mirrored back left to right, see
+     * {@link CreativeTextures#tab(boolean, boolean)}.
+     */
     private void drawTabs(SpriteBatch batch, float x, float top) {
-        TextureRegion idle = art.tab(false);
-        TextureRegion active = art.tab(true);
-        if (idle == null || active == null) {
-            return;
-        }
-        float tabY = top - CreativeLayout.TAB_INSET;
-        for (int index = 0; index < creative.tabs().size(); index++) {
+        int tabs = creative.tabs().size();
+        for (int index = 0; index < tabs; index++) {
+            boolean below = CreativeLayout.isTabBelow(index, tabs);
+            TextureRegion picture = art.tab(index == creative.selectedIndex(), below);
+            if (picture == null) {
+                continue;
+            }
+            float tabX = x + CreativeLayout.tabX(index, tabs);
+            float tabY = CreativeLayout.tabBottom(top, index, tabs);
             batch.setColor(Color.WHITE);
-            batch.draw(index == creative.selectedIndex() ? active : idle,
-                    x + CreativeLayout.tabX(index), tabY, CreativeLayout.TAB_WIDTH,
-                    CreativeLayout.TAB_HEIGHT);
-            drawTabIcon(batch, x + CreativeLayout.tabX(index), tabY, creative.tabs().get(index));
+            batch.draw(picture, tabX, tabY, CreativeLayout.TAB_WIDTH, CreativeLayout.TAB_HEIGHT);
+            drawTabIcon(batch, CreativeLayout.tabIconX(x, index, tabs),
+                    CreativeLayout.tabIconBottom(top, index, tabs), creative.tabs().get(index));
         }
     }
 
@@ -495,19 +514,20 @@ public final class CreativeInventoryGui {
      * <p>
      * The tabs of the original art are empty shapes, so what tells one group from another
      * is the item itself, drawn here the same way a slot draws it and without an amount.
+     * Where it goes inside the tab is measured by the layout, see
+     * {@link CreativeLayout#tabIconX(float, int, int)} and
+     * {@link CreativeLayout#tabIconBottom(float, int, int)}.
      *
      * @param batch batch switched to the projection of the interface viewport
-     * @param tabX X coordinate of the left edge of the tab
-     * @param tabY Y coordinate of the lower edge of the tab
+     * @param iconX X coordinate of the left edge of the icon
+     * @param iconY Y coordinate of the lower edge of the icon
      * @param tab tab whose icon is drawn
      */
-    private void drawTabIcon(SpriteBatch batch, float tabX, float tabY, CreativeTab tab) {
+    private void drawTabIcon(SpriteBatch batch, float iconX, float iconY, CreativeTab tab) {
         if (!tab.hasIcon()) {
             return;
         }
-        items.render(batch, ItemStack.of(tab.icon(), 1), tabX + CreativeLayout.TAB_ICON_X,
-                tabY + CreativeLayout.TAB_HEIGHT - CreativeLayout.TAB_ICON_Y
-                        - CreativeLayout.SLOT_SIZE);
+        items.render(batch, ItemStack.of(tab.icon(), 1), iconX, iconY);
     }
 
     /** Draws the text the player typed into the search box and its cursor. */
@@ -549,15 +569,16 @@ public final class CreativeInventoryGui {
                 CreativeLayout.SCROLL_WIDTH, CreativeLayout.SCROLL_THUMB_HEIGHT);
     }
 
-    /** Draws the items of the grid and the stacks of the hotbar. */
+    /**
+     * Draws what the chosen tab shows.
+     * <p>
+     * The slots are drawn where the layout put them, so the grid of items and the
+     * inventory of the player are painted by the same loop and a tab only swaps the layout
+     * behind them, see {@link #layoutOf}.
+     */
     private void drawItems(SpriteBatch batch, float x, float top) {
-        for (int index = 0; index < CreativeInventory.PAGE_SIZE; index++) {
-            items.render(batch, creative.stackAt(index), x + CreativeLayout.slotIconX(index),
-                    slotY(top, CreativeLayout.slotIconY(index)));
-        }
-        for (int slot = 0; slot < CreativeLayout.HOTBAR_COLUMNS; slot++) {
-            items.render(batch, player.get(slot), x + CreativeLayout.hotbarIconX(slot),
-                    slotY(top, CreativeLayout.hotbarIconY()));
+        for (Slot slot : menu.layout().slots()) {
+            items.render(batch, slot.stack(), x + slot.x(), slotY(top, slot.y()));
         }
     }
 
@@ -577,25 +598,14 @@ public final class CreativeInventoryGui {
         if (pixel == null) {
             return;
         }
-        int localX = localX(mouseX);
-        int localY = localY(mouseY);
-        int slot = CreativeLayout.slotAt(localX, localY);
-        if (slot >= 0) {
-            batch.setColor(HOVER_COLOR);
-            batch.draw(pixel, x + CreativeLayout.slotIconX(slot),
-                    slotY(top, CreativeLayout.slotIconY(slot)), CreativeLayout.SLOT_SIZE,
-                    CreativeLayout.SLOT_SIZE);
-            batch.setColor(Color.WHITE);
+        Slot slot = menu.slotAt(localX(mouseX), localY(mouseY));
+        if (slot == null) {
             return;
         }
-        int hotbar = CreativeLayout.hotbarAt(localX, localY);
-        if (hotbar >= 0 && !player.get(hotbar).isEmpty()) {
-            batch.setColor(HOVER_COLOR);
-            batch.draw(pixel, x + CreativeLayout.hotbarIconX(hotbar),
-                    slotY(top, CreativeLayout.hotbarIconY()), CreativeLayout.SLOT_SIZE,
-                    CreativeLayout.SLOT_SIZE);
-            batch.setColor(Color.WHITE);
-        }
+        batch.setColor(HOVER_COLOR);
+        batch.draw(pixel, x + slot.x(), slotY(top, slot.y()), CreativeLayout.SLOT_SIZE,
+                CreativeLayout.SLOT_SIZE);
+        batch.setColor(Color.WHITE);
     }
 
     /** Draws the name of a tab or of an item next to the mouse. */
@@ -647,12 +657,8 @@ public final class CreativeInventoryGui {
         if (tab >= 0) {
             return creative.tabs().get(tab).title();
         }
-        int slot = CreativeLayout.slotAt(localX, localY);
-        ItemStack stack = slot >= 0 ? creative.stackAt(slot) : ItemStack.EMPTY;
-        if (stack.isEmpty()) {
-            int hotbar = CreativeLayout.hotbarAt(localX, localY);
-            stack = hotbar >= 0 ? player.get(hotbar) : ItemStack.EMPTY;
-        }
+        Slot slot = menu.slotAt(localX, localY);
+        ItemStack stack = slot == null ? ItemStack.EMPTY : slot.stack();
         return stack.isEmpty() ? null : stack.item().displayName();
     }
 

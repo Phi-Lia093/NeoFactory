@@ -133,9 +133,10 @@ public final class Items {
     public static final int DIAMOND_CHESTPLATE_ID = 63;
     public static final int DIAMOND_LEGGINGS_ID = 64;
     public static final int DIAMOND_BOOTS_ID = 65;
+    public static final int FURNACE_ID = 66;
 
     /** Next unused item id, used to verify that a new item got a fresh id. */
-    public static final int NEXT_FREE_ID = 66;
+    public static final int NEXT_FREE_ID = 67;
 
     // ------------------------------------------------------------------
     // Item instances. They are filled by registerAll().
@@ -172,6 +173,9 @@ public final class Items {
     public static Item PLANKS_OAK;
     /** Tall grass block item. */
     public static Item TALL_GRASS;
+
+    /** The furnace, the block a player builds to smelt with. */
+    public static Item FURNACE;
     /** Bedrock block item, unbreakable in the world. */
     public static Item BEDROCK;
 
@@ -336,6 +340,9 @@ public final class Items {
         TALL_GRASS = register(Item.builder(TALL_GRASS_ID, "tall_grass")
                 .displayName("Tall Grass")
                 .buildBlock(Blocks.TALL_GRASS));
+        FURNACE = register(Item.builder(FURNACE_ID, "furnace")
+                .displayName("Furnace")
+                .buildBlock(Blocks.FURNACE));
         BEDROCK = register(Item.builder(BEDROCK_ID, "bedrock")
                 .displayName("Bedrock")
                 .buildBlock(Blocks.BEDROCK));

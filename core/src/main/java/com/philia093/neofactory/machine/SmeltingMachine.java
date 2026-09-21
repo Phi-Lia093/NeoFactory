@@ -1,11 +1,13 @@
 package com.philia093.neofactory.machine;
 
 import com.philia093.neofactory.item.ItemStack;
-import com.philia093.neofactory.recipe.InventoryGrid;
 import com.philia093.neofactory.recipe.Recipe;
 import com.philia093.neofactory.recipe.RecipeRegistry;
 import com.philia093.neofactory.recipe.RecipeType;
-import com.philia093.neofactory.recipe.SmeltingRecipe;
+import com.philia093.neofactory.util.nbt.NbtCompound;
+import com.philia093.neofactory.world.save.SaveTags;
+
+import java.util.List;
 
 /**
  * A machine that smelts what it is given, the furnace of the game.
@@ -21,7 +23,7 @@ import com.philia093.neofactory.recipe.SmeltingRecipe;
  * with the fuel rather than losing what it had done. Nothing ticks the machine in the
  * world yet, see {@link Machine}.
  */
-public final class SmeltingMachine extends Machine implements ProgressMachine {
+public final class SmeltingMachine extends Machine implements ProgressMachine, FuelMachine {
 
     /** Slot that holds what is smelted. */
     public static final int INPUT = 0;
@@ -35,18 +37,23 @@ public final class SmeltingMachine extends Machine implements ProgressMachine {
     /** How much faster the progress falls back than it grows. */
     private static final float FALLBACK_FACTOR = 2.0f;
 
-    private final InventoryGrid inputGrid;
-
     private float craftSeconds;
     private float craftTotal = 1.0f;
     private float burnSeconds;
     private float burnTotal;
 
+    /**
+     * Screen of the furnace: the ore and the fuel in one column on the left and the product
+     * on the right of the progress bar, which is the plain pair of arrows.
+     */
+    public static final MachineScreen SCREEN = new MachineScreen("Furnace", ProgressKind.GENERIC,
+            List.of(SlotKind.SMELTING, SlotKind.SMELTING), List.of(SlotKind.GENERIC), 0, 0, false);
+
     /** Creates an empty furnace. */
     public SmeltingMachine() {
-        super(new MachineInventory(MachineInventory.Role.INPUT, MachineInventory.Role.FUEL,
-                MachineInventory.Role.OUTPUT), new SimpleEnergyStorage(0));
-        this.inputGrid = new InventoryGrid(inventory(), INPUT, 1, 1);
+        super(SCREEN, new MachineInventory(MachineInventory.Role.INPUT,
+                MachineInventory.Role.FUEL, MachineInventory.Role.OUTPUT),
+                new SimpleEnergyStorage(0), List.of(RecipeType.SMELTING));
     }
 
     @Override
@@ -64,6 +71,11 @@ public final class SmeltingMachine extends Machine implements ProgressMachine {
         return burnSeconds > 0.0f;
     }
 
+    @Override
+    public float fuelSeconds() {
+        return burnSeconds;
+    }
+
     /** {@code true} while the furnace is burning, it works as long as fuel lasts. */
     @Override
     public boolean isRunning() {
@@ -72,8 +84,8 @@ public final class SmeltingMachine extends Machine implements ProgressMachine {
 
     @Override
     protected void update(float delta) {
-        SmeltingRecipe recipe = findRecipe();
-        if (recipe == null || !canStore(recipe.result())) {
+        MachineRecipe recipe = findRecipe();
+        if (recipe == null || !recipe.fits(outputs())) {
             coolDown(delta);
             return;
         }
@@ -90,16 +102,16 @@ public final class SmeltingMachine extends Machine implements ProgressMachine {
         craftSeconds += burning;
         if (craftSeconds >= craftTotal) {
             craftSeconds = 0.0f;
-            recipe.consume(inputGrid);
-            store(recipe.result());
+            recipe.consume(inputs());
+            recipe.produce(outputs());
         }
     }
 
-    /** The first smelting recipe that accepts the input slot. */
-    private SmeltingRecipe findRecipe() {
+    /** The first smelting recipe that recognises the input slot. */
+    private MachineRecipe findRecipe() {
         for (Recipe recipe : RecipeRegistry.recipes(RecipeType.SMELTING)) {
-            if (recipe instanceof SmeltingRecipe smelting && smelting.matches(inputGrid)) {
-                return smelting;
+            if (recipe instanceof MachineRecipe machineRecipe && machineRecipe.matches(inputs())) {
+                return machineRecipe;
             }
         }
         return null;
@@ -137,23 +149,21 @@ public final class SmeltingMachine extends Machine implements ProgressMachine {
         craftSeconds = Math.max(0.0f, craftSeconds - delta * FALLBACK_FACTOR);
     }
 
-    /** {@code true} when the result fits into the output slot. */
-    private boolean canStore(ItemStack result) {
-        ItemStack output = inventory().get(OUTPUT);
-        if (output.isEmpty()) {
-            return true;
-        }
-        return output.isStackableWith(result) && output.room() >= result.count();
+    @Override
+    protected void saveState(NbtCompound state) {
+        state.putFloat(SaveTags.CRAFT_SECONDS, craftSeconds);
+        state.putFloat(SaveTags.CRAFT_TOTAL, craftTotal);
+        state.putFloat(SaveTags.BURN_SECONDS, burnSeconds);
+        state.putFloat(SaveTags.BURN_TOTAL, burnTotal);
     }
 
-    /** Puts a result into the output slot. */
-    private void store(ItemStack result) {
-        ItemStack output = inventory().get(OUTPUT);
-        if (output.isEmpty()) {
-            inventory().set(OUTPUT, result);
-            return;
-        }
-        output.grow(result.count());
+    @Override
+    protected void loadState(NbtCompound state) {
+        craftSeconds = state.getFloat(SaveTags.CRAFT_SECONDS, 0.0f);
+        float total = state.getFloat(SaveTags.CRAFT_TOTAL, 1.0f);
+        craftTotal = total > 0.0f ? total : 1.0f;
+        burnSeconds = state.getFloat(SaveTags.BURN_SECONDS, 0.0f);
+        burnTotal = state.getFloat(SaveTags.BURN_TOTAL, 0.0f);
     }
 
     @Override

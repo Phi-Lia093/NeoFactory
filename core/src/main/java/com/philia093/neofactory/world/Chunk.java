@@ -3,7 +3,13 @@ package com.philia093.neofactory.world;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.util.Constants;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
 
@@ -21,8 +27,10 @@ import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
  *         default and used for trees, plants and everything the player places
  *         later on</li>
  * </ul>
- * Only block ids are stored, the actual {@link Block} objects are resolved
- * through the {@link BlockRegistry}, which keeps the memory footprint small.
+ * A cell stores a block id and a state, both as full 32 bit numbers: the id is
+ * resolved into the actual {@link Block} through the {@link BlockRegistry}, which
+ * keeps the memory footprint small, and the state is what a block carries beyond
+ * its id, see {@link #meta(int, int, int)}.
  */
 public final class Chunk {
 
@@ -40,7 +48,33 @@ public final class Chunk {
 
     private final int chunkX;
     private final int chunkY;
-    private final byte[] blocks;
+
+    /** Block id of every cell, one number per cell and layer. */
+    private final int[] blocks;
+
+    /**
+     * State of every cell, one number per cell and layer.
+     * <p>
+     * The state is what a block carries beyond its id: the direction a machine
+     * faces, the shape a pipe has to be drawn with, whether a machine is running.
+     * Nothing interprets it yet, but it travels with the chunk, so a later system
+     * finds the state of a cell exactly where it left it. A cell whose block
+     * changes loses its state, see {@link #setRawId(int, int, int, int)}.
+     */
+    private final int[] meta;
+
+    /**
+     * Block entity of every cell, {@code null} for a cell that carries none.
+     * <p>
+     * The array is the lookup: a machine standing somewhere is found without walking
+     * anything. {@link #active} is what a tick walks instead, because the list holds the
+     * entities that are really there - a chunk with a single machine does not make the
+     * world look at {@link #CELL_COUNT} cells every tick.
+     */
+    private final BlockEntity[] blockEntities = new BlockEntity[CELL_COUNT * LAYERS];
+
+    /** Block entities of this chunk, in the order they were put in. */
+    private final List<BlockEntity> active = new ArrayList<>();
 
     /** Cells whose floor layer was already written by the generator. */
     private final boolean[] generatedCells = new boolean[CELL_COUNT];
@@ -71,7 +105,8 @@ public final class Chunk {
     public Chunk(int chunkX, int chunkY) {
         this.chunkX = chunkX;
         this.chunkY = chunkY;
-        this.blocks = new byte[CELL_COUNT * LAYERS];
+        this.blocks = new int[CELL_COUNT * LAYERS];
+        this.meta = new int[CELL_COUNT * LAYERS];
     }
 
     /** Chunk coordinate along the X axis. */
@@ -103,7 +138,7 @@ public final class Chunk {
      * @return the stored block, {@link Blocks#AIR} for empty space
      */
     public Block getBlock(int localX, int localY, int layer) {
-        return BlockRegistry.byId(blocks[index(localX, localY, layer)] & 0xFF);
+        return BlockRegistry.byId(blocks[index(localX, localY, layer)]);
     }
 
     /**
@@ -115,12 +150,7 @@ public final class Chunk {
      * @param block block to store, passing {@link Blocks#AIR} clears the position
      */
     public void setBlock(int localX, int localY, int layer, Block block) {
-        int previous = blocks[index(localX, localY, layer)] & 0xFF;
-        if (previous == block.id()) {
-            return;
-        }
-        blocks[index(localX, localY, layer)] = (byte) block.id();
-        dirty = true;
+        setRawId(localX, localY, layer, block.id());
     }
 
     /**
@@ -132,11 +162,15 @@ public final class Chunk {
      * @return the numeric block id
      */
     public int rawId(int localX, int localY, int layer) {
-        return blocks[index(localX, localY, layer)] & 0xFF;
+        return blocks[index(localX, localY, layer)];
     }
 
     /**
      * Writes a raw block id, used by serialization and world generation.
+     * <p>
+     * A cell whose block changes loses its state: the state of the block that was
+     * there belongs to that block and means nothing for the one that takes its
+     * place.
      *
      * @param localX local X coordinate
      * @param localY local Y coordinate
@@ -144,12 +178,117 @@ public final class Chunk {
      * @param id numeric block id
      */
     public void setRawId(int localX, int localY, int layer, int id) {
-        int previous = blocks[index(localX, localY, layer)] & 0xFF;
-        if (previous == id) {
+        int slot = index(localX, localY, layer);
+        if (blocks[slot] == id) {
             return;
         }
-        blocks[index(localX, localY, layer)] = (byte) id;
+        blocks[slot] = id;
+        meta[slot] = 0;
         dirty = true;
+    }
+
+    /**
+     * Returns the state stored for a cell.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param layer layer index
+     * @return the state, {@code 0} for a cell nothing wrote a state to
+     */
+    public int meta(int localX, int localY, int layer) {
+        return meta[index(localX, localY, layer)];
+    }
+
+    /**
+     * Writes the state of a cell.
+     * <p>
+     * The state is what a block carries beyond its id, see {@link #meta}. Writing
+     * it marks the chunk for redrawing, because a state is usually what a renderer
+     * draws differently.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param layer layer index
+     * @param state state to store
+     */
+    public void setMeta(int localX, int localY, int layer, int state) {
+        int slot = index(localX, localY, layer);
+        if (meta[slot] == state) {
+            return;
+        }
+        meta[slot] = state;
+        dirty = true;
+    }
+
+    /**
+     * Returns the block entity of a cell.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param layer layer index
+     * @return the entity, or {@code null} when the cell carries none
+     */
+    public BlockEntity blockEntity(int localX, int localY, int layer) {
+        return blockEntities[index(localX, localY, layer)];
+    }
+
+    /**
+     * Puts a block entity at the cell it belongs to.
+     *
+     * @param entity entity to store, its position has to lie inside this chunk
+     * @return the entity that was stored there before, {@code null} when the cell was free
+     * @throws IllegalArgumentException when the position lies outside this chunk
+     */
+    public BlockEntity setBlockEntity(BlockEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        if (chunkOf(entity.x()) != chunkX || chunkOf(entity.y()) != chunkY) {
+            throw new IllegalArgumentException("The block entity " + entity
+                    + " does not belong to chunk (" + chunkX + ", " + chunkY + ")");
+        }
+        int slot = index(localOf(entity.x()), localOf(entity.y()), entity.layer());
+        BlockEntity previous = blockEntities[slot];
+        if (previous != null) {
+            active.remove(previous);
+        }
+        blockEntities[slot] = entity;
+        active.add(entity);
+        dirty = true;
+        return previous;
+    }
+
+    /**
+     * Takes the block entity of a cell out of this chunk.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param layer layer index
+     * @return the entity that was there, {@code null} when the cell carried none
+     */
+    public BlockEntity removeBlockEntity(int localX, int localY, int layer) {
+        int slot = index(localX, localY, layer);
+        BlockEntity previous = blockEntities[slot];
+        if (previous == null) {
+            return null;
+        }
+        blockEntities[slot] = null;
+        active.remove(previous);
+        dirty = true;
+        return previous;
+    }
+
+    /** Every block entity of this chunk, in the order they were put in. */
+    public List<BlockEntity> blockEntities() {
+        return Collections.unmodifiableList(active);
+    }
+
+    /** Amount of block entities this chunk holds. */
+    public int blockEntityCount() {
+        return active.size();
+    }
+
+    /** {@code true} when this chunk holds at least one block entity. */
+    public boolean hasBlockEntities() {
+        return !active.isEmpty();
     }
 
     /** {@code true} when the chunk changed since the last call to {@link #clearDirty()}. */

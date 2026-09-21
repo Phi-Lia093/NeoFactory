@@ -2,6 +2,8 @@ package com.philia093.neofactory.support;
 
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntityRegistry;
+import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.entity.EntityRegistry;
 import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.item.ItemRegistry;
@@ -31,9 +33,13 @@ public final class TestRegistries {
         Blocks.registerAll();
         Items.registerAll();
         EntityTypes.registerAll();
+        // A stored chunk names its block entities, so the game - and every test that reads
+        // a chunk - needs the types before anything is loaded.
+        BlockEntityTypes.registerAll();
         BlockRegistry.freeze();
         ItemRegistry.freeze();
         EntityRegistry.freeze();
+        BlockEntityRegistry.freeze();
         ready = true;
     }
 }

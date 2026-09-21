@@ -1,8 +1,8 @@
 package com.philia093.neofactory.world.save;
 
+import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
-import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.util.nbt.NbtList;
 
@@ -73,12 +73,6 @@ public final class SaveTags {
     public static final String COUNT = "Count";
 
     /**
-     * List of the chunks, written by format 1 and read back only to convert a
-     * world to format 2, where every changed chunk lives in its own file.
-     */
-    public static final String CHUNKS = "Chunks";
-
-    /**
      * Group of the stored entities.
      * <p>
      * Every entry holds the shared fields of an entity plus one nested group with
@@ -90,8 +84,11 @@ public final class SaveTags {
     /** Type name of an entity, for example {@code "player"} or {@code "item"}. */
     public static final String ENTITY_ID = "id";
 
+    /** Group holding the type specific data of anything the game stores. */
+    public static final String DATA = "Data";
+
     /** Group holding the type specific data of an entity. */
-    public static final String ENTITY_DATA = "Data";
+    public static final String ENTITY_DATA = DATA;
 
     /** First half of the identifier of an entity. */
     public static final String UUID_MOST = "UUIDMost";
@@ -110,6 +107,51 @@ public final class SaveTags {
 
     /** Seconds left before an item on the ground may be picked up. */
     public static final String PICKUP_DELAY = "PickupDelay";
+
+    /** Group holding what a machine adds to its shared state. */
+    public static final String MACHINE_STATE = "State";
+
+    /** Amount of energy a machine holds. */
+    public static final String ENERGY = "Energy";
+
+    /** List of the tanks of a machine. */
+    public static final String TANKS = "Tanks";
+
+    /** Kind of fluid inside one tank. */
+    public static final String FLUID = "Fluid";
+
+    /** Amount of fluid inside one tank. */
+    public static final String FLUID_AMOUNT = "Amount";
+
+    /** Seconds a machine has worked on its current craft. */
+    public static final String CRAFT_SECONDS = "CraftSeconds";
+
+    /** Seconds the current craft takes in total. */
+    public static final String CRAFT_TOTAL = "CraftTotal";
+
+    /** Energy a machine still owes for the craft it works on. */
+    public static final String ENERGY_DEBT = "EnergyDebt";
+
+    /** Seconds a furnace has left to burn. */
+    public static final String BURN_SECONDS = "BurnSeconds";
+
+    /** Seconds a whole piece of fuel burns. */
+    public static final String BURN_TOTAL = "BurnTotal";
+
+    /** List of the block entities of a chunk. */
+    public static final String BLOCK_ENTITIES = "BlockEntities";
+
+    /** Name of the block entity type of one entry. */
+    public static final String BLOCK_ENTITY_ID = "id";
+
+    /** Local X coordinate of one block entity, inside its chunk. */
+    public static final String BLOCK_ENTITY_X = "X";
+
+    /** Local Y coordinate of one block entity, inside its chunk. */
+    public static final String BLOCK_ENTITY_Y = "Y";
+
+    /** Layer of one block entity. */
+    public static final String BLOCK_ENTITY_LAYER = "Layer";
 
     /** Group of the world rules. */
     public static final String GAME_RULES = "GameRules";
@@ -150,7 +192,7 @@ public final class SaveTags {
      * @param inventory inventory to write
      * @return the list tag
      */
-    public static NbtList writeInventory(PlayerInventory inventory) {
+    public static NbtList writeInventory(Inventory inventory) {
         NbtList list = new NbtList(INVENTORY);
         for (int slot = 0; slot < inventory.size(); slot++) {
             ItemStack stack = inventory.get(slot);
@@ -170,7 +212,7 @@ public final class SaveTags {
      * @param inventory inventory to fill
      * @param list list to read, may be {@code null}
      */
-    public static void readInventory(PlayerInventory inventory, NbtList list) {
+    public static void readInventory(Inventory inventory, NbtList list) {
         if (list == null) {
             return;
         }

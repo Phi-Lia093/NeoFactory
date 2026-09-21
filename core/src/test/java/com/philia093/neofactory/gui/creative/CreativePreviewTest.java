@@ -2,8 +2,10 @@ package com.philia093.neofactory.gui.creative;
 
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
-import com.philia093.neofactory.render.BlockIconFactory;
+import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.render.BlockTextureCache;
+import com.philia093.neofactory.support.TestIcons;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Constants;
 import org.junit.jupiter.api.BeforeAll;
@@ -125,9 +127,12 @@ class CreativePreviewTest {
         assertTrue(CreativeLayout.hotbarIconX(CreativeLayout.HOTBAR_COLUMNS - 1)
                 + CreativeLayout.SLOT_SIZE <= CreativeLayout.PANEL_WIDTH,
                 "the hotbar ends inside the panel");
-        assertTrue(CreativeLayout.tabX(CreativeRegistry.tabs().size() - 1)
-                + CreativeLayout.TAB_WIDTH <= CreativeLayout.PANEL_WIDTH,
-                "the last tab stays on the panel");
+        int tabs = CreativeRegistry.tabs().size();
+        for (int index = 0; index < tabs; index++) {
+            int tabX = CreativeLayout.tabX(index, tabs);
+            assertTrue(tabX >= 0 && tabX + CreativeLayout.TAB_WIDTH <= CreativeLayout.PANEL_WIDTH,
+                    "tab " + index + " stays within the width of the panel");
+        }
         assertTrue(CreativeLayout.SCROLL_Y + CreativeLayout.SCROLL_HEIGHT
                 <= CreativeLayout.PANEL_HEIGHT, "the track ends inside the panel");
         assertTrue(CreativeLayout.TAB_ICON_X + CreativeLayout.SLOT_SIZE <= CreativeLayout.TAB_WIDTH,
@@ -153,18 +158,29 @@ class CreativePreviewTest {
     void theScreenIsPaintedAsTheGameDrawsIt() throws IOException {
         BufferedImage sheet = readSheet();
         CreativeInventory creative = new CreativeInventory();
-        int width = 2 * CreativeLayout.PANEL_WIDTH + 3 * GAP;
-        int height = CreativeLayout.TAB_HEIGHT + CreativeLayout.PANEL_HEIGHT + 2 * GAP;
+        int width = 3 * CreativeLayout.PANEL_WIDTH + 4 * GAP;
+        int height = 2 * CreativeLayout.TAB_HEIGHT + CreativeLayout.PANEL_HEIGHT + 3 * GAP;
         BufferedImage canvas = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         fill(canvas, BACKDROP);
 
         int panelTop = GAP + CreativeLayout.TAB_HEIGHT - CreativeLayout.TAB_INSET;
-        drawScreen(sheet, canvas, creative, GAP, panelTop, 0);
+        drawScreen(sheet, canvas, creative, null, GAP, panelTop, 0);
         // The second screen searches for one letter, which matches more items than the
         // grid can show, so both shapes of the scroll bar appear in this preview.
         creative.setQuery("a");
-        drawScreen(sheet, canvas, creative, GAP + CreativeLayout.PANEL_WIDTH + GAP, panelTop,
+        drawScreen(sheet, canvas, creative, null, GAP + CreativeLayout.PANEL_WIDTH + GAP, panelTop,
                 creative.selectedIndex());
+        // The third screen is the inventory of the player: the very same panel with the
+        // slots of the player in it, which is what keeps the screen still while the tabs
+        // are chosen.
+        PlayerInventory player = new PlayerInventory();
+        player.set(PlayerInventory.HOTBAR_SLOTS, ItemStack.of(Items.STONE, 64));
+        player.set(PlayerInventory.HOTBAR_SLOTS + 2, ItemStack.of(Items.FURNACE, 1));
+        player.set(0, ItemStack.of(Items.IRON_PICKAXE, 1));
+        creative.setQuery("");
+        creative.select(indexOfTab(CreativeTab.Kind.INVENTORY));
+        drawScreen(sheet, canvas, creative, player,
+                GAP + 2 * (CreativeLayout.PANEL_WIDTH + GAP), panelTop, creative.selectedIndex());
 
         BufferedImage zoomed = new BufferedImage(width * ZOOM, height * ZOOM,
                 BufferedImage.TYPE_INT_ARGB);
@@ -173,20 +189,52 @@ class CreativePreviewTest {
         ImageIO.write(zoomed, "png", PREVIEW.toFile());
     }
 
-    /** Draws the whole screen of the creative inventory, the way the game draws it. */
+    /** Index of the first tab of the given kind. */
+    private static int indexOfTab(CreativeTab.Kind kind) {
+        for (int index = 0; index < CreativeRegistry.tabs().size(); index++) {
+            if (CreativeRegistry.tabs().get(index).kind() == kind) {
+                return index;
+            }
+        }
+        throw new AssertionError("the game has no tab of kind " + kind);
+    }
+
+    /**
+     * Draws the whole screen of the creative inventory, the way the game draws it.
+     *
+     * @param player inventory shown instead of the grid of items, {@code null} for a tab
+     *               that lists items
+     */
     private static void drawScreen(BufferedImage sheet, BufferedImage canvas,
-            CreativeInventory creative, int panelX, int panelTop, int chosen) {
-        for (int index = 0; index < creative.tabs().size(); index++) {
+            CreativeInventory creative, PlayerInventory player, int panelX, int panelTop,
+            int chosen) {
+        int tabs = creative.tabs().size();
+        for (int index = 0; index < tabs; index++) {
             boolean active = index == chosen;
-            int tabX = panelX + CreativeLayout.tabX(index);
-            int tabY = panelTop + CreativeLayout.tabTop();
-            blitFrom(sheet, canvas, active ? TAB_ACTIVE_X : 256, active ? TAB_ACTIVE_Y : 280,
-                    tabX, tabY, CreativeLayout.TAB_WIDTH, CreativeLayout.TAB_HEIGHT);
+            boolean below = CreativeLayout.isTabBelow(index, tabs);
+            int tabX = panelX + CreativeLayout.tabX(index, tabs);
+            int tabY = panelTop + CreativeLayout.tabY(index, tabs);
+            int sourceX = active ? TAB_ACTIVE_X : 256;
+            int sourceY = active ? TAB_ACTIVE_Y : 280;
+            if (below) {
+                // The row below the panel is painted with the very art of the upper one,
+                // flipped upside down, see CreativeTextures#turned.
+                blitUpsideDownFrom(sheet, canvas, sourceX, sourceY, tabX, tabY,
+                        CreativeLayout.TAB_WIDTH, CreativeLayout.TAB_HEIGHT);
+            } else {
+                blitFrom(sheet, canvas, sourceX, sourceY, tabX, tabY, CreativeLayout.TAB_WIDTH,
+                        CreativeLayout.TAB_HEIGHT);
+            }
             CreativeTab tab = creative.tabs().get(index);
             if (tab.hasIcon()) {
-                // The tabs of the art are empty shapes, the icon is an item.
-                drawItem(canvas, tabX + CreativeLayout.TAB_ICON_X,
-                        tabY + CreativeLayout.TAB_ICON_Y, ItemStack.of(tab.icon(), 1));
+                // The tabs of the art are empty shapes, the icon is an item drawn on the
+                // very place the picture of a tab leaves for it.
+                int iconX = tabX + CreativeLayout.TAB_ICON_X;
+                int iconY = below
+                        ? tabY + CreativeLayout.TAB_HEIGHT - CreativeLayout.TAB_ICON_Y
+                                - CreativeLayout.SLOT_SIZE
+                        : tabY + CreativeLayout.TAB_ICON_Y;
+                drawItem(canvas, iconX, iconY, ItemStack.of(tab.icon(), 1));
             }
         }
         blitFrom(sheet, canvas, ITEMS_X, creative.isSearching() ? 136 : ITEMS_Y, panelX, panelTop,
@@ -200,10 +248,22 @@ class CreativePreviewTest {
                     0xFFE0E0E0);
         }
         for (int index = 0; index < CreativeInventory.PAGE_SIZE; index++) {
-            ItemStack stack = creative.stackAt(index);
+            ItemStack stack = player == null
+                    ? creative.stackAt(index)
+                    : stackOf(player, index);
             if (!stack.isEmpty()) {
                 drawItem(canvas, panelX + CreativeLayout.slotIconX(index),
                         panelTop + CreativeLayout.slotIconY(index), stack);
+            }
+        }
+        for (int slot = 0; slot < CreativeLayout.HOTBAR_COLUMNS; slot++) {
+            if (player == null) {
+                continue;
+            }
+            ItemStack stack = player.get(slot);
+            if (!stack.isEmpty()) {
+                drawItem(canvas, panelX + CreativeLayout.hotbarIconX(slot),
+                        panelTop + CreativeLayout.hotbarIconY(), stack);
             }
         }
         // The bright thumb is the one that can be dragged, the dark one says that
@@ -217,7 +277,7 @@ class CreativePreviewTest {
     /** Draws the icon of a stack, a block as a small cube, everything else as it is. */
     private static void drawItem(BufferedImage target, int x, int y, ItemStack stack) {
         int size = Constants.ITEM_ICON_SIZE;
-        int[] icon = readIcon(stack.item());
+        int[] icon = TestIcons.icon(stack.item());
         for (int row = 0; row < size; row++) {
             for (int column = 0; column < size; column++) {
                 int colour = icon[row * size + column];
@@ -229,25 +289,10 @@ class CreativePreviewTest {
         }
     }
 
-    /** Reads the icon of an item, folding the tile of a block into a cube. */
-    private static int[] readIcon(Item item) {
-        Path file = ASSETS.resolve(BlockTextureCache.resolvePath(item.texture()));
-        BufferedImage picture;
-        try {
-            picture = ImageIO.read(file.toFile());
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read " + file, e);
-        }
-        int size = Constants.ITEM_ICON_SIZE;
-        int[] tile = new int[size * size];
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                int argb = picture.getRGB(x, y + item.iconFrame() * size);
-                tile[y * size + x] = (argb << 8) | (argb >>> 24);
-            }
-        }
-        boolean cube = item.isBlockItem() && item.block() != null && !item.block().isTransparent();
-        return cube ? BlockIconFactory.isometric((x, y) -> tile[y * size + x], size) : tile;
+    /** The stack a cell of the panel holds when the inventory of the player is shown. */
+    private static ItemStack stackOf(PlayerInventory player, int index) {
+        int slot = PlayerInventory.HOTBAR_SLOTS + index;
+        return slot < PlayerInventory.SLOT_COUNT ? player.get(slot) : ItemStack.EMPTY;
     }
 
     /** Copies a rectangle of the sheet into the preview. */
@@ -257,6 +302,23 @@ class CreativePreviewTest {
             for (int column = 0; column < width; column++) {
                 target.setRGB(targetX + column, targetY + row,
                         sheet.getRGB(sourceX + column, sourceY + row));
+            }
+        }
+    }
+
+    /**
+     * Copies a rectangle of the sheet into the preview, flipped upside down.
+     * <p>
+     * That is what the tabs below the panel are painted with: turned by half a circle and
+     * mirrored back left to right, which leaves them flipped upside down, see
+     * {@code CreativeTextures#turned}.
+     */
+    private static void blitUpsideDownFrom(BufferedImage sheet, BufferedImage target, int sourceX,
+            int sourceY, int targetX, int targetY, int width, int height) {
+        for (int row = 0; row < height; row++) {
+            for (int column = 0; column < width; column++) {
+                target.setRGB(targetX + column, targetY + row,
+                        sheet.getRGB(sourceX + column, sourceY + height - 1 - row));
             }
         }
     }

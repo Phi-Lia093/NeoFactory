@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui.creative;
 
+import com.badlogic.gdx.Input;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
@@ -223,6 +224,25 @@ public final class CreativeInventory {
         }
         Item item = matches.get(position);
         return ItemStack.of(item, item.maxStackSize());
+    }
+
+    /**
+     * {@code true} when the search box owns the key and nothing else may read it.
+     * <p>
+     * While the player types, a letter belongs into the box and must not reach the hotkeys
+     * of the game: without this, a typed {@code E} closed the screen, because the game reads
+     * that key as the one that opens the inventory. Everything that writes a character is
+     * taken here, and the keys that steer the screen rather than its text are left to the
+     * game, so a player can always leave the screen again.
+     *
+     * @param keyCode key that was pressed, see {@link Input.Keys}
+     * @return {@code true} when the search box owns the key
+     */
+    public static boolean isSearchKey(int keyCode) {
+        if (keyCode == Input.Keys.ESCAPE) {
+            return false;
+        }
+        return keyCode < Input.Keys.F1 || keyCode > Input.Keys.F12;
     }
 
     /** {@code true} when the search tab is chosen. */

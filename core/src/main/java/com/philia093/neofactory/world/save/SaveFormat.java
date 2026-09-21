@@ -12,11 +12,13 @@ public final class SaveFormat {
     /**
      * Version of the save format written by this build.
      * <p>
-     * Version 2 moved the chunks out of the level file into one file per chunk,
-     * see {@link SaveFormat#CHUNK_FOLDER}. A version 1 file is still read and
-     * converted on the fly, see {@code WorldLoader}.
+     * The game is still being built, so a save game is not carried over between
+     * versions: the layout grows as the factory systems arrive and a file of another
+     * version is refused instead of guessed at, see
+     * {@link LevelData} and {@link ChunkCodec}. Every change of the layout bumps
+     * this number.
      */
-    public static final int DATA_VERSION = 2;
+    public static final int DATA_VERSION = 1;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

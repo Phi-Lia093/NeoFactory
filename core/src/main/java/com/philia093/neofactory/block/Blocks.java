@@ -47,9 +47,10 @@ public final class Blocks {
     public static final int IRON_ORE_ID = 14;
     public static final int SNOW_ID = 15;
     public static final int TALL_GRASS_ID = 16;
+    public static final int FURNACE_ID = 17;
 
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 17;
+    public static final int NEXT_FREE_ID = 18;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -111,6 +112,15 @@ public final class Blocks {
 
     /** Tall grass, a decorative block of the object layer. */
     public static Block TALL_GRASS;
+
+    /**
+     * The furnace, the first machine of the game.
+     * <p>
+     * It is the only block so far that carries a block entity, see
+     * {@link Block#blockEntityTypeName()}: the cell stores which block is there, and the
+     * entity behind it holds the slots, the fire and the progress.
+     */
+    public static Block FURNACE;
 
     private Blocks() {
         // Utility class: never instantiated.
@@ -278,6 +288,18 @@ public final class Blocks {
                 .hardness(0.1f)
                 .build();
         BlockRegistry.register(TALL_GRASS);
+
+        // The first machine of the game. Its block stands in the object layer like a wall
+        // does, and it names the block entity that holds what the cell cannot: the slots,
+        // the fuel and the work that is done, see BlockEntities.FURNACE.
+        FURNACE = Block.builder(FURNACE_ID, "furnace")
+                .texture("furnace_top")
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(1)
+                .blockEntity("furnace")
+                .build();
+        BlockRegistry.register(FURNACE);
 
         BlockRegistry.freeze();
     }

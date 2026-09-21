@@ -6,7 +6,7 @@ import com.philia093.neofactory.support.TestCommandContext;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.save.LevelData;
-import com.philia093.neofactory.world.save.SaveFormat;
+import com.philia093.neofactory.world.save.SaveTags;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -85,12 +85,11 @@ class GamemodeCommandTest {
         LevelData data = new LevelData();
         data.setGameMode(GameMode.CREATIVE);
         NbtCompound root = data.write(new PlayerInventory());
-        // A world stored before the creative inventory existed carries no entry at all.
-        NbtCompound without = new NbtCompound(SaveFormat.ROOT_TAG);
-        without.putString("WorldName", root.getString("WorldName", ""));
-        without.putInt("Seed", root.getInt("Seed", 0));
+        // A stored world may miss the entry of the mode; the reader falls back to
+        // survival instead of refusing the whole file.
+        root.remove(SaveTags.GAME_MODE);
 
-        assertEquals(GameMode.SURVIVAL, LevelData.read(without).gameMode());
+        assertEquals(GameMode.SURVIVAL, LevelData.read(root).gameMode());
     }
 
     @Test

@@ -55,6 +55,35 @@ class BlockIconFactoryTest {
     }
 
     @Test
+    void anIconFoldedFinerIsSoftenedWhenItIsShrunkBack() {
+        int step = BlockIconFactory.FOLD_SCALE;
+        int size = BlockIconFactory.FOLDED_SIZE;
+
+        int[] coarse = BlockIconFactory.isometric(GREY, SIZE);
+        int[] fine = BlockIconFactory.isometric((x, y) -> GREY.pixel(x / step, y / step), size);
+        int[] soft = BlockIconFactory.downscale(fine, size, step);
+
+        assertEquals(SIZE * SIZE, soft.length, "the icon is back at the size of a cell");
+        assertTrue(countVisible(soft) > 0, "the cube is still there");
+        assertEquals(0, partialPixels(coarse),
+                "a cube folded at the size of its cell knows only full and empty pixels");
+        assertTrue(partialPixels(soft) > 0,
+                "a cube folded finer carries half transparent pixels along its edges");
+    }
+
+    /** Amount of pixels that are neither fully transparent nor fully opaque. */
+    private static int partialPixels(int[] icon) {
+        int found = 0;
+        for (int colour : icon) {
+            int opacity = alpha(colour);
+            if (opacity > 0 && opacity < 0xFF) {
+                found++;
+            }
+        }
+        return found;
+    }
+
+    @Test
     void theFaceTowardsTheLightIsTheBrighterOne() {
         int[] icon = BlockIconFactory.isometric(GREY, SIZE);
 

@@ -2,6 +2,7 @@ package com.philia093.neofactory.world.interaction;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemRegistry;
@@ -137,6 +138,13 @@ public class MiningController {
      * @param tool stack the player holds
      */
     private void breakBlock(World world, BlockTarget target, Block block, ItemStack tool) {
+        // What a machine holds is handed over before the block goes: the entity is
+        // removed with the block, see World#setBlock(int, int, int, Block), so its
+        // content has to leave first or it would be lost with it.
+        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.layer());
+        if (entity != null) {
+            entity.onBroken(drops, target.centerX(), target.centerY());
+        }
         world.setBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
         if (!rule.canHarvest(block, tool)) {
             return;

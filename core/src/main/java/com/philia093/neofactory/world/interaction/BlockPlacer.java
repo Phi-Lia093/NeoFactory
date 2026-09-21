@@ -2,11 +2,16 @@ package com.philia093.neofactory.world.interaction;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntity;
+import com.philia093.neofactory.blockentity.BlockEntityRegistry;
+import com.philia093.neofactory.blockentity.BlockEntityType;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Builds the held block into the world.
@@ -26,6 +31,8 @@ import com.philia093.neofactory.world.World;
  * when the player no longer fits.
  */
 public final class BlockPlacer {
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private BlockPlacer() {
         // Utility class: never instantiated.
@@ -75,8 +82,36 @@ public final class BlockPlacer {
             return false;
         }
 
+        placeBlockEntity(world, target, block);
         useOneItem(inventory, held);
         return true;
+    }
+
+    /**
+     * Puts the block entity a block carries behind it.
+     * <p>
+     * A machine without its entity would stand there and do nothing, so the entity is
+     * created while the block is built, see {@link Block#blockEntityTypeName()}. A block
+     * that names a type the game does not know is reported and left without one, which
+     * keeps a typo in the block table from stopping the game.
+     *
+     * @param world world that received the block
+     * @param target cell that was built
+     * @param block block that was stored there
+     */
+    private static void placeBlockEntity(World world, BlockTarget target, Block block) {
+        if (!block.hasBlockEntity()) {
+            return;
+        }
+        BlockEntityType type = BlockEntityRegistry.byName(block.blockEntityTypeName());
+        if (type == null) {
+            LOGGER.warn("The block '{}' names the unknown block entity '{}', it stays empty",
+                    block.name(), block.blockEntityTypeName());
+            return;
+        }
+        BlockEntity entity = type.create();
+        entity.setPosition(target.x(), target.y(), target.layer());
+        world.addBlockEntity(entity);
     }
 
     /**

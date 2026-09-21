@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui.container;
 
+import com.philia093.neofactory.gui.panel.ContainerAppearance;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.util.Constants;
@@ -47,14 +48,19 @@ public final class Slot {
         WORK
     }
 
+    /** A plain slot, drawn with the generic picture of the appearance it is shown by. */
+    public static final int DEFAULT_ICON = ContainerAppearance.DEFAULT_ICON;
+
     private final int x;
     private final int y;
     private final Inventory inventory;
     private final int index;
     private final Rule rule;
+    private final int iconColumn;
+    private final int iconRow;
 
     /**
-     * Creates a slot.
+     * Creates a slot that is drawn with the generic picture of its appearance.
      *
      * @param x left edge of the cell, relative to the panel
      * @param y upper edge of the cell, relative to the panel
@@ -63,11 +69,34 @@ public final class Slot {
      * @param rule what may happen to the items in this slot
      */
     public Slot(int x, int y, Inventory inventory, int index, Rule rule) {
+        this(x, y, inventory, index, rule, DEFAULT_ICON, DEFAULT_ICON);
+    }
+
+    /**
+     * Creates a slot that names the cell of a sheet it is drawn from.
+     * <p>
+     * A machine screen uses this to show what a slot is for: an input, a tank, a slot for a
+     * battery. The cell belongs to the sheet the appearance of the container was built from,
+     * see {@link com.philia093.neofactory.gui.panel.MachineTextures}; an appearance that has
+     * only one picture ignores it.
+     *
+     * @param x left edge of the cell, relative to the panel
+     * @param y upper edge of the cell, relative to the panel
+     * @param inventory inventory this slot shows
+     * @param index index of the shown slot inside that inventory
+     * @param rule what may happen to the items in this slot
+     * @param iconColumn column of the cell the slot is drawn from
+     * @param iconRow row of the cell the slot is drawn from
+     */
+    public Slot(int x, int y, Inventory inventory, int index, Rule rule, int iconColumn,
+            int iconRow) {
         this.x = x;
         this.y = y;
         this.inventory = Objects.requireNonNull(inventory, "inventory");
         this.index = index;
         this.rule = Objects.requireNonNull(rule, "rule");
+        this.iconColumn = iconColumn;
+        this.iconRow = iconRow;
     }
 
     /** Left edge of the cell, relative to the panel. */
@@ -93,6 +122,16 @@ public final class Slot {
     /** What may happen to the items in this slot. */
     public Rule rule() {
         return rule;
+    }
+
+    /** Column of the cell this slot is drawn from, {@link #DEFAULT_ICON} for the generic one. */
+    public int iconColumn() {
+        return iconColumn;
+    }
+
+    /** Row of the cell this slot is drawn from, {@link #DEFAULT_ICON} for the generic one. */
+    public int iconRow() {
+        return iconRow;
     }
 
     /** {@code true} when this slot only hands items out. */

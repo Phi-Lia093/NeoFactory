@@ -21,6 +21,9 @@ public final class PlayerInventory extends Inventory {
     /** Amount of slots of the three storage rows. */
     public static final int MAIN_SLOTS = 27;
 
+    /** Amount of storage rows the inventory screen shows. */
+    public static final int STORAGE_ROWS = 3;
+
     /** Amount of slots of a player inventory. */
     public static final int SLOT_COUNT = HOTBAR_SLOTS + MAIN_SLOTS;
 

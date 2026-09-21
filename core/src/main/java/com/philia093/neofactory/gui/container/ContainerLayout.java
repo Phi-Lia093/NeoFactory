@@ -49,6 +49,30 @@ public final class ContainerLayout {
     }
 
     /**
+     * Adds a single slot that is drawn with a named picture of the appearance of the
+     * container.
+     * <p>
+     * A machine screen uses this to show what a slot is for - an input, a tank, a slot for a
+     * battery - without the layout knowing a single picture, see
+     * {@link Slot#Slot(int, int, Inventory, int, Slot.Rule, int, int)}.
+     *
+     * @param x left edge of the cell, relative to the panel
+     * @param y upper edge of the cell, relative to the panel
+     * @param inventory inventory the slot shows
+     * @param index index of the shown slot inside that inventory
+     * @param rule what may happen to the items in this slot
+     * @param iconColumn column of the cell of the sheet the slot is drawn from
+     * @param iconRow row of that cell
+     * @return the added slot
+     */
+    public Slot add(int x, int y, Inventory inventory, int index, Slot.Rule rule, int iconColumn,
+            int iconRow) {
+        Slot slot = new Slot(x, y, inventory, index, rule, iconColumn, iconRow);
+        slots.add(slot);
+        return slot;
+    }
+
+    /**
      * Adds a rectangular block of slots, counted row by row from the upper left one.
      *
      * @param x left edge of the first column, relative to the panel

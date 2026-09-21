@@ -11,6 +11,8 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
+import com.philia093.neofactory.blockentity.BlockEntity;
+import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.chat.ChatController;
@@ -21,6 +23,7 @@ import com.philia093.neofactory.gui.ChatOverlay;
 import com.philia093.neofactory.gui.CreativeInventoryGui;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
+import com.philia093.neofactory.gui.MachineGui;
 import com.philia093.neofactory.input.InputHandler;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
@@ -38,6 +41,7 @@ import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.ChunkStreamer;
 import com.philia093.neofactory.world.GameMode;
+import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
@@ -131,6 +135,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** The screen the inventory key opens while the world is played in creative mode. */
     private final CreativeInventoryGui creativeGui;
 
+    /** Screen of a machine, opened by using a machine with the build button. */
+    private final MachineGui machineGui;
+
+    /** Machine the screen is up for, {@code null} while no machine screen is open. */
+    private MachineBlockEntity openMachine;
+
     /**
      * Chat and command line of this world.
      * <p>
@@ -162,6 +172,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
     /** Cell a break or a build would touch, {@code null} while nothing is aimed at. */
     private BlockTarget target;
+
+    /**
+     * Turns frames into ticks of the simulation.
+     * <p>
+     * The machines of the world advance in fixed steps, see {@link TickClock}, so a
+     * machine works the same amount whether the frame was short or long.
+     */
+    private final TickClock tickClock = new TickClock();
 
     /** Seconds since the world was written the last time. */
     private float autosaveTimer;
@@ -196,6 +214,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
+            if (machineGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
             if (button == Input.Buttons.LEFT) {
                 int slot = hotbarGui.slotAt(interfaceMouse.x, interfaceMouse.y);
                 if (slot >= 0) {
@@ -217,6 +238,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             // carried stack out over them.
             creativeGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             inventoryGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
+            machineGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             return false;
         }
 
@@ -230,6 +252,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 return true;
             }
             if (inventoryGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
+            if (machineGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
             return false;
@@ -249,10 +274,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (chat.isOpen()) {
                 return chat.keyDown(keyCode);
             }
-            if (creativeGui.isSearchFocused()) {
-                // While the search box owns the keyboard, a letter belongs into the box
-                // and not into the chat, so only its own keys are taken here.
-                return creativeGui.keyDown(keyCode);
+            if (creativeGui.takesKey(keyCode)) {
+                // The search box owns the keyboard, so the letter belongs into it and not
+                // into the hotkeys below: a typed E closes nothing while the player types.
+                creativeGui.keyDown(keyCode);
+                return true;
             }
             if (creativeGui.keyDown(keyCode)) {
                 return true;
@@ -326,6 +352,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
         this.creativeGui = new CreativeInventoryGui(textures, font, player.inventory(), uiViewport);
+        // The screen of a machine is opened by using a machine, see #openMachine().
+        this.machineGui = new MachineGui(textures, font, uiViewport);
         this.selectionRenderer = new SelectionRenderer(batch, textures);
         // The chat is the only place a player types, and its commands work on this very
         // screen: it is its own command context. Handing "this" out while the
@@ -582,6 +610,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 interfaceMouse.x, interfaceMouse.y, !isInterfaceOpen());
         creativeGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+        machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
         batch.end();
         batch.setColor(Color.WHITE);
@@ -629,7 +658,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         chatOverlay.update(delta);
 
         if (inputHandler.consumePauseToggle()) {
-            if (creativeGui.isOpen()) {
+            if (machineGui.isOpen()) {
+                // The escape key closes whatever is on top first.
+                machineGui.close();
+            } else if (creativeGui.isOpen()) {
                 // The escape key closes whatever is on top first.
                 creativeGui.close();
             } else if (inventoryGui.isOpen()) {
@@ -665,7 +697,50 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             updateInteraction(delta);
         }
         world.entities().update(world, delta, player.blockX(), player.blockY());
+        tickWorld(delta);
+        closeMachineIfUnloaded();
         streamChunks(false);
+    }
+
+    /**
+     * Closes the screen of a machine that is no longer where it was.
+     * <p>
+     * A chunk the player walked away from is dropped from memory, and its machines leave
+     * with it. A screen that stayed open would belong to a block nobody can reach: what a
+     * player put into it would go into an entity that is written as soon as the chunk is
+     * loaded again at best, and into nothing at all at worst. Closing it hands the stack
+     * on the mouse back to the player, see
+     * {@link com.philia093.neofactory.gui.container.ContainerMenu#close()}.
+     */
+    private void closeMachineIfUnloaded() {
+        if (openMachine == null || !machineGui.isOpen()) {
+            return;
+        }
+        BlockEntity current = world.blockEntity(openMachine.x(), openMachine.y(),
+                openMachine.layer());
+        if (current != openMachine) {
+            LOGGER.info("Machine at block ({}, {}) is gone, its screen is closed",
+                    openMachine.x(), openMachine.y());
+            machineGui.close();
+            openMachine = null;
+        }
+    }
+
+    /**
+     * Advances the block entities of the world, the machines and whatever else a block
+     * carries, by the ticks the frame is worth.
+     * <p>
+     * Everything a machine does per second is settled in ticks and not in frames, which
+     * is what keeps a furnace that was left alone from working faster on a machine with a
+     * high frame rate than on a slow one, see {@link TickClock}.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    private void tickWorld(float delta) {
+        int ticks = tickClock.advance(delta);
+        for (int tick = 0; tick < ticks; tick++) {
+            world.tick(TickClock.TICK_SECONDS);
+        }
     }
 
     /**
@@ -683,7 +758,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * @return {@code true} while the player types or moves items around
      */
     private boolean isInterfaceOpen() {
-        return inventoryGui.isOpen() || creativeGui.isOpen() || chat.isOpen();
+        return inventoryGui.isOpen() || creativeGui.isOpen() || machineGui.isOpen()
+                || chat.isOpen();
     }
 
     /**
@@ -723,6 +799,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (target == null) {
             return false;
         }
+        if (openMachine()) {
+            return true;
+        }
         String itemName = player.inventory().heldStack().item().displayName();
         int x = target.x();
         int y = target.y();
@@ -731,6 +810,28 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return false;
         }
         LOGGER.info("Built {} into block ({}, {}) of layer {}", itemName, x, y, layer);
+        return true;
+    }
+
+    /**
+     * Opens the screen of the machine the player aims at.
+     * <p>
+     * Using a block that carries a machine shows it instead of building the held block: a
+     * machine holds slots, a buffer and tanks, and all of it belongs to the block that was
+     * placed. A cell that carries no machine reports {@code false}, so the build button
+     * keeps building wherever the player aims at.
+     *
+     * @return {@code true} when a machine stood there and its screen is up now
+     */
+    private boolean openMachine() {
+        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.layer());
+        if (!(entity instanceof MachineBlockEntity machine)) {
+            return false;
+        }
+        machineGui.open(machine.machine(), player.inventory());
+        openMachine = machine;
+        LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
+                target.x(), target.y(), target.layer());
         return true;
     }
 
@@ -888,8 +989,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
         debugFrameCounter = 0;
         LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | mode {} | tiles {} | chunks {} "
-                        + "(view {}, stored {}, changed {}) | stream +{}/-{} | entities {} | hotbar {} "
-                        + "| inventory {} | chat {} | target {} | gui {} | fps {}",
+                        + "(view {}, stored {}, changed {}) | stream +{}/-{} | entities {} | machines {} "
+                        + "| ticks {} | hotbar {} | inventory {} | chat {} | target {} | gui {} | fps {}",
                 summary.displayName(),
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
                 gameMode().modeName(),
@@ -897,6 +998,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 world.storedChunkCount(), world.modifiedChunkCount(),
                 streamer.lastLoaded(), streamer.lastUnloaded(),
                 world.entities().count(),
+                world.blockEntityCount(),
+                tickClock.tickCount(),
                 player.inventory().selectedSlot(),
                 inventoryText(),
                 chat.isOpen() ? "typing '" + chat.text() + "'" : "closed",

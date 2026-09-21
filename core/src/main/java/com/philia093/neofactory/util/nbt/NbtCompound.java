@@ -198,6 +198,17 @@ public final class NbtCompound extends NbtTag {
     }
 
     /**
+     * Returns an entry as an integer array.
+     *
+     * @param key name of the entry
+     * @return the array, or {@code null} when the entry is missing or of another
+     *         type
+     */
+    public NbtIntArray getIntArray(String key) {
+        return (NbtIntArray) get(key, NbtType.INT_ARRAY);
+    }
+
+    /**
      * Returns an integer entry.
      *
      * @param key name of the entry

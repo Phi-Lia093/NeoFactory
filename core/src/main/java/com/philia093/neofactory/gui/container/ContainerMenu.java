@@ -78,7 +78,7 @@ public final class ContainerMenu {
         void drop(ItemStack stack);
     }
 
-    private final ContainerLayout layout;
+    private ContainerLayout layout;
 
     /** Inventory the other side of the container belongs to, see {@link #touchDown}. */
     private final Inventory playerSide;
@@ -125,6 +125,25 @@ public final class ContainerMenu {
     /** Slots of this container and the size of its panel. */
     public ContainerLayout layout() {
         return layout;
+    }
+
+    /**
+     * Hands the container another layout, keeping the stack the mouse carries.
+     * <p>
+     * The creative inventory swaps the grid of items for the inventory of the player when
+     * the player chooses another tab, and a stack that was lifted onto the mouse belongs
+     * to the player and not to the panel below it: it survives the swap instead of being
+     * dropped back. A drag that is still running belongs to the slots of the old layout
+     * and is given up, so a click cannot reach a slot that is no longer on screen.
+     *
+     * @param layout slots the clicks are measured against from now on
+     */
+    public void setLayout(ContainerLayout layout) {
+        this.layout = Objects.requireNonNull(layout, "layout");
+        dragStart = null;
+        dragSlots.clear();
+        dragAmounts.clear();
+        dragMoved = false;
     }
 
     /** Inventory the other side of the container belongs to. */

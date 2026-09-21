@@ -29,7 +29,7 @@ import com.philia093.neofactory.util.Constants;
  * rectangle and the slots simply stay empty, so the game remains usable while the
  * art is being worked on.
  */
-public final class PanelTextures {
+public final class PanelTextures implements ContainerAppearance {
 
     /** Sheet holding the panel and the gauges, without extension. */
     public static final String SHEET = BlockTextureCache.GUI_FOLDER + "inventory_icons";
@@ -183,7 +183,7 @@ public final class PanelTextures {
      * @param x left edge of the cell the slot belongs to
      * @param y lower edge of that cell
      */
-    public void drawSlot(SpriteBatch batch, float x, float y) {
+    public void drawSlot(SpriteBatch batch, float x, float y, int column, int row) {
         if (slot != null) {
             // The picture covers the cell and its bevel, which reaches one pixel
             // beyond the sixteen pixels an item icon uses on every side.

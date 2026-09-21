@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui.creative;
 
+import com.badlogic.gdx.Input;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
@@ -68,6 +69,9 @@ class CreativeInventoryTest {
     @Test
     void everyGroupHoldsTheItemsTheGameIsWrittenIn() {
         assertTrue(tab("blocks").matches(Items.STONE), "a block is a block");
+        assertTrue(tab("machines").matches(Items.FURNACE), "a furnace is a machine");
+        assertFalse(tab("blocks").matches(Items.FURNACE),
+                "and the blocks hand their machines over instead of listing them twice");
         assertTrue(tab("materials").matches(Items.STICK), "a stick is a material");
         assertTrue(tab("food").matches(Items.APPLE), "an apple is food");
         assertTrue(tab("tools").matches(Items.IRON_PICKAXE), "a pickaxe is a tool");
@@ -84,8 +88,20 @@ class CreativeInventoryTest {
         assertEquals(Items.STONE, creative.stackAt(0).item(), "the first block");
         assertEquals(Items.STONE.maxStackSize(), creative.stackAt(0).count(),
                 "a creative stack is full");
-        assertEquals(Items.BEDROCK, creative.stackAt(blockCount() - 1).item(), "the last block");
-        assertTrue(creative.stackAt(blockCount()).isEmpty(), "the free room behind the group");
+        // The furnace is the block that was added most recently, but it holds a machine
+        // and is therefore listed by the tab of the machines, see CreativeRegistry.
+        assertTrue(creative.stackAt(blockCount() - 1).isEmpty(),
+                "the free room behind the group of the blocks");
+    }
+
+    @Test
+    void theTabOfTheMachinesListsTheFurnace() {
+        CreativeInventory creative = new CreativeInventory();
+        creative.select(indexOfTab("machines"));
+
+        assertEquals(Items.FURNACE, creative.stackAt(0).item(), "the only machine of the game");
+        assertTrue(creative.stackAt(1).isEmpty(), "and nothing behind it so far");
+        assertEquals(1, creative.matches().size(), "the list holds the furnace alone");
     }
 
     @Test
@@ -190,6 +206,22 @@ class CreativeInventoryTest {
     }
 
     @Test
+    void aKeyOfTheSearchBoxIsKeptFromTheHotkeys() {
+        // A letter the player types belongs into the box: with the old order a typed E
+        // closed the screen, because the game reads that key as the inventory hotkey.
+        assertTrue(CreativeInventory.isSearchKey(Input.Keys.E), "E belongs into the box");
+        assertTrue(CreativeInventory.isSearchKey(Input.Keys.T), "and T as well");
+        assertTrue(CreativeInventory.isSearchKey(Input.Keys.NUM_1),
+                "a digit switches no hotbar slot while the player types");
+        assertTrue(CreativeInventory.isSearchKey(Input.Keys.BACKSPACE), "backspace deletes");
+
+        assertFalse(CreativeInventory.isSearchKey(Input.Keys.ESCAPE),
+                "escape always leaves the screen");
+        assertFalse(CreativeInventory.isSearchKey(Input.Keys.F11),
+                "and a function key still reaches the game");
+    }
+
+    @Test
     void aFrameWithoutAWheelNotchLeavesTheListWhereItIs() {
         CreativeInventory creative = new CreativeInventory();
         creative.select(indexOf(CreativeTab.Kind.SEARCH));
@@ -249,6 +281,16 @@ class CreativeInventoryTest {
         for (CreativeTab tab : CreativeRegistry.tabs()) {
             if (tab.name().equals(name)) {
                 return tab;
+            }
+        }
+        throw new AssertionError("the game has no tab called " + name);
+    }
+
+    /** Index of the tab of the game with the given name. */
+    private static int indexOfTab(String name) {
+        for (int index = 0; index < CreativeRegistry.tabs().size(); index++) {
+            if (CreativeRegistry.tabs().get(index).name().equals(name)) {
+                return index;
             }
         }
         throw new AssertionError("the game has no tab called " + name);

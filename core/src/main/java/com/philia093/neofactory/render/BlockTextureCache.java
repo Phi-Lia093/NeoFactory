@@ -268,6 +268,13 @@ public class BlockTextureCache implements Disposable {
 
     /**
      * Reads the pixels of a tile and folds them into a cube.
+     * <p>
+     * The cube is folded at {@link BlockIconFactory#FOLDED_SIZE} and not at the size of the
+     * cell that shows it: the tile is spread over that many pixels first, so the steps along
+     * the slanted edges of the cube are four pixels wide instead of sixteen. The texture is
+     * drawn into a sixteen pixel cell with a smooth filter, so what the player sees is a
+     * cube whose edges fade instead of a staircase, see
+     * {@link BlockIconFactory#downscale(int[], int, int)}.
      *
      * @param name texture name or path, without extension
      * @param frame zero based frame inside the sheet
@@ -278,10 +285,10 @@ public class BlockTextureCache implements Disposable {
         if (path == null) {
             return null;
         }
-        int size = Constants.ITEM_ICON_SIZE;
+        int size = BlockIconFactory.FOLDED_SIZE;
         Pixmap folded = null;
         try {
-            int[] pixels = iconPixels(path, frame, size, true);
+            int[] pixels = iconPixels(path, frame, Constants.ITEM_ICON_SIZE, size, true);
             folded = new Pixmap(size, size, Pixmap.Format.RGBA8888);
             for (int y = 0; y < size; y++) {
                 for (int x = 0; x < size; x++) {
@@ -289,7 +296,10 @@ public class BlockTextureCache implements Disposable {
                 }
             }
             Texture texture = new Texture(folded);
-            texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            // The cube is finer than the cell it is shown in, so the scaling is left to the
+            // graphics card: dropping a texture that is several times the size of a cell is
+            // what turns the steps of its edges into soft ones.
+            texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
             foldedTextures.add(texture);
             return new TextureRegion(texture);
         } catch (RuntimeException e) {
@@ -377,8 +387,32 @@ public class BlockTextureCache implements Disposable {
      * @return the pixels, row by row, packed as RGBA8888
      */
     private static int[] iconPixels(String path, int frame, int size, boolean cube) {
-        int[] tile = readTile(path, frame, size);
-        return cube ? BlockIconFactory.isometric((x, y) -> tile[y * size + x], size) : tile;
+        return iconPixels(path, frame, size, size, cube);
+    }
+
+    /**
+     * Reads the icon of a tile, folding a block into its cube when asked.
+     * <p>
+     * The picture and the icon may have different sizes: a cube folded at several times the
+     * size of the cell that shows it simply spreads every pixel of the tile over the cells a
+     * step of {@code size / tileSize} reaches.
+     *
+     * @param path path relative to the asset root, extension included
+     * @param frame zero based frame inside the sheet
+     * @param tileSize side length of one frame of the picture in pixels
+     * @param size side length of the icon in pixels
+     * @param cube {@code true} to fold the tile into the cube of a block item
+     * @return the pixels, row by row, packed as RGBA8888
+     */
+    private static int[] iconPixels(String path, int frame, int tileSize, int size,
+            boolean cube) {
+        int[] tile = readTile(path, frame, tileSize);
+        if (!cube) {
+            return tile;
+        }
+        int step = Math.max(1, size / tileSize);
+        return BlockIconFactory.isometric((x, y) -> tile[(y / step) * tileSize + (x / step)],
+                size);
     }
 
     /**

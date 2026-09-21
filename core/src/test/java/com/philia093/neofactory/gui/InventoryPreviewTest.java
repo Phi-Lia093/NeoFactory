@@ -8,8 +8,8 @@ import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
-import com.philia093.neofactory.render.BlockIconFactory;
 import com.philia093.neofactory.render.BlockTextureCache;
+import com.philia093.neofactory.support.TestIcons;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Constants;
 import org.junit.jupiter.api.BeforeAll;
@@ -169,7 +169,7 @@ class InventoryPreviewTest {
             return;
         }
         int size = Constants.ITEM_ICON_SIZE;
-        int[] icon = readIcon(stack.item());
+        int[] icon = TestIcons.icon(stack.item());
         for (int row = 0; row < size; row++) {
             for (int column = 0; column < size; column++) {
                 int colour = icon[row * size + column];
@@ -183,27 +183,6 @@ class InventoryPreviewTest {
                 }
             }
         }
-    }
-
-    /** Reads the icon of an item, folding the tile of a block into a cube. */
-    private static int[] readIcon(Item item) {
-        Path file = ASSETS.resolve(BlockTextureCache.resolvePath(item.texture()));
-        BufferedImage picture;
-        try {
-            picture = ImageIO.read(file.toFile());
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read " + file, e);
-        }
-        int size = Constants.ITEM_ICON_SIZE;
-        int[] tile = new int[size * size];
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                int argb = picture.getRGB(x, y + item.iconFrame() * size);
-                tile[y * size + x] = (argb << 8) | (argb >>> 24);
-            }
-        }
-        boolean cube = item.isBlockItem() && item.block() != null && !item.block().isTransparent();
-        return cube ? BlockIconFactory.isometric((x, y) -> tile[y * size + x], size) : tile;
     }
 
     /** Fills a whole picture with one colour. */

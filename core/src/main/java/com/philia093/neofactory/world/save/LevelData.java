@@ -20,14 +20,14 @@ import com.philia093.neofactory.world.GameMode;
  *  +- Entities: []
  *  +- GameRules: { doDaylightCycle: 1, doWeatherCycle: 1, keepInventory: 0 }
  * </pre>
- * The chunks are not part of this file since format 2: one file per changed chunk
- * lives below {@link SaveFormat#CHUNK_FOLDER} instead, see {@link ChunkStorage}.
+ * The chunks are not part of this file: one file per changed chunk lives below
+ * {@link SaveFormat#CHUNK_FOLDER} instead, see {@link ChunkStorage}.
  * <p>
  * Groups that belong to systems which do not exist yet are written as well, so a
  * world stored today keeps its shape once they do. Reading never fails because an
  * entry is missing: every getter falls back to a default, see
- * {@link NbtCompound#getInt(String, int)}. Only a file written by a newer format
- * is refused, see {@link #read(NbtCompound)}.
+ * {@link NbtCompound#getInt(String, int)}. A file of another save format is refused
+ * instead, see {@link #read(NbtCompound)}.
  */
 public final class LevelData {
 
@@ -68,13 +68,14 @@ public final class LevelData {
      *
      * @param root root tag of the stored world
      * @return the level data
-     * @throws SaveException when the file was written by a newer format
+     * @throws SaveException when the file was written by another save format
      */
     public static LevelData read(NbtCompound root) {
         int version = root.getInt(SaveTags.DATA_VERSION, 0);
-        if (version > SaveFormat.DATA_VERSION) {
-            throw new SaveException("World was written by a newer build: save format " + version
-                    + ", this build understands " + SaveFormat.DATA_VERSION);
+        if (version != SaveFormat.DATA_VERSION) {
+            throw new SaveException("World was written by save format " + version
+                    + ", this build reads format " + SaveFormat.DATA_VERSION
+                    + " and converts no other one");
         }
 
         LevelData data = new LevelData();

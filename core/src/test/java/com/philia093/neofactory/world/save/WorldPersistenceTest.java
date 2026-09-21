@@ -62,7 +62,6 @@ class WorldPersistenceTest {
 
         NbtCompound root = (NbtCompound) NbtIo.readGzip(summary.levelFile());
         assertEquals(SaveFormat.DATA_VERSION, root.getInt(SaveTags.DATA_VERSION, 0));
-        assertFalse(root.contains(SaveTags.CHUNKS), "the level file still holds a chunk list");
     }
 
     @Test
@@ -119,6 +118,25 @@ class WorldPersistenceTest {
             streamer.update(world, BUILT_X + 0.5f, BUILT_Y + 0.5f, 16.0f);
         }
         assertEquals(Blocks.STONE, world.getBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
+    }
+
+    @Test
+    void aStateSurvivesItsSaveGame() throws Exception {
+        WorldStorage storage = new WorldStorage(tempFolder.toFile());
+        SaveSummary summary = createSaveGame(storage);
+
+        World world = new World(SEED, 0, 0);
+        world.setBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.STONE);
+        // The state is what a machine would face or a pipe would be drawn with, so it
+        // has to reach the chunk file exactly like the block does.
+        world.setMeta(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, 42);
+        WorldSaver.save(storage, summary, levelData(), world, new PlayerInventory());
+
+        WorldLoader loader = WorldLoader.open(storage, storage.list().get(0), 0, 0);
+
+        assertEquals(Blocks.STONE,
+                loader.world().getBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
+        assertEquals(42, loader.world().getMeta(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
     }
 
     @Test

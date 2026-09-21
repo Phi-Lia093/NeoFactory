@@ -1,6 +1,9 @@
 package com.philia093.neofactory.machine;
 
 import com.philia093.neofactory.item.Inventory;
+import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.recipe.RecipeGrid;
+import com.philia093.neofactory.recipe.SlotGrid;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +29,27 @@ public final class MachineInventory extends Inventory {
         /** Holds what the machine made, a screen only lets a player take it out. */
         OUTPUT,
 
-        /** A plain slot without a job, for example the upgrade of a machine. */
+        /**
+         * Holds a module the machine itself reads while it works.
+         * <p>
+         * An upgrade slot is filled and emptied like an input slot, it is simply not
+         * part of what a recipe is offered: a speed module or a filter belongs to the
+         * machine and not to its recipe. Which modules the game will own is not decided
+         * yet, so this role only says where such a stack belongs.
+         */
+        UPGRADE,
+
+        /**
+         * The slot that will configure a machine later on.
+         * <p>
+         * It sits in the lower right corner of the panel and belongs to a machine that
+         * serves one input from many: which of its inputs a recipe takes is a question of
+         * the configuration the player puts here. Nothing reads it yet, so the role only
+         * says where such a stack belongs.
+         */
+        CONFIGURE,
+
+        /** A plain slot without a job. */
         NORMAL
     }
 
@@ -82,6 +105,46 @@ public final class MachineInventory extends Inventory {
         }
         return found;
     }
+
+    /**
+     * The slots of one role, offered to a recipe as a grid.
+     * <p>
+     * The slots of a machine need not lie next to each other - an input may sit between
+     * a fuel slot and an output - so the grid is built from the list of indexes instead
+     * of a rectangle of the inventory, see {@link SlotGrid}. A machine that has no slot
+     * of that role gets a grid without a place, which a recipe sees as an empty input.
+     *
+     * @param role role to collect
+     * @return the grid, never {@code null}
+     */
+    public RecipeGrid gridOf(Role role) {
+        List<Integer> slots = slotsOf(role);
+        return slots.isEmpty() ? NO_SLOTS : new SlotGrid(this, slots);
+    }
+
+    /** Grid a machine uses for a role it has no slot of. */
+    private static final RecipeGrid NO_SLOTS = new RecipeGrid() {
+
+        @Override
+        public int width() {
+            return 0;
+        }
+
+        @Override
+        public int height() {
+            return 0;
+        }
+
+        @Override
+        public ItemStack get(int x, int y) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public String toString() {
+            return "RecipeGrid(no slots)";
+        }
+    };
 
     @Override
     public String toString() {

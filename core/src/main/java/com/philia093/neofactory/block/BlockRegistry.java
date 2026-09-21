@@ -20,10 +20,15 @@ public final class BlockRegistry {
     private static final Logger LOGGER = LogManager.getLogger();
 
     /**
-     * Maximum number of block types. The limit exists because chunks store the
-     * block id inside a single byte per block.
+     * Maximum number of block types.
+     * <p>
+     * The limit guards the registration order and is not a limit of the storage: a
+     * chunk keeps the id of a cell in a full 32 bit number, so a factory may add as
+     * many blocks as it needs. Ids are handed out from zero upwards, which keeps
+     * {@link #byId(int)} a plain array lookup on the path a renderer walks every
+     * frame, and {@link Blocks#NEXT_FREE_ID} is the number after the last one.
      */
-    public static final int MAX_BLOCKS = 256;
+    public static final int MAX_BLOCKS = 1 << 16;
 
     private static final List<Block> BY_ID = new ArrayList<>(MAX_BLOCKS);
     private static final Map<String, Block> BY_NAME = new HashMap<>();

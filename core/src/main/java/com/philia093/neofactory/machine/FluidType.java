@@ -1,5 +1,7 @@
 package com.philia093.neofactory.machine;
 
+import com.badlogic.gdx.graphics.Color;
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -16,10 +18,12 @@ import java.util.Objects;
 public final class FluidType {
 
     /** Still water, the fluid of every lake and ocean. */
-    public static final FluidType WATER = new FluidType("water");
+    public static final FluidType WATER = new FluidType("water",
+            new Color(0.25f, 0.45f, 0.90f, 1.0f));
 
     /** Lava, the fluid of the deep layers of the world. */
-    public static final FluidType LAVA = new FluidType("lava");
+    public static final FluidType LAVA = new FluidType("lava",
+            new Color(0.95f, 0.45f, 0.10f, 1.0f));
 
     private static final Map<String, FluidType> BY_NAME = new LinkedHashMap<>();
 
@@ -30,13 +34,32 @@ public final class FluidType {
 
     private final String name;
 
-    private FluidType(String name) {
+    /**
+     * Colour a screen fills a tank of this fluid with.
+     * <p>
+     * The game has no picture per fluid yet, so a tank shows its content as a coloured
+     * level, see {@code MachineGui}. The colour has to be readable on the grey slot the tank
+     * is drawn in.
+     */
+    private final Color color;
+
+    private FluidType(String name, Color color) {
         this.name = Objects.requireNonNull(name, "name");
+        this.color = new Color(color);
     }
 
     /** Name of this fluid, used by files and by the log. */
     public String name() {
         return name;
+    }
+
+    /**
+     * Colour a screen fills a tank of this fluid with.
+     *
+     * @return the colour, do not modify it
+     */
+    public Color color() {
+        return color;
     }
 
     /**

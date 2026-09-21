@@ -45,6 +45,8 @@ public final class CreativeTextures {
     private final TextureRegion searchPanel;
     private final TextureRegion tabIdle;
     private final TextureRegion tabActive;
+    private final TextureRegion tabIdleBelow;
+    private final TextureRegion tabActiveBelow;
     private final TextureRegion scrollActive;
     private final TextureRegion scrollIdle;
 
@@ -62,6 +64,8 @@ public final class CreativeTextures {
                 CreativeLayout.TAB_HEIGHT);
         this.tabActive = textures.region(SHEET, TAB_ACTIVE_X, TAB_ACTIVE_Y,
                 CreativeLayout.TAB_WIDTH, CreativeLayout.TAB_HEIGHT);
+        this.tabIdleBelow = turned(tabIdle);
+        this.tabActiveBelow = turned(tabActive);
         this.scrollActive = textures.region(SHEET, THUMB_ACTIVE_X, THUMB_ACTIVE_Y,
                 CreativeLayout.SCROLL_WIDTH, CreativeLayout.SCROLL_THUMB_HEIGHT);
         this.scrollIdle = textures.region(SHEET, THUMB_IDLE_X, THUMB_IDLE_Y,
@@ -80,12 +84,40 @@ public final class CreativeTextures {
 
     /**
      * The picture of a tab.
+     * <p>
+     * The tabs below the panel share the art of the tabs above it: their picture is turned
+     * by half a circle, which brings its straight edge to the top so it sits on the lower
+     * edge of the panel, and then mirrored left to right, which turns the shading of the
+     * picture back: a chosen tab of the lower row lights up on the same side as a chosen
+     * tab of the upper one instead of the mirrored side.
      *
      * @param chosen {@code true} for the chosen tab
+     * @param below {@code true} for a tab of the lower row
      * @return the picture, {@code null} when the sheet is missing
      */
-    public TextureRegion tab(boolean chosen) {
+    public TextureRegion tab(boolean chosen, boolean below) {
+        if (below) {
+            return chosen ? tabActiveBelow : tabIdleBelow;
+        }
         return chosen ? tabActive : tabIdle;
+    }
+
+    /**
+     * The same picture turned by half a circle and mirrored left to right.
+     *
+     * @param region picture of a tab above the panel, {@code null} when there is none
+     * @return the picture for a tab below the panel, {@code null} when there is none
+     */
+    private static TextureRegion turned(TextureRegion region) {
+        if (region == null) {
+            return null;
+        }
+        TextureRegion turned = new TextureRegion(region);
+        // Half a circle, so the straight edge of the tab points upwards.
+        turned.flip(true, true);
+        // And back left to right, so its shading stays on the side the player knows.
+        turned.flip(true, false);
+        return turned;
     }
 
     /**
@@ -105,6 +137,7 @@ public final class CreativeTextures {
     /** {@code true} when the sheet could be cut out and every element is available. */
     public boolean isComplete() {
         return itemsPanel != null && searchPanel != null && tabIdle != null && tabActive != null
-                && scrollActive != null && scrollIdle != null;
+                && tabIdleBelow != null && tabActiveBelow != null && scrollActive != null
+                && scrollIdle != null;
     }
 }

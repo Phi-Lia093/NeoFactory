@@ -30,6 +30,7 @@ public final class Block {
     private final Color tint;
     private final float hardness;
     private final int harvestLevel;
+    private final String blockEntityTypeName;
 
     private Block(Builder builder) {
         this.id = builder.id;
@@ -42,6 +43,7 @@ public final class Block {
         this.tint = builder.tint;
         this.hardness = builder.hardness;
         this.harvestLevel = builder.harvestLevel;
+        this.blockEntityTypeName = builder.blockEntityTypeName;
     }
 
     /** Unique numeric id, also used as the palette index inside chunks. */
@@ -135,6 +137,26 @@ public final class Block {
         return harvestLevel;
     }
 
+    /**
+     * Name of the block entity this block owns, empty for a block without one.
+     * <p>
+     * A wall, a floor and every decorative block hold nothing but their own texture and
+     * need no block entity. A machine does: the name is the one its type was registered
+     * with, see {@link com.philia093.neofactory.blockentity.BlockEntityRegistry}, and it
+     * is what puts the entity behind the block while the block is built and what brings
+     * it back while its chunk is read.
+     *
+     * @return the name of the block entity type, empty when this block has none
+     */
+    public String blockEntityTypeName() {
+        return blockEntityTypeName;
+    }
+
+    /** {@code true} when this block carries a block entity. */
+    public boolean hasBlockEntity() {
+        return !blockEntityTypeName.isEmpty();
+    }
+
     /** {@code true} when this block has a texture that can be drawn. */
     public boolean isDrawable() {
         return !texture.isEmpty() && !isAir();
@@ -179,6 +201,7 @@ public final class Block {
         private Color tint = new Color(Color.WHITE);
         private float hardness = 1.0f;
         private int harvestLevel;
+        private String blockEntityTypeName = "";
 
         private Builder(int id, String name) {
             this.id = id;
@@ -239,6 +262,21 @@ public final class Block {
                 throw new IllegalArgumentException("Harvest level must not be negative: " + harvestLevel);
             }
             this.harvestLevel = harvestLevel;
+            return this;
+        }
+
+        /**
+         * Declares that this block owns a block entity.
+         * <p>
+         * The name is looked up in {@link com.philia093.neofactory.blockentity.BlockEntityRegistry}
+         * while the block is built and while a chunk is read, which is why it is a name
+         * and not a type: the table of the block types is written first and knows nothing
+         * about the systems that use it.
+         *
+         * @param typeName name the block entity type was registered with
+         */
+        public Builder blockEntity(String typeName) {
+            this.blockEntityTypeName = Objects.requireNonNull(typeName, "typeName");
             return this;
         }
 
