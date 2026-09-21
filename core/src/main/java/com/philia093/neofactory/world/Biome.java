@@ -27,7 +27,31 @@ public enum Biome {
     ROCKY("rocky", 3),
 
     /** Cold highland: snow floor with sparse trees. */
-    SNOWY("snowy", 4);
+    SNOWY("snowy", 4),
+
+    /**
+     * A river, running through every other biome of the world.
+     * <p>
+     * Its bed is gravel, clay and sand and the water stands above it in the layer the player
+     * walks in, held by a rim of sand and gravel, see
+     * {@link com.philia093.neofactory.world.decoration.WaterBodyDecoration}.
+     * <p>
+     * The weight is zero, which keeps this biome out of the slices of
+     * {@link #fromNormalized(float)}: no band of the biome field produces a river. The terrain
+     * decides where one runs instead - the river follows the contour line of a noise field of
+     * its own, which is what makes it wind instead of run straight, see
+     * {@code WorldGen#biomeAt(int, int)}.
+     */
+    RIVER("river", 0),
+
+    /**
+     * A lake, the wide cousin of the river.
+     * <p>
+     * The same bed and the same water as {@link #RIVER}, above a shape the noise of the terrain
+     * drew: a lobe of a fractal field, never a circle. It is also the level a lake of lava is
+     * laid out on, see {@code LavaLakeDecoration}.
+     */
+    LAKE("lake", 0);
 
     private final String name;
     private final int weight;
@@ -57,6 +81,8 @@ public enum Biome {
     public Block floorBlock() {
         switch (this) {
             case DESERT:
+            case RIVER:
+            case LAKE:
                 return Blocks.SAND;
             case ROCKY:
                 return Blocks.STONE;
@@ -77,6 +103,10 @@ public enum Biome {
         switch (this) {
             case DESERT:
                 return Blocks.SANDSTONE;
+            case RIVER:
+            case LAKE:
+                // Clay is what lies under a bank, the material a river carries along.
+                return Blocks.CLAY;
             case ROCKY:
                 return Blocks.GRAVEL;
             case SNOWY:
@@ -95,8 +125,9 @@ public enum Biome {
     public Block accentBlock() {
         switch (this) {
             case DESERT:
-                return Blocks.GRAVEL;
             case ROCKY:
+            case RIVER:
+            case LAKE:
                 return Blocks.GRAVEL;
             case SNOWY:
                 return Blocks.STONE;
@@ -130,6 +161,10 @@ public enum Biome {
      * The range {@code [0, 1]} is cut into consecutive slices, one per biome,
      * whose sizes follow {@link #weight()}. The mapping is stable, a given noise
      * value always yields the same biome.
+     * <p>
+     * A biome with a weight of zero never owns a slice. That is how a river and a lake stay out of
+     * the biome field: their cells come from fields of their own, which the generator asks before
+     * this method is reached, see {@code WorldGen#biomeAt(int, int)}.
      *
      * @param normalized value in the range {@code [0, 1]}
      * @return the biome owning that slice of the noise range
@@ -146,6 +181,11 @@ public enum Biome {
         int scaled = (int) (value * TOTAL_WEIGHT);
         int accumulated = 0;
         for (Biome biome : values()) {
+            if (biome.weight <= 0) {
+                // A river and a lake are drawn by the terrain and never by the biome field, so
+                // they take no room from the biomes that are.
+                continue;
+            }
             accumulated += biome.weight;
             if (scaled < accumulated) {
                 return biome;

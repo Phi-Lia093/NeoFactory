@@ -264,8 +264,25 @@ public final class CreativeInventory {
     /** Refills the grid from the items that are already picked out. */
     private void refill() {
         for (int index = 0; index < PAGE_SIZE; index++) {
-            grid.set(index, sourceAt(index));
+            grid.set(index, shownAt(index));
         }
+    }
+
+    /**
+     * Stack a slot of the grid shows.
+     * <p>
+     * One item and never a whole stack: the grid of a creative inventory is a shelf of what the
+     * game owns and not a chest, so the icon of a slot carries no amount - the player asks for
+     * what is wanted by clicking, one piece with the left button and a whole stack with the right
+     * one, see {@code ContainerMenu#setCreativeSupply(boolean)}. This is also the supply behind a
+     * slot that was emptied, which is why one piece and not a stack is handed out again.
+     *
+     * @param index slot of the grid, {@code 0} to {@value #PAGE_SIZE} minus one
+     * @return one item of that slot, {@link ItemStack#EMPTY} for a free slot
+     */
+    public ItemStack shownAt(int index) {
+        ItemStack source = sourceAt(index);
+        return source.isEmpty() ? ItemStack.EMPTY : ItemStack.of(source.item(), 1);
     }
 
     /** The items a tab holds, before the scroll cuts them to the page. */

@@ -137,9 +137,12 @@ public final class CreativeInventoryGui {
         this.gridLayout = gridLayout();
         this.playerLayout = playerLayout();
         this.menu = new ContainerMenu(gridLayout, player);
-        // The grid only hands items out, so a slot that was emptied asks for the next
-        // stack; this supply is endless, which is what a creative player owns.
-        this.menu.setResultFiller(slot -> creative.sourceAt(slot.index()));
+        // The grid only hands items out, so a slot that was emptied asks for the next piece;
+        // this supply is endless, which is what a creative player owns. It hands out one item,
+        // because the shelf of the game shows one and not a stack.
+        this.menu.setResultFiller(slot -> creative.shownAt(slot.index()));
+        // The grid hands out one piece per left click and a whole stack per right one.
+        this.menu.setCreativeSupply(true);
         // The grid owns every item of the game and fills itself again, so dropping a
         // stack into it means throwing it away instead of finding no room.
         this.menu.setVoidsOverflow(true);

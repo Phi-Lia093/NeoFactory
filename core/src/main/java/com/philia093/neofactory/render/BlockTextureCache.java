@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
@@ -50,6 +51,12 @@ public class BlockTextureCache implements Disposable {
     private final AssetManager assets;
     private final ObjectMap<String, TextureRegion> regions = new ObjectMap<>();
     private final ObjectMap<String, TextureRegion> icons = new ObjectMap<>();
+
+    /** Cells of every animated sheet, cut once and reused, see {@link #frameRegion}. */
+    private final ObjectMap<String, TextureRegion[]> animationFrames = new ObjectMap<>();
+
+    /** Filled cells, painted once per item, see {@link #fluidCellIcon(Item)}. */
+    private final ObjectMap<String, TextureRegion> cellIcons = new ObjectMap<>();
 
     /** Cubes folded from a block tile, keyed by texture name and frame. */
     private final ObjectMap<String, TextureRegion> foldedIcons = new ObjectMap<>();
@@ -138,6 +145,42 @@ public class BlockTextureCache implements Disposable {
     /** Returns a cell of {@code map/map_icons.png}. */
     public TextureRegion mapIcon(int index) {
         return sheetCell(MAP_FOLDER + "map_icons", Constants.MAP_ICON_CELL_SIZE, index);
+    }
+
+    /**
+     * Returns one frame of an animated sheet, cutting the sheet the first time it is asked.
+     * <p>
+     * A block with an animation owns a sheet of frames stacked upwards, and the whole sheet is
+     * cut into its cells once and kept: a lake asks for a frame of every cell it covers on
+     * every frame of the game, and cutting the picture again each time would fill the heap
+     * with regions that are thrown away right after they were drawn.
+     * <p>
+     * The amount of cells is read from the picture, so a sheet that grew a frame does not have
+     * to be announced twice.
+     *
+     * @param name texture name or path, without extension
+     * @param frame index of the wanted frame, wrapped into the sheet
+     * @return the frame, or {@code null} when the picture is missing
+     */
+    public TextureRegion frameRegion(String name, int frame) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        TextureRegion[] cells = animationFrames.get(name);
+        if (cells == null) {
+            TextureRegion sheet = region(name);
+            if (sheet == null) {
+                return null;
+            }
+            int height = sheet.getTexture().getHeight();
+            int count = Math.max(1, height / Constants.ITEM_ICON_SIZE);
+            cells = new TextureRegion[count];
+            for (int index = 0; index < count; index++) {
+                cells[index] = sheetCell(name, Constants.ITEM_ICON_SIZE, index);
+            }
+            animationFrames.put(name, cells);
+        }
+        return cells[Math.floorMod(frame, cells.length)];
     }
 
     /**
@@ -234,7 +277,63 @@ public class BlockTextureCache implements Disposable {
                 return cube;
             }
         }
+        if (item.isFluidContainer() && item.container().paintsItsWindow()) {
+            TextureRegion filled = fluidCellIcon(item);
+            if (filled != null) {
+                return filled;
+            }
+        }
         return iconRegion(item.texture(), item.iconFrame());
+    }
+
+    /**
+     * Draws the cell of a fluid with the window painted in the colour of the fluid.
+     * <p>
+     * A full cell is not a picture of the art pack but one that is painted here: the grey scale
+     * cell with its window in the colour of the fluid inside, see
+     * {@link CellIconFactory}. The result is kept per item, so the picture of a water cell is
+     * built once and handed out for the rest of the session, and the tint of the item stays white
+     * because the colour is already in the picture.
+     *
+     * @param item item that carries a fluid
+     * @return the icon, or {@code null} when the picture of the cell cannot be read
+     */
+    private TextureRegion fluidCellIcon(Item item) {
+        Fluid fluid = item.container().content();
+        String path = resolvePath(item.texture());
+        if (fluid == null || path == null) {
+            return null;
+        }
+        TextureRegion cached = cellIcons.get(item.name());
+        if (cached != null) {
+            return cached;
+        }
+
+        int size = Constants.ITEM_ICON_SIZE;
+        Pixmap filled = null;
+        try {
+            int[] coloured = CellIconFactory.colour(readTile(path, item.iconFrame(), size), size,
+                    fluid.color());
+            filled = new Pixmap(size, size, Pixmap.Format.RGBA8888);
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    filled.drawPixel(x, y, coloured[y * size + x]);
+                }
+            }
+            Texture texture = new Texture(filled);
+            texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            foldedTextures.add(texture);
+            TextureRegion region = new TextureRegion(texture);
+            cellIcons.put(item.name(), region);
+            return region;
+        } catch (RuntimeException e) {
+            LOGGER.error("Unable to paint the cell of '{}'", item.name(), e);
+            return null;
+        } finally {
+            if (filled != null) {
+                filled.dispose();
+            }
+        }
     }
 
     /**

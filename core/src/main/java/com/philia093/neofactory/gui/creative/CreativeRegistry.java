@@ -37,6 +37,7 @@ public final class CreativeRegistry {
     private static final List<CreativeTab> TABS = List.of(
             CreativeTab.items("blocks", "Blocks", Items.STONE, CreativeRegistry::isBlock),
             CreativeTab.items("machines", "Machines", Items.FURNACE, CreativeRegistry::isMachine),
+            CreativeTab.items("fluids", "Fluids", Items.WATER_BUCKET, CreativeRegistry::isFluid),
             CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
             CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
             CreativeTab.items("tools", "Tools", Items.IRON_PICKAXE, CreativeRegistry::isTool),
@@ -84,7 +85,18 @@ public final class CreativeRegistry {
     /** {@code true} when an item is a raw material the game has no other group for. */
     private static boolean isMaterial(Item item) {
         return item != Items.AIR && !item.isBlockItem() && !isTool(item) && !isArmour(item)
-                && !isFood(item);
+                && !isFood(item) && !isFluid(item);
+    }
+
+    /**
+     * {@code true} when an item carries a fluid, a bucket or a cell.
+     * <p>
+     * The containers have a tab of their own because they belong to the fluids and not to the
+     * materials: a bucket of water is the water of a lake the player carries around, and the cell
+     * is the shape every fluid of the industry travels in.
+     */
+    private static boolean isFluid(Item item) {
+        return item.isFluidContainer();
     }
 
     /** {@code true} when an item breaks blocks, which is what a tool of the game does. */

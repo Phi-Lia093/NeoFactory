@@ -1,5 +1,6 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.recipe.RecipeGrid;
 
 import java.util.Objects;

@@ -1,5 +1,8 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.FluidIngredient;
+import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
 
@@ -73,7 +76,7 @@ public final class MachineOutputs implements MachineOutput {
     }
 
     @Override
-    public boolean hasRoomFor(FluidType fluid, int amount) {
+    public boolean hasRoomFor(Fluid fluid, int amount) {
         if (amount <= 0) {
             return true;
         }
@@ -86,7 +89,7 @@ public final class MachineOutputs implements MachineOutput {
     }
 
     @Override
-    public int fill(FluidType fluid, int amount) {
+    public int fill(Fluid fluid, int amount) {
         if (amount <= 0) {
             return 0;
         }

@@ -86,8 +86,8 @@ class CreativeInventoryTest {
 
         assertEquals("blocks", creative.selectedTab().name(), "the first tab is chosen");
         assertEquals(Items.STONE, creative.stackAt(0).item(), "the first block");
-        assertEquals(Items.STONE.maxStackSize(), creative.stackAt(0).count(),
-                "a creative stack is full");
+        assertEquals(1, creative.stackAt(0).count(),
+                "the shelf shows one piece, see CreativeInventory#shownAt");
         // The furnace is the block that was added most recently, but it holds a machine
         // and is therefore listed by the tab of the machines, see CreativeRegistry.
         assertTrue(creative.stackAt(blockCount() - 1).isEmpty(),
@@ -175,7 +175,7 @@ class CreativeInventoryTest {
 
         assertEquals(Items.DIAMOND, creative.matches().get(0), "the gem comes first");
         assertEquals(Items.DIAMOND, creative.stackAt(0).item(), "and stands in the grid");
-        assertEquals(Items.DIAMOND.maxStackSize(), creative.stackAt(0).count());
+        assertEquals(1, creative.stackAt(0).count(), "and one piece is what a slot shows");
     }
 
     @Test

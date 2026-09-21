@@ -1,5 +1,6 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.item.ItemStack;
 
 import java.util.List;
@@ -39,7 +40,7 @@ public interface MachineOutput {
      * @param amount amount in units of the game
      * @return {@code true} when the fluid would be taken
      */
-    boolean hasRoomFor(FluidType fluid, int amount);
+    boolean hasRoomFor(Fluid fluid, int amount);
 
     /**
      * Pours a fluid into the first output tank that may take it.
@@ -48,7 +49,7 @@ public interface MachineOutput {
      * @param amount amount that is offered
      * @return the amount that was stored
      */
-    int fill(FluidType fluid, int amount);
+    int fill(Fluid fluid, int amount);
 
     /** {@code true} when a single product fits. */
     default boolean hasRoomFor(ItemStack product) {

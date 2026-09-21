@@ -92,6 +92,13 @@ public final class ContainerMenu {
     /** {@code true} when items that find no place are destroyed, see {@link #setVoidsOverflow}. */
     private boolean voidsOverflow;
 
+    /**
+     * {@code true} while a result slot hands out one item per left click and a whole stack per
+     * right click, which is how the grid of the creative inventory behaves, see
+     * {@link #setCreativeSupply(boolean)}.
+     */
+    private boolean creativeSupply;
+
     /** Slot the mouse was pressed on, {@code null} while no button is held. */
     private Slot dragStart;
 
@@ -343,6 +350,22 @@ public final class ContainerMenu {
      */
     public void setVoidsOverflow(boolean voidsOverflow) {
         this.voidsOverflow = voidsOverflow;
+    }
+
+    /**
+     * Makes the result slots of this container a shelf instead of a machine.
+     * <p>
+     * A result slot normally hands out everything it holds, because a recipe put it there: a left
+     * click on the output of a furnace takes the whole smelted stack. The grid of a creative
+     * inventory is different - it shows one piece of everything, so the icon of a slot carries no
+     * amount - and the player asks for what is wanted instead: one piece with the left button and
+     * a whole stack with the right one, while a slot that was emptied fills itself again from its
+     * endless supply, see {@link #setResultFiller(ResultFiller)}.
+     *
+     * @param creativeSupply {@code true} for the grid of a creative inventory
+     */
+    public void setCreativeSupply(boolean creativeSupply) {
+        this.creativeSupply = creativeSupply;
     }
 
     /**
@@ -608,6 +631,17 @@ public final class ContainerMenu {
      * @param slot slot that was clicked
      */
     private void moveWholeStack(Slot slot) {
+        if (cursor.isEmpty() && slot.isOutput() && creativeSupply) {
+            // One piece per left click, and the slot fills itself again right after, see
+            // setCreativeSupply.
+            ItemStack stored = slot.stack();
+            if (stored.isEmpty()) {
+                return;
+            }
+            cursor = ItemStack.of(stored.item(), 1);
+            refillResult(slot);
+            return;
+        }
         ItemStack stored = slot.stack();
         if (cursor.isEmpty()) {
             cursor = slot.remove();
@@ -646,6 +680,16 @@ public final class ContainerMenu {
      * @param slot slot that was clicked
      */
     private void moveOneItem(Slot slot) {
+        if (cursor.isEmpty() && slot.isOutput() && creativeSupply) {
+            // The right button takes a whole stack out of the shelf of a creative inventory, see
+            // setCreativeSupply. The slot keeps the one piece it shows.
+            ItemStack stored = slot.stack();
+            if (stored.isEmpty()) {
+                return;
+            }
+            cursor = ItemStack.of(stored.item(), stored.item().maxStackSize());
+            return;
+        }
         if (slot.isOutput()) {
             if (voidsOverflow && !cursor.isEmpty()) {
                 // The right button throws one item away on a slot that only hands out,

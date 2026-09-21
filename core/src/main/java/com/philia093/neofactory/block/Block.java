@@ -31,6 +31,7 @@ public final class Block {
     private final float hardness;
     private final int harvestLevel;
     private final String blockEntityTypeName;
+    private final Animation animation;
 
     private Block(Builder builder) {
         this.id = builder.id;
@@ -44,6 +45,7 @@ public final class Block {
         this.hardness = builder.hardness;
         this.harvestLevel = builder.harvestLevel;
         this.blockEntityTypeName = builder.blockEntityTypeName;
+        this.animation = builder.animation;
     }
 
     /** Unique numeric id, also used as the palette index inside chunks. */
@@ -157,6 +159,25 @@ public final class Block {
         return !blockEntityTypeName.isEmpty();
     }
 
+    /**
+     * How this block is animated, {@code null} for a block that stands still.
+     * <p>
+     * The picture of an animated block is a sheet: {@code frames} cells of one tile, one
+     * below the other, and the renderer shows the cell that belongs to the current tick,
+     * see {@link com.philia093.neofactory.render.BlockAnimation}. The first user is the
+     * water of a lake, the same ability serves a machine that moves while it works.
+     *
+     * @return the animation, or {@code null} when the block has none
+     */
+    public Animation animation() {
+        return animation;
+    }
+
+    /** {@code true} when this block is drawn from a sheet of more than one frame. */
+    public boolean isAnimated() {
+        return animation != null && animation.isAnimated();
+    }
+
     /** {@code true} when this block has a texture that can be drawn. */
     public boolean isDrawable() {
         return !texture.isEmpty() && !isAir();
@@ -188,6 +209,49 @@ public final class Block {
         return Objects.hash(id);
     }
 
+    /**
+     * A sheet of frames that is played where the block stands.
+     * <p>
+     * The game holds one picture per block and draws it as a whole tile, so an animation is
+     * nothing but a taller picture: {@code frames} cells of the usual tile size, stacked
+     * upwards from the top of the image, and the renderer cuts the cell out that belongs to
+     * the tick that is running.
+     * <p>
+     * The cell size is the cell size of the game, so a sheet of thirty two frames of water
+     * is sixteen pixels wide and five hundred and twelve pixels tall.
+     *
+     * @param frames amount of cells in the sheet, at least one
+     * @param frameTicks amount of ticks one cell is shown, at least one
+     */
+    public record Animation(int frames, int frameTicks) {
+
+        /** Checks the numbers, so a broken sheet fails while the block is defined. */
+        public Animation {
+            if (frames < 1) {
+                throw new IllegalArgumentException("An animation needs at least one frame: "
+                        + frames);
+            }
+            if (frameTicks < 1) {
+                throw new IllegalArgumentException("A frame lasts at least one tick: "
+                        + frameTicks);
+            }
+        }
+
+        /** {@code true} when the sheet holds more than a single frame. */
+        public boolean isAnimated() {
+            return frames > 1;
+        }
+
+        /**
+         * Amount of ticks a whole round through the sheet takes.
+         *
+         * @return {@code frames * frameTicks}, never zero
+         */
+        public int cycleTicks() {
+            return frames * frameTicks;
+        }
+    }
+
     /** Fluent builder for {@link Block} instances. */
     public static final class Builder {
 
@@ -202,6 +266,7 @@ public final class Block {
         private float hardness = 1.0f;
         private int harvestLevel;
         private String blockEntityTypeName = "";
+        private Animation animation;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -278,6 +343,26 @@ public final class Block {
         public Builder blockEntity(String typeName) {
             this.blockEntityTypeName = Objects.requireNonNull(typeName, "typeName");
             return this;
+        }
+
+        /**
+         * Makes the picture of this block a sheet that is played in place.
+         *
+         * @param animation frames of the sheet and how long one is shown
+         */
+        public Builder animation(Animation animation) {
+            this.animation = Objects.requireNonNull(animation, "animation");
+            return this;
+        }
+
+        /**
+         * Makes the picture of this block a sheet that is played in place.
+         *
+         * @param frames amount of cells in the sheet, at least one
+         * @param frameTicks amount of ticks one cell is shown, at least one
+         */
+        public Builder animation(int frames, int frameTicks) {
+            return animation(new Animation(frames, frameTicks));
         }
 
         public Block build() {

@@ -65,8 +65,9 @@ public class WorldRenderer implements Disposable {
      *
      * @param world world to draw
      * @param camera camera describing the visible area
+     * @param tickCount tick the world is in, it picks the frame of an animated block
      */
-    public void render(World world, OrthographicCamera camera) {
+    public void render(World world, OrthographicCamera camera, long tickCount) {
         drawnTiles = 0;
 
         // The camera and the player live in world units, the culling works with
@@ -83,12 +84,12 @@ public class WorldRenderer implements Disposable {
 
         // Pass one: the ground of every visible chunk.
         for (Chunk chunk : visibleChunks) {
-            renderLayer(chunk, minX, maxX, minY, maxY, Chunk.LAYER_FLOOR);
+            renderLayer(chunk, minX, maxX, minY, maxY, Chunk.LAYER_FLOOR, tickCount);
         }
 
         // Pass two: trees, plants and everything the player placed.
         for (Chunk chunk : visibleChunks) {
-            renderLayer(chunk, minX, maxX, minY, maxY, Chunk.LAYER_OBJECT);
+            renderLayer(chunk, minX, maxX, minY, maxY, Chunk.LAYER_OBJECT, tickCount);
         }
 
         batch.setColor(Color.WHITE);
@@ -128,8 +129,10 @@ public class WorldRenderer implements Disposable {
      * @param maxY highest visible block Y coordinate
      * @param layer layer to draw, see {@link Chunk#LAYER_FLOOR} and
      *              {@link Chunk#LAYER_OBJECT}
+     * @param tickCount tick the world is in, it picks the frame of an animated block
      */
-    private void renderLayer(Chunk chunk, int minX, int maxX, int minY, int maxY, int layer) {
+    private void renderLayer(Chunk chunk, int minX, int maxX, int minY, int maxY, int layer,
+            long tickCount) {
         int fromLocalX = Math.max(0, minX - chunk.originX());
         int toLocalX = Math.min(Constants.CHUNK_SIZE - 1, maxX - chunk.originX());
         int fromLocalY = Math.max(0, minY - chunk.originY());
@@ -151,7 +154,7 @@ public class WorldRenderer implements Disposable {
                     }
                     continue;
                 }
-                drawTile(block, originX + localX, originY + localY);
+                drawTile(block, originX + localX, originY + localY, tickCount);
             }
         }
     }
@@ -179,15 +182,19 @@ public class WorldRenderer implements Disposable {
     /**
      * Draws a single block as a whole tile.
      * <p>
-     * The tint of the block is applied as the batch colour, which is how the grey
-     * scale ground and leaf sheets of the art pack receive their colours.
+     * The tint of the block is applied as the batch colour, which is how the grey scale ground
+     * and leaf sheets of the art pack receive their colours - and how a grey scale fluid sheet
+     * becomes water or lava. A block that carries an animation is drawn with the frame of its
+     * sheet that belongs to the running tick, so a lake moves without the renderer knowing
+     * what water is.
      *
      * @param block block to draw
      * @param x block X coordinate
      * @param y block Y coordinate
+     * @param tickCount tick the world is in, it picks the frame of an animated block
      */
-    private void drawTile(Block block, int x, int y) {
-        TextureRegion region = textures.region(block.texture());
+    private void drawTile(Block block, int x, int y, long tickCount) {
+        TextureRegion region = frameOf(block, tickCount);
         if (region == null) {
             return;
         }
@@ -195,6 +202,23 @@ public class WorldRenderer implements Disposable {
         batch.setColor(block.tint());
         batch.draw(region, x * size, y * size, size, size);
         drawnTiles++;
+    }
+
+    /**
+     * Picture a block is drawn with at a moment: the cell of its sheet for an animated block
+     * and the whole picture for every other one.
+     *
+     * @param block block to draw
+     * @param tickCount tick the world is in
+     * @return the region to draw, or {@code null} when the picture is missing
+     */
+    private TextureRegion frameOf(Block block, long tickCount) {
+        Block.Animation animation = block.animation();
+        if (animation == null) {
+            return textures.region(block.texture());
+        }
+        return textures.frameRegion(block.texture(),
+                BlockAnimation.frameIndex(tickCount, animation));
     }
 
     @Override

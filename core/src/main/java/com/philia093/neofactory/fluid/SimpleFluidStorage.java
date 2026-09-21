@@ -1,17 +1,17 @@
-package com.philia093.neofactory.machine;
+package com.philia093.neofactory.fluid;
 
 /**
  * A {@link FluidStorage} that holds one kind of fluid.
  * <p>
- * The class is the simple case a machine starts with: a tank of a fixed size that takes
- * a fluid as long as it is the one it already holds and gives it back on demand. An
- * empty tank accepts whatever is offered first.
+ * The class is the simple case a machine starts with: a tank of a fixed size that takes a
+ * fluid as long as it is the one it already holds and gives it back on demand. An empty tank
+ * accepts whatever is offered first.
  */
 public final class SimpleFluidStorage implements FluidStorage {
 
     private final int capacity;
 
-    private FluidType fluid;
+    private Fluid fluid;
     private int amount;
 
     /**
@@ -27,7 +27,7 @@ public final class SimpleFluidStorage implements FluidStorage {
     }
 
     @Override
-    public FluidType fluid() {
+    public Fluid fluid() {
         return fluid;
     }
 
@@ -42,7 +42,7 @@ public final class SimpleFluidStorage implements FluidStorage {
     }
 
     @Override
-    public int fill(FluidType type, int amount, boolean simulate) {
+    public int fill(Fluid type, int amount, boolean simulate) {
         if (type == null || amount <= 0) {
             return 0;
         }
@@ -84,7 +84,7 @@ public final class SimpleFluidStorage implements FluidStorage {
      * @param type kind of the fluid, {@code null} to empty the tank
      * @param amount requested amount, clamped between zero and the capacity
      */
-    public void set(FluidType type, int amount) {
+    public void set(Fluid type, int amount) {
         if (type == null || amount <= 0) {
             fluid = null;
             this.amount = 0;

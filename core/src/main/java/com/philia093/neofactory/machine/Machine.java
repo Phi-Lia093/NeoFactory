@@ -1,5 +1,8 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.FluidStorage;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.recipe.RecipeType;
@@ -228,7 +231,7 @@ public abstract class Machine {
         if (storedTanks != null) {
             for (int index = 0; index < Math.min(storedTanks.size(), tanks.length); index++) {
                 NbtCompound entry = storedTanks.getCompound(index);
-                FluidType fluid = FluidType.byName(entry.getString(SaveTags.FLUID, ""));
+                Fluid fluid = Fluids.byName(entry.getString(SaveTags.FLUID, ""));
                 int amount = entry.getInt(SaveTags.FLUID_AMOUNT, 0);
                 if (fluid != null && amount > 0) {
                     tanks[index].storage().fill(fluid, amount, false);

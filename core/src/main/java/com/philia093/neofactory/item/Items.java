@@ -1,6 +1,8 @@
 package com.philia093.neofactory.item;
 
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.Fluids;
 
 /**
  * Declaration of every item type used by the game.
@@ -135,8 +137,39 @@ public final class Items {
     public static final int DIAMOND_BOOTS_ID = 65;
     public static final int FURNACE_ID = 66;
 
+    /**
+     * Ids of the containers of fluid.
+     * <p>
+     * The three buckets stand together and so do the cells, and every one of them keeps its value
+     * forever: a stored inventory names them, see {@link Buckets}.
+     */
+    public static final int BUCKET_ID = 67;
+    public static final int WATER_BUCKET_ID = 68;
+    public static final int LAVA_BUCKET_ID = 69;
+    public static final int FLUID_CELL_ID = 70;
+    public static final int WATER_CELL_ID = 71;
+    public static final int LAVA_CELL_ID = 72;
+
     /** Next unused item id, used to verify that a new item got a fresh id. */
-    public static final int NEXT_FREE_ID = 67;
+    public static final int NEXT_FREE_ID = 73;
+
+    /**
+     * Amount an empty container stacks to.
+     * <p>
+     * An empty bucket and an empty cell are tools the player carries around, so they stack like
+     * every other material of the game.
+     */
+    private static final int EMPTY_CONTAINER_STACK = Item.DEFAULT_MAX_STACK;
+
+    /**
+     * Amount a container with a fluid in it stacks to.
+     * <p>
+     * A full bucket is a bucket and one fluid, so the fluids of the game do not stack - a stack of
+     * them would hold several kinds at once. {@code FluidInteraction} therefore takes one empty
+     * container out of the hand and hands the full one back, see
+     * {@link com.philia093.neofactory.world.interaction.FluidInteraction}.
+     */
+    private static final int FULL_CONTAINER_STACK = Item.SINGLE_ITEM_STACK;
 
     // ------------------------------------------------------------------
     // Item instances. They are filled by registerAll().
@@ -282,6 +315,24 @@ public final class Items {
     public static Item DIAMOND_LEGGINGS;
     /** Diamond boots. */
     public static Item DIAMOND_BOOTS;
+
+    /** The empty bucket, the tool for water and lava. */
+    public static Item BUCKET;
+
+    /** A bucket of water. */
+    public static Item WATER_BUCKET;
+
+    /** A bucket of lava. */
+    public static Item LAVA_BUCKET;
+
+    /** The empty cell, the container of the industry that takes any fluid. */
+    public static Item FLUID_CELL;
+
+    /** A cell of water. */
+    public static Item WATER_CELL;
+
+    /** A cell of lava. */
+    public static Item LAVA_CELL;
 
     /**
      * Creates and registers every item.
@@ -512,7 +563,72 @@ public final class Items {
         DIAMOND_LEGGINGS = register(uniqueItem(DIAMOND_LEGGINGS_ID, "diamond_leggings", "Diamond Leggings"));
         DIAMOND_BOOTS = register(uniqueItem(DIAMOND_BOOTS_ID, "diamond_boots", "Diamond Boots"));
 
+        // The fluids of the game travel in buckets and in cells, see FluidContainer. A bucket is
+        // hard wired to water and lava, because those are the two fluids that stand in the world
+        // as a block; a cell takes any fluid the industry comes up with. Every cell draws the same
+        // grey scale picture and receives the colour of its fluid as its tint, so a new fluid
+        // needs a sheet, a cell here and nothing else.
+        BUCKET = register(Item.builder(BUCKET_ID, "bucket")
+                .displayName("Bucket")
+                .texture(Item.ITEM_FOLDER + "bucket_empty")
+                .maxStackSize(EMPTY_CONTAINER_STACK)
+                .container(FluidContainer.bucket())
+                .build());
+        WATER_BUCKET = register(fluidBucket(WATER_BUCKET_ID, "bucket_water", "Water Bucket",
+                Fluids.WATER));
+        LAVA_BUCKET = register(fluidBucket(LAVA_BUCKET_ID, "bucket_lava", "Lava Bucket",
+                Fluids.LAVA));
+        FLUID_CELL = register(Item.builder(FLUID_CELL_ID, "fluid_cell")
+                .displayName("Fluid Cell")
+                .texture(Item.ITEM_FOLDER + "fluid_cell")
+                .maxStackSize(EMPTY_CONTAINER_STACK)
+                .container(FluidContainer.cell())
+                .build());
+        WATER_CELL = register(fluidCell(WATER_CELL_ID, "water_cell", "Water Cell", Fluids.WATER));
+        LAVA_CELL = register(fluidCell(LAVA_CELL_ID, "lava_cell", "Lava Cell", Fluids.LAVA));
+
         ItemRegistry.freeze();
+    }
+
+    /**
+     * Builds a bucket that carries one of the two fluids that pour into the world.
+     *
+     * @param id numeric item id
+     * @param name technical name, also the name of the icon
+     * @param displayName name shown to the player
+     * @param fluid fluid the bucket carries
+     * @return the item definition
+     */
+    private static Item fluidBucket(int id, String name, String displayName, Fluid fluid) {
+        return Item.builder(id, name)
+                .displayName(displayName)
+                .texture(Item.ITEM_FOLDER + name)
+                .maxStackSize(FULL_CONTAINER_STACK)
+                .container(FluidContainer.bucket(fluid))
+                .build();
+    }
+
+    /**
+     * Builds a cell that carries a fluid.
+     * <p>
+     * The picture is the grey scale sheet of every cell, the colour comes from the fluid, see
+     * {@link Fluid#color()}.
+     *
+     * @param id numeric item id
+     * @param name technical name of the item
+     * @param displayName name shown to the player
+     * @param fluid fluid the cell carries
+     * @return the item definition
+     */
+    private static Item fluidCell(int id, String name, String displayName, Fluid fluid) {
+        // The colour of the fluid is painted into the window of the cell and not multiplied over
+        // the whole item, see CellIconFactory: the steel of the container stays grey.
+        return Item.builder(id, name)
+                .displayName(displayName)
+                .texture(Item.ITEM_FOLDER + "fluid_cell")
+                .maxStackSize(FULL_CONTAINER_STACK)
+                .container(FluidContainer.cell(fluid))
+                .build();
     }
 
     /**

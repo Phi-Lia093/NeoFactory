@@ -50,6 +50,7 @@ public class Item {
     private final int maxStackSize;
     private final int toolLevel;
     private final float miningSpeed;
+    private final FluidContainer container;
 
     /**
      * Creates an item that is not linked to a block.
@@ -66,6 +67,7 @@ public class Item {
         this.maxStackSize = builder.maxStackSize;
         this.toolLevel = builder.toolLevel;
         this.miningSpeed = builder.miningSpeed;
+        this.container = builder.container;
     }
 
     /**
@@ -89,6 +91,7 @@ public class Item {
         this.maxStackSize = builder.maxStackSize;
         this.toolLevel = builder.toolLevel;
         this.miningSpeed = builder.miningSpeed;
+        this.container = builder.container;
     }
 
     /** Unique numeric id of this item type. */
@@ -151,6 +154,24 @@ public class Item {
      */
     public float miningSpeed() {
         return miningSpeed;
+    }
+
+    /**
+     * What this item does with a fluid, {@code null} for an item that carries none.
+     * <p>
+     * A bucket and a cell are the items that carry fluid, and both are ordinary items with a
+     * container, see {@link FluidContainer}: that keeps the world, the inventory and the save
+     * format free of a second kind of stack, and it is why a full bucket is its own item.
+     *
+     * @return the container, or {@code null} when this item never carries a fluid
+     */
+    public FluidContainer container() {
+        return container;
+    }
+
+    /** {@code true} when this item carries a fluid, see {@link #container()}. */
+    public boolean isFluidContainer() {
+        return container != null;
     }
 
     /** {@code true} when the item stacks, which every item but a tool or armour piece does. */
@@ -241,6 +262,7 @@ public class Item {
         private int maxStackSize = DEFAULT_MAX_STACK;
         private int toolLevel;
         private float miningSpeed = HAND_MINING_SPEED;
+        private FluidContainer container;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -315,6 +337,20 @@ public class Item {
                 throw new IllegalArgumentException("Mining speed must be positive: " + miningSpeed);
             }
             this.miningSpeed = miningSpeed;
+            return this;
+        }
+
+        /**
+         * Makes this item a container of fluid, a bucket or a cell.
+         * <p>
+         * The container is part of the definition of the item and not of a stack: the empty
+         * bucket and the water bucket are two items, each with its own picture, which is what
+         * lets a full bucket be an icon of its own.
+         *
+         * @param container what the item carries and what it may take
+         */
+        public Builder container(FluidContainer container) {
+            this.container = Objects.requireNonNull(container, "container");
             return this;
         }
 

@@ -1,5 +1,8 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.FluidIngredient;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.recipe.Ingredient;
@@ -65,7 +68,7 @@ class MachineRecipeTest {
                 "the second product did not arrive");
         assertEquals(0, reactor.inventory().get(TestReactor.MAIN).count(), "the ore was not used");
         assertEquals(0, reactor.inventory().get(TestReactor.SECONDARY).count(), "the sand was not used");
-        assertEquals(FluidType.LAVA, reactor.tank(1).storage().fluid(),
+        assertEquals(Fluids.LAVA, reactor.tank(1).storage().fluid(),
                 "the fluid product did not arrive");
         assertEquals(50, reactor.tank(1).storage().amount());
         assertEquals(100, reactor.tank(0).storage().amount(),
@@ -151,7 +154,7 @@ class MachineRecipeTest {
         assertEquals(reactor.craftProgress(), restored.craftProgress(), 0.001f,
                 "the work of the machine was lost");
         assertEquals(reactor.energy().amount(), restored.energy().amount());
-        assertEquals(FluidType.WATER, restored.tank(0).storage().fluid());
+        assertEquals(Fluids.WATER, restored.tank(0).storage().fluid());
         assertEquals(200, restored.tank(0).storage().amount());
         assertEquals(1, restored.inventory().get(TestReactor.MAIN).count());
     }
@@ -160,7 +163,7 @@ class MachineRecipeTest {
     private void fillInputs() {
         reactor.inventory().set(TestReactor.MAIN, ItemStack.of(Items.IRON_ORE, 1));
         reactor.inventory().set(TestReactor.SECONDARY, ItemStack.of(Items.SAND, 1));
-        reactor.tank(0).storage().fill(FluidType.WATER, 200, false);
+        reactor.tank(0).storage().fill(Fluids.WATER, 200, false);
         reactor.energy().receive(BUFFER, false);
     }
 
@@ -212,12 +215,12 @@ class MachineRecipeTest {
 
         @Override
         public List<FluidIngredient> fluidIngredients() {
-            return List.of(FluidIngredient.of(FluidType.WATER, 100));
+            return List.of(FluidIngredient.of(Fluids.WATER, 100));
         }
 
         @Override
         public List<FluidIngredient> fluidProducts() {
-            return List.of(FluidIngredient.of(FluidType.LAVA, 50));
+            return List.of(FluidIngredient.of(Fluids.LAVA, 50));
         }
 
         @Override

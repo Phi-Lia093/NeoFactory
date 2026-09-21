@@ -26,6 +26,14 @@ world is stored on disk so that a session can be continued later.
   player walks.
 - **Entities** - a framework the player and dropped items are built on, with one
   type registry and one save layout they share.
+- **World** - a seeded generator builds the terrain from noise fields: regions of grass, sand,
+  rock and snow, ore clusters in the stone, and the water of the landscape. A river follows the
+  contour line of a field of its own, so it winds and is as wide as the slope of the field allows;
+  a lake is a lobe of a fractal field and never a circle; a pool of lava is dropped by a
+  decoration instead of a biome, the way the original drops it into a hollow. The bed of a river is
+  gravel, clay and sand, the water stands above it in the layer the player walks in, and every cell
+  of it is a source. What holds a body of water is the ring of sand, gravel and stone around it -
+  dig one of those cells away and the water runs into the hole.
 - **Machines** - the furnace, the first machine of the game: it is built from an item,
   keeps its slots, its fuel and its work in a block entity that travels with its chunk,
   runs in fixed ticks as long as its chunk is loaded, and hands what it holds back to
@@ -43,7 +51,10 @@ world is stored on disk so that a session can be continued later.
 - **Creative mode** - `/gamemode creative` hands out every item of the game: the
   inventory key then opens a grid of everything the game owns, with a tab for each
   group, a scroll bar and a search box, and a stack that was taken is there again right
-  away. Every tab carries the icon of its group, an empty search box lists everything
+  away. A slot of the grid shows one piece and carries no amount, because the shelf of the
+  game is not a chest: the left button takes one piece, the right button a whole stack, and
+  the slot fills itself again either way. Every tab carries the icon of its group, an empty
+  search box lists everything
   and the scroll bar tells a list that fits into the grid from one that goes on. The tabs
   frame the panel - the first row above it and the second one below it, painted with the
   same art turned by half a circle and mirrored back left to right - and every tab shows
@@ -53,6 +64,19 @@ world is stored on disk so that a session can be continued later.
   stack dragged out of it lands on the ground. `/gamemode survival` goes back, and the mode
   is stored with the world.
 
+- **Fluids** - water and lava stand in either layer and the two never mix: poured on the grass
+  they lie in the layer the player stands in, poured into a hole they fill the ground layer, and
+  a spill of one of them reaches through neither. While they are poured they follow the rules of
+  a block - nothing over a hole, nothing into a taken cell, nothing that skips a layer - and then
+  they spread on their own, one ring every few ticks, until they have reached as far as their
+  fluid allows: seven cells for water, three for lava. A wall holds a spill back, a plant is
+  flooded, a lake of water never covers lava, and a source that a bucket takes away drains
+  everything that lived from it ring by ring. A bucket carries water and lava and nothing else, a
+  cell carries any fluid the industry will bring: every fluid shares one grey scale picture and is
+  painted while it is drawn, and a filled cell shows its fluid in the window and keeps the steel
+  around it grey. An empty container stacks like any other material, a full one does not: filling
+  a bucket out of a stack of empty ones leaves the rest of the stack in the hand and puts the full
+  bucket into the inventory, where it takes a slot of its own.
 ## Controls
 
 | Input | Action |
@@ -62,7 +86,7 @@ world is stored on disk so that a session can be continued later.
 | mouse wheel | select a hotbar slot |
 | `CTRL` + mouse wheel | zoom the camera instead |
 | left mouse button | break the aimed block while held; a click on the hotbar selects that slot |
-| right mouse button | build the held block into the aimed cell |
+| right mouse button | build the held block into the aimed cell; a bucket pours its fluid into an empty cell and a bucket over a source of water or lava fills itself |
 | `1` to `9` | select a hotbar slot |
 | `-` / `=` | zoom out / in while held (numpad `-` and `+` do the same) |
 | `[` / `]` | keep fewer / more chunks around the player |
@@ -86,9 +110,10 @@ world is stored on disk so that a session can be continued later.
 
 | Package | Contents |
 | --- | --- |
+| `fluid` | what a fluid is and where it stands: the kinds, their sheet and colour, the state of a cell, the spread of a spill and the containers that carry it |
 | `block` | block types and the id/name lookup table, ids are stable across save games |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
-| `machine` | what a machine is built from: slots and tanks with a role, energy, fluid and the recipes it runs |
+| `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
 | `item` | item types, stacks, the inventory, the hotbar selection and the sinks broken blocks hand items to |
 | `world` | chunks, the world, the game mode, the chunk store interface and the generator |
 | `world.decoration` | the trees and plants planted on a finished chunk |
@@ -176,6 +201,24 @@ that cannot lean on the graphics card. Tall grass and
 leaves keep their flat picture, they do not fill a cell. `gradlew :core:test` writes
 a sheet that shows the result to `core/build/reports/block-icons-preview.png`, with a
 few blocks enlarged in `block-icons-detail.png`.
+
+Water and lava are the fluids of the game, and they share one picture:
+`assets/blocks/generic_fluid.png` holds brightness only, and the colour of the fluid is multiplied
+with it while the world draws it, see `Fluids`. The sheet is built from the still water of the art
+pack by `build/verify/grayscale_fluid.ps1`, which keeps the brightest channel of every pixel, so
+the frames of the animation and the transparency travel with it; the script takes a `-Source` and a
+`-Target`, so any picture of the pack can become the sheet of the game. Water and lava therefore
+differ in their colour alone, and a fluid of the industry that arrives later is one more colour of
+the same picture. The sheet is played where the block stands: `Block.Animation` says how many cells
+a picture holds and how long one is shown, `BlockAnimation` picks the frame that belongs to the
+running tick of the world, and the renderer knows nothing but those two. The cell of a fluid is one
+grey scale picture as well, but
+only its window takes the colour of the fluid: `CellIconFactory` paints the two pixels wide and
+ten pixels tall window in the middle of the cell and leaves the steel of the container grey, so a
+cell of water and a cell of oil are the same object with something else inside. A new fluid needs
+a colour, a line in `Fluids` and an entry in `Buckets` and nothing else. `gradlew :core:test`
+paints the frames of both fluids next to the buckets and the cells into
+`core/build/reports/fluid-preview.png`.
 
 `gui/inventory_icons.png` holds every panel of the interface. Since the creative
 inventory arrived it also carries that screen's art - the two panels, the tab in its two

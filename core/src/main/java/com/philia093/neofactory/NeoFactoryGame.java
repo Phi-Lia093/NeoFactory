@@ -10,6 +10,7 @@ import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.entity.EntityRegistry;
 import com.philia093.neofactory.entity.EntityTypes;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.render.BlockTextureCache;
@@ -53,6 +54,11 @@ public class NeoFactoryGame extends Game {
         Blocks.registerAll();
         LOGGER.info("Registered {} block types, next free id is {}",
                 BlockRegistry.count(), Blocks.NEXT_FREE_ID);
+
+        // A fluid owns the block it stands in the world with, so the table of the fluids is
+        // written right after the blocks and hands them back to Blocks, see Fluids.
+        Fluids.registerAll();
+        LOGGER.info("Registered {} fluids", Fluids.all().size());
 
         Items.registerAll();
         LOGGER.info("Registered {} item types, next free id is {}",

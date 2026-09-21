@@ -1,5 +1,9 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.fluid.SimpleFluidStorage;
+import com.philia093.neofactory.support.TestRegistries;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,6 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * refusal of a second fluid are checked here, without a window and without a world.
  */
 class MachineStorageTest {
+
+    /**
+     * Fills the tables of the game.
+     * <p>
+     * A fluid owns the block it stands in the world with, so the fluid table is written
+     * together with the blocks and the tests share it, see {@link TestRegistries}.
+     */
+    @BeforeAll
+    static void registerFluids() {
+        TestRegistries.ensure();
+    }
 
     @Test
     void aBufferRespectsItsCapacity() {
@@ -61,20 +76,20 @@ class MachineStorageTest {
         SimpleFluidStorage tank = new SimpleFluidStorage(100);
 
         assertTrue(tank.isEmpty());
-        assertEquals(30, tank.fill(FluidType.WATER, 30, false));
-        assertEquals(FluidType.WATER, tank.fluid());
+        assertEquals(30, tank.fill(Fluids.WATER, 30, false));
+        assertEquals(Fluids.WATER, tank.fluid());
         assertEquals(30, tank.amount());
 
-        assertEquals(0, tank.fill(FluidType.LAVA, 10, false), "lava does not enter a water tank");
+        assertEquals(0, tank.fill(Fluids.LAVA, 10, false), "lava does not enter a water tank");
         assertEquals(30, tank.amount());
-        assertEquals(70, tank.fill(FluidType.WATER, 90, false), "only what fits was taken");
+        assertEquals(70, tank.fill(Fluids.WATER, 90, false), "only what fits was taken");
         assertTrue(tank.isFull());
     }
 
     @Test
     void aTankGivesItsFluidBack() {
         SimpleFluidStorage tank = new SimpleFluidStorage(50);
-        tank.fill(FluidType.LAVA, 20, false);
+        tank.fill(Fluids.LAVA, 20, false);
 
         assertEquals(20, tank.drain(30, true), "the request would be filled");
         assertEquals(20, tank.amount());
@@ -92,16 +107,16 @@ class MachineStorageTest {
 
         SimpleFluidStorage tank = new SimpleFluidStorage(10);
         assertEquals(0, tank.fill(null, 5, false), "no fluid was offered");
-        assertEquals(0, tank.fill(FluidType.WATER, 0, false), "nothing was offered");
+        assertEquals(0, tank.fill(Fluids.WATER, 0, false), "nothing was offered");
         assertEquals(0, tank.drain(0, false), "nothing was wanted");
     }
 
     @Test
     void theFluidsOfTheGameHaveNames() {
-        assertEquals(FluidType.WATER, FluidType.byName("water"));
-        assertEquals(FluidType.LAVA, FluidType.byName("lava"));
-        assertEquals(null, FluidType.byName("oil"));
-        assertEquals(null, FluidType.byName(null));
-        assertEquals(2, FluidType.all().size());
+        assertEquals(Fluids.WATER, Fluids.byName("water"));
+        assertEquals(Fluids.LAVA, Fluids.byName("lava"));
+        assertEquals(null, Fluids.byName("oil"));
+        assertEquals(null, Fluids.byName(null));
+        assertEquals(2, Fluids.all().size());
     }
 }

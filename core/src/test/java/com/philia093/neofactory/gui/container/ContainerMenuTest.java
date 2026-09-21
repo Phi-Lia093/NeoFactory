@@ -597,6 +597,50 @@ class ContainerMenuTest {
         return grid;
     }
 
+    @Test
+    void aCreativeShelfHandsOutOnePieceAndAWholeStack() {
+        Inventory shelf = new Inventory(1);
+        shelf.set(0, ItemStack.of(Items.STONE, 1));
+        ContainerLayout shelfLayout = new ContainerLayout();
+        shelfLayout.add(8, 8, shelf, 0, Slot.Rule.OUTPUT);
+        shelfLayout.addGrid(8, 62, 9, 4, player, 0, Slot.Rule.NORMAL);
+        ContainerMenu grid = new ContainerMenu(shelfLayout, player);
+        // What the grid of a creative inventory is, see ContainerMenu#setCreativeSupply.
+        grid.setResultFiller(slot -> ItemStack.of(Items.STONE, 1));
+        grid.setCreativeSupply(true);
+        grid.open();
+        Slot shelfSlot = shelfLayout.slots().get(0);
+
+        click(grid, shelfSlot, LEFT, false);
+
+        assertEquals(1, grid.cursorStack().count(), "one piece per left click");
+        assertEquals(1, shelf.get(0).count(), "and the shelf fills itself again");
+
+        grid.carryBack();
+        click(grid, shelfSlot, RIGHT, false);
+
+        assertEquals(Items.STONE.maxStackSize(), grid.cursorStack().count(),
+                "a whole stack per right click");
+        assertEquals(1, shelf.get(0).count(), "the shelf keeps its piece either way");
+    }
+
+    @Test
+    void aMachineStillHandsOutItsWholeResult() {
+        // The behaviour above belongs to the shelf of the game and not to a machine: the output
+        // of a recipe keeps handing out everything it holds.
+        Inventory machine = new Inventory(1);
+        machine.set(0, ItemStack.of(Items.IRON_INGOT, 2));
+        ContainerLayout machineLayout = new ContainerLayout();
+        machineLayout.add(8, 8, machine, 0, Slot.Rule.OUTPUT);
+        machineLayout.addGrid(8, 62, 9, 4, player, 0, Slot.Rule.NORMAL);
+        ContainerMenu output = new ContainerMenu(machineLayout, player);
+        output.open();
+
+        click(output, machineLayout.slots().get(0), LEFT, false);
+
+        assertEquals(2, output.cursorStack().count(), "the whole result of the machine");
+    }
+
     /** Clicks the middle of a slot: a press and a release on the same place. */
     private void click(Slot slot, int button, boolean shift) {
         click(menu, slot, button, shift);

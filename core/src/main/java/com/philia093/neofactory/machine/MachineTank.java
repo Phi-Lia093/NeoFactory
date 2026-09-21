@@ -1,5 +1,8 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.FluidStorage;
+import com.philia093.neofactory.fluid.SimpleFluidStorage;
+
 import java.util.Objects;
 
 /**

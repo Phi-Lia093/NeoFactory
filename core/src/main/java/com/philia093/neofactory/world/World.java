@@ -4,6 +4,8 @@ import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.entity.EntityManager;
+import com.philia093.neofactory.fluid.FluidFlow;
+import com.philia093.neofactory.fluid.Fluids;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -76,6 +78,12 @@ public final class World implements BlockAccess {
 
     private final int spawnX;
     private final int spawnY;
+
+    /** Fluids that run through this world, see {@link FluidFlow}. */
+    private final FluidFlow fluids = new FluidFlow();
+
+    /** Ticks this world has run, the clock of everything that works on a schedule. */
+    private long tickCount;
 
     /**
      * Creates a world and prepares the chunks around the spawn point.
@@ -245,6 +253,9 @@ public final class World implements BlockAccess {
         } finally {
             generating.remove(key);
         }
+        // A chunk that comes back has to tell the fluids where they stand: while it was out of
+        // memory nothing ran, so a lake that was left half spilled has to finish.
+        fluids.noticeLoaded(this, chunk);
         return chunk;
     }
 
@@ -404,6 +415,10 @@ public final class World implements BlockAccess {
         // This is the public write path of the world: everything reaching it is a
         // player change and has to survive unloading and saving.
         chunk.markModified();
+        // Water and lava are looked at again where something happened: a wall built through a
+        // lake holds the water back, a hole in that wall lets it through, and a source that was
+        // taken away stops feeding the water that lived from it.
+        fluids.mark(this, x, y);
     }
 
     /**
@@ -572,6 +587,7 @@ public final class World implements BlockAccess {
         if (tickDelta <= 0.0f) {
             return 0;
         }
+        tickCount++;
         ticking.clear();
         for (Chunk chunk : chunks.values()) {
             if (chunk.hasBlockEntities()) {
@@ -586,7 +602,28 @@ public final class World implements BlockAccess {
                 ticked++;
             }
         }
+        // Fluids take their turn after the machines: a machine that pours water into the world
+        // changes a block, and that change has to be seen by the fluid in the same tick.
+        fluids.tick(this, tickCount);
         return ticked;
+    }
+
+    /**
+     * Ticks this world has run.
+     * <p>
+     * The count advances once per {@link #tick(float)}, so everything that works on a schedule -
+     * the frames of an animated block, the ring a fluid is about to fill - reads the same clock
+     * and stays in step.
+     *
+     * @return amount of ticks since the world was created or opened
+     */
+    public long tickCount() {
+        return tickCount;
+    }
+
+    /** The fluids of this world, the side a bucket talks to, see {@link FluidFlow}. */
+    public FluidFlow fluids() {
+        return fluids;
     }
 
 
@@ -610,6 +647,45 @@ public final class World implements BlockAccess {
     }
 
     /**
+     * Writes into the object layer together with the state of the cell.
+     * <p>
+     * The state is what a block carries beyond its id, and a fluid cannot do without it: a cell of
+     * water is either the source a lake grows from or a cell that source reached, and nothing in
+     * the game could tell the two apart from the id alone, see {@code FluidState#pack()}.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param block block to store
+     * @param meta state that belongs to the block, {@code 0} when it carries none
+     */
+    public void setObjectBlock(int x, int y, Block block, int meta) {
+        setObjectBlock(x, y, block);
+        Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
+        chunk.setMeta(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, meta);
+    }
+
+    /**
+     * Writes into the ground layer together with the state of the cell.
+     * <p>
+     * Used by a decoration that has to replace the ground the generator laid out, such as the pool
+     * of lava that burns it into stone, see {@code LavaLakeDecoration}. Like the object layer
+     * helpers this is the decoration path: raw ids, so a chunk grown from the seed alone never
+     * counts as a change of the player.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param block block to store
+     * @param meta state that belongs to the block, {@code 0} when it carries none
+     */
+    public void setFloorBlock(int x, int y, Block block, int meta) {
+        Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
+        int localX = Chunk.localOf(x);
+        int localY = Chunk.localOf(y);
+        chunk.setRawId(localX, localY, Chunk.LAYER_FLOOR, block.id());
+        chunk.setMeta(localX, localY, Chunk.LAYER_FLOOR, meta);
+    }
+
+    /**
      * Writes into the object layer only when that cell is still empty.
      *
      * @param x block coordinate along the first horizontal axis
@@ -626,6 +702,30 @@ public final class World implements BlockAccess {
         }
         // Decoration path, see setObjectBlock: never marks the chunk as modified.
         chunk.setRawId(localX, localY, Chunk.LAYER_OBJECT, block.id());
+        return true;
+    }
+
+    /**
+     * Writes into the object layer only when that cell is still empty, together with its state.
+     * <p>
+     * This is what a decorator uses, and it follows a rule that keeps decorations from fighting each
+     * other: <b>whoever fills a cell first owns it.</b> A tree does not grow out of the lava of a
+     * pool, the bank of a river does not cover a burn, and - the case that found this rule - a
+     * decoration that runs while a chunk is completed never overwrites a block the player put down.
+     * The alternative, writing over whatever is there, is what let a tree be planted in lava.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @param block block to store
+     * @param meta state that belongs to the block, {@code 0} when it carries none
+     * @return {@code true} when the block was stored
+     */
+    public boolean placeObjectIfAir(int x, int y, Block block, int meta) {
+        if (!placeObjectIfAir(x, y, block)) {
+            return false;
+        }
+        Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
+        chunk.setMeta(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, meta);
         return true;
     }
 
@@ -649,6 +749,10 @@ public final class World implements BlockAccess {
                     }
                     int candidateX = x + dx;
                     int candidateY = y + dy;
+                    if (inFluid(candidateX, candidateY)) {
+                        // A player who starts in the water of a lake has to wade out of it again.
+                        continue;
+                    }
                     if (!getBlock(candidateX, candidateY, Chunk.LAYER_FLOOR).isAir()
                             && !isSolid(candidateX, candidateY)) {
                         return new int[] {candidateX, candidateY};
@@ -659,6 +763,21 @@ public final class World implements BlockAccess {
         LOGGER.warn("No walkable spawn cell within {} blocks of ({}, {}), falling back",
                 SPAWN_SEARCH_RADIUS, x, y);
         return new int[] {x, y};
+    }
+
+    /**
+     * {@code true} when a cell carries a fluid in either layer.
+     * <p>
+     * The water of a river and of a lake lies in the layer of the player and a spill the player
+     * poured into a hole lies in the ground layer, so both are asked.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return {@code true} when water, lava or another fluid stands in that cell
+     */
+    private boolean inFluid(int x, int y) {
+        return Fluids.byBlock(peekBlock(x, y, Chunk.LAYER_FLOOR)) != null
+                || Fluids.byBlock(peekBlock(x, y, Chunk.LAYER_OBJECT)) != null;
     }
 
     /**

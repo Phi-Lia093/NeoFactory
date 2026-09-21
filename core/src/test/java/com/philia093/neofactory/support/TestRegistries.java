@@ -6,6 +6,7 @@ import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.entity.EntityRegistry;
 import com.philia093.neofactory.entity.EntityTypes;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
 
@@ -31,6 +32,9 @@ public final class TestRegistries {
             return;
         }
         Blocks.registerAll();
+        // A fluid brings the block it stands in the world with, so its table is written
+        // while the block registry is still open.
+        Fluids.registerAll();
         Items.registerAll();
         EntityTypes.registerAll();
         // A stored chunk names its block entities, so the game - and every test that reads

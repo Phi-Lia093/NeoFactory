@@ -5,8 +5,10 @@ import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.world.decoration.Decoration;
 import com.philia093.neofactory.world.decoration.GrassDecoration;
+import com.philia093.neofactory.world.decoration.LavaLakeDecoration;
 import com.philia093.neofactory.world.decoration.TerrainSampler;
 import com.philia093.neofactory.world.decoration.TreeDecoration;
+import com.philia093.neofactory.world.decoration.WaterBodyDecoration;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -73,6 +75,80 @@ public final class WorldGen implements TerrainSampler {
     /** Share of the clusters that turn out to be coal, the rest becomes iron. */
     private static final float ORE_COAL_SHARE = 0.55f;
 
+    // ------------------------------------------------------------------
+    // Rivers, lakes and the fields that drop them
+    // ------------------------------------------------------------------
+
+    /** Octaves of the fields that outline a body of water. */
+    private static final int BODY_OCTAVES = 3;
+
+    /** Amplitude factor between two octaves of a body field. */
+    private static final float BODY_PERSISTENCE = 0.5f;
+
+    /** Frequency of the river field, about one unit per ninety blocks. */
+    private static final float RIVER_FREQUENCY = 1.0f / 90.0f;
+
+    /**
+     * Distance from the middle of the river field that still counts as river.
+     * <p>
+     * A river is the contour line of its field, the line where the field crosses {@code 0.5}, and
+     * a band around that line is what the water covers. Taking a contour line instead of a slice
+     * of the field is what makes a river wind: the line follows the field, the field rolls over
+     * the land, and the band around it is as wide as the slope of the field allows. A steep piece
+     * of the field gives a narrow place, a flat one a wide pond, which reads like a real river
+     * instead of like a drawn ribbon.
+     */
+    private static final float RIVER_HALF_WIDTH = 0.020f;
+
+    /** Frequency of the lake field, about one unit per one hundred and eighty blocks. */
+    private static final float LAKE_FREQUENCY = 1.0f / 180.0f;
+
+    /**
+     * Above this value of the lake field the terrain lies under water.
+     * <p>
+     * A lake is a lobe of its field rather than a contour line, so its border is a piece of the
+     * field itself: ragged, with bays and peninsulas, and never a circle. The value is picked from
+     * the distribution of the field so that a walk of a few hundred blocks runs into a lake.
+     */
+    private static final float LAKE_THRESHOLD = 0.75f;
+
+    /** Frequency of the field that offsets a body before it is read, which bends it. */
+    private static final float WARP_FREQUENCY = 1.0f / 140.0f;
+
+    /** How far that offset reaches, in blocks. */
+    private static final float WARP_BLOCKS = 26.0f;
+
+    /**
+     * Above this patch value the bed of a body of water is gravel.
+     * <p>
+     * The patch field already breaks up the uniform ground of a biome, see
+     * {@link #PATCH_THRESHOLD}, and the bed of a river wants the same kind of variation at the
+     * same scale: patches of gravel and clay in sand, instead of a floor of one material.
+     */
+    private static final float BED_GRAVEL_THRESHOLD = 0.86f;
+
+    /** Above this patch value, but below {@link #BED_GRAVEL_THRESHOLD}, the bed is clay. */
+    private static final float BED_CLAY_THRESHOLD = 0.72f;
+
+    // ------------------------------------------------------------------
+    // Pools of lava
+    // ------------------------------------------------------------------
+
+    /** Frequency of the field that drops the pools of lava, about one unit per seventy blocks. */
+    private static final float POOL_FREQUENCY = 1.0f / 70.0f;
+
+    /**
+     * Above this value of the pool field the ground carries lava.
+     * <p>
+     * Picked from the distribution of the field so that roughly one percent of the world is lava:
+     * often enough to run into a pool while exploring, rare enough that a walk through the world
+     * does not turn into a minefield.
+     */
+    private static final float POOL_THRESHOLD = 0.88f;
+
+    /** Share of the ground under a pool that is gravel, the rest of it is stone. */
+    private static final float SCORCHED_GRAVEL_SHARE = 0.25f;
+
     /**
      * Cumulative distribution of {@link #biomeNoiseAt}, sampled at 26 evenly
      * spaced values of the noise range.
@@ -104,6 +180,11 @@ public final class WorldGen implements TerrainSampler {
     private final int seed;
     private final Noise biomeNoise;
     private final Noise patchNoise;
+    private final Noise riverNoise;
+    private final Noise lakeNoise;
+    private final Noise lavaNoise;
+    private final Noise warpNoise;
+    private final int scorchSeed;
     private final int oreCellSeed;
     private final int oreBlockSeed;
     private final int oreKindSeed;
@@ -120,11 +201,20 @@ public final class WorldGen implements TerrainSampler {
         // reproducible for a given world seed.
         this.biomeNoise = new Noise(seed * 31 + 1);
         this.patchNoise = new Noise(seed * 37 + 2);
+        this.riverNoise = new Noise(seed * 41 + 3);
+        this.lakeNoise = new Noise(seed * 43 + 7);
+        this.lavaNoise = new Noise(seed * 47 + 9);
+        this.warpNoise = new Noise(seed * 71 + 8);
+        this.scorchSeed = seed * 67 + 12;
         this.oreCellSeed = seed * 53 + 4;
         this.oreBlockSeed = seed * 59 + 5;
         this.oreKindSeed = seed * 61 + 6;
 
         List<Decoration> built = new ArrayList<>();
+        // The water comes first: a river and a lake own their cells, and everything planted later
+        // only adds to what it finds.
+        built.add(new WaterBodyDecoration(seed));
+        built.add(new LavaLakeDecoration());
         built.add(new TreeDecoration(seed));
         built.add(new GrassDecoration(seed));
         this.decorations = Collections.unmodifiableList(built);
@@ -171,7 +261,86 @@ public final class WorldGen implements TerrainSampler {
 
     @Override
     public Biome biomeAt(int x, int y) {
+        // The water of a river and of a lake covers every other biome: a river runs through a
+        // forest as well as through a desert, and the field that draws it does not care where it
+        // is. That is why both answer before the biome field is asked at all.
+        if (isRiverAt(x, y)) {
+            return Biome.RIVER;
+        }
+        if (isLakeAt(x, y)) {
+            return Biome.LAKE;
+        }
         return Biome.fromNormalized(biomeShareAt(x, y));
+    }
+
+    /**
+     * {@code true} when a river runs through a cell.
+     * <p>
+     * The river is the band around the contour line of a field of its own, see
+     * {@link #RIVER_HALF_WIDTH}: it winds because the line does, and it is as wide as the slope of
+     * the field allows.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return {@code true} when the cell lies under the water of a river
+     */
+    public boolean isRiverAt(int x, int y) {
+        return Math.abs(bodyAt(riverNoise, RIVER_FREQUENCY, x, y) - 0.5f) <= RIVER_HALF_WIDTH;
+    }
+
+    /**
+     * {@code true} when a lake covers a cell.
+     * <p>
+     * The lake is a lobe of a field of its own above {@link #LAKE_THRESHOLD}. Its border is a piece
+     * of the field, so it has bays, islands and peninsulas and is never the circle a hand drawn
+     * shape would be.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return {@code true} when the cell lies under the water of a lake
+     */
+    public boolean isLakeAt(int x, int y) {
+        return bodyAt(lakeNoise, LAKE_FREQUENCY, x, y) >= LAKE_THRESHOLD;
+    }
+
+    /**
+     * {@code true} when a pool of lava lies on a cell.
+     * <p>
+     * The lava itself is poured by {@code LavaLakeDecoration}, which asks this method, but the field
+     * belongs here for the same reason the fields of the river and the lake do: the ground of a cell
+     * has to answer where it is and what it is made of, see {@link #floorAt(int, int)}. A tree that
+     * asked the ground without knowing about the lava was planted in the middle of a pool.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return {@code true} when the cell lies under a pool of lava
+     */
+    @Override
+    public boolean isLavaPoolAt(int x, int y) {
+        return bodyAt(lavaNoise, POOL_FREQUENCY, x, y) >= POOL_THRESHOLD;
+    }
+
+    /**
+     * Reads a body field at a cell, with the sampling position bent by another field.
+     * <p>
+     * The offset is what makes a river meander and a lake ragged instead of smooth. Without it the
+     * contour line of the river field would be a clean curve and the lobe of the lake field an
+     * even blob; pushing the sampling position around with a second curve folds both of them into
+     * the shapes a landscape has. The two offsets are read from the same field at two places far
+     * apart, which makes them independent without a third field.
+     *
+     * @param field body field to read
+     * @param frequency frequency of that field
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return the value of the field, in the range {@code [0, 1]}
+     */
+    private float bodyAt(Noise field, float frequency, int x, int y) {
+        float offsetX = (warpNoise.fbm2(x, y, BODY_OCTAVES, WARP_FREQUENCY, BODY_PERSISTENCE)
+                - 0.5f) * WARP_BLOCKS;
+        float offsetY = (warpNoise.fbm2(x + 1000.0f, y + 1000.0f, BODY_OCTAVES, WARP_FREQUENCY,
+                BODY_PERSISTENCE) - 0.5f) * WARP_BLOCKS;
+        return field.fbm2(x + offsetX, y + offsetY, BODY_OCTAVES, frequency, BODY_PERSISTENCE);
     }
 
     /**
@@ -198,6 +367,19 @@ public final class WorldGen implements TerrainSampler {
     @Override
     public Block floorAt(int x, int y) {
         Biome biome = biomeAt(x, y);
+        if (biome == Biome.RIVER || biome == Biome.LAKE) {
+            // The bed of a body of water lies here, in the ground layer, while the water itself
+            // stands above it in the layer the player walks in, see WaterBodyDecoration. Neither
+            // ore nor the accent block of the biome reaches a bed: a patch of gravel in the middle
+            // of a lake would stick out of the water.
+            return bedAt(x, y);
+        }
+        if (isLavaPoolAt(x, y)) {
+            // The ground a pool lies on is burnt into stone and gravel. It is burnt here and not
+            // left to the decorator that pours the lava, because this method is what everything
+            // that plants on the ground reads: without it a tree grew out of the lava.
+            return scorchedAt(x, y);
+        }
         if (biome == Biome.ROCKY) {
             Block ore = oreAt(x, y);
             if (ore != null) {
@@ -209,6 +391,44 @@ public final class WorldGen implements TerrainSampler {
             return biome.accentBlock();
         }
         return biome.floorBlock();
+    }
+
+    /**
+     * Material of a river bed or a lake bed.
+     * <p>
+     * Sand is the ground of the bed, with patches of clay and gravel in it, drawn from the patch
+     * field the rest of the world uses for its ground details. The three materials are what a bank
+     * of a river is made of, and they read through the water above them, which is drawn with a
+     * colour that lets the ground shine through.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return sand, clay or gravel
+     */
+    private Block bedAt(int x, int y) {
+        float patch = patchNoise.fbm2(x, y, PATCH_OCTAVES, PATCH_FREQUENCY, PATCH_PERSISTENCE);
+        if (patch >= BED_GRAVEL_THRESHOLD) {
+            return Blocks.GRAVEL;
+        }
+        if (patch >= BED_CLAY_THRESHOLD) {
+            return Blocks.CLAY;
+        }
+        return Blocks.SAND;
+    }
+
+    /**
+     * Material of the ground under a pool of lava.
+     * <p>
+     * Stone with patches of gravel in it, drawn from a hash of the cell: the burn has no bed of its
+     * own the way a river has, it simply scorches what was there.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return stone or gravel
+     */
+    private Block scorchedAt(int x, int y) {
+        return Noise.hash(x, y, scorchSeed) < SCORCHED_GRAVEL_SHARE
+                ? Blocks.GRAVEL : Blocks.STONE;
     }
 
     /**

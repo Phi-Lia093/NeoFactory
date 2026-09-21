@@ -1,6 +1,7 @@
 package com.philia093.neofactory.block;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.fluid.Fluids;
 
 /**
  * Declaration of every block type used by the game.
@@ -49,8 +50,17 @@ public final class Blocks {
     public static final int TALL_GRASS_ID = 16;
     public static final int FURNACE_ID = 17;
 
+    /**
+     * Id of the block of lava.
+     * <p>
+     * Water and lava are created by {@link com.philia093.neofactory.fluid.Fluids}, because a
+     * fluid owns its block and the two may never drift apart. Their ids live here all the
+     * same, where every other id lives, and are handed to that table.
+     */
+    public static final int LAVA_ID = 18;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 18;
+    public static final int NEXT_FREE_ID = 19;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -81,13 +91,22 @@ public final class Blocks {
     public static Block CLAY;
 
     /**
-     * Still water.
+     * Still water, the block of the fluid of the same name.
      * <p>
-     * The definition is kept so that the reserved id stays stable, but nothing
-     * generates water yet: fluids are meant to become a {@code Fluid} subclass of
-     * {@link Block} with its own spreading rules.
+     * The picture, the colour and the frames come from
+     * {@link com.philia093.neofactory.fluid.Fluids}, which is handed the block again by
+     * {@link com.philia093.neofactory.fluid.Fluids#registerAll()}.
+     * <p>
+     * <b>Where water comes from:</b> the rivers and lakes of the world are laid out by the
+     * generator, see {@link com.philia093.neofactory.world.decoration.WaterBodyDecoration} - every
+     * cell of one is a source that stands in the layer of the player, and the ring of sand and
+     * gravel around it is what holds it. A bucket or a cell adds to that: what a player pours runs
+     * the way any fluid does.
      */
     public static Block WATER;
+
+    /** Lava, the block of the fluid of the same name, see {@link #WATER}. */
+    public static Block LAVA;
 
     /** Oak trunk, placed in the center of a tree decoration. */
     public static Block LOG_OAK;
@@ -202,19 +221,34 @@ public final class Blocks {
                 .build();
         BlockRegistry.register(CLAY);
 
-        // Water references the animated still water sheet. Only its first frame
-        // is used for now, the tint keeps it clearly readable. The player walks into
-        // it and is slowed down later, so it is not solid but is ground.
+        // Water and lava are the blocks of the two fluids of Fluids: the colour, the sheet and
+        // the frames they are drawn with come from that table, so a block and its fluid can
+        // never drift apart. Both stand in the object layer, the one the player stands in, so
+        // the ground below a lake stays visible through the picture, and the sign of their
+        // hardness keeps every tool out: only a bucket takes a fluid out of the world.
         WATER = Block.builder(WATER_ID, "water")
-                .texture("water_still")
+                .texture(Fluids.SHEET)
                 .solid(false)
-                .ground(true)
+                .ground(false)
                 .liquid(true)
                 .transparent(true)
-                .tint(new Color(0.55f, 0.75f, 1.0f, 0.75f))
                 .hardness(-1.0f)
+                .tint(Fluids.WATER_COLOR)
+                .animation(Fluids.FRAMES, Fluids.FRAME_TICKS)
                 .build();
         BlockRegistry.register(WATER);
+
+        LAVA = Block.builder(LAVA_ID, "lava")
+                .texture(Fluids.SHEET)
+                .solid(false)
+                .ground(false)
+                .liquid(true)
+                .transparent(true)
+                .hardness(-1.0f)
+                .tint(Fluids.LAVA_COLOR)
+                .animation(Fluids.FRAMES, Fluids.FRAME_TICKS)
+                .build();
+        BlockRegistry.register(LAVA);
 
         // Seen from above an oak trunk shows its growth rings, which makes the
         // center of a tree clearly distinguishable from its leaves.

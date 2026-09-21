@@ -59,8 +59,11 @@ public class TreeDecoration extends Decoration {
 
     @Override
     public void place(World world, TerrainSampler terrain, int x, int y, Random random) {
-        // The trunk owns the center cell, the four leaves form the canopy around it.
-        world.setObjectBlock(x, y, Blocks.LOG_OAK);
+        // The trunk takes the center cell only when it is still free. A decorator that came before
+        // owns the cells it filled - the water of a river, the lava of a pool - and a tree has no
+        // business growing out of either of them. Tall grass is planted after the trees, see
+        // WorldGen, so the trunk never has to push a plant aside.
+        world.placeObjectIfAir(x, y, Blocks.LOG_OAK);
         world.placeObjectIfAir(x + 1, y, Blocks.LEAVES_OAK);
         world.placeObjectIfAir(x - 1, y, Blocks.LEAVES_OAK);
         world.placeObjectIfAir(x, y + 1, Blocks.LEAVES_OAK);

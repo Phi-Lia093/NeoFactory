@@ -1,5 +1,7 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.recipe.RecipeGrid;
 
 /**
@@ -12,7 +14,7 @@ import com.philia093.neofactory.recipe.RecipeGrid;
  * the other one.
  * <p>
  * A view that a machine hands out while it looks for a recipe must stay valid, but
- * nothing in it may be changed by {@link #hasFluid(FluidType, int)}.
+ * nothing in it may be changed by {@link #hasFluid(Fluid, int)}.
  */
 public interface MachineInput {
 
@@ -37,7 +39,7 @@ public interface MachineInput {
      * @param amount amount in units of the game
      * @return {@code true} when a recipe could be satisfied
      */
-    default boolean hasFluid(FluidType fluid, int amount) {
+    default boolean hasFluid(Fluid fluid, int amount) {
         for (int index = 0; index < tankCount(); index++) {
             FluidStorage tank = tank(index);
             if (tank.fluid() == fluid && tank.amount() >= amount) {
@@ -54,7 +56,7 @@ public interface MachineInput {
      * @param amount amount that is wanted
      * @return the amount that was taken, {@code 0} when no tank held it
      */
-    default int drain(FluidType fluid, int amount) {
+    default int drain(Fluid fluid, int amount) {
         for (int index = 0; index < tankCount(); index++) {
             FluidStorage tank = tank(index);
             if (tank.fluid() == fluid && tank.amount() > 0) {

@@ -1,5 +1,8 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.FluidIngredient;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.recipe.Recipe;
 
