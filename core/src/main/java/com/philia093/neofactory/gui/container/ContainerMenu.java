@@ -89,6 +89,9 @@ public final class ContainerMenu {
     private ResultFiller resultFiller;
     private StackDropper dropper;
 
+    /** {@code true} when items that find no place are destroyed, see {@link #setVoidsOverflow}. */
+    private boolean voidsOverflow;
+
     /** Slot the mouse was pressed on, {@code null} while no button is held. */
     private Slot dragStart;
 
@@ -306,6 +309,21 @@ public final class ContainerMenu {
      */
     public void setDropper(StackDropper dropper) {
         this.dropper = dropper;
+    }
+
+    /**
+     * Sets whether items that find no place are destroyed instead of staying where they are.
+     * <p>
+     * Every ordinary container never loses an item: what does not fit stays in the slot it
+     * came from, see {@link #quickMove(Slot)}. The creative inventory is the other way
+     * round - an emptied grid slot fills itself again, see
+     * {@link #setResultFiller(ResultFiller)} - so putting something into that grid can only
+     * mean the player wants to get rid of it.
+     *
+     * @param voidsOverflow {@code true} to destroy what cannot be placed
+     */
+    public void setVoidsOverflow(boolean voidsOverflow) {
+        this.voidsOverflow = voidsOverflow;
     }
 
     /**
@@ -581,6 +599,11 @@ public final class ContainerMenu {
             return;
         }
         if (slot.isOutput()) {
+            if (voidsOverflow) {
+                // Dropping a stack on a slot that only hands out means throwing it away
+                // in a screen that owns every item of the game anyway.
+                cursor = ItemStack.EMPTY;
+            }
             return;
         }
         if (stored.isEmpty()) {
@@ -605,6 +628,12 @@ public final class ContainerMenu {
      */
     private void moveOneItem(Slot slot) {
         if (slot.isOutput()) {
+            if (voidsOverflow && !cursor.isEmpty()) {
+                // The right button throws one item away on a slot that only hands out,
+                // see setVoidsOverflow.
+                cursor.setCount(cursor.count() - 1);
+                return;
+            }
             // A result is always taken as a whole, splitting it makes no sense.
             moveWholeStack(slot);
             return;
@@ -655,6 +684,10 @@ public final class ContainerMenu {
                 ? candidate.inventory() == playerSide
                 : candidate.inventory() != playerSide && !candidate.isOutput());
         if (leftover > 0) {
+            if (voidsOverflow) {
+                // The other side owns every item anyway, see setVoidsOverflow.
+                return;
+            }
             // No room on the other side, the stack stays where it came from.
             slot.set(ItemStack.of(moving.item(), leftover));
         }

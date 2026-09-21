@@ -27,9 +27,17 @@ world is stored on disk so that a session can be continued later.
 - **Entities** - a framework the player and dropped items are built on, with one
   type registry and one save layout they share.
 - **Chat and commands** - one input line at the lower left for messages and for
-  commands: a line behind a slash is a command (`/help`, `/give`, `/tp`, `/seed`),
-  anything else is a chat message. The recent conversation stays visible for a few
-  seconds and comes back while something is typed.
+  commands: a line behind a slash is a command (`/help`, `/give`, `/tp`, `/seed`,
+  `/gamemode`), anything else is a chat message. The recent conversation stays visible
+  for a few seconds and comes back while something is typed.
+- **Creative mode** - `/gamemode creative` hands out every item of the game: the
+  inventory key then opens a grid of everything the game owns, with a tab for each
+  group, a scroll bar and a search box, and a stack that was taken is there again right
+  away. Every tab carries the icon of its group, an empty search box lists everything
+  and the scroll bar tells a list that fits into the grid from one that goes on. The last
+  tab hands the panel over to the inventory of the player, so the crafting field comes
+  with it. What is put into the grid is thrown away, and a stack dragged out of it lands
+  on the ground. `/gamemode survival` goes back, and the mode is stored with the world.
 
 ## Controls
 
@@ -46,8 +54,9 @@ world is stored on disk so that a session can be continued later.
 | `[` / `]` | keep fewer / more chunks around the player |
 | `SHIFT` | address the layer below the feet instead of the layer the player stands in |
 | `Q` | drop one item, `SHIFT` + `Q` the whole stack: the hotbar slot during play, the slot under the mouse while the inventory is open |
-| mouse outside the panel | throw the carried stack into the world while the inventory is open |
-| `E` | open and close the inventory |
+| mouse outside the panel | throw the carried stack into the world while a container is open; a stack put into the creative grid disappears instead |
+| `E` | open and close the inventory; while the world is played in creative mode it opens the creative inventory instead |
+| typing in the search box | filter the creative inventory by name, `BACKSPACE` deletes a character |
 | `/` | open the input line with the command slash, `T` opens it for a message |
 | `ENTER` | send the line: a command when it starts with a slash, a chat message otherwise |
 | `UP` / `DOWN` | walk through the lines that were sent before while the input line is open |
@@ -65,13 +74,13 @@ world is stored on disk so that a session can be continued later.
 | --- | --- |
 | `block` | block types and the id/name lookup table, ids are stable across save games |
 | `item` | item types, stacks, the inventory, the hotbar selection and the sinks broken blocks hand items to |
-| `world` | chunks, the world, the chunk store interface and the generator |
+| `world` | chunks, the world, the game mode, the chunk store interface and the generator |
 | `world.decoration` | the trees and plants planted on a finished chunk |
 | `world.interaction` | aiming, breaking and building |
 | `world.save` | the save format, the level file, the chunk files and the entity tags |
 | `entity` | entities: the base class, the type registry, the manager, the player and dropped items |
 | `chat` | the input line, the messages and the commands a line behind a slash is looked up in |
-| `gui` | hotbar, inventory and chat rendering, layout and widgets |
+| `gui` | hotbar, inventory, creative inventory and chat rendering, layout and widgets |
 | `render` | world, entity, selection and font rendering |
 | `screen` | the screens and the manager that switches between them |
 | `input` | keyboard and mouse state |
@@ -135,6 +144,16 @@ leaves keep their flat picture, they do not fill a cell. `gradlew :core:test` wr
 a sheet that shows the result to `core/build/reports/block-icons-preview.png`, with a
 few blocks enlarged in `block-icons-detail.png`.
 
+`gui/inventory_icons.png` holds every panel of the interface. Since the creative
+inventory arrived it also carries that screen's art - the two panels, the tab in its two
+states and the two thumbs of the scroll bar - which `build/verify/extract_creative.ps1`
+copies out of the art pack next to it. The thumbs are the pair the original game keeps
+for a list that fits into the panel and for one that goes on, and the tabs are the empty
+shapes it draws: the icon on a tab is the item of its group, drawn at run time the same
+way a slot draws it. The sheet was grown from 256 to 512 square pixels for all of this,
+and the older pictures in its upper left corner still start at the same coordinates, so
+nothing that already read them had to change.
+
 ## Interface
 
 A container screen - the inventory today, the screen of a machine tomorrow - is built
@@ -144,6 +163,23 @@ that needs no window. `ContainerView` draws that menu: `PanelTextures` stretches
 panel picture of `gui/inventory_icons.png` in nine cells to whatever size the slots ask
 for, which is why one picture serves the small inventory and a tall machine screen. The
 same sheet holds the slot bevel, the crafting arrow and the flame of a furnace.
+
+The creative inventory reuses those two halves instead of adding a third one.
+`CreativeInventory` holds the whole logic - which tab is chosen, which items the group
+holds, how far the list is scrolled and what the search box keeps - and is covered by
+tests that need no window. Its grid is an ordinary `Inventory` of result slots, so
+`ContainerMenu` shows it and hands a stack out on a click; the supply behind a slot is
+endless, see `CreativeInventory#sourceAt(int)`, which is why a stack that was taken is
+there again right away. The tabs are recognised by what an item *is* - a block, a
+material, food, a tool, armour - so a new item lands in its group by itself.
+`CreativeLayout` owns the geometry of the panel, and the drawing code and the hit
+testing both read it, so a click always lands on the slot the player sees. Putting
+something into a grid slot is the one action that has no place - the slot fills itself
+again - so that stack is destroyed instead of finding no room, see
+`ContainerMenu#setVoidsOverflow(boolean)`; a stack dragged out of the panel lands on the
+ground like anywhere else. The last tab is not a list at all: it hands the panel over to
+the inventory of the player, so a creative player keeps the crafting field and both
+screens share the items in it.
 
 A machine describes its slots by their role - input, fuel, output - and `MachineMenu`
 turns those roles into a layout, so a new machine gets its screen without a line of

@@ -15,6 +15,15 @@ public final class SaveTags {
     /** Name of the world. */
     public static final String WORLD_NAME = "WorldName";
 
+    /**
+     * Mode the world is played in.
+     * <p>
+     * The entry is written since the creative inventory exists; a world stored before
+     * that carries none and is read as {@code survival}, see
+     * {@link com.philia093.neofactory.world.GameMode#byName(String)}.
+     */
+    public static final String GAME_MODE = "GameMode";
+
     /** Seed of the terrain. */
     public static final String SEED = "Seed";
 

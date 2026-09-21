@@ -183,6 +183,55 @@ class ContainerMenuTest {
     }
 
     @Test
+    void aCreativeGridDestroysWhatIsPutIntoIt() {
+        ContainerMenu grid = creativeGrid();
+        Slot gridSlot = grid.layout().slots().get(0);
+        Slot playerSlot = grid.layout().slots().get(45);
+        player.set(0, ItemStack.of(Items.STONE, 12));
+
+        // Shift moves the stack to the other side; the other side owns every item and
+        // fills its slots again, so the stack disappears instead of staying.
+        click(grid, playerSlot, LEFT, true);
+
+        assertTrue(player.get(0).isEmpty(), "the stack is gone instead of staying");
+        assertTrue(gridSlot.stack().isEmpty(), "and the grid slot stays empty");
+    }
+
+    @Test
+    void aCreativeGridSwallowsTheStackOnTheMouse() {
+        ContainerMenu grid = creativeGrid();
+        Slot gridSlot = grid.layout().slots().get(0);
+        Slot playerSlot = grid.layout().slots().get(45);
+        player.set(0, ItemStack.of(Items.STONE, 12));
+
+        click(grid, playerSlot, LEFT, false);
+        assertEquals(12, grid.cursorStack().count(), "the stack is on the mouse");
+
+        click(grid, gridSlot, LEFT, false);
+
+        assertTrue(grid.cursorStack().isEmpty(), "the carried stack is gone");
+        assertTrue(gridSlot.stack().isEmpty(), "and nothing was stored");
+    }
+
+    @Test
+    void withoutThatSwitchTheCarriedStackIsKept() {
+        ContainerLayout outputLayout = new ContainerLayout();
+        outputLayout.add(8, 8, chest, 0, Slot.Rule.OUTPUT);
+        outputLayout.addGrid(8, 62, 9, 4, player, 0, Slot.Rule.NORMAL);
+        ContainerMenu result = new ContainerMenu(outputLayout, player);
+        result.open();
+        Slot resultSlot = outputLayout.slots().get(0);
+        Slot playerSlot = outputLayout.slots().get(1);
+        player.set(0, ItemStack.of(Items.STONE, 5));
+
+        click(result, playerSlot, LEFT, false);
+        click(result, resultSlot, LEFT, false);
+
+        assertEquals(5, result.cursorStack().count(),
+                "an ordinary result slot never eats what it cannot take");
+    }
+
+    @Test
     void shiftMovesAStackToTheOtherSide() {
         player.set(0, ItemStack.of(Items.STONE, 12));
 
@@ -532,6 +581,20 @@ class ContainerMenuTest {
     /** Slot of the panel: the first {@link #CHEST_SLOTS} belong to the container. */
     private Slot slot(int index) {
         return layout.slots().get(index);
+    }
+
+    /**
+     * A container shaped like the creative grid: nine by five result slots with the hotbar
+     * below them, and the switch that destroys what is put into them.
+     */
+    private ContainerMenu creativeGrid() {
+        ContainerLayout gridLayout = new ContainerLayout();
+        gridLayout.addGrid(8, 8, 9, 5, new Inventory(45), 0, Slot.Rule.OUTPUT);
+        gridLayout.addGrid(8, 122, 9, 1, player, 0, Slot.Rule.NORMAL);
+        ContainerMenu grid = new ContainerMenu(gridLayout, player);
+        grid.setVoidsOverflow(true);
+        grid.open();
+        return grid;
     }
 
     /** Clicks the middle of a slot: a press and a release on the same place. */

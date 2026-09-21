@@ -25,9 +25,9 @@ class ChatCommandsTest {
     }
 
     @Test
-    void theRegistryHoldsTheFourCommands() {
-        assertEquals(4, registry.size());
-        assertEquals(4, registry.all().size());
+    void theRegistryHoldsTheFiveCommands() {
+        assertEquals(5, registry.size());
+        assertEquals(5, registry.all().size());
     }
 
     @Test

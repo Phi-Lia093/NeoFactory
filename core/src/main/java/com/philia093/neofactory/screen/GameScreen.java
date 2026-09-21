@@ -18,6 +18,7 @@ import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.chat.command.CommandContext;
 import com.philia093.neofactory.chat.command.CommandRegistry;
 import com.philia093.neofactory.gui.ChatOverlay;
+import com.philia093.neofactory.gui.CreativeInventoryGui;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.input.InputHandler;
@@ -36,6 +37,7 @@ import com.philia093.neofactory.render.WorldRenderer;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.ChunkStreamer;
+import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
@@ -126,6 +128,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Inventory screen, opened and closed with the inventory key. */
     private final InventoryGui inventoryGui;
 
+    /** The screen the inventory key opens while the world is played in creative mode. */
+    private final CreativeInventoryGui creativeGui;
+
     /**
      * Chat and command line of this world.
      * <p>
@@ -185,6 +190,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 return true;
             }
             uiViewport.unproject(screenX, screenY, interfaceMouse);
+            if (creativeGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
             if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
@@ -207,6 +215,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             uiViewport.unproject(screenX, screenY, interfaceMouse);
             // A held button that is dragged over the slots of the inventory shares the
             // carried stack out over them.
+            creativeGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             inventoryGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             return false;
         }
@@ -217,6 +226,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 return true;
             }
             uiViewport.unproject(screenX, screenY, interfaceMouse);
+            if (creativeGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
             if (inventoryGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
@@ -237,7 +249,15 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (chat.isOpen()) {
                 return chat.keyDown(keyCode);
             }
-            if (!inventoryGui.isOpen() && ChatController.isOpenKey(keyCode)) {
+            if (creativeGui.isSearchFocused()) {
+                // While the search box owns the keyboard, a letter belongs into the box
+                // and not into the chat, so only its own keys are taken here.
+                return creativeGui.keyDown(keyCode);
+            }
+            if (creativeGui.keyDown(keyCode)) {
+                return true;
+            }
+            if (!isInterfaceOpen() && ChatController.isOpenKey(keyCode)) {
                 chat.open(keyCode);
                 LOGGER.info("Chat opened with {}", keyCode == ChatController.KEY_CHAT
                         ? "T" : "/");
@@ -248,6 +268,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         @Override
         public boolean keyTyped(char character) {
+            if (creativeGui.keyTyped(character)) {
+                return true;
+            }
             return chat.keyTyped(character);
         }
     };
@@ -302,6 +325,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         entityRenderers.register(EntityTypes.ITEM, itemEntityRenderer);
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
+        this.creativeGui = new CreativeInventoryGui(textures, font, player.inventory(), uiViewport);
         this.selectionRenderer = new SelectionRenderer(batch, textures);
         // The chat is the only place a player types, and its commands work on this very
         // screen: it is its own command context. Handing "this" out while the
@@ -318,6 +342,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // is left in it is dropped where the player stands instead of being hidden, see
         // ContainerMenu and Slot.Rule.WORK.
         inventoryGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().y));
+        // A stack that a creative player drags out of the grid lands on the ground instead
+        // of going back into an inventory that refills itself anyway.
+        creativeGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().y));
 
         if (fresh) {
             // A new world starts at its spawn point and gets a starter kit, because
@@ -440,6 +467,25 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         return data.seed();
     }
 
+    @Override
+    public GameMode gameMode() {
+        return data.gameMode();
+    }
+
+    @Override
+    public void setGameMode(GameMode mode) {
+        if (mode == null || mode == data.gameMode()) {
+            return;
+        }
+        data.setGameMode(mode);
+        if (mode == GameMode.SURVIVAL) {
+            // The creative screen belongs to the mode: leaving it closes the screen,
+            // so the next press of the inventory key opens the one that fits.
+            creativeGui.close();
+        }
+        LOGGER.info("Game mode of '{}' switched to {}", summary.displayName(), mode.modeName());
+    }
+
     /** Current camera zoom, {@code 1} is the neutral view. */
     public float zoom() {
         return zoom;
@@ -528,11 +574,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private void renderInterface(float delta) {
         uiViewport.apply();
         updateInterfaceMouse();
+        creativeGui.update(delta);
 
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
         hotbarGui.render(batch, player.inventory(),
                 interfaceMouse.x, interfaceMouse.y, !isInterfaceOpen());
+        creativeGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
         batch.end();
@@ -581,8 +629,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         chatOverlay.update(delta);
 
         if (inputHandler.consumePauseToggle()) {
-            if (inventoryGui.isOpen()) {
+            if (creativeGui.isOpen()) {
                 // The escape key closes whatever is on top first.
+                creativeGui.close();
+            } else if (inventoryGui.isOpen()) {
                 inventoryGui.close();
             } else {
                 LOGGER.info("Pause menu requested through the keyboard");
@@ -595,6 +645,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
 
         float zoomSteps = inputHandler.consumeZoomSteps();
+        if (creativeGui.isOpen()) {
+            // While the creative inventory is up the wheel walks through its list
+            // instead of zooming the camera.
+            creativeGui.scrolled(zoomSteps);
+        }
         if (isInterfaceOpen()) {
             // The world keeps running while an interface is open: a drop lying next to
             // the player is still picked up, which is what lets a full inventory take an
@@ -616,14 +671,19 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /**
      * {@code true} while something of the interface covers the world.
      * <p>
-     * The inventory screen and the chat are the two things that take the input while
-     * the world keeps running; the pause menu is a screen of its own and stops the
-     * simulation by not drawing the game screen at all.
+     * These are the screens that take the input while the world keeps running: the
+     * inventory of the player, the creative inventory and the chat. The pause menu is a
+     * screen of its own and stops the simulation by not drawing the game screen at all.
+     * <p>
+     * A screen listed here also keeps the chat closed, because the keys that open it
+     * belong to the panel as long as anything is up - so a command can never be typed
+     * behind an open container. A new screen has to be added to this list to get that
+     * for itself.
      *
      * @return {@code true} while the player types or moves items around
      */
     private boolean isInterfaceOpen() {
-        return inventoryGui.isOpen() || chat.isOpen();
+        return inventoryGui.isOpen() || creativeGui.isOpen() || chat.isOpen();
     }
 
     /**
@@ -677,8 +737,15 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Applies the keys that belong to the interface instead of the world. */
     private void handleInterfaceKeys() {
         if (inputHandler.consumeInventoryToggle()) {
-            inventoryGui.toggle();
-            LOGGER.info("Inventory {}", inventoryGui.isOpen() ? "opened" : "closed");
+            if (gameMode() == GameMode.CREATIVE) {
+                // In creative mode the inventory key opens the list of every item, see
+                // CreativeInventoryGui.
+                creativeGui.toggle();
+                LOGGER.info("Creative inventory {}", creativeGui.isOpen() ? "opened" : "closed");
+            } else {
+                inventoryGui.toggle();
+                LOGGER.info("Inventory {}", inventoryGui.isOpen() ? "opened" : "closed");
+            }
         }
         if (inputHandler.consumeDrop()) {
             dropRequested(inputHandler.isDropWholeStack());
@@ -801,6 +868,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
     }
 
+    /**
+     * Which inventory screen is up and which tab it shows, for the status line.
+     *
+     * @return a short description of the open screen
+     */
+    private String inventoryText() {
+        if (creativeGui.isOpen()) {
+            return "creative(" + creativeGui.inventory().selectedTab().name() + ")";
+        }
+        return inventoryGui.isOpen() ? "open" : "closed";
+    }
+
     /** Writes a short status line to the log now and then. */
     private void logDebugStatistics() {
         debugFrameCounter++;
@@ -808,17 +887,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return;
         }
         debugFrameCounter = 0;
-        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | tiles {} | chunks {} (view {}, "
-                        + "stored {}, changed {}) | stream +{}/-{} | entities {} | hotbar {} "
+        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | mode {} | tiles {} | chunks {} "
+                        + "(view {}, stored {}, changed {}) | stream +{}/-{} | entities {} | hotbar {} "
                         + "| inventory {} | chat {} | target {} | gui {} | fps {}",
                 summary.displayName(),
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
+                gameMode().modeName(),
                 worldRenderer.drawnTileCount(), world.chunkCount(), streamer.viewDistance(),
                 world.storedChunkCount(), world.modifiedChunkCount(),
                 streamer.lastLoaded(), streamer.lastUnloaded(),
                 world.entities().count(),
                 player.inventory().selectedSlot(),
-                inventoryGui.isOpen() ? "open" : "closed",
+                inventoryText(),
                 chat.isOpen() ? "typing '" + chat.text() + "'" : "closed",
                 targetText(),
                 uiViewport.scale(),

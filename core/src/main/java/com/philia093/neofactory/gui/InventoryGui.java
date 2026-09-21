@@ -103,6 +103,12 @@ public final class InventoryGui {
     }
 
     /** Opens the screen when it is closed and closes it otherwise. */
+    /** Opens the screen on the slots it holds. */
+    public void open() {
+        menu.open();
+    }
+
+    /** Opens the screen or closes it when it is already up. */
     public void toggle() {
         menu.toggle();
     }
@@ -246,6 +252,11 @@ public final class InventoryGui {
     /** Y coordinate of the lower edge of the panel, centred in the interface. */
     public float panelY() {
         return Math.round((viewport.guiHeight() - menu.layout().panelHeight()) * 0.5f);
+    }
+
+    /** Height of the panel in virtual pixels, as large as its slots ask for. */
+    public int panelHeight() {
+        return menu.layout().panelHeight();
     }
 
     /**

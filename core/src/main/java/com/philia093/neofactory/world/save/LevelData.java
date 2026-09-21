@@ -4,6 +4,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.util.nbt.NbtList;
+import com.philia093.neofactory.world.GameMode;
 
 /**
  * Everything about a world that is not a block.
@@ -12,7 +13,7 @@ import com.philia093.neofactory.util.nbt.NbtList;
  * world familiar and makes it easy to add entries later:
  * <pre>
  * NeoFactory
- *  +- DataVersion, WorldName, Seed, SpawnX, SpawnY, Created, LastPlayed, PlayedMillis
+ *  +- DataVersion, WorldName, GameMode, Seed, SpawnX, SpawnY, Created, LastPlayed, PlayedMillis
  *  +- Player
  *  |   +- PosX, PosY, RotationX, RotationY, SelectedSlot
  *  |   +- Inventory: [ {Slot, id, Count}, ... ]
@@ -31,6 +32,10 @@ import com.philia093.neofactory.util.nbt.NbtList;
 public final class LevelData {
 
     private String worldName = SaveFormat.DEFAULT_NAME;
+
+    /** Mode the world is played in, {@link GameMode#SURVIVAL} until a player says otherwise. */
+    private GameMode gameMode = GameMode.SURVIVAL;
+
     private int seed;
     private int spawnX;
     private int spawnY;
@@ -74,6 +79,7 @@ public final class LevelData {
 
         LevelData data = new LevelData();
         data.worldName = root.getString(SaveTags.WORLD_NAME, SaveFormat.DEFAULT_NAME);
+        data.gameMode = readGameMode(root.getString(SaveTags.GAME_MODE, ""));
         data.seed = root.getInt(SaveTags.SEED, 0);
         data.spawnX = root.getInt(SaveTags.SPAWN_X, 0);
         data.spawnY = root.getInt(SaveTags.SPAWN_Y, 0);
@@ -91,6 +97,21 @@ public final class LevelData {
             data.readStoredInventory(player.getList(SaveTags.INVENTORY));
         }
         return data;
+    }
+
+    /**
+     * Reads the mode of a world.
+     * <p>
+     * A world stored before the creative inventory existed carries no mode at all and
+     * an unknown name is not from this build either, so both fall back to survival
+     * instead of failing to open the world.
+     *
+     * @param name stored name of the mode, may be empty
+     * @return the mode, {@link GameMode#SURVIVAL} when the name is unknown
+     */
+    private static GameMode readGameMode(String name) {
+        GameMode mode = GameMode.byName(name);
+        return mode == null ? GameMode.SURVIVAL : mode;
     }
 
     /**
@@ -138,6 +159,7 @@ public final class LevelData {
         NbtCompound root = new NbtCompound(SaveFormat.ROOT_TAG);
         root.putInt(SaveTags.DATA_VERSION, SaveFormat.DATA_VERSION);
         root.putString(SaveTags.WORLD_NAME, worldName);
+        root.putString(SaveTags.GAME_MODE, gameMode.modeName());
         root.putInt(SaveTags.SEED, seed);
         root.putInt(SaveTags.SPAWN_X, spawnX);
         root.putInt(SaveTags.SPAWN_Y, spawnY);
@@ -186,6 +208,20 @@ public final class LevelData {
     /** Name shown to the player. */
     public String worldName() {
         return worldName;
+    }
+
+    /** Mode the world is played in, see {@link GameMode}. */
+    public GameMode gameMode() {
+        return gameMode;
+    }
+
+    /**
+     * Writes the mode of the world.
+     *
+     * @param gameMode mode to store, {@code null} keeps survival
+     */
+    public void setGameMode(GameMode gameMode) {
+        this.gameMode = gameMode == null ? GameMode.SURVIVAL : gameMode;
     }
 
     /**

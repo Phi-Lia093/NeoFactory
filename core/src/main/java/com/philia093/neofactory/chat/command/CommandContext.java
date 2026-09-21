@@ -2,6 +2,7 @@ package com.philia093.neofactory.chat.command;
 
 import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.world.GameMode;
 
 /**
  * Everything a command may work with.
@@ -21,4 +22,14 @@ public interface CommandContext {
 
     /** Seed the current world was generated from. */
     int seed();
+
+    /** Mode the world is played in, see {@link GameMode}. */
+    GameMode gameMode();
+
+    /**
+     * Switches the mode of the world.
+     *
+     * @param mode mode to switch to, {@code null} leaves the current one
+     */
+    void setGameMode(GameMode mode);
 }

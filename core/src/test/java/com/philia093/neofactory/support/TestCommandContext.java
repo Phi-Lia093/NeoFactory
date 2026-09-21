@@ -4,6 +4,7 @@ import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.chat.ChatMessage;
 import com.philia093.neofactory.chat.command.CommandContext;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.world.GameMode;
 
 import java.util.List;
 
@@ -13,7 +14,7 @@ import java.util.List;
  * A command works on a player and writes its answers into the chat, so a test needs
  * exactly those two things. The player is a plain one with an empty inventory and
  * the chat collects the lines, which makes an answer checkable without a window,
- * see {@link #lastLine()}.
+ * see {@link #lastLine()} and {@link #gameMode()}.
  */
 public final class TestCommandContext implements CommandContext {
 
@@ -25,6 +26,9 @@ public final class TestCommandContext implements CommandContext {
 
     /** Seed the world of this context was generated from. */
     private final int seed;
+
+    /** Mode the world of this context is played in. */
+    private GameMode gameMode = GameMode.SURVIVAL;
 
     /** Creates a context with the seed {@code 1234}. */
     public TestCommandContext() {
@@ -53,6 +57,16 @@ public final class TestCommandContext implements CommandContext {
     @Override
     public int seed() {
         return seed;
+    }
+
+    @Override
+    public GameMode gameMode() {
+        return gameMode;
+    }
+
+    @Override
+    public void setGameMode(GameMode mode) {
+        gameMode = mode == null ? GameMode.SURVIVAL : mode;
     }
 
     /** The answer of the command that ran last. */

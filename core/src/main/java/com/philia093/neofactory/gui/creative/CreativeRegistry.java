@@ -1,0 +1,90 @@
+package com.philia093.neofactory.gui.creative;
+
+import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.Items;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+/**
+ * The tabs of the creative inventory, in the order they are drawn.
+ * <p>
+ * The original game groups its items into a dozen tabs; this game holds a single
+ * group of every item it owns, so the tabs follow the groups {@link Items} is written
+ * in: the blocks, the materials, the food, the tools and the armour. Two more tabs
+ * follow: the search, which lists what the player typed into the box, and the
+ * inventory, which shows the very screen the player inventory shows.
+ * <p>
+ * A category is recognised by what an item <i>is</i> and not by its id, so a new item
+ * lands in its group by itself: an item that places a block is a block, an item with
+ * a mining level is a tool, a piece of armour carries one of the four name endings and
+ * the food is listed by name, because the game has no marker for it yet. Everything
+ * that is none of those is a material, which is also why the categories together hold
+ * every item of the game exactly once.
+ */
+public final class CreativeRegistry {
+
+    /** Names of the food of the game, see {@link Items}. */
+    private static final Set<String> FOOD = Set.of("apple", "bread", "cookie", "carrot",
+            "potato", "baked_potato", "cooked_beef", "cooked_porkchop", "cooked_chicken",
+            "melon");
+
+    /** Endings a piece of armour carries at the end of its name. */
+    private static final List<String> ARMOUR_ENDINGS = List.of("_helmet", "_chestplate",
+            "_leggings", "_boots");
+
+    private static final List<CreativeTab> TABS = List.of(
+            CreativeTab.items("blocks", "Blocks", Items.STONE, Item::isBlockItem),
+            CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
+            CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
+            CreativeTab.items("tools", "Tools", Items.IRON_PICKAXE, CreativeRegistry::isTool),
+            CreativeTab.items("armour", "Armour", Items.IRON_HELMET, CreativeRegistry::isArmour),
+            CreativeTab.search("search", "Search", Items.DIAMOND),
+            CreativeTab.inventory("inventory", "Inventory", Items.PAPER));
+
+    private CreativeRegistry() {
+        // Utility class: never instantiated.
+    }
+
+    /** The tabs of the creative inventory, in the order they are drawn. */
+    public static List<CreativeTab> tabs() {
+        return TABS;
+    }
+
+    /**
+     * The tab the creative inventory opens with.
+     *
+     * @return the first tab, which holds the blocks
+     */
+    public static CreativeTab firstTab() {
+        return TABS.get(0);
+    }
+
+    /** {@code true} when an item is a raw material the game has no other group for. */
+    private static boolean isMaterial(Item item) {
+        return item != Items.AIR && !item.isBlockItem() && !isTool(item) && !isArmour(item)
+                && !isFood(item);
+    }
+
+    /** {@code true} when an item breaks blocks, which is what a tool of the game does. */
+    private static boolean isTool(Item item) {
+        return item.toolLevel() > 0;
+    }
+
+    /** {@code true} when an item is a piece of armour, recognised by its name. */
+    private static boolean isArmour(Item item) {
+        String name = item.name();
+        for (String ending : ARMOUR_ENDINGS) {
+            if (name.endsWith(ending)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** {@code true} when an item is food, which the game lists by name. */
+    private static boolean isFood(Item item) {
+        return FOOD.contains(item.name().toLowerCase(Locale.ROOT));
+    }
+}
