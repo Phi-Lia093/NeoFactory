@@ -26,6 +26,10 @@ world is stored on disk so that a session can be continued later.
   player walks.
 - **Entities** - a framework the player and dropped items are built on, with one
   type registry and one save layout they share.
+- **Chat and commands** - one input line at the lower left for messages and for
+  commands: a line behind a slash is a command (`/help`, `/give`, `/tp`, `/seed`),
+  anything else is a chat message. The recent conversation stays visible for a few
+  seconds and comes back while something is typed.
 
 ## Controls
 
@@ -44,8 +48,11 @@ world is stored on disk so that a session can be continued later.
 | `Q` | drop one item, `SHIFT` + `Q` the whole stack: the hotbar slot during play, the slot under the mouse while the inventory is open |
 | mouse outside the panel | throw the carried stack into the world while the inventory is open |
 | `E` | open and close the inventory |
+| `/` | open the input line with the command slash, `T` opens it for a message |
+| `ENTER` | send the line: a command when it starts with a slash, a chat message otherwise |
+| `UP` / `DOWN` | walk through the lines that were sent before while the input line is open |
+| `ESC` | close the input line first, then the inventory, then open the pause menu |
 | `F11` | switch to fullscreen |
-| `ESC` | close the inventory, or open the pause menu when it is closed |
 
 ## Modules
 
@@ -63,7 +70,8 @@ world is stored on disk so that a session can be continued later.
 | `world.interaction` | aiming, breaking and building |
 | `world.save` | the save format, the level file, the chunk files and the entity tags |
 | `entity` | entities: the base class, the type registry, the manager, the player and dropped items |
-| `gui` | hotbar and inventory rendering, layout and widgets |
+| `chat` | the input line, the messages and the commands a line behind a slash is looked up in |
+| `gui` | hotbar, inventory and chat rendering, layout and widgets |
 | `render` | world, entity, selection and font rendering |
 | `screen` | the screens and the manager that switches between them |
 | `input` | keyboard and mouse state |

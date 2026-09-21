@@ -13,6 +13,11 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.chat.ChatController;
+import com.philia093.neofactory.chat.ChatLog;
+import com.philia093.neofactory.chat.command.CommandContext;
+import com.philia093.neofactory.chat.command.CommandRegistry;
+import com.philia093.neofactory.gui.ChatOverlay;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.input.InputHandler;
@@ -79,7 +84,7 @@ import org.apache.logging.log4j.Logger;
  * Leaving or closing the game writes the world, and it is written again every few
  * minutes while it is played, see {@link #save()}.
  */
-public class GameScreen extends NeoFactoryScreen {
+public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -121,6 +126,26 @@ public class GameScreen extends NeoFactoryScreen {
     /** Inventory screen, opened and closed with the inventory key. */
     private final InventoryGui inventoryGui;
 
+    /**
+     * Chat and command line of this world.
+     * <p>
+     * This screen is the {@link CommandContext} of the chat, so a command works on
+     * the player and the world that are running right here.
+     */
+    private final ChatController chat;
+
+    /** Draws the chat lines and the input line. */
+    private final ChatOverlay chatOverlay;
+
+    /**
+     * Lines of the chat.
+     * <p>
+     * The screen owns the log and hands it out as {@link #log()}, which is where both
+     * the messages of the player and the answers of the commands end up: one list,
+     * one place to read.
+     */
+    private final ChatLog chatLog = new ChatLog();
+
     /** Frame drawn around the block the player aims at. */
     private final SelectionRenderer selectionRenderer;
 
@@ -154,6 +179,11 @@ public class GameScreen extends NeoFactoryScreen {
     private final InputAdapter interfaceInput = new InputAdapter() {
         @Override
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (chat.isOpen()) {
+                // While the player types, a click belongs to nobody: it must not build
+                // a block behind the input line.
+                return true;
+            }
             uiViewport.unproject(screenX, screenY, interfaceMouse);
             if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
@@ -183,11 +213,42 @@ public class GameScreen extends NeoFactoryScreen {
 
         @Override
         public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+            if (chat.isOpen()) {
+                return true;
+            }
             uiViewport.unproject(screenX, screenY, interfaceMouse);
             if (inventoryGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
             return false;
+        }
+
+        /**
+         * Handles a key press before the game sees it.
+         * <p>
+         * While the player types, the chat takes every key: walking, dropping,
+         * opening the inventory or switching to fullscreen behind a half typed
+         * message would be a surprise. When the line is closed, the two keys that
+         * open it are handled here, and only when the inventory screen is not open,
+         * because that screen owns the same corner of the keyboard.
+         */
+        @Override
+        public boolean keyDown(int keyCode) {
+            if (chat.isOpen()) {
+                return chat.keyDown(keyCode);
+            }
+            if (!inventoryGui.isOpen() && ChatController.isOpenKey(keyCode)) {
+                chat.open(keyCode);
+                LOGGER.info("Chat opened with {}", keyCode == ChatController.KEY_CHAT
+                        ? "T" : "/");
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean keyTyped(char character) {
+            return chat.keyTyped(character);
         }
     };
 
@@ -242,6 +303,12 @@ public class GameScreen extends NeoFactoryScreen {
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
         this.selectionRenderer = new SelectionRenderer(batch, textures);
+        // The chat is the only place a player types, and its commands work on this very
+        // screen: it is its own command context. Handing "this" out while the
+        // constructor still runs is safe here, because the chat only stores it and
+        // asks for the player and the world once a command is typed.
+        this.chat = new ChatController(CommandRegistry.withDefaults(), this);
+        this.chatOverlay = new ChatOverlay(textures, font);
 
         // Items of a broken block fall on the ground and are picked up by walking
         // over them, see WorldDrops and ItemEntity.
@@ -343,9 +410,34 @@ public class GameScreen extends NeoFactoryScreen {
         return world;
     }
 
-    /** Player controlled by this screen. */
+    /**
+     * Player controlled by this screen, which is also the player a command works on.
+     *
+     * @return the player of this world
+     */
+    @Override
     public Player player() {
         return player;
+    }
+
+    /**
+     * Chat a command writes its answers into.
+     *
+     * @return the log of the chat of this world
+     */
+    @Override
+    public ChatLog log() {
+        return chatLog;
+    }
+
+    /**
+     * Seed of the world this screen plays.
+     *
+     * @return the seed the terrain was generated from
+     */
+    @Override
+    public int seed() {
+        return data.seed();
     }
 
     /** Current camera zoom, {@code 1} is the neutral view. */
@@ -440,8 +532,9 @@ public class GameScreen extends NeoFactoryScreen {
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
         hotbarGui.render(batch, player.inventory(),
-                interfaceMouse.x, interfaceMouse.y, !inventoryGui.isOpen());
+                interfaceMouse.x, interfaceMouse.y, !isInterfaceOpen());
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+        chatOverlay.render(batch, chat, uiViewport);
         batch.end();
         batch.setColor(Color.WHITE);
 
@@ -474,7 +567,7 @@ public class GameScreen extends NeoFactoryScreen {
     /**
      * Applies the player input, advances the simulation and reveals new terrain.
      * <p>
-     * While the inventory is open the world still runs, but only the interface is
+     * While an interface is open the world still runs, but only the interface is
      * driven: the player is stopped and neither the movement keys nor the wheel are
      * forwarded. The collected wheel notches are dropped in that case, so closing
      * the screen never jumps the camera.
@@ -484,6 +577,8 @@ public class GameScreen extends NeoFactoryScreen {
     private void handleInputAndUpdate(float delta) {
         updateInterfaceMouse();
         handleInterfaceKeys();
+        chat.update(delta);
+        chatOverlay.update(delta);
 
         if (inputHandler.consumePauseToggle()) {
             if (inventoryGui.isOpen()) {
@@ -500,11 +595,11 @@ public class GameScreen extends NeoFactoryScreen {
         }
 
         float zoomSteps = inputHandler.consumeZoomSteps();
-        if (inventoryGui.isOpen()) {
-            // The world keeps running while the screen is open: a drop lying next to the
-            // player is still picked up, which is what lets a full inventory take an item
-            // after one was lifted onto the mouse. The player itself stands still and
-            // neither aims nor mines, so the interface stays in charge of the input.
+        if (isInterfaceOpen()) {
+            // The world keeps running while an interface is open: a drop lying next to
+            // the player is still picked up, which is what lets a full inventory take an
+            // item after one was lifted onto the mouse. The player itself stands still
+            // and neither aims nor mines, so the interface stays in charge of the input.
             player.halt();
             target = null;
         } else {
@@ -516,6 +611,19 @@ public class GameScreen extends NeoFactoryScreen {
         }
         world.entities().update(world, delta, player.blockX(), player.blockY());
         streamChunks(false);
+    }
+
+    /**
+     * {@code true} while something of the interface covers the world.
+     * <p>
+     * The inventory screen and the chat are the two things that take the input while
+     * the world keeps running; the pause menu is a screen of its own and stops the
+     * simulation by not drawing the game screen at all.
+     *
+     * @return {@code true} while the player types or moves items around
+     */
+    private boolean isInterfaceOpen() {
+        return inventoryGui.isOpen() || chat.isOpen();
     }
 
     /**
@@ -702,7 +810,7 @@ public class GameScreen extends NeoFactoryScreen {
         debugFrameCounter = 0;
         LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | tiles {} | chunks {} (view {}, "
                         + "stored {}, changed {}) | stream +{}/-{} | entities {} | hotbar {} "
-                        + "| inventory {} | target {} | gui {} | fps {}",
+                        + "| inventory {} | chat {} | target {} | gui {} | fps {}",
                 summary.displayName(),
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
                 worldRenderer.drawnTileCount(), world.chunkCount(), streamer.viewDistance(),
@@ -711,6 +819,7 @@ public class GameScreen extends NeoFactoryScreen {
                 world.entities().count(),
                 player.inventory().selectedSlot(),
                 inventoryGui.isOpen() ? "open" : "closed",
+                chat.isOpen() ? "typing '" + chat.text() + "'" : "closed",
                 targetText(),
                 uiViewport.scale(),
                 Gdx.graphics.getFramesPerSecond());
