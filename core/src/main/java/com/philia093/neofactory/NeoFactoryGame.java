@@ -6,10 +6,14 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.entity.EntityRegistry;
+import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
+import com.philia093.neofactory.recipe.RecipeLoader;
+import com.philia093.neofactory.recipe.RecipeRegistry;
 import com.philia093.neofactory.screen.ScreenManager;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
@@ -51,6 +55,19 @@ public class NeoFactoryGame extends Game {
         Items.registerAll();
         LOGGER.info("Registered {} item types, next free id is {}",
                 ItemRegistry.count(), Items.NEXT_FREE_ID);
+
+        // Recipes name items, so they are read once the items exist. A file that cannot
+        // be read is logged and skipped, see RecipeLoader.
+        RecipeLoader.loadAll();
+        RecipeRegistry.logStatistics();
+
+        // Entities are stored by name, so every type has to exist before a world is
+        // read; the registry is frozen right after registration for the same reason
+        // the block and item tables are.
+        EntityTypes.registerAll();
+        EntityRegistry.freeze();
+        LOGGER.info("Registered {} entity types, next free id is {}",
+                EntityRegistry.count(), EntityTypes.NEXT_FREE_ID);
 
         // The font belongs to the game, because the title screen and the world may
         // both draw text with it.

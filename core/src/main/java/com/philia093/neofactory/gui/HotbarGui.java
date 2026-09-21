@@ -87,7 +87,7 @@ public class HotbarGui {
         }
 
         // The highlight goes on top of the icons, so a filled slot is highlighted too.
-        int hovered = hoverEnabled ? hoveredSlot(mouseX, mouseY, originX, originY) : -1;
+        int hovered = hoverEnabled ? slotAt(mouseX, mouseY) : -1;
         drawHoverHighlight(batch, hovered, originX, originY);
     }
 
@@ -118,11 +118,18 @@ public class HotbarGui {
 
     /**
      * Hotbar slot under the mouse.
+     * <p>
+     * Coordinates are the virtual pixels of the interface viewport, the same space
+     * {@link #render} draws in. The query is public because the screen also uses it
+     * to route clicks and wheel notches to the bar.
      *
+     * @param mouseX X coordinate of the mouse inside the interface
+     * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
      * @return the slot index, or {@code -1} when the mouse is beside the icons
      */
-    private int hoveredSlot(float mouseX, float mouseY, int originX, int originY) {
-        int iconBottom = originY + InventoryLayout.HOTBAR_INSET;
+    public int slotAt(float mouseX, float mouseY) {
+        int originX = originX(viewport.guiWidth());
+        int iconBottom = originY() + InventoryLayout.HOTBAR_INSET;
         if (mouseY < iconBottom || mouseY >= iconBottom + InventoryLayout.SLOT_SIZE) {
             return -1;
         }

@@ -4,10 +4,11 @@ package com.philia093.neofactory.item;
  * Sink for the items a broken block hands back.
  * <p>
  * Breaking a block never touches an inventory directly, it only reports what
- * appeared in the world. The game uses {@link InventoryDrops} today, which moves
- * the items straight into the inventory of the player. A dropped item system
- * replaces that implementation with one that spawns entities on the ground, so
- * neither the mining code nor the game loop have to change for it.
+ * appeared in the world. The game uses {@link WorldDrops}, which leaves the items
+ * lying on the ground as entities that the player picks up by walking over them.
+ * {@link InventoryDrops} is the simpler alternative that moves the items straight
+ * into the inventory, which is what a "fast pickup" rule or a creative mode would
+ * use without touching the mining code.
  */
 public interface ItemDrops {
 

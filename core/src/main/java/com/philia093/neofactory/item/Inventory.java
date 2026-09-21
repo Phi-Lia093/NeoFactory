@@ -83,6 +83,30 @@ public class Inventory {
     }
 
     /**
+     * {@code true} when a stack of the given kind still fits somewhere.
+     * <p>
+     * A stack may be topped up on one that is not full even when every slot is taken, which
+     * is what tells a rule apart from {@link #isFull()}: a full inventory still takes the
+     * item it already holds a half stack of.
+     *
+     * @param stack stack that wants to be placed, may be {@code null}
+     * @return {@code true} when at least one item of it fits
+     */
+    public boolean hasRoomFor(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return true;
+        }
+        if (stack.item().isStackable()) {
+            for (ItemStack stored : slots) {
+                if (stored.isStackableWith(stack) && !stored.isFull()) {
+                    return true;
+                }
+            }
+        }
+        return firstEmptySlot() >= 0;
+    }
+
+    /**
      * Finds the first slot that can take a new stack.
      *
      * @return the slot index, or {@code -1} when every slot holds something

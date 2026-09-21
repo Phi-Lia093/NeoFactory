@@ -102,11 +102,25 @@ public class WorldStorage {
                     root.getLong(SaveTags.CREATED, level.lastModified()),
                     root.getLong(SaveTags.PLAYED_MILLIS, 0L),
                     root.getInt(SaveTags.DATA_VERSION, 0),
-                    level.length());
+                    storedSize(folder));
         } catch (NbtException | ClassCastException e) {
             LOGGER.error("Save game {} cannot be read and is hidden from the list", folder, e);
             return null;
         }
+    }
+
+    /**
+     * Size of a save game on disk.
+     * <p>
+     * The chunk files are counted as well: after the chunks moved out of the level
+     * file the level file alone would report a large world as a few kilobytes.
+     *
+     * @param folder folder of the save game
+     * @return the size in bytes
+     */
+    private static long storedSize(File folder) {
+        long total = new File(folder, SaveFormat.LEVEL_FILE).length();
+        return total + new ChunkStorage(folder).sizeBytes();
     }
 
     /**
@@ -139,25 +153,54 @@ public class WorldStorage {
     }
 
     /**
-     * Removes a save game, its file and its folder.
+     * Removes a save game, its file, its chunk files and its folder.
+     * <p>
+     * The folder holds sub folders, one of them the chunk files, so it is removed
+     * from the inside out. A plain delete of the folder would fail on every world
+     * that has a changed chunk.
      *
      * @param summary save game to remove
      * @return {@code true} when everything was removed
      */
     public boolean delete(SaveSummary summary) {
-        File[] files = summary.folder().listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (!file.delete()) {
-                    LOGGER.warn("Unable to delete {}", file);
-                    return false;
-                }
-            }
-        }
-        boolean removed = summary.folder().delete();
+        File folder = summary.folder();
+        boolean removed = deleteContents(folder) && (!folder.exists() || folder.delete());
         LOGGER.info("Deleted world '{}': {}", summary.displayName(),
                 removed ? "done" : "the folder is still there");
         return removed;
+    }
+
+    /**
+     * Removes everything inside a folder, the folder itself not included.
+     *
+     * @param folder folder to empty
+     * @return {@code true} when nothing is left inside
+     */
+    private static boolean deleteContents(File folder) {
+        File[] children = folder.listFiles();
+        if (children == null) {
+            return true;
+        }
+        for (File child : children) {
+            if (!deleteRecursively(child)) {
+                LOGGER.warn("Unable to delete {}", child);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Removes a file, or a folder with everything inside it.
+     *
+     * @param file file or folder to remove
+     * @return {@code true} when the file is gone
+     */
+    private static boolean deleteRecursively(File file) {
+        if (file.isDirectory() && !deleteContents(file)) {
+            return false;
+        }
+        return !file.exists() || file.delete();
     }
 
     /**
@@ -230,7 +273,7 @@ public class WorldStorage {
             LOGGER.info("Renamed world '{}' to '{}'", summary.displayName(), cleaned);
             return new SaveSummary(summary.id(), summary.folder(), cleaned, summary.seed(),
                     summary.lastPlayed(), summary.created(), summary.playedMillis(),
-                    summary.dataVersion(), level.length());
+                    summary.dataVersion(), storedSize(summary.folder()));
         } catch (NbtException | ClassCastException e) {
             backupCorrupt(level);
             throw new SaveException("World '" + summary.displayName() + "' cannot be renamed, "

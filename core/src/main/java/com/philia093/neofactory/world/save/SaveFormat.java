@@ -9,14 +9,23 @@ package com.philia093.neofactory.world.save;
  */
 public final class SaveFormat {
 
-    /** Version of the save format written by this build. */
-    public static final int DATA_VERSION = 1;
+    /**
+     * Version of the save format written by this build.
+     * <p>
+     * Version 2 moved the chunks out of the level file into one file per chunk,
+     * see {@link SaveFormat#CHUNK_FOLDER}. A version 1 file is still read and
+     * converted on the fly, see {@code WorldLoader}.
+     */
+    public static final int DATA_VERSION = 2;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";
 
     /** Name of the file holding a stored world. */
     public static final String LEVEL_FILE = "level.dat";
+
+    /** Folder below a save game holding one file per changed chunk. */
+    public static final String CHUNK_FOLDER = "chunks";
 
     /** Folder holding every save game, relative to the working directory. */
     public static final String SAVES_FOLDER = "saves";

@@ -1,171 +1,163 @@
 package com.philia093.neofactory.gui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.gui.container.ContainerLayout;
+import com.philia093.neofactory.gui.container.ContainerMenu;
+import com.philia093.neofactory.gui.container.ContainerView;
+import com.philia093.neofactory.gui.panel.ArrowElement;
+import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.recipe.InventoryGrid;
+import com.philia093.neofactory.recipe.Recipe;
+import com.philia093.neofactory.recipe.RecipeGrid;
+import com.philia093.neofactory.recipe.RecipeRegistry;
+import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
-import com.philia093.neofactory.util.Constants;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * The inventory screen of the player.
  * <p>
- * It shows the container picture {@code gui/container/inventory.png}, the contents
- * of the {@link PlayerInventory}, the slot under the mouse and the stack the mouse
- * carries. The screen is opened and closed with the inventory key of {@link
- * com.philia093.neofactory.input.InputHandler}.
+ * It shows what the player owns and what may be made of it: a two by two crafting field
+ * with the result of the matching recipe, the three storage rows and the hotbar. The
+ * panel, the slots and the arrow come from {@code gui/inventory_icons.png} and are
+ * stretched to whatever size the slots ask for, see
+ * {@link com.philia093.neofactory.gui.panel.PanelTextures}.
  * <p>
- * All coordinates are virtual pixels of {@link GuiViewport}, which is also what
- * turns the position of the mouse into them, so the drawn container and the slots a
- * click can hit are always the same and stay so in fullscreen or after a resize.
+ * The screen is opened and closed with the inventory key of
+ * {@link com.philia093.neofactory.input.InputHandler}. All coordinates are virtual pixels
+ * of {@link GuiViewport}, which is also what turns the position of the mouse into them,
+ * so the drawn slots and the slots a click can hit are always the same and stay so in
+ * fullscreen or after a resize.
  * <p>
- * Clicking a slot moves stacks around the way the original game does: the left
- * button takes or drops a whole stack and the right button takes half a stack or
- * drops a single item. A click outside the grid puts the carried stack back into
- * the inventory, because the game has no dropped items yet.
+ * Clicking a slot moves stacks around the way the original game does, which is done by
+ * {@link ContainerMenu}: the left button takes or drops a whole stack, the right button
+ * takes half a stack or drops a single item, and holding shift moves a stack between the
+ * crafting field and the player. A click beside the panel, or a drag that ends there,
+ * throws the carried stack into the world, see {@link ContainerMenu#dropCursor()}, and a
+ * click on the empty space inside the panel puts it back into the inventory.
  * <p>
- * The armour column and the crafting group are drawn, but they hold nothing: the
- * pictures of the empty armour slots come from the {@code items} folder, and
- * {@link InventoryLayout} knows where they are.
+ * While the screen is open the world keeps running and the player keeps standing: the
+ * interface owns the input, so a click never digs or builds, but a drop next to the player
+ * is still picked up, which is what lets a full inventory take an item once one was lifted
+ * onto the mouse, see
+ * {@link com.philia093.neofactory.screen.GameScreen#handleInputAndUpdate(float)}.
+ * <p>
+ * Which recipe the field makes comes from {@code assets/recipes}, see
+ * {@link com.philia093.neofactory.recipe.RecipeLoader}. Taking a result gives up the
+ * ingredients it was made of, which is why the screen watches the container instead of
+ * the container knowing about recipes.
  */
-public class InventoryGui {
+public final class InventoryGui {
 
-    private static final Logger LOGGER = LogManager.getLogger();
+    /** Amount of slots of the two by two crafting field. */
+    private static final int CRAFT_SLOTS = 4;
 
-    /** Label drawn above the two by two crafting grid. */
-    private static final String CRAFTING_LABEL = "Crafting";
-
-    /** Label drawn above the storage grid. */
-    private static final String INVENTORY_LABEL = "Inventory";
-
-    /** Distance between the mouse and the nearest corner of a tooltip. */
-    private static final int TOOLTIP_OFFSET = 12;
-
-    /** Pixels of background between the frame of a tooltip and its text. */
-    private static final int TOOLTIP_PADDING = 3;
-
-    /** Thickness of the frame around a tooltip. */
-    private static final int TOOLTIP_BORDER = 1;
-
-    /** Colour of a tooltip background, shared and never mutated. */
-    private static final Color TOOLTIP_FILL = new Color(0.062f, 0.0f, 0.062f, 0.94f);
-
-    /** Colour of the frame around a tooltip, shared and never mutated. */
-    private static final Color TOOLTIP_FRAME = new Color(0.313f, 0.313f, 0.0f, 1.0f);
-
-    /** Colour of the two labels inside the container, shared and never mutated. */
-    private static final Color LABEL_COLOR = new Color(0.25f, 0.25f, 0.25f, 1.0f);
-
-    /**
-     * Overlay drawn on the slot under the mouse, shared and never mutated.
-     * <p>
-     * A half transparent white, which is what brightens the slot in the original
-     * game and makes it obvious where a click would land.
-     */
-    private static final Color HOVER_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
-
-    private final BlockTextureCache textures;
-    private final PixelFont font;
-    private final GuiItemRenderer itemRenderer;
-    private final PlayerInventory inventory;
-
-    /** Viewport of the interface, also the source of its size in virtual pixels. */
     private final GuiViewport viewport;
 
-    /** Frame of the container, {@code null} when the picture is missing. */
-    private final TextureRegion container;
+    /** Two by two field the player crafts in, its contents are shown by the screen. */
+    private final Inventory crafting = new Inventory(CRAFT_SLOTS);
 
-    /** Faint pictures of the empty armour slots, in the order of the column. */
-    private final TextureRegion[] armorPlaceholders;
+    /** Holds the result of the recipe that matches the crafting field. */
+    private final Inventory result = new Inventory(1);
 
-    private boolean open;
+    /** View of the crafting field, the shape a recipe is offered. */
+    private final InventoryGrid craftingGrid = new InventoryGrid(crafting, 0, 2, 2);
 
-    /** Stack the mouse carries, {@link ItemStack#EMPTY} when nothing is held. */
-    private ItemStack cursorStack = ItemStack.EMPTY;
+    private final ContainerMenu menu;
+    private final ContainerView view;
+
+    /** Recipe that matches the field right now, {@code null} when nothing matches. */
+    private Recipe recipe;
 
     /**
-     * Creates the inventory screen.
+     * Creates the screen.
      *
-     * @param textures texture cache providing the container and the icons
-     * @param font font used for the labels, the amounts and the tooltip
-     * @param inventory inventory the screen shows and changes
+     * @param textures texture cache providing the panel and the item icons
+     * @param font font used for the amounts and for the name of an item
+     * @param inventory inventory of the player, shown by the screen
      * @param viewport viewport of the interface, see {@link GuiViewport}
      */
     public InventoryGui(BlockTextureCache textures, PixelFont font, PlayerInventory inventory,
             GuiViewport viewport) {
-        this.textures = textures;
-        this.font = font;
-        this.inventory = inventory;
         this.viewport = viewport;
-        this.itemRenderer = new GuiItemRenderer(textures, font);
-        this.container = textures.region(InventoryLayout.CONTAINER_TEXTURE, 0, 0,
-                InventoryLayout.CONTAINER_WIDTH, InventoryLayout.CONTAINER_HEIGHT);
-        this.armorPlaceholders = new TextureRegion[] {
-                textures.iconRegion(Item.ITEM_FOLDER + "empty_armor_slot_helmet", 0),
-                textures.iconRegion(Item.ITEM_FOLDER + "empty_armor_slot_chestplate", 0),
-                textures.iconRegion(Item.ITEM_FOLDER + "empty_armor_slot_leggings", 0),
-                textures.iconRegion(Item.ITEM_FOLDER + "empty_armor_slot_boots", 0),
-        };
+        ContainerLayout layout = InventoryLayout.of(inventory, crafting, result);
+        this.menu = new ContainerMenu(layout, inventory);
+        this.view = new ContainerView(textures, font, viewport);
+        // Every click that changes the field asks the recipes again, and taking a result
+        // gives up the ingredients it was made of.
+        menu.setChangeListener(container -> refreshResult());
+        menu.setResultFiller(slot -> {
+            consumeIngredients();
+            return result.get(0);
+        });
+        refreshResult();
     }
 
     /** {@code true} while the screen covers the world. */
     public boolean isOpen() {
-        return open;
+        return menu.isOpen();
     }
 
     /** Opens the screen when it is closed and closes it otherwise. */
     public void toggle() {
-        if (open) {
-            close();
-        } else {
-            open = true;
-        }
+        menu.toggle();
     }
 
     /**
      * Closes the screen.
      * <p>
-     * A stack the mouse is carrying is put back into the inventory, so a player
-     * never loses items by closing the screen. Should the inventory be full, the
-     * screen stays open and the stack stays on the mouse until there is room for
-     * it again.
+     * A stack the mouse carries is put back into the inventory, so a player never loses
+     * items by closing the screen. Whatever is left in the crafting field is dropped into
+     * the world, see {@link #setDropper(ContainerMenu.StackDropper)}: the field is a place
+     * to work, not a place to store.
      */
     public void close() {
-        if (!open) {
-            return;
+        menu.close();
+    }
+
+    /**
+     * Sets the sink the crafting field is dropped into when the screen closes.
+     *
+     * @param dropper sink to use, {@code null} to hand the items back to the player
+     */
+    public void setDropper(ContainerMenu.StackDropper dropper) {
+        menu.setDropper(dropper);
+    }
+
+    /**
+     * Drops what the mouse points at, the action of the drop key while the screen is open.
+     *
+     * @param guiX X coordinate of the mouse inside the interface
+     * @param guiY Y coordinate of the mouse inside the interface, from the bottom
+     * @param wholeStack {@code true} to drop the whole stack, {@code false} for one item
+     * @return {@code true} when something was dropped
+     */
+    public boolean dropAt(float guiX, float guiY, boolean wholeStack) {
+        if (!menu.isOpen()) {
+            return false;
         }
-        if (!cursorStack.isEmpty()) {
-            int leftover = inventory.add(cursorStack);
-            if (leftover > 0) {
-                cursorStack = ItemStack.of(cursorStack.item(), leftover);
-                LOGGER.warn("The inventory is full, {} x {} stay on the mouse",
-                        leftover, cursorStack.item().name());
-                return;
-            }
-            cursorStack = ItemStack.EMPTY;
+        if (!isOnPanel(guiX, guiY)) {
+            // Beside the panel the drop key works on whatever the mouse carries.
+            return menu.dropCursor();
         }
-        open = false;
+        return menu.dropFrom(menu.slotAt(localX(guiX), localY(guiY)), wholeStack);
     }
 
     /** Stack the mouse currently carries. */
     public ItemStack cursorStack() {
-        return cursorStack;
+        return menu.cursorStack();
     }
 
     /**
      * Handles a mouse button press.
      * <p>
-     * The coordinates are virtual pixels of the interface, the very same ones the
-     * screen is drawn in, so a click always lands on the slot the player sees. Every
-     * button is swallowed while the screen is open, so a click never reaches the
-     * world. The left button moves a whole stack, the right button half a stack or a
-     * single item.
+     * The coordinates are virtual pixels of the interface, the very same ones the screen
+     * is drawn in, so a click always lands on the slot the player sees. A press beside the
+     * panel throws the carried stack away instead of opening anything.
      *
      * @param guiX X coordinate of the mouse inside the interface
      * @param guiY Y coordinate of the mouse inside the interface, from the bottom
@@ -173,281 +165,140 @@ public class InventoryGui {
      * @return {@code true} when the press was consumed
      */
     public boolean touchDown(float guiX, float guiY, int button) {
-        if (!open) {
+        if (!menu.isOpen()) {
             return false;
         }
-        int slot = InventoryLayout.slotAt(Math.round(guiX) - containerX(), toLayoutY(guiY));
-        if (slot < 0) {
-            putCursorStackBack();
+        if (!isOnPanel(guiX, guiY)) {
+            // A click beside the panel throws the carried stack into the world, so a player
+            // gets rid of a stack without closing the screen first.
+            menu.dropCursor();
             return true;
         }
-        if (button == Input.Buttons.RIGHT) {
-            moveSingleItem(slot);
-        } else {
-            moveWholeStack(slot);
-        }
+        menu.touchDown(localX(guiX), localY(guiY), button, isShiftHeld());
         return true;
     }
 
     /**
-     * Moves a whole stack, which is what the left button does.
+     * Handles the mouse moving while a button is held.
      * <p>
-     * An empty mouse takes the stack out of the slot, a full mouse drops it into an
-     * empty slot, tops up a stack of the same item or swaps two different items.
+     * Every slot the mouse reaches gets one item of the carried stack, and what is left
+     * over when the button is released is shared out over the same slots, so a stack can
+     * be spread over a row of slots in one move.
      *
-     * @param slot slot that was clicked
-     */
-    private void moveWholeStack(int slot) {
-        ItemStack slotStack = inventory.get(slot);
-        if (cursorStack.isEmpty()) {
-            cursorStack = inventory.remove(slot);
-            return;
-        }
-        if (slotStack.isEmpty()) {
-            inventory.set(slot, cursorStack);
-            cursorStack = ItemStack.EMPTY;
-            return;
-        }
-        if (slotStack.isStackableWith(cursorStack)) {
-            int leftover = slotStack.grow(cursorStack.count());
-            cursorStack = ItemStack.of(cursorStack.item(), leftover);
-            return;
-        }
-        // Two different items change places.
-        inventory.set(slot, cursorStack);
-        cursorStack = slotStack;
-    }
-
-    /**
-     * Moves half a stack or a single item, which is what the right button does.
-     *
-     * @param slot slot that was clicked
-     */
-    private void moveSingleItem(int slot) {
-        ItemStack slotStack = inventory.get(slot);
-        if (cursorStack.isEmpty()) {
-            if (slotStack.isEmpty()) {
-                return;
-            }
-            // Half of an odd amount rounds up.
-            ItemStack taken = slotStack.split((slotStack.count() + 1) / 2);
-            if (slotStack.isEmpty()) {
-                inventory.set(slot, ItemStack.EMPTY);
-            }
-            cursorStack = taken;
-            return;
-        }
-        if (slotStack.isEmpty()) {
-            inventory.set(slot, ItemStack.of(cursorStack.item(), 1));
-            takeSingleItem();
-            return;
-        }
-        if (slotStack.isStackableWith(cursorStack) && !slotStack.isFull()) {
-            slotStack.grow(1);
-            takeSingleItem();
-        }
-        // A right click on a different item does nothing, like in the original game.
-    }
-
-    /** Removes a single item from the carried stack. */
-    private void takeSingleItem() {
-        cursorStack.split(1);
-        if (cursorStack.count() <= 0) {
-            cursorStack = ItemStack.EMPTY;
-        }
-    }
-
-    /** Puts the carried stack back into the inventory, a click beside the grid asks for it. */
-    private void putCursorStackBack() {
-        if (cursorStack.isEmpty()) {
-            return;
-        }
-        int leftover = inventory.add(cursorStack);
-        cursorStack = ItemStack.of(cursorStack.item(), leftover);
-    }
-
-    /** X coordinate of the left edge of the container inside the interface. */
-    private int containerX() {
-        return Math.round(viewport.guiWidth() * 0.5f) - InventoryLayout.CONTAINER_WIDTH / 2;
-    }
-
-    /** Y coordinate of the lower edge of the container inside the interface. */
-    private int containerY() {
-        return Math.round(viewport.guiHeight() * 0.5f) - InventoryLayout.CONTAINER_HEIGHT / 2;
-    }
-
-    /**
-     * Converts the Y coordinate of the mouse into a coordinate of the container.
-     * <p>
-     * The layout is measured from the top edge of the picture downwards, while the
-     * interface measures from the bottom upwards, so the coordinate is mirrored here.
-     *
+     * @param guiX X coordinate of the mouse inside the interface
      * @param guiY Y coordinate of the mouse inside the interface, from the bottom
-     * @return the matching coordinate inside the container
      */
-    private int toLayoutY(float guiY) {
-        int fromBottom = Math.round(guiY) - containerY();
-        return InventoryLayout.CONTAINER_HEIGHT - 1 - fromBottom;
+    public void touchDragged(float guiX, float guiY) {
+        if (menu.isOpen()) {
+            menu.touchDragged(localX(guiX), localY(guiY));
+        }
     }
 
     /**
-     * Converts a coordinate of the container into the lower edge of a slot.
+     * Handles the release of a mouse button.
+     * <p>
+     * Beside the panel the release drops what a drag left on the mouse, which is the way
+     * a player throws away a stack without closing the screen.
      *
-     * @param layoutY Y coordinate of the slot, measured from the top of the container
-     * @return the Y coordinate of the lower edge of that slot on screen
+     * @param guiX X coordinate of the mouse inside the interface
+     * @param guiY Y coordinate of the mouse inside the interface, from the bottom
+     * @param button mouse button that was released
+     * @return {@code true} when the release was consumed
      */
-    private int slotBottom(int layoutY) {
-        return containerY() + InventoryLayout.CONTAINER_HEIGHT - layoutY - InventoryLayout.SLOT_SIZE;
+    public boolean touchUp(float guiX, float guiY, int button) {
+        if (!menu.isOpen()) {
+            return false;
+        }
+        if (!isOnPanel(guiX, guiY)) {
+            // Letting go beside the panel drops what the mouse still carries, a drag that
+            // ended outside included.
+            return menu.dropDragRemainder();
+        }
+        return menu.touchUp(localX(guiX), localY(guiY), button, isShiftHeld());
+    }
+
+    /** {@code true} when a point of the interface lies on the panel of the container. */
+    private boolean isOnPanel(float guiX, float guiY) {
+        return menu.layout().contains(localX(guiX), localY(guiY));
     }
 
     /**
-     * Draws the screen.
+     * Draws the panel, its slots, the items in them and the crafting arrow.
      *
      * @param batch batch switched to the projection of the interface viewport
      * @param mouseX X coordinate of the mouse inside the interface
      * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
      */
     public void render(SpriteBatch batch, float mouseX, float mouseY) {
-        if (!open || container == null) {
+        if (!menu.isOpen()) {
             return;
         }
-        batch.setColor(Color.WHITE);
-        batch.draw(container, containerX(), containerY());
+        // The arrow is a decoration of the container: it is drawn together with the slots
+        // and below the items, so it never covers the name of an item.
+        view.render(batch, menu, panelX(), panelY(), mouseX, mouseY, this::drawCraftingArrow);
+    }
 
-        int hovered = hoveredSlot(mouseX, mouseY);
-        drawArmorPlaceholders(batch);
-        drawLabels(batch);
-        drawStorage(batch);
-        drawHoverHighlight(batch, hovered);
+    /** X coordinate of the left edge of the panel, centred in the interface. */
+    public float panelX() {
+        return MenuLayout.centeredX(viewport.guiWidth(), menu.layout().panelWidth());
+    }
 
-        drawCursorStack(batch, mouseX, mouseY);
-        drawTooltip(batch, hovered, mouseX, mouseY);
+    /** Y coordinate of the lower edge of the panel, centred in the interface. */
+    public float panelY() {
+        return Math.round((viewport.guiHeight() - menu.layout().panelHeight()) * 0.5f);
     }
 
     /**
-     * Lightens the slot under the mouse, the way the original interface does.
+     * Draws the arrow that points from the crafting field to its result.
      * <p>
-     * The overlay is drawn on top of the items, so a slot that holds something is
-     * highlighted as well.
+     * The arrow stays empty: it shows where a result appears and not how far a craft has
+     * come. The bright part of the picture is kept for a machine, which fills it with the
+     * progress of its work, see {@link com.philia093.neofactory.machine.ProgressMachine}.
      */
-    private void drawHoverHighlight(SpriteBatch batch, int slot) {
-        TextureRegion pixel = textures.whitePixel();
-        if (slot < 0 || pixel == null) {
-            return;
+    private void drawCraftingArrow(SpriteBatch batch, float panelX, float panelY, int panelWidth,
+            int panelHeight) {
+        view.arrows().draw(batch, panelX + InventoryLayout.ARROW_X,
+                panelY + panelHeight - InventoryLayout.ARROW_Y - ArrowElement.HEIGHT, 0.0f);
+    }
+
+    /** Looks for the recipe that matches the crafting field and shows its result. */
+    private void refreshResult() {
+        recipe = findRecipe(craftingGrid);
+        result.set(0, recipe == null ? ItemStack.EMPTY : recipe.result());
+    }
+
+    /** Gives up the ingredients of the shown recipe and asks for the next result. */
+    private void consumeIngredients() {
+        if (recipe != null) {
+            recipe.consume(craftingGrid);
         }
-        batch.setColor(HOVER_COLOR);
-        batch.draw(pixel,
-                containerX() + InventoryLayout.slotX(slot),
-                slotBottom(InventoryLayout.slotY(slot)),
-                InventoryLayout.SLOT_SIZE,
-                InventoryLayout.SLOT_SIZE);
-        batch.setColor(Color.WHITE);
-    }
-
-    /** Draws every stack of the player inventory into its slot. */
-    private void drawStorage(SpriteBatch batch) {
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            itemRenderer.render(batch, inventory.get(slot),
-                    containerX() + InventoryLayout.slotX(slot),
-                    slotBottom(InventoryLayout.slotY(slot)));
-        }
-    }
-
-    /** Draws the faint pictures of the empty armour slots. */
-    private void drawArmorPlaceholders(SpriteBatch batch) {
-        for (int index = 0; index < armorPlaceholders.length; index++) {
-            TextureRegion icon = armorPlaceholders[index];
-            if (icon == null) {
-                continue;
-            }
-            batch.setColor(Color.WHITE);
-            batch.draw(icon, containerX() + InventoryLayout.ARMOR_COLUMN_X,
-                    slotBottom(InventoryLayout.armorSlotY(index)),
-                    Constants.ITEM_ICON_SIZE, Constants.ITEM_ICON_SIZE);
-        }
-    }
-
-    /** Draws the two labels of the container, centred above the grids they belong to. */
-    private void drawLabels(SpriteBatch batch) {
-        font.setColor(LABEL_COLOR);
-
-        int craftingCenter = InventoryLayout.CRAFT_GRID_X
-                + (InventoryLayout.SLOT_PITCH + InventoryLayout.SLOT_SIZE) / 2;
-        font.draw(batch, CRAFTING_LABEL,
-                containerX() + font.centeredX(CRAFTING_LABEL, craftingCenter),
-                labelTop(InventoryLayout.CRAFTING_LABEL_Y));
-
-        int storageCenter = (2 * InventoryLayout.GRID_X
-                + (InventoryLayout.GRID_COLUMNS - 1) * InventoryLayout.SLOT_PITCH
-                + InventoryLayout.SLOT_SIZE) / 2;
-        font.draw(batch, INVENTORY_LABEL,
-                containerX() + font.centeredX(INVENTORY_LABEL, storageCenter)+20,
-                labelTop(InventoryLayout.INVENTORY_LABEL_Y));
-    }
-
-    /** Y coordinate of the top of a label, measured from the top of the container. */
-    private int labelTop(int layoutY) {
-        return containerY() + InventoryLayout.CONTAINER_HEIGHT - layoutY;
-    }
-
-    /** Draws the stack the mouse carries, centred on the mouse. */
-    private void drawCursorStack(SpriteBatch batch, float mouseX, float mouseY) {
-        if (cursorStack.isEmpty()) {
-            return;
-        }
-        itemRenderer.render(batch, cursorStack,
-                mouseX - Constants.ITEM_ICON_SIZE * 0.5f,
-                mouseY - Constants.ITEM_ICON_SIZE * 0.5f);
+        refreshResult();
     }
 
     /**
-     * Slot under the mouse.
+     * The recipe a field matches, the shaped ones first.
      *
-     * @param mouseX X coordinate of the mouse inside the interface
-     * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
-     * @return the slot index, or {@code -1} when the mouse is not on a slot
+     * @param grid items the player put into the field
+     * @return the recipe, or {@code null} when nothing can be made of them
      */
-    private int hoveredSlot(float mouseX, float mouseY) {
-        return InventoryLayout.slotAt(Math.round(mouseX) - containerX(), toLayoutY(mouseY));
+    private static Recipe findRecipe(RecipeGrid grid) {
+        Recipe shaped = RecipeRegistry.find(RecipeType.CRAFTING_SHAPED, grid);
+        return shaped != null ? shaped : RecipeRegistry.find(RecipeType.CRAFTING_SHAPELESS, grid);
     }
 
-    /** Draws the name of the hovered item next to the mouse. */
-    private void drawTooltip(SpriteBatch batch, int slot, float mouseX, float mouseY) {
-        if (slot < 0) {
-            return;
-        }
-        ItemStack stack = inventory.get(slot);
-        if (stack.isEmpty()) {
-            return;
-        }
-        TextureRegion pixel = textures.whitePixel();
-        if (pixel == null) {
-            return;
-        }
-
-        String name = stack.item().displayName();
-        int border = TOOLTIP_BORDER + TOOLTIP_PADDING;
-        int boxWidth = Math.round(font.width(name)) + 2 * border;
-        int boxHeight = Math.round(font.lineHeight()) + 2 * border;
-
-        // The tooltip sits above and right of the mouse and stays inside the interface.
-        int boxX = clamp(Math.round(mouseX) + TOOLTIP_OFFSET, Math.round(viewport.guiWidth()) - boxWidth);
-        int boxY = clamp(Math.round(mouseY) + TOOLTIP_OFFSET, Math.round(viewport.guiHeight()) - boxHeight);
-
-        batch.setColor(TOOLTIP_FRAME);
-        batch.draw(pixel, boxX, boxY, boxWidth, boxHeight);
-        batch.setColor(TOOLTIP_FILL);
-        batch.draw(pixel, boxX + TOOLTIP_BORDER, boxY + TOOLTIP_BORDER,
-                boxWidth - 2 * TOOLTIP_BORDER, boxHeight - 2 * TOOLTIP_BORDER);
-
-        font.setColor(Color.WHITE);
-        font.drawShadowed(batch, name, boxX + border, boxY + boxHeight - border);
-        batch.setColor(Color.WHITE);
+    /** X coordinate of the mouse inside the panel. */
+    private int localX(float guiX) {
+        return Math.round(guiX) - Math.round(panelX());
     }
 
-    /** Keeps a coordinate inside the window, never below zero. */
-    private static int clamp(int value, int maximum) {
-        return Math.max(0, Math.min(value, maximum));
+    /** Y coordinate of the mouse inside the panel, measured from its upper edge. */
+    private int localY(float guiY) {
+        return Math.round(panelY() + menu.layout().panelHeight() - guiY);
+    }
+
+    /** {@code true} while a key that moves a stack to the other side is held. */
+    private static boolean isShiftHeld() {
+        return Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT)
+                || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
     }
 }
-

@@ -1,6 +1,7 @@
 package com.philia093.neofactory.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
@@ -10,22 +11,26 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
+import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.input.InputHandler;
-import com.philia093.neofactory.item.InventoryDrops;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.render.BlockTextureCache;
+import com.philia093.neofactory.render.EntityRendererRegistry;
+import com.philia093.neofactory.render.ItemEntityRenderer;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.render.PlayerRenderer;
 import com.philia093.neofactory.render.SelectionRenderer;
 import com.philia093.neofactory.render.WorldRenderer;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
+import com.philia093.neofactory.world.ChunkStreamer;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
@@ -45,10 +50,14 @@ import org.apache.logging.log4j.Logger;
  * looks straight down on the world and follows the player, which is why the
  * player stays in the middle of the window while the terrain scrolls past.
  * <p>
- * Controls: {@code WASD} walks, the mouse aims, the wheel zooms, keys {@code 1} to
- * {@code 9} select a hotbar slot, {@code E} opens and closes the inventory,
- * {@code F11} switches to fullscreen and {@code ESC} closes the inventory or, when
- * it is closed already, opens the pause menu, see {@link PauseScreen}.
+ * Controls: {@code WASD} walks, the mouse aims, the wheel selects a hotbar slot
+ * (while {@code CTRL} is held it zooms the camera instead), a left click on a
+ * hotbar slot selects it as well and keys {@code 1} to {@code 9} do the same.
+ * Zooming is done with {@code -} and {@code =}, which keep rolling while they are
+ * held, and {@code [} / {@code ]} change how many chunks are kept around the
+ * player. {@code E} opens and closes the inventory, {@code F11} switches to
+ * fullscreen and {@code ESC} closes the inventory or, when it is closed already,
+ * opens the pause menu, see {@link PauseScreen}.
  * <p>
  * The left mouse button breaks the block the player aims at while it is held, the
  * right button builds the held block. Both actions apply to the layer the player
@@ -97,8 +106,17 @@ public class GameScreen extends NeoFactoryScreen {
     private final WorldRenderer worldRenderer;
     private final PlayerRenderer playerRenderer;
 
+    /** Draws an item that lies on the ground. */
+    private final ItemEntityRenderer itemEntityRenderer;
+
+    /** Every renderer of the world, one per entity type. */
+    private final EntityRendererRegistry entityRenderers = new EntityRendererRegistry();
+
     /** Hotbar drawn at the bottom of the window, shown while the player walks. */
     private final HotbarGui hotbarGui;
+
+    /** Keeps the chunks around the player in memory and drops the ones behind. */
+    private final ChunkStreamer streamer = new ChunkStreamer();
 
     /** Inventory screen, opened and closed with the inventory key. */
     private final InventoryGui inventoryGui;
@@ -129,7 +147,9 @@ public class GameScreen extends NeoFactoryScreen {
      * <p>
      * The screen works in the virtual pixels of the interface, so the position of the
      * mouse is converted through the viewport first. While the screen is open it gets
-     * the press; while it is closed the world does, see {@link #buildBlock()}.
+     * the press; while it is closed the world does, see {@link #buildBlock()}. A button
+     * that is held and dragged over the slots of the inventory shares a stack out, see
+     * {@link InventoryGui#touchDragged(float, float)}.
      */
     private final InputAdapter interfaceInput = new InputAdapter() {
         @Override
@@ -138,8 +158,34 @@ public class GameScreen extends NeoFactoryScreen {
             if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
+            if (button == Input.Buttons.LEFT) {
+                int slot = hotbarGui.slotAt(interfaceMouse.x, interfaceMouse.y);
+                if (slot >= 0) {
+                    // A click on the bar selects the slot instead of building a block.
+                    player.inventory().setSelectedSlot(slot);
+                    return true;
+                }
+            }
             if (InputHandler.isBuildButton(button)) {
                 return buildBlock();
+            }
+            return false;
+        }
+
+        @Override
+        public boolean touchDragged(int screenX, int screenY, int pointer) {
+            uiViewport.unproject(screenX, screenY, interfaceMouse);
+            // A held button that is dragged over the slots of the inventory shares the
+            // carried stack out over them.
+            inventoryGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
+            return false;
+        }
+
+        @Override
+        public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+            uiViewport.unproject(screenX, screenY, interfaceMouse);
+            if (inventoryGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
             }
             return false;
         }
@@ -183,19 +229,28 @@ public class GameScreen extends NeoFactoryScreen {
         float visibleUnits = Constants.TILE_SIZE * Constants.VIEW_BLOCKS;
         this.worldViewport = new ExtendViewport(visibleUnits, visibleUnits, camera);
 
-        this.player = createPlayer(fresh);
+        this.player = preparePlayer(world, data, fresh);
         this.inputHandler = new InputHandler();
 
         this.worldRenderer = new WorldRenderer(batch, textures);
         this.playerRenderer = new PlayerRenderer(batch, textures);
+        this.itemEntityRenderer = new ItemEntityRenderer(batch, textures);
+        // The player is an entity like any other, so it is drawn by the same pass
+        // over the entity list; the marker renderer stays the thing that knows how.
+        entityRenderers.register(EntityTypes.PLAYER, entity -> playerRenderer.render((Player) entity));
+        entityRenderers.register(EntityTypes.ITEM, itemEntityRenderer);
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
         this.selectionRenderer = new SelectionRenderer(batch, textures);
 
-        // Items of a broken block go straight into the inventory until dropped item
-        // entities exist; switching that is one line here, see InventoryDrops.
-        this.drops = new InventoryDrops(player.inventory());
+        // Items of a broken block fall on the ground and are picked up by walking
+        // over them, see WorldDrops and ItemEntity.
+        this.drops = new WorldDrops(world);
         this.mining = new MiningController(new InstantMining(), drops);
+        // The crafting field of the inventory is a work field: when the screen closes, what
+        // is left in it is dropped where the player stands instead of being hidden, see
+        // ContainerMenu and Slot.Rule.WORK.
+        inventoryGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().y));
 
         if (fresh) {
             // A new world starts at its spawn point and gets a starter kit, because
@@ -203,7 +258,7 @@ public class GameScreen extends NeoFactoryScreen {
             fillDebugInventory(player.inventory());
         }
 
-        loadChunksAroundPlayer();
+        streamChunks(true);
         centerCameraOnPlayer();
 
         LOGGER.info("World '{}' ready, player at block ({}, {}) holding {}",
@@ -211,12 +266,38 @@ public class GameScreen extends NeoFactoryScreen {
     }
 
     /**
+     * Returns the player of a world, creating one when the world has none.
+     * <p>
+     * A stored world carries its player in the entity list, so it comes back with
+     * the position, the facing direction and the inventory it was left with. A world
+     * written before entities existed has no entry there, and neither has a new one;
+     * both fall back to the spawn point and, for an older world, to the player fields
+     * the level data kept for exactly this case.
+     *
+     * @param world world the player belongs to
+     * @param data level data of the world
+     * @param fresh {@code true} for a world that was just created
+     * @return the player, never {@code null}
+     */
+    private static Player preparePlayer(World world, LevelData data, boolean fresh) {
+        Player stored = world.entities().player();
+        if (stored != null) {
+            return stored;
+        }
+        Player player = createPlayer(world, data, fresh);
+        world.entities().spawn(player);
+        return player;
+    }
+
+    /**
      * Places the player where the world left it, or at the spawn point of a new world.
      *
+     * @param world world the player belongs to
+     * @param data level data of the world
      * @param fresh {@code true} for a world that was just created
      * @return the player
      */
-    private Player createPlayer(boolean fresh) {
+    private static Player createPlayer(World world, LevelData data, boolean fresh) {
         boolean storedPosition = !fresh && (data.playerX() != 0.0f || data.playerY() != 0.0f);
         if (!storedPosition) {
             Player spawned = Player.spawnOnGround(world, world.spawnX(), world.spawnY());
@@ -292,7 +373,7 @@ public class GameScreen extends NeoFactoryScreen {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
         worldRenderer.render(world, camera);
-        playerRenderer.render(player);
+        entityRenderers.render(world.entities().all());
         selectionRenderer.render(world, target);
         batch.end();
 
@@ -320,7 +401,7 @@ public class GameScreen extends NeoFactoryScreen {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
         worldRenderer.render(world, camera);
-        playerRenderer.render(player);
+        entityRenderers.render(world.entities().all());
         selectionRenderer.render(world, target);
         batch.end();
 
@@ -354,7 +435,7 @@ public class GameScreen extends NeoFactoryScreen {
      */
     private void renderInterface(float delta) {
         uiViewport.apply();
-        uiViewport.unproject(Gdx.input.getX(), Gdx.input.getY(), interfaceMouse);
+        updateInterfaceMouse();
 
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
@@ -372,7 +453,7 @@ public class GameScreen extends NeoFactoryScreen {
     public void resize(int width, int height) {
         super.resize(width, height);
         worldViewport.update(width, height, false);
-        loadChunksAroundPlayer();
+        streamChunks(true);
         centerCameraOnPlayer();
     }
 
@@ -401,6 +482,7 @@ public class GameScreen extends NeoFactoryScreen {
      * @param delta time since the last frame in seconds
      */
     private void handleInputAndUpdate(float delta) {
+        updateInterfaceMouse();
         handleInterfaceKeys();
 
         if (inputHandler.consumePauseToggle()) {
@@ -419,15 +501,21 @@ public class GameScreen extends NeoFactoryScreen {
 
         float zoomSteps = inputHandler.consumeZoomSteps();
         if (inventoryGui.isOpen()) {
+            // The world keeps running while the screen is open: a drop lying next to the
+            // player is still picked up, which is what lets a full inventory take an item
+            // after one was lifted onto the mouse. The player itself stands still and
+            // neither aims nor mines, so the interface stays in charge of the input.
             player.halt();
             target = null;
         } else {
-            applyZoom(zoomSteps);
+            applyWheel(zoomSteps);
+            applyZoomDemand(delta);
             inputHandler.update(player, camera);
-            player.update(world, delta, zoom);
+            player.setSpeedScale(zoom);
             updateInteraction(delta);
         }
-        loadChunksAroundPlayer();
+        world.entities().update(world, delta, player.blockX(), player.blockY());
+        streamChunks(false);
     }
 
     /**
@@ -484,24 +572,79 @@ public class GameScreen extends NeoFactoryScreen {
             inventoryGui.toggle();
             LOGGER.info("Inventory {}", inventoryGui.isOpen() ? "opened" : "closed");
         }
+        if (inputHandler.consumeDrop()) {
+            dropRequested(inputHandler.isDropWholeStack());
+        }
         int hotbarSlot = inputHandler.consumeHotbarSelection();
         if (hotbarSlot >= 0) {
             player.inventory().setSelectedSlot(hotbarSlot);
         }
+        int viewStep = inputHandler.consumeViewDistanceStep();
+        if (viewStep != 0) {
+            // Fewer chunks means less memory and a smaller save game, more chunks
+            // mean more terrain on screen; both are worth trying while playing.
+            streamer.setViewDistance(streamer.viewDistance() + viewStep);
+        }
     }
 
     /**
-     * Turns the collected wheel notches into a clamped, multiplicative zoom.
+     * Routes the collected wheel notches.
+     * <p>
+     * The wheel selects hotbar slots, the way it does in the original game: rolling
+     * forwards walks towards the first slot. Zooming moved to the keys {@code -} and
+     * {@code =} when the wheel was taken over by the hotbar; the wheel still zooms
+     * while {@code CTRL} is held, which keeps the familiar gesture available without
+     * mixing the two up, see {@link InputHandler#isZoomScrollDown()}.
      *
      * @param steps wheel notches collected since the last frame
      */
-    private void applyZoom(float steps) {
+    private void applyWheel(float steps) {
         if (steps == 0.0f) {
             return;
         }
+        if (inputHandler.isZoomScrollDown()) {
+            applyZoom(steps);
+            return;
+        }
+        player.inventory().scrollSelection(steps > 0.0f ? -1 : 1);
+    }
+
+    /**
+     * Applies a multiplicative zoom and keeps it inside the allowed range.
+     *
+     * @param steps wheel notches to zoom by, positive means rolled forwards
+     */
+    private void applyZoom(float steps) {
         // Rolling the wheel forwards magnifies, which means a smaller camera zoom.
         float factor = (float) Math.pow(Constants.ZOOM_STEP, -steps);
         zoom = MathUtils.clamp(zoom * factor, Constants.ZOOM_MIN, Constants.ZOOM_MAX);
+    }
+
+    /**
+     * Applies continuous zoom from the keyboard.
+     * <p>
+     * Holding {@code =} magnifies and holding {@code -} shrinks the view at a
+     * fixed notch rate, which is the way the camera is zoomed now that the wheel
+     * belongs to the hotbar.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    private void applyZoomDemand(float delta) {
+        float demand = inputHandler.zoomKeyDemand();
+        if (demand == 0.0f) {
+            return;
+        }
+        applyZoom(demand * Constants.ZOOM_KEY_STEPS_PER_SECOND * delta);
+    }
+
+    /**
+     * Unprojects the mouse into the virtual pixels of the interface.
+     * <p>
+     * Called once per frame before the input handling, so the wheel routing and
+     * the interface rendering read the same position.
+     */
+    private void updateInterfaceMouse() {
+        uiViewport.unproject(Gdx.input.getX(), Gdx.input.getY(), interfaceMouse);
     }
 
     /**
@@ -519,22 +662,35 @@ public class GameScreen extends NeoFactoryScreen {
     }
 
     /**
-     * Makes sure every chunk visible at the current zoom is loaded.
+     * Makes sure every chunk visible at the current zoom is in memory, and drops
+     * the chunks the player walked away from.
      * <p>
      * The radius is derived from the viewport size rather than being a constant,
      * so zooming out reveals the terrain instead of showing empty space. One chunk
      * is added on top of the visible area: terrain and decorations are planted
      * when a chunk is finished, so the margin keeps new trees from appearing out of
      * nothing inside the view.
+     * <p>
+     * Loading is spread over the frames, dropping is not, see
+     * {@link ChunkStreamer}. A changed chunk is written into the save game before it
+     * is dropped, which is what makes the memory of a long session stay flat without
+     * losing what the player built.
+     *
+     * @param immediate {@code true} to fill the whole area in one go, used while the
+     *                  world is opened and after a resize
      */
-    private void loadChunksAroundPlayer() {
+    private void streamChunks(boolean immediate) {
         float visibleBlocksX = worldViewport.getWorldWidth() * zoom / Constants.TILE_SIZE;
         float visibleBlocksY = worldViewport.getWorldHeight() * zoom / Constants.TILE_SIZE;
         float halfBlocks = Math.max(visibleBlocksX, visibleBlocksY) * 0.5f;
-        int chunkRadius = (int) Math.ceil(halfBlocks / Constants.CHUNK_SIZE) + 2;
+        float blockX = player.position().x / Constants.TILE_SIZE;
+        float blockY = player.position().y / Constants.TILE_SIZE;
 
-        world.ensureChunksAround(player.position().x / Constants.TILE_SIZE,
-                player.position().y / Constants.TILE_SIZE, chunkRadius);
+        if (immediate) {
+            streamer.fill(world, blockX, blockY, halfBlocks);
+        } else {
+            streamer.update(world, blockX, blockY, halfBlocks);
+        }
     }
 
     /** Writes a short status line to the log now and then. */
@@ -544,16 +700,48 @@ public class GameScreen extends NeoFactoryScreen {
             return;
         }
         debugFrameCounter = 0;
-        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | tiles {} | chunks {} | hotbar {} "
+        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | tiles {} | chunks {} (view {}, "
+                        + "stored {}, changed {}) | stream +{}/-{} | entities {} | hotbar {} "
                         + "| inventory {} | target {} | gui {} | fps {}",
                 summary.displayName(),
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
-                worldRenderer.drawnTileCount(), world.chunkCount(),
+                worldRenderer.drawnTileCount(), world.chunkCount(), streamer.viewDistance(),
+                world.storedChunkCount(), world.modifiedChunkCount(),
+                streamer.lastLoaded(), streamer.lastUnloaded(),
+                world.entities().count(),
                 player.inventory().selectedSlot(),
                 inventoryGui.isOpen() ? "open" : "closed",
                 targetText(),
                 uiViewport.scale(),
                 Gdx.graphics.getFramesPerSecond());
+    }
+
+    /**
+     * Drops what the drop key points at.
+     * <p>
+     * While the inventory screen is open the slot under the mouse is dropped, which lets
+     * the key work on whatever the player points at. During play the selected hotbar slot
+     * is dropped in front of the player, a single item or the whole stack.
+     *
+     * @param wholeStack {@code true} to drop the whole stack, {@code false} for one item
+     */
+    private void dropRequested(boolean wholeStack) {
+        if (inventoryGui.isOpen()) {
+            inventoryGui.dropAt(interfaceMouse.x, interfaceMouse.y, wholeStack);
+            return;
+        }
+        PlayerInventory inventory = player.inventory();
+        ItemStack held = inventory.heldStack();
+        if (held.isEmpty()) {
+            return;
+        }
+        int amount = wholeStack ? held.count() : 1;
+        ItemStack dropped = ItemStack.of(held.item(), amount);
+        held.setCount(held.count() - amount);
+        if (held.isEmpty()) {
+            inventory.set(inventory.selectedSlot(), ItemStack.EMPTY);
+        }
+        drops.drop(dropped, player.position().x, player.position().y);
     }
 
     /** Short description of the targeted cell, used by the status log. */

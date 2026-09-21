@@ -1,0 +1,5 @@
+{
+  "pattern": ["WWW"],
+  "key": { "W": "wheat" },
+  "result": { "item": "bread" }
+}

@@ -15,24 +15,29 @@ import java.io.File;
 /**
  * Opens a stored world.
  * <p>
- * Loading a chunk happens in three steps, and the order matters:
+ * The steps of loading are, in this order:
  * <ol>
- *     <li>the level data is read, which gives the seed and the player state</li>
- *     <li>a fresh world is created from that seed, generating the terrain around the
- *         player</li>
- *     <li>every stored chunk replaces the generated one</li>
+ *     <li>the level file is read, which gives the seed, the spawn and the player
+ *         state</li>
+ *     <li>a world is created from that seed, with its chunk store attached, so the
+ *         spawn area comes from the chunk files wherever they hold something</li>
+ *     <li>the chunks around the player are loaded, which pulls them from the store
+ *         or generates them from the seed</li>
  * </ol>
- * Step three has to see a chunk that is fully generated, which is why the world
- * finishes the area around the player before the file is applied. Writing into a
- * chunk that is still being generated would let the generator fill its cells later
- * and bury what the player built. A chunk from the file carries its own
- * "generated" flags, so once it is applied the generator never touches it again.
+ * There is no moment where the terrain is generated and then replaced by stored
+ * data: the store is asked first, so a chunk the player changed is never produced
+ * by the seed in the first place. That is what keeps a tree planted by the
+ * generator from burying what the player built there.
+ * <p>
+ * A world written by format 1 kept all its chunks inside the level file. Those
+ * chunks are converted into chunk files while opening, see
+ * {@link #migrateLegacyChunks}, and the level file is rewritten without them.
  */
 public final class WorldLoader {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    /** Chunks loaded around the player before the stored ones are applied. */
+    /** Chunks loaded around the player while opening. */
     private static final int LOAD_CHUNK_RADIUS = 2;
 
     private final SaveSummary summary;
@@ -76,47 +81,75 @@ public final class WorldLoader {
         int spawnBlockX = root.contains(SaveTags.SPAWN_X) ? data.spawnX() : spawnX;
         int spawnBlockY = root.contains(SaveTags.SPAWN_Y) ? data.spawnY() : spawnY;
 
-        World world = new World(data.seed(), spawnBlockX, spawnBlockY);
-        world.ensureChunksAround(data.playerX() / Constants.TILE_SIZE,
-                data.playerY() / Constants.TILE_SIZE, LOAD_CHUNK_RADIUS);
+        FileChunkStore store = new FileChunkStore(summary.folder());
+        int migrated = migrateLegacyChunks(summary, root, store);
 
-        NbtList chunks = root.getList(SaveTags.CHUNKS);
-        int applied = applyChunks(world, chunks);
-        LOGGER.info("Opened world '{}' (seed {}) with {} of {} stored chunks", data.worldName(),
-                data.seed(), applied, chunks == null ? 0 : chunks.size());
-        return new WorldLoader(summary, data, world, applied);
+        World world = new World(data.seed(), spawnBlockX, spawnBlockY, store);
+        int entities = world.entities().load(root.getList(SaveTags.ENTITIES), world);
+        world.loadChunksAround(data.playerX() / Constants.TILE_SIZE,
+                data.playerY() / Constants.TILE_SIZE, LOAD_CHUNK_RADIUS, Integer.MAX_VALUE);
+
+        int stored = store.storedChunkCount();
+        LOGGER.info("Opened world '{}' (seed {}) with {} stored chunks and {} entities{}",
+                data.worldName(), data.seed(), stored, entities,
+                migrated > 0 ? ", " + migrated + " converted from format 1" : "");
+        return new WorldLoader(summary, data, world, stored);
     }
 
     /**
-     * Applies the stored chunks to a world.
+     * Converts the chunks of a format 1 world into chunk files.
      * <p>
-     * A stored chunk is filled directly instead of being generated first: it carries
-     * its own cells and the flags that mark them as done, so generating it would only
-     * be thrown away again. A chunk that is missing from the file is generated from
-     * the seed as usual when the player walks into it.
+     * Format 1 stored every chunk the player had seen inside the level file. Those
+     * chunks are read back, written into their own files and the list is dropped from
+     * the level file, which turns the world into the format this build writes.
+     * <p>
+     * The conversion is guarded against running twice: a world that already has chunk
+     * files keeps them, because they are newer than the list the level file still
+     * holds. That can only happen when a conversion wrote its chunks and then failed
+     * to rewrite the level file, and in that case the files win.
      *
-     * @param world world to fill
-     * @param chunks stored chunks, may be {@code null}
-     * @return amount of chunks that were applied
+     * @param summary save game being opened
+     * @param root root tag of that save game, rewritten by this method
+     * @param store store receiving the chunks
+     * @return amount of chunks that were converted, {@code 0} for a current world
      */
-    private static int applyChunks(World world, NbtList chunks) {
-        if (chunks == null) {
+    private static int migrateLegacyChunks(SaveSummary summary, NbtCompound root,
+            FileChunkStore store) {
+        NbtList legacy = root.getList(SaveTags.CHUNKS);
+        if (legacy == null) {
             return 0;
         }
-        int applied = 0;
-        for (int index = 0; index < chunks.size(); index++) {
-            NbtCompound entry = chunks.getCompound(index);
+        boolean converted = store.storedChunkCount() > 0;
+        int migrated = 0;
+        for (int index = 0; index < legacy.size(); index++) {
+            NbtCompound entry = legacy.getCompound(index);
             int chunkX = entry.getInt(ChunkCodec.TAG_X, Integer.MIN_VALUE);
             int chunkY = entry.getInt(ChunkCodec.TAG_Y, Integer.MIN_VALUE);
             if (chunkX == Integer.MIN_VALUE || chunkY == Integer.MIN_VALUE) {
-                LOGGER.warn("Chunk {} of the save game holds no coordinates and is skipped", index);
+                LOGGER.warn("Chunk {} of the old save game holds no coordinates and is skipped",
+                        index);
                 continue;
             }
-            Chunk chunk = world.chunkForLoading(chunkX, chunkY);
+            if (converted) {
+                continue;
+            }
+            // An empty chunk is enough: the reader replaces every cell, and the file
+            // written here is what the world reads from now on.
+            Chunk chunk = new Chunk(chunkX, chunkY);
             ChunkCodec.read(chunk, entry);
-            applied++;
+            store.persist(chunk);
+            migrated++;
         }
-        return applied;
+
+        // The list is gone from the level file. Dropping it is what stops the next
+        // open from converting the same chunks again, which would write their old
+        // content over the files that were written since.
+        root.remove(SaveTags.CHUNKS);
+        root.putInt(SaveTags.DATA_VERSION, SaveFormat.DATA_VERSION);
+        AtomicNbtFile.write(root, summary.levelFile());
+        LOGGER.info("Converted world '{}' to format {}: {} chunks moved out of the level file",
+                summary.displayName(), SaveFormat.DATA_VERSION, migrated);
+        return migrated;
     }
 
     /** Save game that was opened. */
@@ -134,7 +167,7 @@ public final class WorldLoader {
         return world;
     }
 
-    /** Amount of chunks that came out of the file. */
+    /** Amount of chunks this world has stored. */
     public int storedChunks() {
         return storedChunks;
     }

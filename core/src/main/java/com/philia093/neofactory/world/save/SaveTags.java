@@ -63,11 +63,44 @@ public final class SaveTags {
     /** Amount of items of a single stack. */
     public static final String COUNT = "Count";
 
-    /** List of the stored chunks. */
+    /**
+     * List of the chunks, written by format 1 and read back only to convert a
+     * world to format 2, where every changed chunk lives in its own file.
+     */
     public static final String CHUNKS = "Chunks";
 
-    /** Group of the entities, empty until entities exist. */
+    /**
+     * Group of the stored entities.
+     * <p>
+     * Every entry holds the shared fields of an entity plus one nested group with
+     * whatever the type adds, see
+     * {@link com.philia093.neofactory.entity.Entity#writeTo(NbtCompound)}.
+     */
     public static final String ENTITIES = "Entities";
+
+    /** Type name of an entity, for example {@code "player"} or {@code "item"}. */
+    public static final String ENTITY_ID = "id";
+
+    /** Group holding the type specific data of an entity. */
+    public static final String ENTITY_DATA = "Data";
+
+    /** First half of the identifier of an entity. */
+    public static final String UUID_MOST = "UUIDMost";
+
+    /** Second half of the identifier of an entity. */
+    public static final String UUID_LEAST = "UUIDLeast";
+
+    /** Velocity X component of an entity, world units per second. */
+    public static final String VEL_X = "VelX";
+
+    /** Velocity Y component of an entity, world units per second. */
+    public static final String VEL_Y = "VelY";
+
+    /** State of the world in which the entity was stored, used when it comes back. */
+    public static final String ENTITY_AGE = "Age";
+
+    /** Seconds left before an item on the ground may be picked up. */
+    public static final String PICKUP_DELAY = "PickupDelay";
 
     /** Group of the world rules. */
     public static final String GAME_RULES = "GameRules";

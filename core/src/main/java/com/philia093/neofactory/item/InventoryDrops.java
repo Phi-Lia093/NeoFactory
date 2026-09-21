@@ -8,14 +8,13 @@ import java.util.Objects;
 /**
  * Hands dropped items straight to the player.
  * <p>
- * This is the placeholder for a dropped item system: because the game has no
- * entities yet, whatever a broken block hands back is put into the inventory right
- * away, as if the player had picked it up. Items that do not fit are reported and
- * lost for now, see {@link #drop(ItemStack, float, float)}.
+ * This is the simple implementation of {@link ItemDrops}: whatever a broken block
+ * hands back is put into the inventory right away, as if the player had picked it
+ * up. Items that do not fit are reported and lost.
  * <p>
- * Once dropped items exist, only the field in
- * {@code com.philia093.neofactory.screen.GameScreen} has to point at the new
- * implementation, everything else already talks to {@link ItemDrops}.
+ * The game uses {@link WorldDrops} instead, which leaves the items on the ground;
+ * this class stays as the alternative for rules and modes where digging should not
+ * leave anything behind.
  */
 public class InventoryDrops implements ItemDrops {
 
@@ -40,7 +39,8 @@ public class InventoryDrops implements ItemDrops {
         }
         int remaining = inventory.add(stack);
         if (remaining > 0) {
-            // A later dropped item system leaves a stack on the ground instead.
+            // The dropped item implementation leaves a stack on the ground instead,
+            // see WorldDrops.
             LOGGER.info("Inventory is full, {} x {} could not be picked up",
                     remaining, stack.item().name());
         }

@@ -4,8 +4,10 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.Constants;
+import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.save.SaveTags;
 
 /**
  * The controllable player.
@@ -21,8 +23,14 @@ import com.philia093.neofactory.world.World;
  * <p>
  * The facing direction is driven by the mouse and never by the keyboard, the
  * movement keys leave it untouched.
+ * <p>
+ * The player is an {@link Entity} like everything else in the world: it is stored
+ * with the position every entity has plus a {@code Data} group holding the facing,
+ * the selected slot and the inventory, see {@link #writeData(NbtCompound)}. That is
+ * what makes a world remember where the player stood without a special case in the
+ * save code.
  */
-public class Player {
+public class Player extends Entity {
 
     /**
      * Distance the player box stops short of a solid cell.
@@ -35,12 +43,6 @@ public class Player {
     /** Length below which the movement vector counts as zero. */
     private static final float MIN_INPUT_LENGTH = 1.0e-4f;
 
-    /** Position of the player center in block coordinates, both axes horizontal. */
-    private final Vector2 position = new Vector2();
-
-    /** Current velocity in blocks per second. */
-    private final Vector2 velocity = new Vector2();
-
     /** Normalized direction the player is looking at, set from the mouse. */
     private final Vector2 facing = new Vector2(1.0f, 0.0f);
 
@@ -51,12 +53,22 @@ public class Player {
     private final PlayerInventory inventory = new PlayerInventory();
 
     /**
+     * Factor the walking speed is multiplied with.
+     * <p>
+     * The camera zoom is written into this field by the screen, which keeps the
+     * player feeling equally fast no matter how far the camera is zoomed out,
+     * without the entity interface having to know about a camera.
+     */
+    private float speedScale = 1.0f;
+
+    /**
      * Creates a player at a position.
      *
      * @param x world X coordinate of the player center
      * @param y world Y coordinate of the player center
      */
     public Player(float x, float y) {
+        super(EntityTypes.PLAYER);
         position.set(x, y);
     }
 
@@ -77,19 +89,42 @@ public class Player {
                 (cell[1] + 0.5f) * Constants.TILE_SIZE);
     }
 
-    /** Live position of the player center, do not mutate directly. */
-    public Vector2 position() {
-        return position;
-    }
-
-    /** Live velocity of the player, do not mutate directly. */
-    public Vector2 velocity() {
-        return velocity;
-    }
-
     /** Live facing direction, always normalized. */
     public Vector2 facing() {
         return facing;
+    }
+
+    /**
+     * Sets the factor the walking speed is multiplied with.
+     *
+     * @param speedScale factor, greater than zero
+     */
+    public void setSpeedScale(float speedScale) {
+        this.speedScale = speedScale > 0.0f ? speedScale : 1.0f;
+    }
+
+    @Override
+    public float hitboxHalfExtent() {
+        return Constants.PLAYER_HITBOX * 0.5f * Constants.TILE_SIZE;
+    }
+
+    @Override
+    protected void writeData(NbtCompound data) {
+        data.putFloat(SaveTags.ROTATION_X, facing.x);
+        data.putFloat(SaveTags.ROTATION_Y, facing.y);
+        data.putInt(SaveTags.SELECTED_SLOT, inventory.selectedSlot());
+        data.put(SaveTags.writeInventory(inventory));
+    }
+
+    @Override
+    protected void readData(NbtCompound data) {
+        facing.set(data.getFloat(SaveTags.ROTATION_X, 1.0f),
+                data.getFloat(SaveTags.ROTATION_Y, 0.0f));
+        if (facing.isZero()) {
+            facing.set(1.0f, 0.0f);
+        }
+        SaveTags.readInventory(inventory, data.getList(SaveTags.INVENTORY));
+        inventory.setSelectedSlot(data.getInt(SaveTags.SELECTED_SLOT, 0));
     }
 
     /**
@@ -164,15 +199,15 @@ public class Player {
      * Advances the player by one frame.
      * <p>
      * The movement is scaled by {@code delta}, which makes the speed independent
-     * of the frame rate, and by the camera zoom, which keeps the player feeling
+     * of the frame rate, and by the speed scale, which keeps the player feeling
      * equally fast no matter how far the camera is zoomed out.
      *
      * @param world world used to resolve collisions
      * @param delta time since the last frame in seconds
-     * @param zoom current camera zoom, greater than zero
      */
-    public void update(World world, float delta, float zoom) {
-        velocity.set(moveInput).scl(Constants.PLAYER_SPEED * Constants.TILE_SIZE * zoom);
+    @Override
+    public void update(World world, float delta) {
+        velocity.set(moveInput).scl(Constants.PLAYER_SPEED * Constants.TILE_SIZE * speedScale);
         if (velocity.isZero()) {
             return;
         }

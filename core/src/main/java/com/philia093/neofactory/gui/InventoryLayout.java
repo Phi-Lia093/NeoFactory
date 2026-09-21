@@ -1,87 +1,61 @@
 package com.philia093.neofactory.gui;
 
+import com.philia093.neofactory.gui.container.ContainerLayout;
+import com.philia093.neofactory.gui.container.Slot;
+import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.render.BlockTextureCache;
 
 /**
- * Geometry of the player inventory, measured pixel by pixel from the pictures of
- * the art pack.
+ * Geometry of the inventory screen and of the hotbar.
  * <p>
- * Everything is in interface pixels, which are drawn one to one: a slot is 16
- * pixels wide and the next one follows 18 pixels later, so the two pixels between
- * two slots are the bevel the picture already brings along.
+ * The container picture is no longer one piece: the panel, the slots and the arrow come
+ * from {@code gui/inventory_icons.png} and are stretched to whatever size the slots ask
+ * for, see {@link com.philia093.neofactory.gui.panel.PanelTextures}. This class only
+ * says where the slots of the player lie, and {@link #of} hands the result to a
+ * {@link ContainerLayout}, which grows the panel around them.
  * <p>
- * The container picture {@code gui/container/inventory.png} holds the frame, the
- * slot bevels, the player preview and the crafting arrow, so the screen only has
- * to draw the items on top of it. Every coordinate below is relative to the top
- * left corner of that picture.
+ * The screen shows what the player owns and what may be made of it: a two by two
+ * crafting field with its result, the three storage rows and the hotbar. The armour
+ * slots and the preview of the player of the original game are gone, the game has
+ * neither armour nor a player to show yet.
  * <p>
- * <b>Storage slots:</b> the hotbar row comes first and the three storage rows
- * follow, which is exactly the order of {@link PlayerInventory}: slot {@code 0} to
- * {@code 8} is the hotbar and slot {@code 9} to {@code 35} is the storage.
+ * <b>Storage slots:</b> the hotbar row comes first and the three storage rows follow,
+ * which is exactly the order of {@link PlayerInventory}: slot {@code 0} to {@code 8} is
+ * the hotbar and slot {@code 9} to {@code 35} is the storage. On screen the storage is
+ * drawn above the hotbar, so the two blocks are added to the layout separately.
  * <p>
- * The armour slots and the crafting group belong to the picture, but they neither
- * store items nor own a slot of the player inventory yet, so this class only
- * reports where they are.
+ * All coordinates are pixels of the panel, measured from its upper left corner
+ * downwards.
  */
 public final class InventoryLayout {
 
-    /** Texture of the container frame, without extension. */
-    public static final String CONTAINER_TEXTURE = BlockTextureCache.GUI_FOLDER + "container/inventory";
+    /** X coordinate of the two by two crafting field. */
+    public static final int CRAFT_X = 32;
 
-    /** Width of the container frame in pixels. */
-    public static final int CONTAINER_WIDTH = 176;
+    /** Side length of the clickable part of a slot in pixels, the size of an icon. */
+    public static final int SLOT_SIZE = ContainerLayout.SLOT_SIZE;
 
-    /** Height of the container frame in pixels. */
-    public static final int CONTAINER_HEIGHT = 166;
+    /** Y coordinate of the upper row of the crafting field. */
+    public static final int CRAFT_Y = 22;
 
-    /** Side length of the clickable part of a slot in pixels. */
-    public static final int SLOT_SIZE = 16;
+    /** Columns between the crafting field and its result, the arrow fills them. */
+    public static final int RESULT_COLUMNS = 4;
 
-    /** Distance between the left edges of two neighbouring slots in pixels. */
-    public static final int SLOT_PITCH = 18;
+    /** Y coordinate of the result slot, centred on the crafting field. */
+    public static final int RESULT_Y = CRAFT_Y + ContainerLayout.SLOT_PITCH / 2;
 
-    /** X coordinate of the single armour column. */
-    public static final int ARMOR_COLUMN_X = 8;
+    /** X coordinate of the crafting arrow. */
+    public static final int ARROW_X = CRAFT_X + 2 * ContainerLayout.SLOT_PITCH + 2;
 
-    /** Y coordinate of the first armour slot, the helmet is on top. */
-    public static final int FIRST_ARMOR_SLOT_Y = 8;
-
-    /** Amount of armour slots, from the helmet down to the boots. */
-    public static final int ARMOR_SLOT_COUNT = 4;
-
-    /** X coordinate of the left column of the two by two crafting grid. */
-    public static final int CRAFT_GRID_X = 88;
-
-    /** Y coordinate of the upper row of the crafting grid. */
-    public static final int CRAFT_GRID_Y = 26;
-
-    /** X coordinate of the crafting result slot. */
-    public static final int CRAFT_RESULT_X = 144;
-
-    /** Y coordinate of the crafting result slot. */
-    public static final int CRAFT_RESULT_Y = 36;
-
-    /** X coordinate of the left column of the storage grid. */
-    public static final int GRID_X = 8;
+    /** Y coordinate of the crafting arrow, centred on the crafting field. */
+    public static final int ARROW_Y = CRAFT_Y + ContainerLayout.SLOT_PITCH / 2;
 
     /** Y coordinate of the upper storage row of the three by nine grid. */
-    public static final int FIRST_GRID_Y = 84;
+    public static final int STORAGE_Y = 74;
 
-    /** Amount of columns of the storage grid and of the hotbar. */
-    public static final int GRID_COLUMNS = 9;
-
-    /** Amount of storage rows, the hotbar not counted. */
-    public static final int GRID_ROWS = 3;
-
-    /** Y coordinate of the hotbar row inside the container. */
-    public static final int HOTBAR_ROW_Y = 142;
-
-    /** Y coordinate of the label above the crafting grid. */
-    public static final int CRAFTING_LABEL_Y = 6;
-
-    /** Y coordinate of the label above the storage grid. */
-    public static final int INVENTORY_LABEL_Y = 68;
+    /** Y coordinate of the hotbar row. */
+    public static final int HOTBAR_Y = 132;
 
     /** Texture of the hotbar widget, without extension. */
     public static final String HOTBAR_TEXTURE = BlockTextureCache.GUI_FOLDER + "widgets";
@@ -112,114 +86,31 @@ public final class InventoryLayout {
     }
 
     /**
-     * X coordinate of a storage slot inside the container.
+     * Builds the layout of the inventory screen.
      *
-     * @param slot slot index, {@code 0} to {@code 35}
-     * @return the left edge in pixels
+     * @param player inventory of the player, both the storage and the hotbar
+     * @param crafting the two by two field of the crafting grid
+     * @param result inventory that holds the current result of the crafting field
+     * @return the layout, its panel is as large as the slots ask for
      */
-    public static int slotX(int slot) {
-        return GRID_X + columnOf(slot) * SLOT_PITCH;
+    public static ContainerLayout of(PlayerInventory player, Inventory crafting, Inventory result) {
+        ContainerLayout layout = new ContainerLayout();
+        layout.addGrid(CRAFT_X, CRAFT_Y, 2, 2, crafting, 0, Slot.Rule.WORK);
+        layout.add(CRAFT_X + RESULT_COLUMNS * ContainerLayout.SLOT_PITCH, RESULT_Y, result, 0,
+                Slot.Rule.OUTPUT);
+        layout.addGrid(ContainerLayout.PADDING, STORAGE_Y, 9, 3, player,
+                PlayerInventory.HOTBAR_SLOTS, Slot.Rule.NORMAL);
+        layout.addGrid(ContainerLayout.PADDING, HOTBAR_Y, 9, 1, player, 0, Slot.Rule.NORMAL);
+        return layout;
     }
 
     /**
-     * Y coordinate of a storage slot inside the container.
+     * {@code true} when a slot of the player belongs to the hotbar row.
      *
      * @param slot slot index, {@code 0} to {@code 35}
-     * @return the upper edge in pixels, the hotbar row lies below the storage grid
+     * @return {@code true} for the first nine slots
      */
-    public static int slotY(int slot) {
-        if (isHotbarSlot(slot)) {
-            return HOTBAR_ROW_Y;
-        }
-        return FIRST_GRID_Y + (slot - GRID_COLUMNS) / GRID_COLUMNS * SLOT_PITCH;
-    }
-
-    /**
-     * Column of a slot, counted from the left.
-     *
-     * @param slot slot index, {@code 0} to {@code 35}
-     * @return the column, {@code 0} to {@code 8}
-     */
-    public static int columnOf(int slot) {
-        return slot % GRID_COLUMNS;
-    }
-
-    /** {@code true} when a slot belongs to the hotbar row. */
     public static boolean isHotbarSlot(int slot) {
-        return slot >= 0 && slot < GRID_COLUMNS;
-    }
-
-    /**
-     * Y coordinate of an armour slot.
-     *
-     * @param index armour slot, {@code 0} is the helmet
-     * @return the upper edge in pixels
-     */
-    public static int armorSlotY(int index) {
-        return FIRST_ARMOR_SLOT_Y + index * SLOT_PITCH;
-    }
-
-    /**
-     * X coordinate of a cell of the crafting grid.
-     *
-     * @param index cell, counted row by row from the top left
-     * @return the left edge in pixels
-     */
-    public static int craftSlotX(int index) {
-        return CRAFT_GRID_X + index % 2 * SLOT_PITCH;
-    }
-
-    /**
-     * Y coordinate of a cell of the crafting grid.
-     *
-     * @param index cell, counted row by row from the top left
-     * @return the upper edge in pixels
-     */
-    public static int craftSlotY(int index) {
-        return CRAFT_GRID_Y + index / 2 * SLOT_PITCH;
-    }
-
-    /**
-     * Finds the storage slot under a point of the container.
-     * <p>
-     * The two pixels of bevel between two slots belong to neither of them, which
-     * is why a click right between two slots does nothing.
-     *
-     * @param localX X coordinate relative to the container
-     * @param localY Y coordinate relative to the container
-     * @return the slot index, or {@code -1} when no slot is hit
-     */
-    public static int slotAt(int localX, int localY) {
-        int column = columnAt(localX);
-        if (column < 0) {
-            return -1;
-        }
-        if (contains(localY, HOTBAR_ROW_Y)) {
-            return column;
-        }
-        for (int row = 0; row < GRID_ROWS; row++) {
-            if (contains(localY, FIRST_GRID_Y + row * SLOT_PITCH)) {
-                return GRID_COLUMNS * (row + 1) + column;
-            }
-        }
-        return -1;
-    }
-
-    /** Column under a point, {@code -1} when the point is not on a slot column. */
-    private static int columnAt(int localX) {
-        int offset = localX - GRID_X;
-        if (offset < 0) {
-            return -1;
-        }
-        int column = offset / SLOT_PITCH;
-        if (column >= GRID_COLUMNS) {
-            return -1;
-        }
-        return offset < column * SLOT_PITCH + SLOT_SIZE ? column : -1;
-    }
-
-    /** {@code true} when a coordinate lies inside the slot that starts at {@code start}. */
-    private static boolean contains(int value, int start) {
-        return value >= start && value < start + SLOT_SIZE;
+        return slot >= 0 && slot < PlayerInventory.HOTBAR_SLOTS;
     }
 }

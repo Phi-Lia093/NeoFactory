@@ -52,8 +52,15 @@ dependencies {
 
 def os = System.properties['os.name'].toLowerCase(Locale.ROOT)
 
+// The game writes its save games and its log below the working directory, which is
+// why it runs in a folder of its own: the shipped assets stay untouched and the
+// jar never carries a save game around.
+def runDirectory = rootProject.file('run')
+
 run {
-  workingDir = rootProject.file('assets').path
+  doFirst { runDirectory.mkdirs() }
+  workingDir = runDirectory.path
+
 // You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
   //setIgnoreExitValue(true)
   jvmArgs += "--enable-native-access=ALL-UNNAMED"

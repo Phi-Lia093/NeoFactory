@@ -1,0 +1,5 @@
+{
+  "pattern": ["P", "P"],
+  "key": { "P": "planks_oak" },
+  "result": { "item": "stick", "count": 4 }
+}

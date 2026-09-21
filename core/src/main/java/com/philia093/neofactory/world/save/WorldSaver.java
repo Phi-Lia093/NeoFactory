@@ -2,34 +2,31 @@ package com.philia093.neofactory.world.save;
 
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.nbt.NbtCompound;
-import com.philia093.neofactory.util.nbt.NbtIo;
-import com.philia093.neofactory.util.nbt.NbtList;
-import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.File;
-import java.util.Collection;
-
 /**
  * Writes a world into its save game.
  * <p>
- * The file is written to a temporary name first and moved over the old file once it
- * is complete. A crash while saving therefore never leaves a half written file
- * behind: either the old save game is still there or the new one is.
+ * A world on disk consists of two parts:
+ * <ul>
+ *     <li>{@link SaveFormat#LEVEL_FILE} holds everything that is not a block, see
+ *         {@link LevelData}. It is small and written on every save.</li>
+ *     <li>one file per chunk below {@link SaveFormat#CHUNK_FOLDER} holds the chunks
+ *         the player changed, see {@link ChunkStorage}</li>
+ * </ul>
+ * Only changed chunks are written, and each of them goes into its own file, which
+ * is what makes a save cost what was built since the last one instead of what is
+ * loaded. Chunks the player never touched are not stored at all: the generator
+ * rebuilds them from the seed, cell by cell, exactly as they were.
  * <p>
- * Every chunk the world currently holds in memory is stored whole, see
- * {@link ChunkCodec}. Chunks that were never loaded are not part of the file and
- * are generated from the seed again when the player reaches them, which is what
- * keeps a save game small.
+ * Both files are replaced in one step, see {@link AtomicNbtFile}, so a crash while
+ * saving never leaves a half written file behind.
  */
 public final class WorldSaver {
 
     private static final Logger LOGGER = LogManager.getLogger();
-
-    /** Name of the file written before the complete one replaces it. */
-    private static final String TEMPORARY_SUFFIX = ".tmp";
 
     private WorldSaver() {
         // Utility class: never instantiated.
@@ -37,6 +34,13 @@ public final class WorldSaver {
 
     /**
      * Stores a world.
+     * <p>
+     * The chunks are written first and the level file last. A failed save then
+     * leaves the old level file in place, which still describes the world the
+     * player knows, instead of a new one pointing at chunks that may not be there.
+     * A chunk that fails to write keeps its changed flag, see
+     * {@link World#persistModifiedChunks()}, so nothing is forgotten by a save that
+     * did not go through.
      *
      * @param storage storage providing the folder
      * @param summary save game to write into
@@ -44,61 +48,26 @@ public final class WorldSaver {
      * @param world world holding the chunks
      * @param inventory inventory of the player
      * @return amount of chunks that were stored
-     * @throws SaveException when the file cannot be written
+     * @throws SaveException when a file cannot be written
      */
     public static int save(WorldStorage storage, SaveSummary summary, LevelData data, World world,
             PlayerInventory inventory) {
         storage.prepareFolder(summary);
+        // Attached before anything is written: from now on a changed chunk may be
+        // dropped from memory, because dropping it writes it first.
+        world.attachChunkStore(new FileChunkStore(summary.folder()));
+
+        int stored = world.persistModifiedChunks();
 
         NbtCompound root = data.write(inventory);
-        Collection<Chunk> chunks = world.chunks();
-        NbtList stored = new NbtList(SaveTags.CHUNKS);
-        for (Chunk chunk : chunks) {
-            stored.add(ChunkCodec.write(chunk));
-        }
-        root.put(stored);
+        // The entities travel with the level file: they are few and they belong to
+        // the world, not to a chunk that may be dropped from memory.
+        root.put(world.entities().save());
+        AtomicNbtFile.write(root, summary.levelFile());
 
-        File target = summary.levelFile();
-        File temporary = new File(target.getParentFile(), target.getName() + TEMPORARY_SUFFIX);
-        try {
-            NbtIo.writeGzip(root, temporary);
-        } catch (RuntimeException e) {
-            LOGGER.error("Unable to write the save game {}", temporary, e);
-            throw e instanceof SaveException ? (SaveException) e
-                    : new SaveException("Unable to write " + temporary, e);
-        }
-
-        // Replacing the file in one step is what keeps a crash from destroying the
-        // save game that was already there.
-        if (!temporary.renameTo(target) && !replaceByCopy(temporary, target)) {
-            throw new SaveException("Unable to replace the save game " + target);
-        }
-
-        LOGGER.info("Saved world '{}' with {} chunks into {}", summary.displayName(),
-                stored.size(), target);
-        return stored.size();
-    }
-
-    /**
-     * Copies the temporary file over the old one when a rename is refused.
-     * <p>
-     * Windows refuses to rename a file onto an existing one, so the old file is
-     * removed first. The window in which neither file exists is a single system call
-     * wide, which is the best that can be done without a real rename.
-     *
-     * @param temporary file holding the new data
-     * @param target file to replace
-     * @return {@code true} when the target holds the new data
-     */
-    private static boolean replaceByCopy(File temporary, File target) {
-        if (target.exists() && !target.delete()) {
-            LOGGER.error("Unable to remove the old save game {}", target);
-            return false;
-        }
-        if (temporary.renameTo(target)) {
-            return true;
-        }
-        LOGGER.error("Unable to move {} onto {}", temporary, target);
-        return false;
+        LOGGER.info("Saved world '{}' with {} changed chunks and {} entities into {}",
+                summary.displayName(), stored, world.entities().count(), summary.levelFile());
+        return stored;
     }
 }
+

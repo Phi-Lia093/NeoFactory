@@ -1,0 +1,5 @@
+{
+  "pattern": ["SS", "SS"],
+  "key": { "S": "sand" },
+  "result": { "item": "sandstone" }
+}

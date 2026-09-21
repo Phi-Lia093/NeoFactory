@@ -9,11 +9,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.philia093.neofactory.NeoFactoryGame;
+import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.gui.widget.ScrollListWidget;
 import com.philia093.neofactory.gui.widget.TextFieldWidget;
 import com.philia093.neofactory.gui.widget.Widget;
 import com.philia093.neofactory.gui.widget.WidgetStyle;
-import com.philia093.neofactory.render.BlockTextureCache;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,11 +47,8 @@ public abstract class WidgetScreen extends NeoFactoryScreen {
     /** Field that takes the keyboard, {@code null} while none is focused. */
     private TextFieldWidget focusedField;
 
-    /** Name of the picture the menu background is tiled from. */
-    private static final String MENU_BACKGROUND = BlockTextureCache.GUI_FOLDER + "options_background";
-
     /** Size one tile of the menu background is drawn with, in interface pixels. */
-    private static final float MENU_TILE = 16.0f;
+    private static final float MENU_TILE = PanelTextures.DIRT_SIZE;
 
     /** Colour the tiles of the menu background are darkened with. */
     private static final Color MENU_SHADE = new Color(0.25f, 0.25f, 0.25f, 1.0f);
@@ -125,7 +122,7 @@ public abstract class WidgetScreen extends NeoFactoryScreen {
     protected WidgetScreen(NeoFactoryGame game) {
         super(game);
         this.style = new WidgetStyle(game.textures());
-        this.menuBackground = game.textures().region(MENU_BACKGROUND);
+        this.menuBackground = new PanelTextures(game.textures()).dirt();
     }
 
     /** Style providing the button and text field pictures. */

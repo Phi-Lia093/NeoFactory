@@ -89,8 +89,50 @@ public final class Constants {
     /** Multiplicative zoom step applied per mouse wheel notch. */
     public static final float ZOOM_STEP = 1.1f;
 
+    /**
+     * Wheel notches per second that a held zoom key adds.
+     * <p>
+     * The keys {@code -} and {@code =} feed the same clamped multiplicative zoom
+     * as the wheel, they simply keep rolling while they are held down.
+     */
+    public static final float ZOOM_KEY_STEPS_PER_SECOND = 6.0f;
+
     /** Number of chunks generated around the spawn position at world creation. */
     public static final int SPAWN_CHUNK_RADIUS = 2;
+
+    /**
+     * Chunks kept around the player.
+     * <p>
+     * The value is a minimum, not the whole truth: the view is zoomed in and out,
+     * so the streamer also keeps every chunk that is visible on screen, see
+     * {@link com.philia093.neofactory.world.ChunkStreamer}.
+     */
+    public static final int CHUNK_VIEW_DISTANCE = 6;
+
+    /** Smallest view distance the player may pick. */
+    public static final int CHUNK_VIEW_DISTANCE_MIN = 3;
+
+    /** Largest view distance the player may pick. */
+    public static final int CHUNK_VIEW_DISTANCE_MAX = 12;
+
+    /**
+     * Extra chunks kept outside the loaded area before anything is dropped.
+     * <p>
+     * Walking back and forth across a chunk border would otherwise load and unload
+     * the same chunk over and over. The margin makes the area that is kept larger
+     * than the area that is filled, so a chunk only leaves memory once the player
+     * really walked away.
+     */
+    public static final int CHUNK_UNLOAD_MARGIN = 2;
+
+    /**
+     * Chunks generated per frame while revealing terrain.
+     * <p>
+     * Walking into new terrain costs one chunk after the other instead of one long
+     * frame: the budget is spent on the chunks closest to the player, so the
+     * terrain directly around them is complete at any time.
+     */
+    public static final int CHUNK_LOADS_PER_FRAME = 4;
 
     /** Cell index inside {@code map/map_icons.png} used as the player marker. */
     public static final int MAP_ICON_PLAYER = 0;

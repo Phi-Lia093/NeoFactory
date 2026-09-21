@@ -154,8 +154,8 @@ Thumbs.db
 *#*#
 /.kotlin/
 /assets/assets.txt
-## Worlds the game writes while it is running, they are not part of the sources.
-/assets/saves/
+## Working directory the game runs in: the save games and logs it writes, not sources.
+/run/
 
 ## Special cases:
 

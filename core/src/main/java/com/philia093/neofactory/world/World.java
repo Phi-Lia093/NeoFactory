@@ -2,12 +2,14 @@ package com.philia093.neofactory.world;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.entity.EntityManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -19,7 +21,19 @@ import static com.philia093.neofactory.util.Constants.SPAWN_CHUNK_RADIUS;
  * <p>
  * A world is an unbounded plane of {@link Chunk chunks} addressed by two
  * horizontal chunk coordinates. Chunks are created on demand while the player
- * walks around, see {@link #ensureChunksAround(float, float, int)}.
+ * walks around, see {@link #loadChunksAround(float, float, int, int)}, and dropped
+ * again once the player walked away, see {@link #unloadChunksOutside(int, int, int)}.
+ * <p>
+ * Dropping a chunk is only safe when its content can be produced again, so the
+ * world keeps two kinds of chunks apart:
+ * <ul>
+ *     <li>a chunk the player never touched is rebuilt from the seed by the
+ *         generator, which is deterministic for every cell</li>
+ *     <li>a chunk the player changed is written into the {@link ChunkStore} before
+ *         it leaves memory, and read back from there when the player returns</li>
+ * </ul>
+ * Memory use therefore follows the view distance instead of the distance walked,
+ * and a chunk on disk is never the only copy of anything the player built.
  * <p>
  * Generation is intentionally split into a pure noise phase followed by a
  * decoration phase, see {@link WorldGen}. Because no generation step ever reads a
@@ -39,6 +53,20 @@ public final class World implements BlockAccess {
     private final WorldGen generator;
     private final Map<Long, Chunk> chunks = new LinkedHashMap<>();
 
+    /**
+     * Where changed chunks are written when they leave memory, {@code null} for a
+     * world that was not saved yet.
+     * <p>
+     * Without a store a changed chunk is never dropped: throwing it away would
+     * lose the only copy of what the player built. The store is attached when a
+     * world is opened or saved for the first time, see
+     * {@link com.philia093.neofactory.world.save.WorldSaver}.
+     */
+    private ChunkStore store;
+
+    /** Everything in this world that is not a block. */
+    private final EntityManager entities = new EntityManager();
+
     /** Chunks currently being generated, used to detect re-entrant loading. */
     private final Set<Long> generating = new HashSet<>();
 
@@ -51,7 +79,7 @@ public final class World implements BlockAccess {
      * @param seed world seed, selects the generated terrain
      */
     public World(int seed) {
-        this(seed, 0, 0);
+        this(seed, 0, 0, null);
     }
 
     /**
@@ -62,8 +90,26 @@ public final class World implements BlockAccess {
      * @param spawnY block Y coordinate the player would like to start near
      */
     public World(int seed, int spawnX, int spawnY) {
+        this(seed, spawnX, spawnY, null);
+    }
+
+    /**
+     * Creates a world and prepares the chunks around the spawn point.
+     * <p>
+     * The store is passed into the constructor instead of being set afterwards,
+     * because the spawn area is prepared right here: a chunk that exists in the
+     * store has to be read from it before anything generates over it, or the
+     * changes of the player would be replaced by terrain the seed produces.
+     *
+     * @param seed world seed, selects the generated terrain
+     * @param spawnX block X coordinate the player would like to start near
+     * @param spawnY block Y coordinate the player would like to start near
+     * @param store store holding the chunks of this world, may be {@code null}
+     */
+    public World(int seed, int spawnX, int spawnY, ChunkStore store) {
         this.seed = seed;
         this.generator = new WorldGen(seed);
+        this.store = store;
 
         // Biomes cover large areas, so the requested point is only a hint: the
         // nearest grassy cell is used instead, which keeps the start of the game
@@ -112,6 +158,52 @@ public final class World implements BlockAccess {
     /** Every loaded chunk, in insertion order. */
     public Collection<Chunk> chunks() {
         return Collections.unmodifiableCollection(chunks.values());
+    }
+
+    /**
+     * Entities of this world.
+     * <p>
+     * The list belongs to the world instead of a chunk, so nothing an entity does
+     * depends on which chunks happen to be in memory. Save games store it together
+     * with the level file, see
+     * {@link com.philia093.neofactory.world.save.WorldSaver}.
+     */
+    public EntityManager entities() {
+        return entities;
+    }
+
+    /** Amount of chunks in memory whose content the player changed. */
+    public int modifiedChunkCount() {
+        int count = 0;
+        for (Chunk chunk : chunks.values()) {
+            if (chunk.isModified()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Amount of chunks waiting in the store, {@code 0} without a store. */
+    public int storedChunkCount() {
+        return store == null ? 0 : store.storedChunkCount();
+    }
+
+    /** Store this world writes changed chunks into, may be {@code null}. */
+    public ChunkStore chunkStore() {
+        return store;
+    }
+
+    /**
+     * Points this world at the store of its save game.
+     * <p>
+     * Called while opening a world and before saving one. Attaching a store in the
+     * middle of a session is safe: chunks that are already in memory stay there and
+     * are written the next time they are dropped or saved.
+     *
+     * @param store store to use, {@code null} keeps every changed chunk in memory
+     */
+    public void attachChunkStore(ChunkStore store) {
+        this.store = store;
     }
 
     /**
@@ -167,18 +259,124 @@ public final class World implements BlockAccess {
      * @param chunkRadius amount of chunks loaded in every direction
      */
     public void ensureChunksAround(float blockX, float blockY, int chunkRadius) {
+        loadChunksAround(blockX, blockY, chunkRadius, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Loads the chunks inside a square around a block position.
+     * <p>
+     * The chunks are visited in rings that grow outwards, so the terrain closest to
+     * the player appears first and a limited {@code maxChunks} budget spends itself
+     * on what the player is about to see. The budget is what keeps walking from
+     * costing one long frame instead of a few short ones.
+     *
+     * @param blockX block X coordinate to center the square on
+     * @param blockY block Y coordinate to center the square on
+     * @param chunkRadius amount of chunks loaded in every direction
+     * @param maxChunks maximum amount of chunks to load in this call
+     * @return amount of chunks that were loaded
+     */
+    public int loadChunksAround(float blockX, float blockY, int chunkRadius, int maxChunks) {
         int centerChunkX = Chunk.chunkOf((int) Math.floor(blockX));
         int centerChunkY = Chunk.chunkOf((int) Math.floor(blockY));
-        for (int chunkY = centerChunkY - chunkRadius; chunkY <= centerChunkY + chunkRadius;
-                chunkY++) {
-            for (int chunkX = centerChunkX - chunkRadius; chunkX <= centerChunkX + chunkRadius;
-                    chunkX++) {
-                Chunk chunk = chunks.get(chunkKey(chunkX, chunkY));
-                if (chunk == null || !chunk.isComplete()) {
+        int loaded = 0;
+        for (int ring = 0; ring <= chunkRadius; ring++) {
+            for (int chunkY = centerChunkY - ring; chunkY <= centerChunkY + ring; chunkY++) {
+                for (int chunkX = centerChunkX - ring; chunkX <= centerChunkX + ring;
+                        chunkX++) {
+                    // Only the border of the ring is new, the inside was loaded by
+                    // the rings before it.
+                    if (Math.max(Math.abs(chunkX - centerChunkX),
+                            Math.abs(chunkY - centerChunkY)) != ring) {
+                        continue;
+                    }
+                    Chunk chunk = chunks.get(chunkKey(chunkX, chunkY));
+                    if (chunk != null && chunk.isComplete()) {
+                        continue;
+                    }
+                    if (loaded >= maxChunks) {
+                        return loaded;
+                    }
                     loadChunk(chunkX, chunkY);
+                    loaded++;
                 }
             }
         }
+        return loaded;
+    }
+
+    /**
+     * Drops every chunk outside a square around a chunk position.
+     * <p>
+     * The order inside this method is the whole point of it: a chunk the player
+     * changed is written into the store <em>before</em> it leaves memory, so a
+     * crash right after an unload cannot lose what the player built. A chunk that
+     * was never changed is simply dropped and generated again from the seed when
+     * the player comes back, which the generator reproduces exactly because every
+     * cell, decorations included, only depends on the seed and its coordinates.
+     * <p>
+     * Without a store a changed chunk is kept: it is the only copy of the change
+     * until the world is saved, and a missing store only happens before the first
+     * save of a new world.
+     *
+     * @param centerChunkX chunk coordinate along the first horizontal axis to keep
+     * @param centerChunkY chunk coordinate along the second horizontal axis to keep
+     * @param keepRadius amount of chunks kept around the center
+     * @return amount of chunks that were dropped
+     */
+    public int unloadChunksOutside(int centerChunkX, int centerChunkY, int keepRadius) {
+        int unloaded = 0;
+        Iterator<Map.Entry<Long, Chunk>> iterator = chunks.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Chunk chunk = iterator.next().getValue();
+            if (Math.abs(chunk.chunkX() - centerChunkX) <= keepRadius
+                    && Math.abs(chunk.chunkY() - centerChunkY) <= keepRadius) {
+                continue;
+            }
+            if (chunk.isModified()) {
+                if (store == null) {
+                    // Nowhere to write the change to, so keeping it is the only way
+                    // not to lose it. The next save attaches the store.
+                    continue;
+                }
+                store.persist(chunk);
+            }
+            iterator.remove();
+            unloaded++;
+        }
+        if (unloaded > 0) {
+            LOGGER.debug("Dropped {} chunks outside ({}, {}) +- {}", unloaded, centerChunkX,
+                    centerChunkY, keepRadius);
+        }
+        return unloaded;
+    }
+
+    /**
+     * Writes every changed chunk into the store.
+     * <p>
+     * Called while saving the world. The level file no longer holds any chunk, so a
+     * save costs what the player changed since the last one instead of what is
+     * loaded.
+     *
+     * @return amount of chunks that were written
+     */
+    public int persistModifiedChunks() {
+        if (store == null) {
+            int pending = modifiedChunkCount();
+            if (pending > 0) {
+                LOGGER.warn("No chunk store is attached, {} changed chunks stay in memory",
+                        pending);
+            }
+            return 0;
+        }
+        int written = 0;
+        for (Chunk chunk : chunks.values()) {
+            if (chunk.isModified()) {
+                store.persist(chunk);
+                written++;
+            }
+        }
+        return written;
     }
 
     @Override
@@ -191,21 +389,9 @@ public final class World implements BlockAccess {
     public void setBlock(int x, int y, int layer, Block block) {
         Chunk chunk = preparedChunk(x, y);
         chunk.setBlock(Chunk.localOf(x), Chunk.localOf(y), layer, block);
-    }
-
-    /**
-     * Returns a chunk that is ready to be filled from a save game.
-     * <p>
-     * The chunk is allocated but nothing is generated inside it, because the caller
-     * writes every cell together with the flags that tell the generator the cell is
-     * done. Generating first would only be undone by the stored data.
-     *
-     * @param chunkX chunk coordinate along the first horizontal axis
-     * @param chunkY chunk coordinate along the second horizontal axis
-     * @return the chunk, empty until the caller fills it
-     */
-    public Chunk chunkForLoading(int chunkX, int chunkY) {
-        return chunkForWrite(chunkX, chunkY);
+        // This is the public write path of the world: everything reaching it is a
+        // player change and has to survive unloading and saving.
+        chunk.markModified();
     }
 
     /**
@@ -244,7 +430,9 @@ public final class World implements BlockAccess {
      */
     public void setObjectBlock(int x, int y, Block block) {
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
-        chunk.setBlock(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, block);
+        // Raw ids instead of setBlock: this is the decoration path, a chunk grown
+        // from the seed alone must not count as a player change.
+        chunk.setRawId(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, block.id());
     }
 
     /**
@@ -262,7 +450,8 @@ public final class World implements BlockAccess {
         if (!chunk.getBlock(localX, localY, Chunk.LAYER_OBJECT).isAir()) {
             return false;
         }
-        chunk.setBlock(localX, localY, Chunk.LAYER_OBJECT, block);
+        // Decoration path, see setObjectBlock: never marks the chunk as modified.
+        chunk.setRawId(localX, localY, Chunk.LAYER_OBJECT, block.id());
         return true;
     }
 
@@ -313,6 +502,29 @@ public final class World implements BlockAccess {
     }
 
     /**
+     * Returns the chunk for a pair of chunk coordinates, allocating it if needed.
+     * <p>
+     * A chunk that exists in the store is refilled from it before anybody touches
+     * it, and its cells are marked generated by the stored flags, so the generator
+     * steps aside for it. That single place is what makes the store the authority
+     * for every chunk that was ever saved: reading a block, writing one and
+     * planting a decoration into a neighbour all end up here.
+     */
+    private Chunk chunkForWrite(int chunkX, int chunkY) {
+        long key = chunkKey(chunkX, chunkY);
+        Chunk chunk = chunks.get(key);
+        if (chunk == null) {
+            chunk = new Chunk(chunkX, chunkY);
+            // Stored before it is filled: a decoration may already reach into it.
+            chunks.put(key, chunk);
+            if (store != null && store.hasChunk(chunkX, chunkY)) {
+                store.loadInto(chunk);
+            }
+        }
+        return chunk;
+    }
+
+    /**
      * Plants the decorations of a chunk once its floor is complete.
      *
      * @param chunk chunk that may have just finished generating
@@ -323,18 +535,6 @@ public final class World implements BlockAccess {
         }
         chunk.markDecorated();
         generator.decorate(this, chunk);
-    }
-
-    /** Returns the chunk for a pair of chunk coordinates, allocating it if needed. */
-    private Chunk chunkForWrite(int chunkX, int chunkY) {
-        long key = chunkKey(chunkX, chunkY);
-        Chunk chunk = chunks.get(key);
-        if (chunk == null) {
-            chunk = new Chunk(chunkX, chunkY);
-            // Stored before it is filled: a decoration may already reach into it.
-            chunks.put(key, chunk);
-        }
-        return chunk;
     }
 
     /** Packs two chunk coordinates into the map key of the chunk table. */

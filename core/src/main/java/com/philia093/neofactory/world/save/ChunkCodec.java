@@ -11,9 +11,9 @@ import com.philia093.neofactory.world.Chunk;
  * Converts a {@link Chunk} to tag data and back.
  * <p>
  * A chunk is stored whole instead of storing only the blocks the player changed.
- * That keeps writing simple and it keeps the file readable: a chunk that was
- * loaded, saved and loaded again holds exactly the same cells, whatever happened
- * to them.
+ * That keeps the file readable: a chunk that was written, read and written again
+ * holds exactly the same cells. Only chunks the player changed are written at all,
+ * and each of them goes into its own file, see {@link ChunkStorage}.
  * <p>
  * Two things have to travel with the blocks:
  * <ul>
@@ -127,8 +127,10 @@ public final class ChunkCodec {
         if (compound.getBoolean(TAG_DECORATED, false)) {
             chunk.markDecorated();
         }
-        // The chunk was just written, nothing has to be redrawn because of it.
+        // The chunk was just written, nothing has to be redrawn because of it, and
+        // the file is now the authority, so the player-change flag is cleared too.
         chunk.clearDirty();
+        chunk.clearModified();
         return true;
     }
 

@@ -17,7 +17,7 @@ import java.io.File;
  * @param created time the world was created at, in milliseconds since 1970
  * @param playedMillis time played in this world, in milliseconds
  * @param dataVersion version of the save format
- * @param sizeBytes size of the stored file
+ * @param sizeBytes size of the level file together with the chunk files
  */
 public record SaveSummary(String id, File folder, String displayName, int seed, long lastPlayed,
         long created, long playedMillis, int dataVersion, long sizeBytes) {
@@ -40,5 +40,19 @@ public record SaveSummary(String id, File folder, String displayName, int seed, 
     /** File the world data is stored in. */
     public File levelFile() {
         return new File(folder, SaveFormat.LEVEL_FILE);
+    }
+
+    /** Folder holding one file per chunk the player changed. */
+    public File chunksFolder() {
+        return new File(folder, SaveFormat.CHUNK_FOLDER);
+    }
+
+    /**
+     * Chunk files of this world.
+     *
+     * @return storage of the changed chunks
+     */
+    public ChunkStorage chunks() {
+        return new ChunkStorage(folder);
     }
 }

@@ -54,7 +54,7 @@ public class GuiItemRenderer {
             return;
         }
         Item item = stack.item();
-        TextureRegion icon = textures.iconRegion(item.texture(), item.iconFrame());
+        TextureRegion icon = textures.itemIcon(item);
         if (icon != null) {
             batch.setColor(item.tint());
             batch.draw(icon, x, y, Constants.ITEM_ICON_SIZE, Constants.ITEM_ICON_SIZE);

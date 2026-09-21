@@ -1,0 +1,5 @@
+{
+  "ingredient": "iron_ore",
+  "result": { "item": "iron_ingot" },
+  "time": 10.0
+}

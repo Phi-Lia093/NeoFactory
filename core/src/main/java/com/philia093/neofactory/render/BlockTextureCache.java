@@ -1,12 +1,15 @@
 package com.philia093.neofactory.render;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,9 +23,10 @@ import org.apache.logging.log4j.Logger;
  * name, which keeps startup fast while still avoiding repeated lookups during
  * rendering.
  * <p>
- * The cache also owns the few textures the game creates itself, for example the
- * single white pixel a tooltip is filled with. Those are released by
- * {@link #dispose()}, because the {@link AssetManager} does not know them.
+ * The cache also owns the few textures the game creates itself: the single white
+ * pixel a tooltip is filled with and the cubes folded from a block tile, see
+ * {@link #itemIcon(Item)}. Those are released by {@link #dispose()}, because the
+ * {@link AssetManager} does not know them.
  */
 public class BlockTextureCache implements Disposable {
 
@@ -37,9 +41,24 @@ public class BlockTextureCache implements Disposable {
     /** Folder holding the screens and the widgets of the user interface. */
     public static final String GUI_FOLDER = "gui/";
 
+    /** Thickness of the outline a dropped item is drawn with, in pixels of the icon. */
+    private static final int OUTLINE_BORDER = 1;
+
+    /** Colour of that outline, a white that reads on a floor of any colour. */
+    private static final int OUTLINE_COLOUR = 0xFFFFFFFF;
+
     private final AssetManager assets;
     private final ObjectMap<String, TextureRegion> regions = new ObjectMap<>();
     private final ObjectMap<String, TextureRegion> icons = new ObjectMap<>();
+
+    /** Cubes folded from a block tile, keyed by texture name and frame. */
+    private final ObjectMap<String, TextureRegion> foldedIcons = new ObjectMap<>();
+
+    /** Outlined icons of dropped items, keyed by texture name and frame. */
+    private final ObjectMap<String, TextureRegion> itemOutlines = new ObjectMap<>();
+
+    /** Textures behind {@link #foldedIcons}, released by {@link #dispose()}. */
+    private final Array<Texture> foldedTextures = new Array<>();
 
     /** Single white pixel, created on first use, {@code null} while unused. */
     private TextureRegion whitePixel;
@@ -197,6 +216,198 @@ public class BlockTextureCache implements Disposable {
     }
 
     /**
+     * Returns the icon the interface shows for an item.
+     * <p>
+     * The world is seen from above, so a block owns a single flat tile. In a slot the
+     * tile of a block that fills a whole cell is folded into a small cube, see
+     * {@link BlockIconFactory}, which is what makes the item read as the object it
+     * stands for. Every other item - a tool, a material and a block that does not
+     * fill its cell, such as tall grass or leaves - keeps its flat picture.
+     *
+     * @param item item to draw
+     * @return the icon, or {@code null} when the picture is missing
+     */
+    public TextureRegion itemIcon(Item item) {
+        if (item.isBlockItem() && item.block() != null && !item.block().isTransparent()) {
+            TextureRegion cube = blockIcon(item.texture(), item.iconFrame());
+            if (cube != null) {
+                return cube;
+            }
+        }
+        return iconRegion(item.texture(), item.iconFrame());
+    }
+
+    /**
+     * Folds the tile of a block into a cube and caches the result.
+     *
+     * @param name texture name or path, without extension
+     * @param frame zero based frame inside the sheet
+     * @return the icon, or {@code null} when the picture cannot be used
+     */
+    private TextureRegion blockIcon(String name, int frame) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        String key = name + '#' + frame;
+        TextureRegion cached = foldedIcons.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        TextureRegion tile = iconRegion(name, frame);
+        if (tile == null) {
+            return null;
+        }
+        TextureRegion icon = foldTile(name, frame);
+        if (icon == null) {
+            // Without pixels there is nothing to fold, the flat tile still works.
+            return tile;
+        }
+        foldedIcons.put(key, icon);
+        return icon;
+    }
+
+    /**
+     * Reads the pixels of a tile and folds them into a cube.
+     *
+     * @param name texture name or path, without extension
+     * @param frame zero based frame inside the sheet
+     * @return the icon, or {@code null} when the picture cannot be read
+     */
+    private TextureRegion foldTile(String name, int frame) {
+        String path = resolvePath(name);
+        if (path == null) {
+            return null;
+        }
+        int size = Constants.ITEM_ICON_SIZE;
+        Pixmap folded = null;
+        try {
+            int[] pixels = iconPixels(path, frame, size, true);
+            folded = new Pixmap(size, size, Pixmap.Format.RGBA8888);
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    folded.drawPixel(x, y, pixels[y * size + x]);
+                }
+            }
+            Texture texture = new Texture(folded);
+            texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            foldedTextures.add(texture);
+            return new TextureRegion(texture);
+        } catch (RuntimeException e) {
+            LOGGER.error("Unable to fold the icon of '{}'", name, e);
+            return null;
+        } finally {
+            if (folded != null) {
+                folded.dispose();
+            }
+        }
+    }
+
+    /**
+     * Returns the icon of an item with a bright border around it.
+     * <p>
+     * A dropped item is drawn with this outline first and its icon on top, which is what
+     * keeps it readable on a floor of any colour. The picture is {@code 2} pixels larger
+     * than the icon, so a caller draws it one pixel offset of the icon in every direction.
+     *
+     * @param item item to draw
+     * @return the outlined icon, or {@code null} when the picture cannot be read
+     */
+    public TextureRegion itemOutline(Item item) {
+        if (item == null || !item.hasTexture()) {
+            return null;
+        }
+        String key = item.texture() + '#' + item.iconFrame();
+        TextureRegion cached = itemOutlines.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        TextureRegion outline = buildOutline(item);
+        if (outline == null) {
+            return null;
+        }
+        itemOutlines.put(key, outline);
+        return outline;
+    }
+
+    /** Reads the icon of an item and grows the outline around it. */
+    private TextureRegion buildOutline(Item item) {
+        String path = resolvePath(item.texture());
+        if (path == null) {
+            return null;
+        }
+        int size = Constants.ITEM_ICON_SIZE;
+        int border = OUTLINE_BORDER;
+        int grown = size + 2 * border;
+        Pixmap outlined = null;
+        try {
+            int[] icon = iconPixels(path, item.iconFrame(), size, isCube(item));
+            int[] pixels = BlockIconFactory.outline(icon, size, border, OUTLINE_COLOUR);
+            outlined = new Pixmap(grown, grown, Pixmap.Format.RGBA8888);
+            for (int y = 0; y < grown; y++) {
+                for (int x = 0; x < grown; x++) {
+                    outlined.drawPixel(x, y, pixels[y * grown + x]);
+                }
+            }
+            Texture texture = new Texture(outlined);
+            texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            foldedTextures.add(texture);
+            return new TextureRegion(texture);
+        } catch (RuntimeException e) {
+            LOGGER.error("Unable to outline the icon of '{}'", item.name(), e);
+            return null;
+        } finally {
+            if (outlined != null) {
+                outlined.dispose();
+            }
+        }
+    }
+
+    /** {@code true} when an item is a block that fills its cell, see {@link #itemIcon}. */
+    private static boolean isCube(Item item) {
+        return item.isBlockItem() && item.block() != null && !item.block().isTransparent();
+    }
+
+    /**
+     * Reads the icon of a tile, folding a block into its cube when asked.
+     *
+     * @param path path relative to the asset root, extension included
+     * @param frame zero based frame inside the sheet
+     * @param size side length of the icon in pixels
+     * @param cube {@code true} to fold the tile into the cube of a block item
+     * @return the pixels, row by row, packed as RGBA8888
+     */
+    private static int[] iconPixels(String path, int frame, int size, boolean cube) {
+        int[] tile = readTile(path, frame, size);
+        return cube ? BlockIconFactory.isometric((x, y) -> tile[y * size + x], size) : tile;
+    }
+
+    /**
+     * Reads the pixels of one frame of a picture.
+     * <p>
+     * The picture is read from the file again instead of asking the asset manager,
+     * because a texture that reached the GPU does not hand its pixels out.
+     *
+     * @param path path relative to the asset root, extension included
+     * @param frame zero based frame inside the sheet
+     * @param size side length of a frame in pixels
+     * @return the pixels, row by row, packed as RGBA8888
+     */
+    private static int[] readTile(String path, int frame, int size) {
+        Pixmap sheet = new Pixmap(Gdx.files.internal(path));
+        try {
+            int[] tile = new int[size * size];
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    tile[y * size + x] = sheet.getPixel(x, y + frame * size);
+                }
+            }
+            return tile;
+        } finally {
+            sheet.dispose();
+        }
+    }
+
+    /**
      * Returns a single white pixel.
      * <p>
      * The user interface stretches it into plain rectangles, for example the
@@ -216,25 +427,32 @@ public class BlockTextureCache implements Disposable {
         return whitePixel;
     }
 
-    /** Amount of regions cached so far, the item icons included. */
+    /** Amount of regions cached so far, the item icons and the cubes included. */
     public int cachedRegionCount() {
-        return regions.size + icons.size;
+        return regions.size + icons.size + foldedIcons.size;
     }
 
     /** Logs how many textures were loaded, called once the game is running. */
     public void logStatistics() {
-        LOGGER.info("Texture cache holds {} regions and {} item icons", regions.size, icons.size);
+        LOGGER.info("Texture cache holds {} regions, {} item icons and {} folded block icons",
+                regions.size, icons.size, foldedIcons.size);
     }
 
     @Override
     public void dispose() {
         // Pictures loaded through the asset manager are released by the manager
-        // itself, only the white pixel this cache made belongs to it.
+        // itself, only the textures this cache made belong to it.
         if (whitePixelTexture != null) {
             whitePixelTexture.dispose();
             whitePixelTexture = null;
             whitePixel = null;
         }
+        for (Texture texture : foldedTextures) {
+            texture.dispose();
+        }
+        foldedTextures.clear();
+        foldedIcons.clear();
+        itemOutlines.clear();
         icons.clear();
     }
 }

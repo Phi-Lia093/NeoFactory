@@ -44,6 +44,16 @@ public class InputHandler extends InputAdapter {
     /** Key that opens and closes the inventory screen. */
     private static final int KEY_INVENTORY = Input.Keys.E;
 
+    /**
+     * Key that drops what the player holds or what the mouse points at.
+     * <p>
+     * During play it drops the held stack in front of the player, while the inventory is
+     * open it drops the slot under the mouse. Holding shift drops the whole stack instead
+     * of a single item, which is read when the key goes down so the two parts of the
+     * gesture always match.
+     */
+    private static final int KEY_DROP = Input.Keys.Q;
+
     /** First of the nine keys that select a hotbar slot. */
     private static final int KEY_HOTBAR_FIRST = Input.Keys.NUM_1;
 
@@ -58,6 +68,30 @@ public class InputHandler extends InputAdapter {
 
     /** Second of the keys that address the layer below the feet. */
     private static final int KEY_GROUND_LAYER_RIGHT = Input.Keys.SHIFT_RIGHT;
+
+    /** Key that zooms the camera in, the closer view. */
+    private static final int KEY_ZOOM_IN = Input.Keys.EQUALS;
+
+    /** Second zoom in key, the numpad variant. */
+    private static final int KEY_ZOOM_IN_ALT = Input.Keys.NUMPAD_ADD;
+
+    /** Key that zooms the camera out, the more distant view. */
+    private static final int KEY_ZOOM_OUT = Input.Keys.MINUS;
+
+    /** Second zoom out key, the numpad variant. */
+    private static final int KEY_ZOOM_OUT_ALT = Input.Keys.NUMPAD_SUBTRACT;
+
+    /** Modifier that sends the mouse wheel to the camera instead of the hotbar. */
+    private static final int KEY_ZOOM_SCROLL = Input.Keys.CONTROL_LEFT;
+
+    /** Second zoom scroll modifier, the right control key. */
+    private static final int KEY_ZOOM_SCROLL_ALT = Input.Keys.CONTROL_RIGHT;
+
+    /** Key that lowers the amount of chunks kept around the player. */
+    private static final int KEY_VIEW_DISTANCE_DOWN = Input.Keys.LEFT_BRACKET;
+
+    /** Key that raises the amount of chunks kept around the player. */
+    private static final int KEY_VIEW_DISTANCE_UP = Input.Keys.RIGHT_BRACKET;
 
     /** Reused vector holding the unprojected mouse position. */
     private final Vector3 cursor = new Vector3();
@@ -74,8 +108,17 @@ public class InputHandler extends InputAdapter {
     /** Set when the inventory key was pressed, cleared by the consumer. */
     private boolean inventoryToggle;
 
+    /** Set when the drop key was pressed, cleared by the consumer. */
+    private boolean dropRequest;
+
+    /** {@code true} when the last drop request wants the whole stack. */
+    private boolean dropWholeStack;
+
     /** Hotbar slot selected by a number key, cleared by the consumer. */
     private int hotbarSelection = NO_HOTBAR_SELECTION;
+
+    /** View distance step requested by a key, cleared by the consumer. */
+    private int viewDistanceStep;
 
     /**
      * Reads the current input state and applies it to the player.
@@ -91,7 +134,8 @@ public class InputHandler extends InputAdapter {
     @Override
     public boolean scrolled(float amountX, float amountY) {
         // Browsers and touchpads report fractional values, only the direction
-        // matters because the zoom is applied in fixed multiplicative steps.
+        // matters because the caller applies fixed multiplicative steps or walks
+        // the hotbar one slot at a time.
         if (amountY > 0.0f) {
             zoomSteps += 1.0f;
         } else if (amountY < 0.0f) {
@@ -114,8 +158,21 @@ public class InputHandler extends InputAdapter {
             inventoryToggle = true;
             return true;
         }
+        if (keycode == KEY_DROP) {
+            dropRequest = true;
+            dropWholeStack = isShiftHeld();
+            return true;
+        }
         if (keycode >= KEY_HOTBAR_FIRST && keycode <= KEY_HOTBAR_LAST) {
             hotbarSelection = keycode - KEY_HOTBAR_FIRST;
+            return true;
+        }
+        if (keycode == KEY_VIEW_DISTANCE_DOWN) {
+            viewDistanceStep = -1;
+            return true;
+        }
+        if (keycode == KEY_VIEW_DISTANCE_UP) {
+            viewDistanceStep = 1;
             return true;
         }
         return false;
@@ -123,6 +180,10 @@ public class InputHandler extends InputAdapter {
 
     /**
      * Returns the wheel notches collected since the last call and resets them.
+     * <p>
+     * Collecting and using are separate steps on purpose: only the screen knows
+     * whether a notch belongs to the hotbar or to the camera, see
+     * {@code GameScreen#applyWheel(float)}.
      *
      * @return positive when the wheel was rolled forwards, negative otherwise
      */
@@ -155,6 +216,35 @@ public class InputHandler extends InputAdapter {
     }
 
     /**
+     * Returns and clears the drop request, if the key was pressed.
+     *
+     * @return {@code true} when something should be dropped
+     */
+    public boolean consumeDrop() {
+        boolean requested = dropRequest;
+        dropRequest = false;
+        return requested;
+    }
+
+    /**
+     * {@code true} when the last drop request wants the whole stack.
+     * <p>
+     * The value is read while the key goes down, so letting shift go before the request is
+     * used does not change what the gesture meant.
+     *
+     * @return {@code true} to drop everything, {@code false} for a single item
+     */
+    public boolean isDropWholeStack() {
+        return dropWholeStack;
+    }
+
+    /** {@code true} while a key that addresses the layer below the feet is held. */
+    public static boolean isShiftHeld() {
+        return Gdx.input.isKeyPressed(KEY_GROUND_LAYER_LEFT)
+                || Gdx.input.isKeyPressed(KEY_GROUND_LAYER_RIGHT);
+    }
+
+    /**
      * Returns and clears the hotbar slot selected by a number key.
      *
      * @return the slot, {@code 0} to {@code 8}, or {@code -1} when no key was pressed
@@ -163,6 +253,17 @@ public class InputHandler extends InputAdapter {
         int selection = hotbarSelection;
         hotbarSelection = NO_HOTBAR_SELECTION;
         return selection;
+    }
+
+    /**
+     * Returns and clears the view distance step requested by a key.
+     *
+     * @return {@code -1} for fewer chunks, {@code +1} for more, {@code 0} for none
+     */
+    public int consumeViewDistanceStep() {
+        int step = viewDistanceStep;
+        viewDistanceStep = 0;
+        return step;
     }
 
     /**
@@ -188,6 +289,40 @@ public class InputHandler extends InputAdapter {
     public boolean isGroundLayerDown() {
         return Gdx.input.isKeyPressed(KEY_GROUND_LAYER_LEFT)
                 || Gdx.input.isKeyPressed(KEY_GROUND_LAYER_RIGHT);
+    }
+
+    /**
+     * Zoom direction requested by the keyboard.
+     * <p>
+     * The state is read instead of collected from events, because holding a zoom
+     * key should zoom continuously instead of once per press.
+     *
+     * @return {@code +1} to zoom in, {@code -1} to zoom out, {@code 0} for none
+     */
+    public float zoomKeyDemand() {
+        float demand = 0.0f;
+        if (Gdx.input.isKeyPressed(KEY_ZOOM_IN) || Gdx.input.isKeyPressed(KEY_ZOOM_IN_ALT)) {
+            demand += 1.0f;
+        }
+        if (Gdx.input.isKeyPressed(KEY_ZOOM_OUT) || Gdx.input.isKeyPressed(KEY_ZOOM_OUT_ALT)) {
+            demand -= 1.0f;
+        }
+        return demand;
+    }
+
+    /**
+     * {@code true} while the modifier that sends the mouse wheel to the camera is
+     * held.
+     * <p>
+     * The wheel selects hotbar slots on its own, so zooming with the wheel only
+     * happens while a control key is held. Without it the same notches move the
+     * hotbar selection, no matter where the cursor points.
+     *
+     * @return {@code true} while a control key is held
+     */
+    public boolean isZoomScrollDown() {
+        return Gdx.input.isKeyPressed(KEY_ZOOM_SCROLL)
+                || Gdx.input.isKeyPressed(KEY_ZOOM_SCROLL_ALT);
     }
 
     /**

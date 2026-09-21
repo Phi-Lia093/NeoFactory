@@ -5,9 +5,26 @@ dependencies {
   api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
 
+  // The tests cover the parts of the game that do not need a window: world
+  // generation, chunk storage and the save format. Everything that draws is
+  // checked by running the game.
+  testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    events "failed"
+    exceptionFormat "full"
+  }
+  // The file appender of the game is pointed at the build folder, so running the
+  // tests never writes a log next to the sources.
+  systemProperty 'neofactory.log.dir', layout.buildDirectory.dir('logs').get().asFile.path
 }
 
 jar {

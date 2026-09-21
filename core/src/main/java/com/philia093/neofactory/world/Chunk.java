@@ -51,6 +51,14 @@ public final class Chunk {
     /** Set once the decorations of this chunk were planted. */
     private boolean decorated;
 
+    /**
+     * Set when the player changed the content of this chunk, which means the
+     * chunk must reach the save game. Generation and decoration never set it,
+     * because generated chunks can be rebuilt from the seed alone.
+     */
+    private boolean modified;
+
+    /** Set when the content changed and render caches have to be rebuilt. */
     private boolean dirty = true;
 
     /**
@@ -152,6 +160,27 @@ public final class Chunk {
     /** Marks the chunk as unchanged, called once the renderer picked it up. */
     public void clearDirty() {
         dirty = false;
+    }
+
+    /**
+     * {@code true} when the player changed this chunk, which means it has to be
+     * written to the save game and may never be dropped from memory silently.
+     */
+    public boolean isModified() {
+        return modified;
+    }
+
+    /** Remembers that the player changed this chunk. */
+    public void markModified() {
+        modified = true;
+    }
+
+    /**
+     * Clears the player-change flag, called once the chunk reached the save game
+     * or was refilled from it.
+     */
+    public void clearModified() {
+        modified = false;
     }
 
     /**

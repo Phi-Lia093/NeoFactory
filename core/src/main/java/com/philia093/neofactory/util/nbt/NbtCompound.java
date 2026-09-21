@@ -139,6 +139,20 @@ public final class NbtCompound extends NbtTag {
     }
 
     /**
+     * Removes an entry.
+     * <p>
+     * Used while converting an older save game: a tag that moved somewhere else is
+     * dropped from the file so that the next reader cannot mix the old and the new
+     * location up.
+     *
+     * @param key name of the entry
+     * @return the removed tag, or {@code null} when the name was unused
+     */
+    public NbtTag remove(String key) {
+        return children.remove(key);
+    }
+
+    /**
      * Returns an entry of an expected type.
      *
      * @param key name of the entry
