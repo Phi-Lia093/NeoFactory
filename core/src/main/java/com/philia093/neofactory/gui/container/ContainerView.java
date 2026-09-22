@@ -29,21 +29,6 @@ import com.philia093.neofactory.util.Constants;
  */
 public final class ContainerView {
 
-    /** Distance between the mouse and the nearest corner of a tooltip. */
-    private static final int TOOLTIP_OFFSET = 12;
-
-    /** Pixels of background between the frame of a tooltip and its text. */
-    private static final int TOOLTIP_PADDING = 3;
-
-    /** Thickness of the frame around a tooltip. */
-    private static final int TOOLTIP_BORDER = 1;
-
-    /** Colour of a tooltip background, shared and never mutated. */
-    private static final Color TOOLTIP_FILL = new Color(0.062f, 0.0f, 0.062f, 0.94f);
-
-    /** Colour of the frame around a tooltip, shared and never mutated. */
-    private static final Color TOOLTIP_FRAME = new Color(0.313f, 0.313f, 0.0f, 1.0f);
-
     /**
      * Overlay drawn on the slot under the mouse, shared and never mutated.
      * <p>
@@ -241,44 +226,18 @@ public final class ContainerView {
         batch.setColor(Color.WHITE);
     }
 
-    /** Draws the name of the hovered item next to the mouse. */
+    /**
+     * Draws what the hovered slot holds next to the mouse.
+     * <p>
+     * The box itself belongs to {@link ItemTooltip}, which the creative inventory draws its own
+     * boxes with as well: the name of the item first and, for a material of the game, the chemical
+     * formula of it below, see {@link com.philia093.neofactory.item.Item#tooltipLines()}.
+     */
     private void drawTooltip(SpriteBatch batch, Slot slot, float mouseX, float mouseY) {
         if (slot == null) {
             return;
         }
-        TextureRegion pixel = textures.whitePixel();
-        if (pixel == null) {
-            return;
-        }
-        ItemStack stack = slot.stack();
-        if (stack.isEmpty()) {
-            return;
-        }
-
-        String name = stack.item().displayName();
-        int border = TOOLTIP_BORDER + TOOLTIP_PADDING;
-        int boxWidth = Math.round(font.width(name)) + 2 * border;
-        int boxHeight = Math.round(font.lineHeight()) + 2 * border;
-
-        // The tooltip sits above and right of the mouse and stays inside the window.
-        int boxX = clamp(Math.round(mouseX) + TOOLTIP_OFFSET,
-                Math.round(viewport.guiWidth()) - boxWidth);
-        int boxY = clamp(Math.round(mouseY) + TOOLTIP_OFFSET,
-                Math.round(viewport.guiHeight()) - boxHeight);
-
-        batch.setColor(TOOLTIP_FRAME);
-        batch.draw(pixel, boxX, boxY, boxWidth, boxHeight);
-        batch.setColor(TOOLTIP_FILL);
-        batch.draw(pixel, boxX + TOOLTIP_BORDER, boxY + TOOLTIP_BORDER,
-                boxWidth - 2 * TOOLTIP_BORDER, boxHeight - 2 * TOOLTIP_BORDER);
-
-        font.setColor(Color.WHITE);
-        font.drawShadowed(batch, name, boxX + border, boxY + boxHeight - border);
-        batch.setColor(Color.WHITE);
-    }
-
-    /** Keeps a coordinate inside the window, never below zero. */
-    private static int clamp(int value, int maximum) {
-        return Math.max(0, Math.min(value, maximum));
+        ItemTooltip.draw(batch, font, textures.whitePixel(), ItemTooltip.linesOf(slot.stack()),
+                mouseX, mouseY, viewport.guiWidth(), viewport.guiHeight());
     }
 }

@@ -1,6 +1,7 @@
 package com.philia093.neofactory.gui;
 
 import com.philia093.neofactory.gui.container.ContainerLayout;
+import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.gui.panel.NineSlice;
 import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.item.Inventory;
@@ -113,7 +114,7 @@ class InventoryPreviewTest {
         player.set(5, ItemStack.of(Items.LOG_OAK, 12));
         player.set(6, ItemStack.of(Items.STICK, 32));
         player.set(7, ItemStack.of(Items.COAL, 30));
-        player.set(8, ItemStack.of(Items.IRON_INGOT, 24));
+        player.set(8, ItemStack.of(Materials.IRON.ingot(), 24));
         player.set(9, ItemStack.of(Items.SAND, 21));
         player.set(10, ItemStack.of(Items.SANDSTONE, 7));
         player.set(11, ItemStack.of(Items.COAL_ORE, 5));

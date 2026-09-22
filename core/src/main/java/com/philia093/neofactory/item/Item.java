@@ -3,6 +3,7 @@ package com.philia093.neofactory.item;
 import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.block.Block;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -51,6 +52,8 @@ public class Item {
     private final int toolLevel;
     private final float miningSpeed;
     private final FluidContainer container;
+    private final String chemicalFormula;
+    private final String overlayTexture;
 
     /**
      * Creates an item that is not linked to a block.
@@ -68,6 +71,8 @@ public class Item {
         this.toolLevel = builder.toolLevel;
         this.miningSpeed = builder.miningSpeed;
         this.container = builder.container;
+        this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
+        this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
     }
 
     /**
@@ -92,6 +97,8 @@ public class Item {
         this.toolLevel = builder.toolLevel;
         this.miningSpeed = builder.miningSpeed;
         this.container = builder.container;
+        this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
+        this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
     }
 
     /** Unique numeric id of this item type. */
@@ -199,6 +206,58 @@ public class Item {
     }
 
     /**
+     * Picture drawn over the icon in its own colours.
+     * <p>
+     * A shape of a material that covers something - a metal drawn around a darker core - carries
+     * two layers, see
+     * {@link com.philia093.neofactory.material.MaterialForm#overlayTexture()}. The icon is the
+     * shape and takes the tint of the item, this overlay is drawn over it with a white tint, so
+     * the part the metal covers keeps the colour it was drawn in.
+     *
+     * @return the path of the overlay, relative to the asset root and without extension, or an
+     *         empty string for an item that is drawn from a single picture
+     */
+    public String overlayTexture() {
+        return overlayTexture;
+    }
+
+    /** {@code true} when this item is drawn from two layers, see {@link #overlayTexture()}. */
+    public boolean hasOverlay() {
+        return !overlayTexture.isEmpty();
+    }
+
+    /**
+     * Chemical formula of the material this item is made of.
+     *
+     * @return a formula such as {@code "Fe"}, or an empty string for an item that has none
+     */
+    public String chemicalFormula() {
+        return chemicalFormula;
+    }
+
+    /** {@code true} when this item carries a chemical formula worth showing. */
+    public boolean hasChemicalFormula() {
+        return !chemicalFormula.isEmpty();
+    }
+
+    /**
+     * The lines the tooltip of this item is drawn from.
+     * <p>
+     * The first line is always the name, a formula follows when the item has one: a plate of iron
+     * reads as {@code "Iron Plate"} over {@code "Fe"}. A caller that has more to say - a machine
+     * that names the energy it holds, a tool that names the block it breaks - copies this list and
+     * appends what it knows, see {@code ItemTooltip}.
+     *
+     * @return the lines, at least the name of the item
+     */
+    public List<String> tooltipLines() {
+        if (!hasChemicalFormula()) {
+            return List.of(displayName);
+        }
+        return List.of(displayName, chemicalFormula);
+    }
+
+    /**
      * Derives a readable name from a technical one.
      * <p>
      * Underscores become spaces and every word starts with an upper case letter,
@@ -263,6 +322,8 @@ public class Item {
         private int toolLevel;
         private float miningSpeed = HAND_MINING_SPEED;
         private FluidContainer container;
+        private String chemicalFormula;
+        private String overlayTexture;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -351,6 +412,31 @@ public class Item {
          */
         public Builder container(FluidContainer container) {
             this.container = Objects.requireNonNull(container, "container");
+            return this;
+        }
+
+        /**
+         * Sets the chemical formula shown under the name of the item.
+         * <p>
+         * The formula is the second line of the tooltip, see {@link Item#tooltipLines()}. It is
+         * written by the material the item is made of, so every shape of iron carries {@code
+         * "Fe"} by itself.
+         *
+         * @param chemicalFormula formula such as {@code "Fe"}, empty for no second line
+         */
+        public Builder formula(String chemicalFormula) {
+            this.chemicalFormula = Objects.requireNonNull(chemicalFormula, "chemicalFormula");
+            return this;
+        }
+
+        /**
+         * Sets a picture drawn over the icon in its own colours.
+         *
+         * @param overlayTexture path of the overlay, relative to the asset root and without
+         *                       extension, for example {@code "items/generic_fine_wire_overlay"}
+         */
+        public Builder overlayTexture(String overlayTexture) {
+            this.overlayTexture = Objects.requireNonNull(overlayTexture, "overlayTexture");
             return this;
         }
 

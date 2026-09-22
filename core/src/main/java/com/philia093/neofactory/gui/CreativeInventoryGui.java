@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerMenu;
+import com.philia093.neofactory.gui.container.ItemTooltip;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.creative.CreativeInventory;
 import com.philia093.neofactory.gui.creative.CreativeLayout;
@@ -18,6 +19,8 @@ import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.util.Constants;
+
+import java.util.List;
 
 /**
  * The creative inventory: a grid of every item of the game, its tabs and a search box.
@@ -51,18 +54,6 @@ import com.philia093.neofactory.util.Constants;
  * All coordinates are virtual pixels of {@link GuiViewport}.
  */
 public final class CreativeInventoryGui {
-
-    /** Distance between the mouse and the nearest corner of a tooltip. */
-    private static final int TOOLTIP_OFFSET = 12;
-
-    /** Pixels of background between the frame of a tooltip and its text. */
-    private static final int TOOLTIP_PADDING = 3;
-
-    /** Colour of a tooltip background, shared and never mutated. */
-    private static final Color TOOLTIP_FILL = new Color(0.062f, 0.0f, 0.062f, 0.94f);
-
-    /** Colour of the frame around a tooltip, shared and never mutated. */
-    private static final Color TOOLTIP_FRAME = new Color(0.313f, 0.313f, 0.0f, 1.0f);
 
     /** Overlay drawn on the slot under the mouse, shared and never mutated. */
     private static final Color HOVER_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.5f);
@@ -611,28 +602,15 @@ public final class CreativeInventoryGui {
         batch.setColor(Color.WHITE);
     }
 
-    /** Draws the name of a tab or of an item next to the mouse. */
+    /**
+     * Draws what stands under the mouse next to it.
+     * <p>
+     * The box belongs to {@link ItemTooltip}, the very class the inventory of the player draws its
+     * boxes with, so an item that names its chemical formula names it on this screen as well.
+     */
     private void drawTooltip(SpriteBatch batch, float mouseX, float mouseY) {
-        String label = labelUnderMouse(mouseX, mouseY);
-        if (label == null || pixel == null) {
-            return;
-        }
-        int border = TOOLTIP_PADDING + 1;
-        int boxWidth = Math.round(font.width(label)) + 2 * border;
-        int boxHeight = Math.round(font.lineHeight()) + 2 * border;
-        int boxX = clamp(Math.round(mouseX) + TOOLTIP_OFFSET,
-                Math.round(viewport.guiWidth()) - boxWidth);
-        int boxY = clamp(Math.round(mouseY) + TOOLTIP_OFFSET,
-                Math.round(viewport.guiHeight()) - boxHeight);
-
-        batch.setColor(TOOLTIP_FRAME);
-        batch.draw(pixel, boxX, boxY, boxWidth, boxHeight);
-        batch.setColor(TOOLTIP_FILL);
-        batch.draw(pixel, boxX + 1, boxY + 1, boxWidth - 2, boxHeight - 2);
-
-        font.setColor(Color.WHITE);
-        font.drawShadowed(batch, label, boxX + border, boxY + boxHeight - border);
-        batch.setColor(Color.WHITE);
+        ItemTooltip.draw(batch, font, pixel, linesUnderMouse(mouseX, mouseY), mouseX, mouseY,
+                viewport.guiWidth(), viewport.guiHeight());
     }
 
     /** Draws the stack the mouse carries, centred on the cursor. */
@@ -646,27 +624,22 @@ public final class CreativeInventoryGui {
     }
 
     /**
-     * Name of what stands under the mouse.
+     * What stands under the mouse, as the lines of a tooltip.
      *
      * @param mouseX X coordinate of the mouse inside the interface
      * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
-     * @return the title of a tab, the name of an item, or {@code null} for nothing
+     * @return the title of a tab, the lines of the item under the mouse, or an empty list
      */
-    private String labelUnderMouse(float mouseX, float mouseY) {
+    private List<String> linesUnderMouse(float mouseX, float mouseY) {
         int localX = localX(mouseX);
         int localY = localY(mouseY);
 
         int tab = CreativeLayout.tabAt(localX, localY, creative.tabs().size());
         if (tab >= 0) {
-            return creative.tabs().get(tab).title();
+            return List.of(creative.tabs().get(tab).title());
         }
         Slot slot = menu.slotAt(localX, localY);
         ItemStack stack = slot == null ? ItemStack.EMPTY : slot.stack();
-        return stack.isEmpty() ? null : stack.item().displayName();
-    }
-
-    /** Keeps a coordinate inside the window, never below zero. */
-    private static int clamp(int value, int maximum) {
-        return Math.max(0, Math.min(value, maximum));
+        return ItemTooltip.linesOf(stack);
     }
 }

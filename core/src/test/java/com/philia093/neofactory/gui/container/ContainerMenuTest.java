@@ -2,6 +2,7 @@ package com.philia093.neofactory.gui.container;
 
 import com.badlogic.gdx.Input;
 import com.philia093.neofactory.item.Inventory;
+import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
@@ -161,7 +162,7 @@ class ContainerMenuTest {
         result.open();
         Slot resultSlot = outputLayout.slots().get(0);
         Slot playerSlot = outputLayout.slots().get(1);
-        chest.set(0, ItemStack.of(Items.IRON_INGOT, 2));
+        chest.set(0, ItemStack.of(Materials.IRON.ingot(), 2));
         player.set(0, ItemStack.of(Items.STONE, 5));
 
         // What the container made is taken, a carried stack is not dropped into it.
@@ -177,7 +178,7 @@ class ContainerMenuTest {
         click(result, empty, LEFT, false);
         assertTrue(result.cursorStack().isEmpty(), "the stone went into an empty slot");
         click(result, resultSlot, LEFT, false);
-        assertTrue(result.cursorStack().sameItem(ItemStack.of(Items.IRON_INGOT, 1)),
+        assertTrue(result.cursorStack().sameItem(ItemStack.of(Materials.IRON.ingot(), 1)),
                 "the result was taken");
         assertEquals(2, result.cursorStack().count());
     }
@@ -629,7 +630,7 @@ class ContainerMenuTest {
         // The behaviour above belongs to the shelf of the game and not to a machine: the output
         // of a recipe keeps handing out everything it holds.
         Inventory machine = new Inventory(1);
-        machine.set(0, ItemStack.of(Items.IRON_INGOT, 2));
+        machine.set(0, ItemStack.of(Materials.IRON.ingot(), 2));
         ContainerLayout machineLayout = new ContainerLayout();
         machineLayout.add(8, 8, machine, 0, Slot.Rule.OUTPUT);
         machineLayout.addGrid(8, 62, 9, 4, player, 0, Slot.Rule.NORMAL);

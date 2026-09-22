@@ -85,6 +85,13 @@ class TextureAuditTest {
             if (!Files.isRegularFile(ASSETS.resolve(BlockTextureCache.resolvePath(item.texture())))) {
                 missing.add("item " + item.name() + " points at " + item.texture() + ".png");
             }
+            // A shape of a material may carry a second layer, see Item#overlayTexture: the picture
+            // of the overlay is a file of its own and is watched like the shape it covers.
+            if (item.hasOverlay() && !Files.isRegularFile(ASSETS.resolve(
+                    BlockTextureCache.resolvePath(item.overlayTexture())))) {
+                missing.add("item " + item.name() + " points at its overlay "
+                        + item.overlayTexture() + ".png");
+            }
         }
         assertTrue(missing.isEmpty(), "textures are missing:\n" + String.join("\n", missing));
     }
@@ -165,6 +172,9 @@ class TextureAuditTest {
         for (Item item : ItemRegistry.all()) {
             if (item.hasTexture() && item.texture().startsWith(Item.ITEM_FOLDER)) {
                 usedItems.add(item.texture().substring(Item.ITEM_FOLDER.length()));
+            }
+            if (item.hasOverlay() && item.overlayTexture().startsWith(Item.ITEM_FOLDER)) {
+                usedItems.add(item.overlayTexture().substring(Item.ITEM_FOLDER.length()));
             }
         }
 

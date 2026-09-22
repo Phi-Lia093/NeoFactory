@@ -59,6 +59,15 @@ public class GuiItemRenderer {
             batch.setColor(item.tint());
             batch.draw(icon, x, y, Constants.ITEM_ICON_SIZE, Constants.ITEM_ICON_SIZE);
         }
+        // A shape that covers something carries a second layer, see Item#overlayTexture: it is
+        // drawn in its own colours over the icon and under the amount of the stack.
+        if (item.hasOverlay()) {
+            TextureRegion overlay = textures.iconRegion(item.overlayTexture(), 0);
+            if (overlay != null) {
+                batch.setColor(Color.WHITE);
+                batch.draw(overlay, x, y, Constants.ITEM_ICON_SIZE, Constants.ITEM_ICON_SIZE);
+            }
+        }
 
         if (stack.count() > 1) {
             String amount = Integer.toString(stack.count());

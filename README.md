@@ -77,6 +77,22 @@ world is stored on disk so that a session can be continued later.
   around it grey. An empty container stacks like any other material, a full one does not: filling
   a bucket out of a stack of empty ones leaves the rest of the stack in the hand and puts the full
   bucket into the inventory, where it takes a slot of its own.
+
+- **Materials** - a factory holds hundreds of them, and a metal is not one item but nineteen: a
+  dust, a small and a tiny pile of it, an ingot, a nugget, a plate, a foil, a rod, a long rod, a
+  bolt, a screw, a ring, a round, a fine wire, a spring, a small spring, a gear, a small gear and a
+  rotor. Writing an item and a picture for each of them would be hundreds of lines per material, so
+  the game keeps the two apart: `Material` says what a material is - a name, a colour, a chemical
+  formula and the shapes it comes in - `MaterialForm` says what a shape is - the picture, the name
+  its item carries and how many of them fit in a slot - and `Materials` builds every item of every
+  material out of those two. Ten metals bring about two hundred items with them today, and a metal
+  that arrives later is one line in that file. An item is named after material and shape, so a
+  plate of iron is `iron_plate` and reads as "Iron Plate" over "Fe" in its tooltip: the name first,
+  the formula of the material under it, and the search box of the creative inventory finds an item
+  by that formula as well. The picture of a shape holds brightness only and the colour of the
+  material is multiplied over it while the item is drawn - the very trick the fluids use - so no
+  material needs art of its own. The iron ingot therefore keeps the id it always had in
+  `Items.IRON_INGOT_ID` although its definition now lives with the material.
 ## Controls
 
 | Input | Action |
@@ -114,6 +130,7 @@ world is stored on disk so that a session can be continued later.
 | `block` | block types and the id/name lookup table, ids are stable across save games |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
+| `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection and the sinks broken blocks hand items to |
 | `world` | chunks, the world, the game mode, the chunk store interface and the generator |
 | `world.decoration` | the trees and plants planted on a finished chunk |
@@ -219,6 +236,18 @@ cell of water and a cell of oil are the same object with something else inside. 
 a colour, a line in `Fluids` and an entry in `Buckets` and nothing else. `gradlew :core:test`
 paints the frames of both fluids next to the buckets and the cells into
 `core/build/reports/fluid-preview.png`.
+
+Every shape a material comes in is drawn from one grey scale picture as well, and the colour of the
+material reaches it the same way: `assets/items/generic_ingot.png`, `generic_plate.png`,
+`generic_gear.png` and the seventeen others hold brightness only, and `MaterialForm` names the one
+the item of a shape is drawn from. `build/verify/material_forms.ps1` copies them out of the art pack
+the shapes were cut from, so the names the game asks for and the files that exist are written down
+in exactly one script and a shape that is renamed or lost fails the tests instead of showing up as a
+missing icon. One shape covers something: a fine wire is drawn from two layers, the bright metal
+around the darker core inside it, and `Item#overlayTexture` is that second layer, drawn in its own
+colours while the shape below takes the tint. `gradlew :core:test` paints every shape of every
+material into `core/build/reports/material-preview.png`, one row per material and one column per
+shape, which is how the colours of ten metals are reviewed without starting the game.
 
 `gui/inventory_icons.png` holds every panel of the interface. Since the creative
 inventory arrived it also carries that screen's art - the two panels, the tab in its two

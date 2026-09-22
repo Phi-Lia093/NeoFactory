@@ -30,6 +30,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
+import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.EntityRendererRegistry;
 import com.philia093.neofactory.render.ItemEntityRenderer;
@@ -1079,8 +1080,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         inventory.add(ItemStack.of(Items.COAL_ORE, 5));
         inventory.add(ItemStack.of(Items.IRON_ORE, 5));
         inventory.add(ItemStack.of(Items.SANDSTONE, 7));
-        inventory.add(ItemStack.of(Items.IRON_INGOT, 24));
-        inventory.add(ItemStack.of(Items.GOLD_INGOT, 6));
+        inventory.add(ItemStack.of(Materials.IRON.ingot(), 24));
+        inventory.add(ItemStack.of(Materials.GOLD.ingot(), 6));
 
         inventory.add(ItemStack.of(Items.DIAMOND, 7));
         inventory.add(ItemStack.of(Items.EMERALD, 2));

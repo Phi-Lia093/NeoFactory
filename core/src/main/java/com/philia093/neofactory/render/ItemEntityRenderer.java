@@ -106,6 +106,15 @@ public class ItemEntityRenderer implements EntityRenderer {
         }
         batch.setColor(item.tint());
         batch.draw(icon, left, bottom, size, size);
+        // A shape that covers something carries a second layer, see Item#overlayTexture: it lies
+        // on the icon in its own colours, which is how a wire keeps the core it was drawn around.
+        if (item.hasOverlay()) {
+            TextureRegion overlay = textures.iconRegion(item.overlayTexture(), 0);
+            if (overlay != null) {
+                batch.setColor(Color.WHITE);
+                batch.draw(overlay, left, bottom, size, size);
+            }
+        }
         batch.setColor(Color.WHITE);
     }
 }

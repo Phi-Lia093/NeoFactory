@@ -1,6 +1,7 @@
 package com.philia093.neofactory.machine;
 
 import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.fluid.FluidIngredient;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemStack;
@@ -205,12 +206,12 @@ class MachineRecipeTest {
 
         @Override
         public ItemStack result() {
-            return ItemStack.of(Items.IRON_INGOT, 2);
+            return ItemStack.of(Materials.IRON.ingot(), 2);
         }
 
         @Override
         public List<ItemStack> products() {
-            return List.of(ItemStack.of(Items.IRON_INGOT, 2), ItemStack.of(Items.GRAVEL, 1));
+            return List.of(ItemStack.of(Materials.IRON.ingot(), 2), ItemStack.of(Items.GRAVEL, 1));
         }
 
         @Override

@@ -1,6 +1,7 @@
 package com.philia093.neofactory.machine;
 
 import com.philia093.neofactory.gui.container.ContainerLayout;
+import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.item.ItemStack;
@@ -84,7 +85,7 @@ class SmeltingMachineTest {
         assertEquals(1, furnace.inventory().get(SmeltingMachine.INPUT).count(), "one ore was used");
         assertEquals(1, furnace.inventory().get(SmeltingMachine.OUTPUT).count(), "one ingot was made");
         assertTrue(furnace.inventory().get(SmeltingMachine.OUTPUT)
-                .sameItem(ItemStack.of(Items.IRON_INGOT, 1)));
+                .sameItem(ItemStack.of(Materials.IRON.ingot(), 1)));
         assertEquals(0.0f, furnace.craftProgress(), 0.001f, "the next craft starts at zero");
     }
 
@@ -122,7 +123,7 @@ class SmeltingMachineTest {
     void theSameResultIsStackedUp() {
         furnace.inventory().set(SmeltingMachine.INPUT, ItemStack.of(Items.IRON_ORE, 1));
         furnace.inventory().set(SmeltingMachine.FUEL, ItemStack.of(Items.COAL, 1));
-        furnace.inventory().set(SmeltingMachine.OUTPUT, ItemStack.of(Items.IRON_INGOT, 1));
+        furnace.inventory().set(SmeltingMachine.OUTPUT, ItemStack.of(Materials.IRON.ingot(), 1));
 
         furnace.tick(CRAFT_SECONDS);
 

@@ -60,8 +60,10 @@ public class NeoFactoryGame extends Game {
         Fluids.registerAll();
         LOGGER.info("Registered {} fluids", Fluids.all().size());
 
+        // The materials bring their own items with them, see Materials, so the table holds far more
+        // kinds than the hand written ones below the first free id.
         Items.registerAll();
-        LOGGER.info("Registered {} item types, next free id is {}",
+        LOGGER.info("Registered {} item types, first free hand written id is {}",
                 ItemRegistry.count(), Items.NEXT_FREE_ID);
 
         // Recipes name items, so they are read once the items exist. A file that cannot

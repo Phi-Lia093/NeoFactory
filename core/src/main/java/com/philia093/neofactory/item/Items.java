@@ -3,6 +3,7 @@ package com.philia093.neofactory.item;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.material.Materials;
 
 /**
  * Declaration of every item type used by the game.
@@ -18,6 +19,12 @@ import com.philia093.neofactory.fluid.Fluids;
  * makes a grey scale sheet such as {@code grass_top.png} look green in the
  * inventory as well. Air and water are skipped: air is not an item and water is
  * a fluid that the player never carries.
+ * <p>
+ * <b>Materials:</b> the items of a material - a plate of iron, a gear of copper, every shape a
+ * metal comes in - are not written here. {@link Materials} builds them from the shapes the
+ * material declares, which is what keeps this list short while the game holds hundreds of items;
+ * {@link #registerAll()} names the point where they join the table. The two ingots that used to be
+ * declared here moved there as well and kept their ids, see {@link #IRON_INGOT_ID}.
  * <p>
  * <b>Stack sizes:</b> materials, food and block items stack to
  * {@link Item#DEFAULT_MAX_STACK}, while tools and armour are unique and stack to
@@ -55,6 +62,15 @@ public final class Items {
     public static final int STICK_ID = 16;
     public static final int COAL_ID = 17;
     public static final int CHARCOAL_ID = 18;
+    /**
+     * Ids of the two ingots a material owns.
+     * <p>
+     * The items themselves are not written here any more: iron and gold became materials and
+     * their ingots are the {@code INGOT} shape of them, registered by
+     * {@link com.philia093.neofactory.material.Materials} with these very numbers. The ids stay in
+     * this file because this is where the history of the item ids is written down - a stored
+     * inventory spells {@code 19} out and means the iron ingot, no matter which class builds it.
+     */
     public static final int IRON_INGOT_ID = 19;
     public static final int GOLD_INGOT_ID = 20;
     public static final int DIAMOND_ID = 21;
@@ -150,7 +166,14 @@ public final class Items {
     public static final int WATER_CELL_ID = 71;
     public static final int LAVA_CELL_ID = 72;
 
-    /** Next unused item id, used to verify that a new item got a fresh id. */
+    /**
+     * Next unused item id, used to verify that a new item got a fresh id.
+     * <p>
+     * The materials hand their ids out from this number on, see
+     * {@link Materials#registerAll()}: a hand written item that is appended above it takes the
+     * number itself and bumps this one, while the run of the materials follows behind. A number
+     * from the middle may never be taken, or the items of the materials would move.
+     */
     public static final int NEXT_FREE_ID = 73;
 
     /**
@@ -218,10 +241,8 @@ public final class Items {
     public static Item COAL;
     /** Charcoal, the result of burning wood. */
     public static Item CHARCOAL;
-    /** Iron ingot, smelted from iron ore. */
-    public static Item IRON_INGOT;
-    /** Gold ingot, smelted from gold ore. */
-    public static Item GOLD_INGOT;
+    // The ingots of iron and gold are not declared here any more: they are the INGOT shape of the
+    // materials of those two names, see Materials.
     /** Diamond, the hardest material of the game. */
     public static Item DIAMOND;
     /** Emerald, a rare gem. */
@@ -412,14 +433,9 @@ public final class Items {
                 .displayName("Charcoal")
                 .texture(Item.ITEM_FOLDER + "charcoal")
                 .build());
-        IRON_INGOT = register(Item.builder(IRON_INGOT_ID, "iron_ingot")
-                .displayName("Iron Ingot")
-                .texture(Item.ITEM_FOLDER + "iron_ingot")
-                .build());
-        GOLD_INGOT = register(Item.builder(GOLD_INGOT_ID, "gold_ingot")
-                .displayName("Gold Ingot")
-                .texture(Item.ITEM_FOLDER + "gold_ingot")
-                .build());
+        // The two metals of the game do not spell their ingot out here: iron and gold are
+        // materials, and an ingot of them is the INGOT shape of that material. Materials registers
+        // them with the very ids IRON_INGOT_ID and GOLD_INGOT_ID, see Materials.
         DIAMOND = register(Item.builder(DIAMOND_ID, "diamond")
                 .displayName("Diamond")
                 .texture(Item.ITEM_FOLDER + "diamond")
@@ -586,6 +602,11 @@ public final class Items {
                 .build());
         WATER_CELL = register(fluidCell(WATER_CELL_ID, "water_cell", "Water Cell", Fluids.WATER));
         LAVA_CELL = register(fluidCell(LAVA_CELL_ID, "lava_cell", "Lava Cell", Fluids.LAVA));
+
+        // The materials bring their own items, one per shape they come in. They are registered
+        // here, right before the table closes, so that they append behind every item written above
+        // and none of those ids moves, see Materials.
+        Materials.registerAll();
 
         ItemRegistry.freeze();
     }

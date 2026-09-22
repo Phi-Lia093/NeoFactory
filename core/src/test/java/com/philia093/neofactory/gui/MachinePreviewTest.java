@@ -1,6 +1,7 @@
 package com.philia093.neofactory.gui;
 
 import com.philia093.neofactory.gui.container.ContainerLayout;
+import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.MachineTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
@@ -231,7 +232,7 @@ class MachinePreviewTest {
     private static void drawContents(BufferedImage picture, ContainerLayout layout) {
         drawStack(picture, layout, SmeltingMachine.INPUT, ItemStack.of(Items.IRON_ORE, 8));
         drawStack(picture, layout, SmeltingMachine.FUEL, ItemStack.of(Items.COAL, 12));
-        drawStack(picture, layout, SmeltingMachine.OUTPUT, ItemStack.of(Items.IRON_INGOT, 4));
+        drawStack(picture, layout, SmeltingMachine.OUTPUT, ItemStack.of(Materials.IRON.ingot(), 4));
         drawStack(picture, layout, 3, ItemStack.of(Items.FURNACE, 1));
         drawStack(picture, layout, 4, ItemStack.of(Items.STONE, 64));
     }

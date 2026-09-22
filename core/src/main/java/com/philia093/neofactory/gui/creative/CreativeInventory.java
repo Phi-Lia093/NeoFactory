@@ -299,9 +299,11 @@ public final class CreativeInventory {
                     continue;
                 }
                 // An empty box shows everything, which is what a player sees first when
-                // the search tab is opened.
+                // the search tab is opened. The chemical formula is searched as well, so a
+                // player who types "Fe" finds every shape of iron, see Item#chemicalFormula.
                 if (needle.isEmpty() || item.name().toLowerCase(Locale.ROOT).contains(needle)
-                        || item.displayName().toLowerCase(Locale.ROOT).contains(needle)) {
+                        || item.displayName().toLowerCase(Locale.ROOT).contains(needle)
+                        || item.chemicalFormula().toLowerCase(Locale.ROOT).contains(needle)) {
                     found.add(item);
                 }
             }
