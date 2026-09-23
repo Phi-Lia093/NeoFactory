@@ -56,7 +56,7 @@ class ChunkStreamerTest {
         ChunkStreamer streamer = new ChunkStreamer();
         streamer.setViewDistance(Constants.CHUNK_VIEW_DISTANCE_MIN);
 
-        world.setFlatBlock(2, 2, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(2, Chunk.flatY(Chunk.LAYER_OBJECT), 2, Blocks.STONE);
         for (int frame = 0; frame < FRAMES; frame++) {
             streamer.update(world, 2.0f, 2.0f, 16.0f);
         }
@@ -78,7 +78,7 @@ class ChunkStreamerTest {
         for (int frame = 0; frame < FRAMES; frame++) {
             streamer.update(world, 2.0f, 2.0f, 16.0f);
         }
-        assertEquals(Blocks.STONE, world.getFlatBlock(2, 2, Chunk.LAYER_OBJECT));
+        assertEquals(Blocks.STONE, world.getBlock(2, Chunk.flatY(Chunk.LAYER_OBJECT), 2));
     }
 
     @Test
@@ -87,7 +87,7 @@ class ChunkStreamerTest {
         ChunkStreamer streamer = new ChunkStreamer();
         streamer.setViewDistance(Constants.CHUNK_VIEW_DISTANCE_MIN);
 
-        world.setFlatBlock(2, 2, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(2, Chunk.flatY(Chunk.LAYER_OBJECT), 2, Blocks.STONE);
         for (int frame = 0; frame < FRAMES; frame++) {
             streamer.update(world, 20_000.0f, 20_000.0f, 16.0f);
         }
@@ -95,7 +95,7 @@ class ChunkStreamerTest {
         // Without a store the chunk is the only copy, so it is never dropped.
         assertNotNull(world.chunkIfLoaded(0, 0));
         assertEquals(1, world.modifiedChunkCount());
-        assertEquals(Blocks.STONE, world.getFlatBlock(2, 2, Chunk.LAYER_OBJECT));
+        assertEquals(Blocks.STONE, world.getBlock(2, Chunk.flatY(Chunk.LAYER_OBJECT), 2));
     }
 
     @Test

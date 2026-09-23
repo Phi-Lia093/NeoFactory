@@ -126,9 +126,9 @@ public final class EntityManager {
      */
     public void update(World world, float delta, float playerBlockX, float playerBlockZ) {
         float tile = Constants.TILE_SIZE;
-        float rangeSquared = ACTIVE_RANGE_BLOCKS * tile * ACTIVE_RANGE_BLOCKS * tile;
-        float centerX = playerBlockX * tile;
-        float centerZ = playerBlockZ * tile;
+        float rangeSquared = ACTIVE_RANGE_BLOCKS * Constants.BLOCK_SIZE * ACTIVE_RANGE_BLOCKS * Constants.BLOCK_SIZE;
+        float centerX = playerBlockX * Constants.BLOCK_SIZE;
+        float centerZ = playerBlockZ * Constants.BLOCK_SIZE;
 
         Iterator<Entity> iterator = entities.iterator();
         while (iterator.hasNext()) {

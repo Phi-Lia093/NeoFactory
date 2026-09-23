@@ -72,7 +72,7 @@ public class WorldRenderer implements Disposable {
 
         // The camera and the player live in world units, the culling works with
         // block coordinates, so the visible range has to be converted first.
-        float tileSize = Constants.TILE_SIZE;
+        float tileSize = Constants.BLOCK_SIZE;
         float halfWidth = camera.viewportWidth * camera.zoom * 0.5f;
         float halfHeight = camera.viewportHeight * camera.zoom * 0.5f;
         int minX = (int) Math.floor((camera.position.x - halfWidth) / tileSize) - VIEW_MARGIN;
@@ -173,7 +173,7 @@ public class WorldRenderer implements Disposable {
         if (pixel == null) {
             return;
         }
-        float size = Constants.TILE_SIZE;
+        float size = Constants.BLOCK_SIZE;
         batch.setColor(HOLE_COLOR);
         batch.draw(pixel, x * size, y * size, size, size);
         drawnTiles++;
@@ -198,7 +198,7 @@ public class WorldRenderer implements Disposable {
         if (region == null) {
             return;
         }
-        float size = Constants.TILE_SIZE;
+        float size = Constants.BLOCK_SIZE;
         batch.setColor(block.tint());
         batch.draw(region, x * size, y * size, size, size);
         drawnTiles++;

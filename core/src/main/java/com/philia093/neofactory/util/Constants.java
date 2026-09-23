@@ -107,7 +107,7 @@ public final class Constants {
      * Visual scale of the player marker. The marker is an 8 by 8 pixel icon,
      * a scale of two makes it fill a single block tile.
      */
-    public static final float PLAYER_ICON_SCALE = 2.0f;
+    public static final float PLAYER_ICON_SCALE = 0.125f;
 
     /**
      * Distance in blocks the player can reach.

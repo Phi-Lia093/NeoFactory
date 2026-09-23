@@ -124,13 +124,13 @@ class ChatCommandsTest {
 
     @Test
     void teleportMovesThePlayerToABlock() {
-        context.player.position().set(1.0f, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.TILE_SIZE, 2.0f);
+        context.player.position().set(1.0f, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.BLOCK_SIZE, 2.0f);
         context.player.velocity().set(5.0f, 0.0f, 5.0f);
 
         registry.run("/tp 12 34", context);
 
-        assertEquals(192.0f, context.player.position().x, 0.001f);
-        assertEquals(544.0f, context.player.position().z, 0.001f);
+        assertEquals(12.0f, context.player.position().x, 0.001f);
+        assertEquals(34.0f, context.player.position().z, 0.001f);
         assertEquals(0.0f, context.player.velocity().x, 0.001f, "the walk is stopped");
         assertEquals("Teleported to block (12, 34).", context.lastLine().text());
     }
@@ -139,8 +139,8 @@ class ChatCommandsTest {
     void teleportTakesDecimalBlocks() {
         registry.run("/tp 1.5 -2", context);
 
-        assertEquals(24.0f, context.player.position().x, 0.001f);
-        assertEquals(-32.0f, context.player.position().z, 0.001f);
+        assertEquals(1.5f, context.player.position().x, 0.001f);
+        assertEquals(-2.0f, context.player.position().z, 0.001f);
         assertEquals("Teleported to block (1.50, -2).", context.lastLine().text());
     }
 

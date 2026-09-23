@@ -438,7 +438,7 @@ public final class FluidFlow {
             return false;
         }
         int layer = runner.layer();
-        Block block = world.peekFlatBlock(x, y, layer);
+        Block block = world.peekBlock(x, Chunk.flatY(layer), y);
         boolean room = block.isAir() || block == runner.fluid().block();
         if (!room && layer == OBJECT_LAYER) {
             room = !block.isSolid() && Fluids.byBlock(block) == null;
@@ -446,7 +446,7 @@ public final class FluidFlow {
         if (!room) {
             return false;
         }
-        return layer != OBJECT_LAYER || world.hasFlatGround(x, y);
+        return layer != OBJECT_LAYER || world.hasBlock(x, Chunk.flatY(Chunk.LAYER_FLOOR), y);
     }
 
     /**
@@ -462,7 +462,7 @@ public final class FluidFlow {
     private static boolean touches(World world, Fluid fluid, int layer, int x, int y) {
         for (int offsetY = -1; offsetY <= 1; offsetY++) {
             for (int offsetX = -1; offsetX <= 1; offsetX++) {
-                if (Fluids.byBlock(world.peekFlatBlock(x + offsetX, y + offsetY, layer)) == fluid) {
+                if (Fluids.byBlock(world.peekBlock(x + offsetX, Chunk.flatY(layer), y + offsetY)) == fluid) {
                     return true;
                 }
             }

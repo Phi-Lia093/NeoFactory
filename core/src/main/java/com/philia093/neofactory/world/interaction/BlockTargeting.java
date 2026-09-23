@@ -54,8 +54,8 @@ public final class BlockTargeting {
      */
     public static BlockTarget select(World world, Player player, float mouseWorldX,
             float mouseWorldY, int layer) {
-        int cellX = MathUtils.floor(mouseWorldX / Constants.TILE_SIZE);
-        int cellZ = MathUtils.floor(mouseWorldY / Constants.TILE_SIZE);
+        int cellX = MathUtils.floor(mouseWorldX / Constants.BLOCK_SIZE);
+        int cellZ = MathUtils.floor(mouseWorldY / Constants.BLOCK_SIZE);
         int cellY = Chunk.flatY(layer);
         if (withinReach(player, cellX, cellZ)) {
             return BlockTarget.of(cellX, cellY, cellZ);
@@ -72,9 +72,9 @@ public final class BlockTargeting {
      * @return {@code true} when the player can reach that cell
      */
     public static boolean withinReach(Player player, int cellX, int cellZ) {
-        float centerX = (cellX + 0.5f) * Constants.TILE_SIZE;
-        float centerZ = (cellZ + 0.5f) * Constants.TILE_SIZE;
-        float reach = Constants.PLAYER_REACH * Constants.TILE_SIZE;
+        float centerX = (cellX + 0.5f) * Constants.BLOCK_SIZE;
+        float centerZ = (cellZ + 0.5f) * Constants.BLOCK_SIZE;
+        float reach = Constants.PLAYER_REACH * Constants.BLOCK_SIZE;
         float dx = centerX - player.position().x;
         float dz = centerZ - player.position().z;
         return dx * dx + dz * dz <= reach * reach;
@@ -94,7 +94,7 @@ public final class BlockTargeting {
      * @return the cell the ray met, or the cell at the end of the reach
      */
     private static BlockTarget alongSight(World world, Player player, int cellY) {
-        float tile = Constants.TILE_SIZE;
+        float tile = Constants.BLOCK_SIZE;
         float startX = player.position().x / tile;
         float startZ = player.position().z / tile;
         float directionX = player.facing().x;

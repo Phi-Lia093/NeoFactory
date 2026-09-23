@@ -61,7 +61,7 @@ public class ItemEntityRenderer implements EntityRenderer {
      * @return the offset in world units, positive means higher
      */
     public static float bobOffset(float age) {
-        return MathUtils.sin(age * BOB_SPEED * MathUtils.PI2) * BOB_BLOCKS * Constants.TILE_SIZE;
+        return MathUtils.sin(age * BOB_SPEED * MathUtils.PI2) * BOB_BLOCKS * Constants.BLOCK_SIZE;
     }
 
     /**

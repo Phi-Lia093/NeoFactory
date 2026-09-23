@@ -79,8 +79,8 @@ public final class WorldLoader {
 
         World world = new World(data.seed(), spawnBlockX, spawnBlockY, store);
         int entities = world.entities().load(root.getList(SaveTags.ENTITIES), world);
-        world.loadChunksAround(data.playerX() / Constants.TILE_SIZE,
-                data.playerZ() / Constants.TILE_SIZE, LOAD_CHUNK_RADIUS, Integer.MAX_VALUE);
+        world.loadChunksAround(data.playerX() / Constants.BLOCK_SIZE,
+                data.playerZ() / Constants.BLOCK_SIZE, LOAD_CHUNK_RADIUS, Integer.MAX_VALUE);
 
         int stored = store.storedChunkCount();
         LOGGER.info("Opened world '{}' (seed {}) with {} stored chunks and {} entities",

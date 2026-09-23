@@ -77,7 +77,7 @@ public class ItemEntity extends Entity {
      * @param stack items this entity stands for, copied by the constructor
      */
     public ItemEntity(float x, float z, ItemStack stack) {
-        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.TILE_SIZE, z, stack);
+        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.BLOCK_SIZE, z, stack);
     }
 
     /**
@@ -143,11 +143,11 @@ public class ItemEntity extends Entity {
             // player stops where it is and waits until a place is free again.
             return;
         }
-        float magnetRange = MAGNET_RANGE_BLOCKS * Constants.TILE_SIZE;
+        float magnetRange = MAGNET_RANGE_BLOCKS * Constants.BLOCK_SIZE;
         if (player.position().dst2(position) <= magnetRange * magnetRange) {
             pull(player, delta);
         }
-        float range = PICKUP_RANGE_BLOCKS * Constants.TILE_SIZE;
+        float range = PICKUP_RANGE_BLOCKS * Constants.BLOCK_SIZE;
         if (player.position().dst2(position) > range * range) {
             return;
         }
@@ -194,7 +194,7 @@ public class ItemEntity extends Entity {
         if (distance <= 0.001f) {
             return;
         }
-        float step = Math.min(distance, MAGNET_SPEED_BLOCKS * Constants.TILE_SIZE * delta);
+        float step = Math.min(distance, MAGNET_SPEED_BLOCKS * Constants.BLOCK_SIZE * delta);
         position.x += towards.x * step / distance;
         position.z += towards.z * step / distance;
     }

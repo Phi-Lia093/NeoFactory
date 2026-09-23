@@ -51,7 +51,7 @@ class WorldPersistenceTest {
         SaveSummary summary = createSaveGame(storage);
 
         World world = new World(SEED, 0, 0);
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.STONE);
 
         int stored = WorldSaver.save(storage, summary, levelData(), world, new PlayerInventory());
 
@@ -83,7 +83,7 @@ class WorldPersistenceTest {
         SaveSummary summary = createSaveGame(storage);
 
         World world = new World(SEED, 0, 0);
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.STONE);
         WorldSaver.save(storage, summary, levelData(), world, new PlayerInventory());
 
         SaveSummary reopened = storage.list().get(0);
@@ -95,7 +95,7 @@ class WorldPersistenceTest {
         assertEquals(SEED, loader.data().seed());
         assertEquals(1, loader.storedChunks());
         assertEquals(Blocks.STONE,
-                loader.world().getFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
+                loader.world().getBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
     }
 
     @Test
@@ -106,7 +106,7 @@ class WorldPersistenceTest {
 
         World world = new World(SEED, 0, 0, store);
         ChunkStreamer streamer = new ChunkStreamer();
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.STONE);
 
         for (int frame = 0; frame < 200; frame++) {
             streamer.update(world, 20_000.0f, 20_000.0f, 16.0f);
@@ -117,7 +117,7 @@ class WorldPersistenceTest {
         for (int frame = 0; frame < 200; frame++) {
             streamer.update(world, BUILT_X + 0.5f, BUILT_Y + 0.5f, 16.0f);
         }
-        assertEquals(Blocks.STONE, world.getFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
+        assertEquals(Blocks.STONE, world.getBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
     }
 
     @Test
@@ -126,17 +126,17 @@ class WorldPersistenceTest {
         SaveSummary summary = createSaveGame(storage);
 
         World world = new World(SEED, 0, 0);
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.STONE);
         // The state is what a machine would face or a pipe would be drawn with, so it
         // has to reach the chunk file exactly like the block does.
-        world.setFlatState(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, 42);
+        world.setState(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, 42);
         WorldSaver.save(storage, summary, levelData(), world, new PlayerInventory());
 
         WorldLoader loader = WorldLoader.open(storage, storage.list().get(0), 0, 0);
 
         assertEquals(Blocks.STONE,
-                loader.world().getFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
-        assertEquals(42, loader.world().getFlatState(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
+                loader.world().getBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
+        assertEquals(42, loader.world().getState(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
     }
 
     @Test
@@ -145,7 +145,7 @@ class WorldPersistenceTest {
         SaveSummary summary = createSaveGame(storage);
 
         World world = new World(SEED, 0, 0);
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.STONE);
         WorldSaver.save(storage, summary, levelData(), world, new PlayerInventory());
 
         assertTrue(storage.delete(summary));

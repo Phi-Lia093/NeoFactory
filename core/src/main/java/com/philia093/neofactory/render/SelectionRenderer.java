@@ -28,7 +28,7 @@ import com.philia093.neofactory.world.interaction.BlockTarget;
 public class SelectionRenderer {
 
     /** Thickness of the bars in world units. */
-    private static final float THICKNESS = 2.0f;
+    private static final float THICKNESS = 0.125f;
 
     /** Colour of a column that holds a block in the layer the player stands in. */
     private static final Color OCCUPIED_COLOR = new Color(1.0f, 1.0f, 1.0f, 0.85f);
@@ -68,7 +68,7 @@ public class SelectionRenderer {
             return;
         }
 
-        float size = Constants.TILE_SIZE;
+        float size = Constants.BLOCK_SIZE;
         float x = target.x() * size;
         float y = target.z() * size;
         batch.setColor(colorOf(world, target));

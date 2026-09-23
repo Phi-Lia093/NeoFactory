@@ -72,7 +72,7 @@ public class Player extends Entity {
      * @param z world Z coordinate of the player center
      */
     public Player(float x, float z) {
-        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.TILE_SIZE, z);
+        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.BLOCK_SIZE, z);
     }
 
     /**
@@ -100,9 +100,9 @@ public class Player extends Entity {
      */
     public static Player spawnOnGround(World world, int x, int z) {
         int[] cell = world.findSpawnPosition(x, z);
-        return new Player((cell[0] + 0.5f) * Constants.TILE_SIZE,
-                world.surfaceY(cell[0], cell[1]) * Constants.TILE_SIZE,
-                (cell[1] + 0.5f) * Constants.TILE_SIZE);
+        return new Player((cell[0] + 0.5f) * Constants.BLOCK_SIZE,
+                world.surfaceY(cell[0], cell[1]) * Constants.BLOCK_SIZE,
+                (cell[1] + 0.5f) * Constants.BLOCK_SIZE);
     }
 
     /** Live facing direction, always normalized. */
@@ -121,7 +121,7 @@ public class Player extends Entity {
 
     @Override
     public float hitboxHalfExtent() {
-        return Constants.PLAYER_HITBOX * 0.5f * Constants.TILE_SIZE;
+        return Constants.PLAYER_HITBOX * 0.5f;
     }
 
     @Override
@@ -227,7 +227,7 @@ public class Player extends Entity {
      */
     @Override
     public void update(World world, float delta) {
-        float speed = Constants.PLAYER_SPEED * Constants.TILE_SIZE * speedScale;
+        float speed = Constants.PLAYER_SPEED * Constants.BLOCK_SIZE * speedScale;
         velocity.set(moveInput.x * speed, 0.0f, moveInput.y * speed);
         if (moveInput.isZero()) {
             velocity.setZero();
@@ -280,15 +280,14 @@ public class Player extends Entity {
      * @return {@code true} when the box overlaps at least one solid cell
      */
     public boolean collides(World world, float centerX, float centerZ) {
-        float size = Constants.TILE_SIZE;
-        float half = Constants.PLAYER_HITBOX * 0.5f * size;
-        float height = Constants.PLAYER_HEIGHT * size;
-        int minX = MathUtils.floor((centerX - half) / size);
-        int maxX = MathUtils.floor((centerX + half - SKIN_WIDTH) / size);
-        int minZ = MathUtils.floor((centerZ - half) / size);
-        int maxZ = MathUtils.floor((centerZ + half - SKIN_WIDTH) / size);
-        int minY = MathUtils.floor(position.y / size);
-        int maxY = MathUtils.floor((position.y + height - SKIN_WIDTH) / size);
+        float half = Constants.PLAYER_HITBOX * 0.5f;
+        float height = Constants.PLAYER_HEIGHT;
+        int minX = MathUtils.floor(centerX - half);
+        int maxX = MathUtils.floor(centerX + half - SKIN_WIDTH);
+        int minZ = MathUtils.floor(centerZ - half);
+        int maxZ = MathUtils.floor(centerZ + half - SKIN_WIDTH);
+        int minY = MathUtils.floor(position.y);
+        int maxY = MathUtils.floor(position.y + height - SKIN_WIDTH);
 
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {

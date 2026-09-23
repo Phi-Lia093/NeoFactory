@@ -338,7 +338,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         // The viewport keeps a fixed amount of blocks visible on the shorter axis,
         // the longer axis grows with the window aspect ratio.
-        float visibleUnits = Constants.TILE_SIZE * Constants.VIEW_BLOCKS;
+        float visibleUnits = Constants.BLOCK_SIZE * Constants.VIEW_BLOCKS;
         this.worldViewport = new ExtendViewport(visibleUnits, visibleUnits, camera);
 
         this.player = preparePlayer(world, data, fresh);
@@ -428,10 +428,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             data.setSpawn(spawned.blockX(), spawned.blockZ());
             return spawned;
         }
-        int blockX = MathUtils.floor(data.playerX() / Constants.TILE_SIZE);
-        int blockZ = MathUtils.floor(data.playerZ() / Constants.TILE_SIZE);
+        int blockX = MathUtils.floor(data.playerX() / Constants.BLOCK_SIZE);
+        int blockZ = MathUtils.floor(data.playerZ() / Constants.BLOCK_SIZE);
         Player player = new Player(data.playerX(),
-                world.surfaceY(blockX, blockZ) * Constants.TILE_SIZE, data.playerZ());
+                world.surfaceY(blockX, blockZ) * Constants.BLOCK_SIZE, data.playerZ());
         player.facing().set(data.rotationX(), data.rotationY());
         if (player.facing().isZero()) {
             player.facing().set(1.0f, 0.0f);
@@ -966,11 +966,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      *                  world is opened and after a resize
      */
     private void streamChunks(boolean immediate) {
-        float visibleBlocksX = worldViewport.getWorldWidth() * zoom / Constants.TILE_SIZE;
-        float visibleBlocksY = worldViewport.getWorldHeight() * zoom / Constants.TILE_SIZE;
+        float visibleBlocksX = worldViewport.getWorldWidth() * zoom / Constants.BLOCK_SIZE;
+        float visibleBlocksY = worldViewport.getWorldHeight() * zoom / Constants.BLOCK_SIZE;
         float halfBlocks = Math.max(visibleBlocksX, visibleBlocksY) * 0.5f;
-        float blockX = player.position().x / Constants.TILE_SIZE;
-        float blockY = player.position().z / Constants.TILE_SIZE;
+        float blockX = player.position().x / Constants.BLOCK_SIZE;
+        float blockY = player.position().z / Constants.BLOCK_SIZE;
 
         if (immediate) {
             streamer.fill(world, blockX, blockY, halfBlocks);

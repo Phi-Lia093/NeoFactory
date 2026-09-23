@@ -271,9 +271,9 @@ class WorldGenTest {
             }
         }
 
-        assertEquals(Blocks.LAVA, world.getFlatBlock(poolX, poolY, FluidFlow.OBJECT_LAYER),
+        assertEquals(Blocks.LAVA, world.getBlock(poolX, Chunk.flatY(FluidFlow.OBJECT_LAYER), poolY),
                 "the decorator poured lava onto the cell of a pool");
-        Block ground = world.getFlatBlock(poolX, poolY, Chunk.LAYER_FLOOR);
+        Block ground = world.getBlock(poolX, Chunk.flatY(Chunk.LAYER_FLOOR), poolY);
         assertTrue(ground == Blocks.STONE || ground == Blocks.GRAVEL,
                 "and the ground under it is scorched: " + ground);
 
@@ -293,7 +293,7 @@ class WorldGenTest {
                     // LavaLakeDecoration, so water there is right.
                     continue;
                 }
-                Block standing = world.getFlatBlock(cellX, cellY, FluidFlow.OBJECT_LAYER);
+                Block standing = world.getBlock(cellX, Chunk.flatY(FluidFlow.OBJECT_LAYER), cellY);
                 assertTrue(standing == Blocks.LAVA || standing == Blocks.STONE,
                         "a pool of lava carries lava and the stone of its ring, nothing else: "
                                 + standing + " at (" + cellX + ", " + cellY + ")");
@@ -372,7 +372,7 @@ class WorldGenTest {
         Set<BlockPos> found = new HashSet<>();
         for (int y = centerY - NEARBY; y <= centerY + NEARBY; y++) {
             for (int x = centerX - NEARBY; x <= centerX + NEARBY; x++) {
-                if (world.getFlatBlock(x, y, FluidFlow.OBJECT_LAYER) == Fluids.WATER.block()) {
+                if (world.getBlock(x, Chunk.flatY(FluidFlow.OBJECT_LAYER), y) == Fluids.WATER.block()) {
                     found.add(BlockPos.of(x, y));
                 }
             }

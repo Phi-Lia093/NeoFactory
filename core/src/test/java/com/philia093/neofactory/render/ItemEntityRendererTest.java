@@ -50,7 +50,7 @@ class ItemEntityRendererTest {
             highest = Math.max(highest, Math.abs(ItemEntityRenderer.bobOffset(step * 0.01f)));
         }
 
-        assertEquals(ItemEntityRenderer.BOB_BLOCKS * Constants.TILE_SIZE, highest, 1.0e-2f,
+        assertEquals(ItemEntityRenderer.BOB_BLOCKS * Constants.BLOCK_SIZE, highest, 1.0e-2f,
                 "the item rises exactly as high as the constant says");
         assertTrue(highest < Constants.TILE_SIZE * 0.125f, "the offset stays small: " + highest);
     }

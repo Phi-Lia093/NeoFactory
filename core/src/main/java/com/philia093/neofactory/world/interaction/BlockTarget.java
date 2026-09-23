@@ -130,7 +130,7 @@ public final class BlockTarget {
 
     /** World X coordinate of the middle of the targeted cell. */
     public float centerX() {
-        return (x + 0.5f) * Constants.TILE_SIZE;
+        return (x + 0.5f) * Constants.BLOCK_SIZE;
     }
 
     /**
@@ -142,7 +142,7 @@ public final class BlockTarget {
      * float, float)}.
      */
     public float centerZ() {
-        return (z + 0.5f) * Constants.TILE_SIZE;
+        return (z + 0.5f) * Constants.BLOCK_SIZE;
     }
 
     @Override

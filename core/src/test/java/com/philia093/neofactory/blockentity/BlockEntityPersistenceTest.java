@@ -150,7 +150,7 @@ class BlockEntityPersistenceTest {
 
         // A player builds a furnace and fills it.
         World world = new World(SEED, 0, 0);
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.FURNACE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.FURNACE);
         MachineBlockEntity placed = furnace(BUILT_X, BUILT_Y);
         world.addBlockEntity(placed);
         placed.machine().inventory().set(SmeltingMachine.INPUT, ItemStack.of(Items.IRON_ORE, 2));
@@ -166,7 +166,7 @@ class BlockEntityPersistenceTest {
 
         // The player comes back to the same spot.
         WorldLoader loader = WorldLoader.open(storage, storage.list().get(0), 0, 0);
-        BlockEntity reopened = loader.world().flatBlockEntity(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT);
+        BlockEntity reopened = loader.world().blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y);
 
         assertNotNull(reopened, "the furnace was lost with the save game");
         Machine machine = ((MachineBlockEntity) reopened).machine();
@@ -180,15 +180,15 @@ class BlockEntityPersistenceTest {
     @Test
     void replacingTheBlockTakesItsEntityWithIt() {
         World world = new World(SEED, 0, 0);
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.FURNACE);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.FURNACE);
         world.addBlockEntity(furnace(BUILT_X, BUILT_Y));
         assertEquals(1, world.blockEntityCount());
 
-        world.setFlatBlock(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.AIR);
+        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.AIR);
 
         assertEquals(0, world.blockEntityCount(),
                 "a machine stayed behind where nothing stands");
-        assertNull(world.flatBlockEntity(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT));
+        assertNull(world.blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
     }
 
     /** Runs the world for a number of ticks, the way the frames of the game would. */

@@ -107,19 +107,19 @@ class ChunkFlatViewTest {
     void aStateSurvivesTheWritePathOfAWorld() {
         World world = new World(21);
 
-        world.setFlatBlock(4, 4, Chunk.LAYER_OBJECT, Blocks.WATER);
-        world.setFlatState(4, 4, Chunk.LAYER_OBJECT, 9);
+        world.setBlock(4, Chunk.flatY(Chunk.LAYER_OBJECT), 4, Blocks.WATER);
+        world.setState(4, Chunk.flatY(Chunk.LAYER_OBJECT), 4, 9);
 
-        assertEquals(Blocks.WATER, world.peekFlatBlock(4, 4, Chunk.LAYER_OBJECT),
+        assertEquals(Blocks.WATER, world.peekBlock(4, Chunk.flatY(Chunk.LAYER_OBJECT), 4),
                 "the block of the layer came back");
-        assertEquals(9, world.peekFlatState(4, 4, Chunk.LAYER_OBJECT), "and so did its state");
-        assertEquals(Blocks.WATER, world.getFlatBlock(4, 4, Chunk.LAYER_OBJECT));
-        assertEquals(9, world.getFlatState(4, 4, Chunk.LAYER_OBJECT));
+        assertEquals(9, world.peekState(4, Chunk.flatY(Chunk.LAYER_OBJECT), 4), "and so did its state");
+        assertEquals(Blocks.WATER, world.getBlock(4, Chunk.flatY(Chunk.LAYER_OBJECT), 4));
+        assertEquals(9, world.getState(4, Chunk.flatY(Chunk.LAYER_OBJECT), 4));
 
         // A fluid writes the same cell twice: the block, then the state that belongs to it.
-        world.setFlatBlock(5, 5, Chunk.LAYER_OBJECT, Blocks.LAVA);
-        world.setFlatState(5, 5, Chunk.LAYER_OBJECT, 3);
-        assertEquals(3, world.getFlatState(5, 5, Chunk.LAYER_OBJECT));
+        world.setBlock(5, Chunk.flatY(Chunk.LAYER_OBJECT), 5, Blocks.LAVA);
+        world.setState(5, Chunk.flatY(Chunk.LAYER_OBJECT), 5, 3);
+        assertEquals(3, world.getState(5, Chunk.flatY(Chunk.LAYER_OBJECT), 5));
     }
 
     @Test

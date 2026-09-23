@@ -86,7 +86,7 @@ class FluidFlowTest {
     @Test
     void aWallHoldsTheWaterBack() {
         for (int y = -PATCH; y <= PATCH; y++) {
-            world.setFlatBlock(3, y, LAYER, Blocks.STONE);
+            world.setBlock(3, Chunk.flatY(LAYER), y, Blocks.STONE);
         }
         pour(Fluids.WATER, 0, 0);
         settle();
@@ -103,8 +103,8 @@ class FluidFlowTest {
         assertEquals(Fluids.WATER.block(), blockAt(5, 0), "the spill is there");
 
         // A bucket over the source takes the block with it.
-        world.setFlatBlock(0, 0, LAYER, Blocks.AIR);
-        world.setFlatState(0, 0, LAYER, 0);
+        world.setBlock(0, Chunk.flatY(LAYER), 0, Blocks.AIR);
+        world.setState(0, Chunk.flatY(LAYER), 0, 0);
         settle();
 
         assertEquals(Blocks.AIR, blockAt(0, 0), "the source is gone");
@@ -113,8 +113,8 @@ class FluidFlowTest {
 
     @Test
     void waterWithoutASourceDriesUp() {
-        world.setFlatBlock(0, 0, LAYER, Fluids.WATER.block());
-        world.setFlatState(0, 0, LAYER, FluidState.flowing(3).pack());
+        world.setBlock(0, Chunk.flatY(LAYER), 0, Fluids.WATER.block());
+        world.setState(0, Chunk.flatY(LAYER), 0, FluidState.flowing(3).pack());
 
         settle();
 
@@ -123,7 +123,7 @@ class FluidFlowTest {
 
     @Test
     void aPlantIsFlooded() {
-        world.setFlatBlock(2, 0, LAYER, Blocks.TALL_GRASS);
+        world.setBlock(2, Chunk.flatY(LAYER), 0, Blocks.TALL_GRASS);
         pour(Fluids.WATER, 0, 0);
         settle();
 
@@ -142,13 +142,13 @@ class FluidFlowTest {
 
     @Test
     void waterNeverEatsTheGround() {
-        Block ground = world.getFlatBlock(6, 0, Chunk.LAYER_FLOOR);
+        Block ground = world.getBlock(6, Chunk.flatY(Chunk.LAYER_FLOOR), 0);
 
         pour(Fluids.WATER, 0, 0);
         settle();
 
-        assertEquals(ground, world.getFlatBlock(6, 0, Chunk.LAYER_FLOOR), "the ground below stayed");
-        assertEquals(ground, world.getFlatBlock(0, 0, Chunk.LAYER_FLOOR), "and so did the one at the"
+        assertEquals(ground, world.getBlock(6, Chunk.flatY(Chunk.LAYER_FLOOR), 0), "the ground below stayed");
+        assertEquals(ground, world.getBlock(0, Chunk.flatY(Chunk.LAYER_FLOOR), 0), "and so did the one at the"
                 + " source");
     }
 
@@ -156,7 +156,7 @@ class FluidFlowTest {
     void aSpillStopsAtTheRimOfAHole() {
         // A strip of the ground is dug out, so the layer of the player has nothing to stand on.
         for (int y = -PATCH; y <= PATCH; y++) {
-            world.setFlatBlock(3, y, FluidFlow.FLOOR_LAYER, Blocks.AIR);
+            world.setBlock(3, Chunk.flatY(FluidFlow.FLOOR_LAYER), y, Blocks.AIR);
         }
         pour(Fluids.WATER, 0, 0);
         settle();
@@ -168,8 +168,8 @@ class FluidFlowTest {
     @Test
     void waterOfTheGroundLayerLivesInHoles() {
         // A hole in the ground, filled from the ground layer.
-        world.setFlatBlock(0, 0, FluidFlow.FLOOR_LAYER, Fluids.WATER.block());
-        world.setFlatState(0, 0, FluidFlow.FLOOR_LAYER, FluidState.SOURCE.pack());
+        world.setBlock(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, Fluids.WATER.block());
+        world.setState(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, FluidState.SOURCE.pack());
         settle();
 
         assertEquals(Fluids.WATER.block(), blockAt(0, 0, FluidFlow.FLOOR_LAYER),
@@ -186,8 +186,8 @@ class FluidFlowTest {
         int lake = fluidCells();
         assertEquals(2 * 7 * 8 + 1, lake, "the lake of a spread of seven");
 
-        world.setFlatBlock(0, 0, LAYER, Blocks.AIR);
-        world.setFlatState(0, 0, LAYER, 0);
+        world.setBlock(0, Chunk.flatY(LAYER), 0, Blocks.AIR);
+        world.setState(0, Chunk.flatY(LAYER), 0, 0);
         for (int tick = 0; tick < Fluids.WATER.tickInterval(); tick++) {
             world.tick(TickClock.TICK_SECONDS);
         }
@@ -206,10 +206,10 @@ class FluidFlowTest {
             for (int x = -PATCH; x <= PATCH; x++) {
                 // Solid ground, so the layer of the player has something to stand on: a fluid over
                 // a hole would float in the air and is refused, see FluidFlow.
-                world.setFlatBlock(x, y, FluidFlow.FLOOR_LAYER, Blocks.STONE);
-                world.setFlatState(x, y, FluidFlow.FLOOR_LAYER, 0);
-                world.setFlatBlock(x, y, LAYER, Blocks.AIR);
-                world.setFlatState(x, y, LAYER, 0);
+                world.setBlock(x, Chunk.flatY(FluidFlow.FLOOR_LAYER), y, Blocks.STONE);
+                world.setState(x, Chunk.flatY(FluidFlow.FLOOR_LAYER), y, 0);
+                world.setBlock(x, Chunk.flatY(LAYER), y, Blocks.AIR);
+                world.setState(x, Chunk.flatY(LAYER), y, 0);
             }
         }
     }
@@ -222,8 +222,8 @@ class FluidFlowTest {
      * @param y block coordinate along the second horizontal axis
      */
     private void pour(Fluid fluid, int x, int y) {
-        world.setFlatBlock(x, y, LAYER, fluid.block());
-        world.setFlatState(x, y, LAYER, FluidState.SOURCE.pack());
+        world.setBlock(x, Chunk.flatY(LAYER), y, fluid.block());
+        world.setState(x, Chunk.flatY(LAYER), y, FluidState.SOURCE.pack());
     }
 
     /** Ticks the world until no fluid waits for a look. */
@@ -239,17 +239,17 @@ class FluidFlowTest {
 
     /** Block of a cell of the layer the fluids live in. */
     private Block blockAt(int x, int y) {
-        return world.getFlatBlock(x, y, LAYER);
+        return world.getBlock(x, Chunk.flatY(LAYER), y);
     }
 
     /** Block of a cell of a layer. */
     private Block blockAt(int x, int y, int layer) {
-        return world.getFlatBlock(x, y, layer);
+        return world.getBlock(x, Chunk.flatY(layer), y);
     }
 
     /** State of a cell of the layer the fluids live in. */
     private int metaAt(int x, int y) {
-        return world.getFlatState(x, y, LAYER);
+        return world.getState(x, Chunk.flatY(LAYER), y);
     }
 
     /** Amount of cells of the patch that carry a fluid. */

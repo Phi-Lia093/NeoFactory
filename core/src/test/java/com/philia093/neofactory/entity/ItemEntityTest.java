@@ -101,7 +101,7 @@ class ItemEntityTest {
         World world = new World(SEED, 0, 0);
         Player player = new Player(DROP_X, DROP_Y);
         world.entities().spawn(player);
-        float twoBlocks = 2.0f * Constants.TILE_SIZE;
+        float twoBlocks = 2.0f * Constants.BLOCK_SIZE;
         ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
@@ -119,7 +119,7 @@ class ItemEntityTest {
         World world = new World(SEED, 0, 0);
         Player player = new Player(DROP_X, DROP_Y);
         world.entities().spawn(player);
-        float farAway = 6.0f * Constants.TILE_SIZE;
+        float farAway = 6.0f * Constants.BLOCK_SIZE;
         ItemEntity item = new ItemEntity(DROP_X + farAway, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
@@ -133,7 +133,7 @@ class ItemEntityTest {
     void aThrownItemSlidesAndComesToRest() {
         World world = new World(SEED, 0, 0);
         ItemEntity item = new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
-        item.velocity().set(Constants.TILE_SIZE * 3.0f, 0.0f, 0.0f);
+        item.velocity().set(Constants.BLOCK_SIZE * 3.0f, 0.0f, 0.0f);
         world.entities().spawn(item);
 
         item.update(world, 0.1f);
@@ -144,7 +144,7 @@ class ItemEntityTest {
         }
         assertTrue(item.velocity().isZero(), "the slide came to an end");
         float travelled = item.position().x - DROP_X;
-        assertTrue(travelled > 0.0f && travelled < 5.0f * Constants.TILE_SIZE,
+        assertTrue(travelled > 0.0f && travelled < 5.0f * Constants.BLOCK_SIZE,
                 "the item slid a short distance: " + travelled);
     }
 
@@ -154,7 +154,7 @@ class ItemEntityTest {
         Player player = new Player(DROP_X, DROP_Y);
         fill(player.inventory());
         world.entities().spawn(player);
-        float twoBlocks = 2.0f * Constants.TILE_SIZE;
+        float twoBlocks = 2.0f * Constants.BLOCK_SIZE;
         ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
@@ -171,7 +171,7 @@ class ItemEntityTest {
         Player player = new Player(DROP_X, DROP_Y);
         fill(player.inventory());
         world.entities().spawn(player);
-        float twoBlocks = 2.0f * Constants.TILE_SIZE;
+        float twoBlocks = 2.0f * Constants.BLOCK_SIZE;
         ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
         item.update(world, 1.0f);
