@@ -20,15 +20,16 @@ import org.apache.logging.log4j.Logger;
  * {@link com.philia093.neofactory.item.BlockItem}, and only into an empty cell:
  * an existing block must be broken first, exactly like the original game behaves.
  * <p>
- * A build never skips a layer. The ground below the feet can only be filled while
- * the layer the player stands in is empty, and the layer the player stands in can
- * only be built on while it has ground below: above a hole a block would float in
- * the air, which is refused.
+ * A build goes into the cell the player aims at, and when that cell is taken it goes into the cell
+ * behind the face the line of sight entered through, see {@link BlockTarget#neighbour()}: that is how a
+ * wall is built against and how a bridge grows from the block it is laid on. A cell the mouse named
+ * carries no face, and then the taken cell simply refuses the build.
  * <p>
- * A block that would end up inside the player is refused as well. The object layer
- * is the layer the player stands in, so building into the own cell would trap the
- * player inside a wall; the check runs on the changed world and undoes the write
- * when the player no longer fits.
+ * A block needs something to stand on, see
+ * {@link com.philia093.neofactory.world.BlockAccess#hasSupport(int, int, int)}: a cell without a block
+ * below it is a hole in the air, and a block there would float. A block that would end up inside the
+ * player is refused as well: the check runs on the changed world and undoes the write when the player
+ * no longer fits.
  */
 public final class BlockPlacer {
 
@@ -61,28 +62,47 @@ public final class BlockPlacer {
             // A material, a tool or a block that is never drawn, such as water.
             return false;
         }
-        if (!world.getFlatBlock(target.x(), target.y(), target.layer()).isAir()) {
-            return false;
+        if (world.getBlock(target.x(), target.y(), target.z()).isAir()) {
+            return buildInto(world, player, target, block, inventory, held);
         }
-        if (target.layer() == Chunk.LAYER_FLOOR) {
-            if (world.hasFlatObjectBlock(target.x(), target.y())) {
-                // The layer the player stands in is occupied: the ground below it is
-                // out of reach until that block is removed, building may never skip
-                // the layer the player is in.
-                return false;
-            }
-        } else if (!world.hasFlatGround(target.x(), target.y())) {
-            // Above a hole there is nothing to build on, the block would float.
+        // The cell is taken. A ray knows the face it entered through, so the block goes into the cell
+        // behind that face: that is how a wall is built against and how a bridge grows from the block
+        // it is laid on. A cell the mouse named has no face, and then there is nothing to build
+        // against.
+        BlockTarget behind = target.neighbour();
+        return behind != null && buildInto(world, player, behind, block, inventory, held);
+    }
+
+    /**
+     * Builds the held block into one empty cell.
+     * <p>
+     * A block needs something to stand on: a cell without a block below it is a hole in the air, and
+     * the block would float. A build that would end up inside the player is refused as well - the
+     * block is written first and taken back when the body no longer fits, which is the only way to ask
+     * whether the body fits at all.
+     *
+     * @param world world to change
+     * @param player player that must stay able to move
+     * @param cell cell to build into
+     * @param block block to store
+     * @param inventory inventory holding the stack the player carries
+     * @param held stack the player holds
+     * @return {@code true} when the world changed and one item was used up
+     */
+    private static boolean buildInto(World world, Player player, BlockTarget cell, Block block,
+            PlayerInventory inventory, ItemStack held) {
+        if (!world.getBlock(cell.x(), cell.y(), cell.z()).isAir()
+                || !world.hasSupport(cell.x(), cell.y(), cell.z())) {
             return false;
         }
 
-        world.setFlatBlock(target.x(), target.y(), target.layer(), block);
+        world.setBlock(cell.x(), cell.y(), cell.z(), block);
         if (player.collides(world, player.position().x, player.position().y)) {
-            world.setFlatBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
+            world.setBlock(cell.x(), cell.y(), cell.z(), Blocks.AIR);
             return false;
         }
 
-        placeBlockEntity(world, target, block);
+        placeBlockEntity(world, cell, block);
         useOneItem(inventory, held);
         return true;
     }
@@ -99,7 +119,7 @@ public final class BlockPlacer {
      * @param target cell that was built
      * @param block block that was stored there
      */
-    private static void placeBlockEntity(World world, BlockTarget target, Block block) {
+    private static void placeBlockEntity(World world, BlockTarget cell, Block block) {
         if (!block.hasBlockEntity()) {
             return;
         }
@@ -110,7 +130,7 @@ public final class BlockPlacer {
             return;
         }
         BlockEntity entity = type.create();
-        entity.setPosition(target.x(), target.y(), target.layer());
+        entity.setPosition(cell.x(), cell.y(), cell.z());
         world.addBlockEntity(entity);
     }
 

@@ -236,12 +236,18 @@ class FluidInteractionTest {
     }
 
     @Test
-    void aBlockInTheLayerAboveHidesTheGround() {
+    void aFluidDoesNotCareWhatStandsAboveIt() {
         world.setFlatBlock(0, 0, FluidFlow.FLOOR_LAYER, Blocks.AIR);
         world.setFlatBlock(0, 0, LAYER, Blocks.TALL_GRASS);
         hold(Items.WATER_BUCKET);
 
-        assertFalse(use(0, 0, FluidFlow.FLOOR_LAYER), "a build never skips a layer");
+        // A world of cubes has no layers to skip: a cell of the ground is filled when it is empty and
+        // the world carries it, no matter what stands in the cell above - which is what a spill under
+        // a plant looks like. The flat view knew only two cells per column, so it had to keep the
+        // ground out of reach until the cell the player stands in was empty.
+        assertTrue(use(0, 0, FluidFlow.FLOOR_LAYER), "the ground below a plant takes water");
+        assertEquals(Fluids.WATER.block(), blockAt(0, 0, FluidFlow.FLOOR_LAYER));
+        assertEquals(Blocks.TALL_GRASS, blockAt(0, 0, LAYER), "the plant above is untouched");
     }
 
     @Test
@@ -262,9 +268,9 @@ class FluidInteractionTest {
         return use(x, y, LAYER);
     }
 
-    /** Uses the held stack on a cell of a layer. */
+    /** Uses the held stack on a cell of a layer, the way the flat view names it. */
     private boolean use(int x, int y, int layer) {
-        return FluidInteraction.use(world, BlockTarget.of(x, y, layer), inventory);
+        return FluidInteraction.use(world, BlockTarget.of(x, Chunk.flatY(layer), y), inventory);
     }
 
     /** Puts an item into the hand of the player. */

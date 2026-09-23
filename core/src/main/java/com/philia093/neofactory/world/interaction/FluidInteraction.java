@@ -78,13 +78,13 @@ public final class FluidInteraction {
             FluidContainer container) {
         int x = target.x();
         int y = target.y();
-        int layer = target.layer();
-        Fluid fluid = Fluids.byBlock(world.getFlatBlock(x, y, layer));
+        int z = target.z();
+        Fluid fluid = Fluids.byBlock(world.getBlock(x, y, z));
         if (fluid == null || !container.accepts(fluid)) {
             // No fluid there, or one this container never carries, such as oil in a bucket.
             return false;
         }
-        if (!FluidState.unpack(world.getFlatState(x, y, layer)).isSource()) {
+        if (!FluidState.unpack(world.getState(x, y, z)).isSource()) {
             // The fluid only ran through this cell, the source that feeds it lies elsewhere.
             return false;
         }
@@ -102,10 +102,10 @@ public final class FluidInteraction {
             return false;
         }
 
-        world.setFlatBlock(x, y, layer, Blocks.AIR);
-        world.setFlatState(x, y, layer, 0);
+        world.setBlock(x, y, z, Blocks.AIR);
+        world.setState(x, y, z, 0);
         handOver(inventory, taken);
-        LOGGER.info("Filled a {} at ({}, {}) of layer {}", filled.name(), x, y, layer);
+        LOGGER.info("Filled a {} at ({}, {}, {})", filled.name(), x, y, z);
         return true;
     }
 
@@ -148,20 +148,20 @@ public final class FluidInteraction {
             FluidContainer container) {
         int x = target.x();
         int y = target.y();
-        int layer = target.layer();
-        if (!world.getFlatBlock(x, y, layer).isAir()) {
+        int z = target.z();
+        if (!world.getBlock(x, y, z).isAir()) {
             // The cell is taken, by a wall, a plant or another fluid.
             return false;
         }
-        if (!mayStand(world, x, y, layer)) {
+        if (!mayStand(world, x, y, z)) {
             return false;
         }
 
         Fluid fluid = container.content();
-        world.setFlatBlock(x, y, layer, fluid.block());
-        world.setFlatState(x, y, layer, FluidState.SOURCE.pack());
+        world.setBlock(x, y, z, fluid.block());
+        world.setState(x, y, z, FluidState.SOURCE.pack());
         inventory.set(inventory.selectedSlot(), ItemStack.of(Buckets.empty(container.kind()), 1));
-        LOGGER.info("Poured {} into ({}, {}) of layer {}", fluid.name(), x, y, layer);
+        LOGGER.info("Poured {} into ({}, {}) of layer {}", fluid.name(), x, y, z);
         return true;
     }
 
@@ -178,10 +178,9 @@ public final class FluidInteraction {
      * @param layer layer the fluid would stand in
      * @return {@code true} when the fluid may be poured there
      */
-    private static boolean mayStand(World world, int x, int y, int layer) {
-        if (layer == Chunk.LAYER_FLOOR) {
-            return !world.hasFlatObjectBlock(x, y);
-        }
-        return world.hasFlatGround(x, y);
+    private static boolean mayStand(World world, int x, int y, int z) {
+        // A fluid stands on something: a cell without a block below it is a hole in the air, and
+        // what a bucket pours into such a hole would float.
+        return world.hasSupport(x, y, z);
     }
 }

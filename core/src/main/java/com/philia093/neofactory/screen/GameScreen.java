@@ -784,7 +784,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 inputHandler.isBreakingDown());
         if (broken) {
-            LOGGER.info("Broke block ({}, {}) of layer {}", target.x(), target.y(), target.layer());
+            LOGGER.info("Broke block ({}, {}, {})", target.x(), target.y(), target.z());
         }
     }
 
@@ -812,11 +812,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         String itemName = player.inventory().heldStack().item().displayName();
         int x = target.x();
         int y = target.y();
-        int layer = target.layer();
+        int z = target.z();
         if (!BlockPlacer.place(world, player, target, player.inventory())) {
             return false;
         }
-        LOGGER.info("Built {} into block ({}, {}) of layer {}", itemName, x, y, layer);
+        LOGGER.info("Built {} into block ({}, {}, {})", itemName, x, y, z);
         return true;
     }
 
@@ -831,14 +831,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * @return {@code true} when a machine stood there and its screen is up now
      */
     private boolean openMachine() {
-        BlockEntity entity = world.flatBlockEntity(target.x(), target.y(), target.layer());
+        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
         if (!(entity instanceof MachineBlockEntity machine)) {
             return false;
         }
         machineGui.open(machine.machine(), player.inventory());
         openMachine = machine;
         LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
-                target.x(), target.y(), target.layer());
+                target.x(), target.y(), target.z());
         return true;
     }
 
@@ -1048,7 +1048,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (target == null) {
             return "none";
         }
-        return target.x() + "," + target.y() + " layer " + target.layer()
+        return target.x() + "," + target.y() + "," + target.z()
                 + (target.fromRay() ? " (sight)" : " (mouse)");
     }
 

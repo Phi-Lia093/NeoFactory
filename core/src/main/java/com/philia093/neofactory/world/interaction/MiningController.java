@@ -77,15 +77,14 @@ public class MiningController {
             required = 0.0f;
         }
 
-        Block block = world.getFlatBlock(target.x(), target.y(), target.layer());
+        Block block = world.getBlock(target.x(), target.y(), target.z());
         if (block.isAir()) {
             reset();
             return false;
         }
-        if (target.layer() == Chunk.LAYER_FLOOR && world.hasFlatObjectBlock(target.x(), target.y())) {
-            // The layer the player stands in is still occupied: the ground below it is
-            // out of reach until that block is gone, a break may never skip the layer
-            // the player is in.
+        if (world.hasBlock(target.x(), target.y() + 1, target.z())) {
+            // Something still stands on the cell: a break never leaves a block hanging over
+            // nothing, so the cell above has to go first.
             reset();
             return false;
         }
@@ -141,17 +140,17 @@ public class MiningController {
         // What a machine holds is handed over before the block goes: the entity is
         // removed with the block, see World#setBlock(int, int, int, Block), so its
         // content has to leave first or it would be lost with it.
-        BlockEntity entity = world.flatBlockEntity(target.x(), target.y(), target.layer());
+        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
         if (entity != null) {
-            entity.onBroken(drops, target.centerX(), target.centerY());
+            entity.onBroken(drops, target.centerX(), target.centerZ());
         }
-        world.setFlatBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
+        world.setBlock(target.x(), target.y(), target.z(), Blocks.AIR);
         if (!rule.canHarvest(block, tool)) {
             return;
         }
         Item item = ItemRegistry.byBlock(block);
         if (item != null) {
-            drops.drop(ItemStack.of(item, 1), target.centerX(), target.centerY());
+            drops.drop(ItemStack.of(item, 1), target.centerX(), target.centerZ());
         }
     }
 

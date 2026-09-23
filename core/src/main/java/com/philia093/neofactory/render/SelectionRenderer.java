@@ -70,7 +70,7 @@ public class SelectionRenderer {
 
         float size = Constants.TILE_SIZE;
         float x = target.x() * size;
-        float y = target.y() * size;
+        float y = target.z() * size;
         batch.setColor(colorOf(world, target));
         batch.draw(pixel, x, y, size, THICKNESS);
         batch.draw(pixel, x, y + size - THICKNESS, size, THICKNESS);
@@ -88,6 +88,6 @@ public class SelectionRenderer {
      *         yellow while it holds nothing but its ground
      */
     public static Color colorOf(World world, BlockTarget target) {
-        return world.hasFlatObjectBlock(target.x(), target.y()) ? OCCUPIED_COLOR : GROUND_COLOR;
+        return world.hasBlock(target.x(), target.y(), target.z()) ? OCCUPIED_COLOR : GROUND_COLOR;
     }
 }

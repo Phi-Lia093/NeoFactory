@@ -100,6 +100,23 @@ public interface BlockAccess {
     }
 
     /**
+     * {@code true} when a block or a fluid may stand in an empty cell.
+     * <p>
+     * Something to stand on is what keeps a block from floating: the cell below has to hold one. The
+     * ground layer of the flat view is the exception, because the world the game draws today has no
+     * terrain below it: the floor of a column is the bottom of that world, and a hole dug into it
+     * could never be filled again without this.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @return {@code true} when a block or a fluid may be placed here
+     */
+    default boolean hasSupport(int x, int y, int z) {
+        return y == FLAT_FLOOR_Y || hasBlock(x, y - 1, z);
+    }
+
+    /**
      * Returns a block of the flat view: a layer of the surface of a column.
      *
      * @param x block X coordinate along the first horizontal axis, may be negative
