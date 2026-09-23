@@ -719,7 +719,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return;
         }
         BlockEntity current = world.blockEntity(openMachine.x(), openMachine.y(),
-                openMachine.layer());
+                openMachine.z());
         if (current != openMachine) {
             LOGGER.info("Machine at block ({}, {}) is gone, its screen is closed",
                     openMachine.x(), openMachine.y());
@@ -831,7 +831,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * @return {@code true} when a machine stood there and its screen is up now
      */
     private boolean openMachine() {
-        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.layer());
+        BlockEntity entity = world.flatBlockEntity(target.x(), target.y(), target.layer());
         if (!(entity instanceof MachineBlockEntity machine)) {
             return false;
         }

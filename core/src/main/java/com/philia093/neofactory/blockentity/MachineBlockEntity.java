@@ -55,8 +55,8 @@ public class MachineBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void onBroken(ItemDrops drops, float worldX, float worldY) {
-        machine.dumpItems(drops, worldX, worldY);
+    public void onBroken(ItemDrops drops, float worldX, float worldZ) {
+        machine.dumpItems(drops, worldX, worldZ);
     }
 
     @Override

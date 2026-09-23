@@ -395,30 +395,32 @@ public final class World implements BlockAccess {
     }
 
     @Override
-    public Block getBlock(int x, int y, int layer) {
-        Chunk chunk = preparedChunk(x, y);
-        return chunk.getBlock(Chunk.localOf(x), Chunk.localOf(y), layer);
+    public Block getBlock(int x, int y, int z) {
+        Chunk chunk = preparedChunk(x, z);
+        return chunk.getBlock(Chunk.localOf(x), y, Chunk.localOf(z));
     }
 
     @Override
-    public void setBlock(int x, int y, int layer, Block block) {
-        Chunk chunk = preparedChunk(x, y);
+    public void setBlock(int x, int y, int z, Block block) {
+        Objects.requireNonNull(block, "block");
+        Chunk chunk = preparedChunk(x, z);
         int localX = Chunk.localOf(x);
-        int localY = Chunk.localOf(y);
-        BlockEntity previous = chunk.blockEntity(localX, localY, layer);
+        int localZ = Chunk.localOf(z);
+        BlockEntity previous = chunk.blockEntity(localX, y, localZ);
         if (previous != null && !previous.type().name().equals(block.blockEntityTypeName())) {
             // The block that carried the entity is being replaced, so the entity goes with
             // it: a machine that stayed behind would keep running where nothing stands.
-            chunk.removeBlockEntity(localX, localY, layer);
+            chunk.removeBlockEntity(localX, y, localZ);
         }
-        chunk.setBlock(localX, localY, layer, block);
+        chunk.setBlock(localX, y, localZ, block);
         // This is the public write path of the world: everything reaching it is a
         // player change and has to survive unloading and saving.
         chunk.markModified();
         // Water and lava are looked at again where something happened: a wall built through a
         // lake holds the water back, a hole in that wall lets it through, and a source that was
-        // taken away stops feeding the water that lived from it.
-        fluids.mark(this, x, y);
+        // taken away stops feeding the water that lived from it. The flow itself still runs on the
+        // layers of the flat view, see FluidFlow, which is why it is handed the column.
+        fluids.mark(this, x, z);
     }
 
     /**
@@ -428,51 +430,29 @@ public final class World implements BlockAccess {
      * which must be able to look at a possibly missing neighbour without pulling
      * the whole neighbourhood into memory.
      *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
-     *              {@link Chunk#LAYER_OBJECT}
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
      * @return the stored block, {@link Blocks#AIR} when the chunk is not loaded
      */
-    public Block peekBlock(int x, int y, int layer) {
-        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+    public Block peekBlock(int x, int y, int z) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
         if (chunk == null) {
             return Blocks.AIR;
         }
-        return chunk.getBlock(Chunk.localOf(x), Chunk.localOf(y), layer);
+        return chunk.getBlock(Chunk.localOf(x), y, Chunk.localOf(z));
     }
 
-    /**
-     * Returns the state of a cell.
-     *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
-     *              {@link Chunk#LAYER_OBJECT}
-     * @return the state, {@code 0} for a cell nothing wrote a state to
-     */
-    public int getMeta(int x, int y, int layer) {
-        Chunk chunk = preparedChunk(x, y);
-        return chunk.meta(Chunk.localOf(x), Chunk.localOf(y), layer);
+    @Override
+    public int getState(int x, int y, int z) {
+        Chunk chunk = preparedChunk(x, z);
+        return chunk.state(Chunk.localOf(x), y, Chunk.localOf(z));
     }
 
-    /**
-     * Writes the state of a cell.
-     * <p>
-     * Like {@link #setBlock(int, int, int, Block)} this is the public write path of
-     * the world: everything reaching it is a player change and has to survive
-     * unloading and saving.
-     *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
-     *              {@link Chunk#LAYER_OBJECT}
-     * @param state state to store
-     */
-    public void setMeta(int x, int y, int layer, int state) {
-        Chunk chunk = preparedChunk(x, y);
-        chunk.setMeta(Chunk.localOf(x), Chunk.localOf(y), layer, state);
-        chunk.markModified();
+    @Override
+    public void setState(int x, int y, int z, int state) {
+        Chunk chunk = preparedChunk(x, z);
+        chunk.setState(Chunk.localOf(x), y, Chunk.localOf(z), state);
     }
 
     /**
@@ -482,18 +462,17 @@ public final class World implements BlockAccess {
      * cell next to the player what it holds without pulling a whole chunk into
      * memory, see {@link #peekBlock(int, int, int)}.
      *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
-     *              {@link Chunk#LAYER_OBJECT}
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
      * @return the stored state, {@code 0} when the chunk is not loaded
      */
-    public int peekMeta(int x, int y, int layer) {
-        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+    public int peekState(int x, int y, int z) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
         if (chunk == null) {
             return 0;
         }
-        return chunk.meta(Chunk.localOf(x), Chunk.localOf(y), layer);
+        return chunk.state(Chunk.localOf(x), y, Chunk.localOf(z));
     }
 
     /**
@@ -503,18 +482,17 @@ public final class World implements BlockAccess {
      * before a block is broken, so it never pulls a chunk into memory: a cell whose chunk
      * is not loaded has no entity to report.
      *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
-     *              {@link Chunk#LAYER_OBJECT}
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
      * @return the entity, or {@code null} when the cell carries none
      */
-    public BlockEntity blockEntity(int x, int y, int layer) {
-        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+    public BlockEntity blockEntity(int x, int y, int z) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
         if (chunk == null) {
             return null;
         }
-        return chunk.blockEntity(Chunk.localOf(x), Chunk.localOf(y), layer);
+        return chunk.blockEntity(Chunk.localOf(x), y, Chunk.localOf(z));
     }
 
     /**
@@ -528,7 +506,7 @@ public final class World implements BlockAccess {
      */
     public BlockEntity addBlockEntity(BlockEntity entity) {
         Objects.requireNonNull(entity, "entity");
-        Chunk chunk = preparedChunk(entity.x(), entity.y());
+        Chunk chunk = preparedChunk(entity.x(), entity.z());
         BlockEntity previous = chunk.setBlockEntity(entity);
         chunk.markModified();
         return previous;
@@ -537,22 +515,63 @@ public final class World implements BlockAccess {
     /**
      * Takes the block entity of a cell out of the world.
      *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and
-     *              {@link Chunk#LAYER_OBJECT}
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
      * @return the entity that was removed, {@code null} when the cell carried none
      */
-    public BlockEntity removeBlockEntity(int x, int y, int layer) {
-        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(y)));
+    public BlockEntity removeBlockEntity(int x, int y, int z) {
+        Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
         if (chunk == null) {
             return null;
         }
-        BlockEntity removed = chunk.removeBlockEntity(Chunk.localOf(x), Chunk.localOf(y), layer);
+        BlockEntity removed = chunk.removeBlockEntity(Chunk.localOf(x), y, Chunk.localOf(z));
         if (removed != null) {
             chunk.markModified();
         }
         return removed;
+    }
+
+    /**
+     * Reads a block of the flat view without generating anything.
+     *
+     * @param x block X coordinate along the first horizontal axis
+     * @param z block Z coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and {@link Chunk#LAYER_OBJECT}
+     * @return the stored block, {@link Blocks#AIR} when the chunk is not loaded
+     * @deprecated the flat view, see {@link #peekBlock(int, int, int)}
+     */
+    @Deprecated
+    public Block peekFlatBlock(int x, int z, int layer) {
+        return peekBlock(x, Chunk.flatY(layer), z);
+    }
+
+    /**
+     * Reads the state of a cell of the flat view without generating anything.
+     *
+     * @param x block X coordinate along the first horizontal axis
+     * @param z block Z coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and {@link Chunk#LAYER_OBJECT}
+     * @return the stored state, {@code 0} when the chunk is not loaded
+     * @deprecated the flat view, see {@link #peekState(int, int, int)}
+     */
+    @Deprecated
+    public int peekFlatState(int x, int z, int layer) {
+        return peekState(x, Chunk.flatY(layer), z);
+    }
+
+    /**
+     * Block entity of a cell of the flat view, without generating anything.
+     *
+     * @param x block X coordinate along the first horizontal axis
+     * @param z block Z coordinate along the second horizontal axis
+     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and {@link Chunk#LAYER_OBJECT}
+     * @return the entity, or {@code null} when the cell carries none
+     * @deprecated the flat view, see {@link #blockEntity(int, int, int)}
+     */
+    @Deprecated
+    public BlockEntity flatBlockEntity(int x, int z, int layer) {
+        return blockEntity(x, Chunk.flatY(layer), z);
     }
 
     /** Amount of block entities in the chunks that are loaded right now. */
@@ -643,7 +662,7 @@ public final class World implements BlockAccess {
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
         // Raw ids instead of setBlock: this is the decoration path, a chunk grown
         // from the seed alone must not count as a player change.
-        chunk.setRawId(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, block.id());
+        chunk.setRawId(Chunk.localOf(x), Chunk.flatY(Chunk.LAYER_OBJECT), Chunk.localOf(y), block.id());
     }
 
     /**
@@ -661,7 +680,7 @@ public final class World implements BlockAccess {
     public void setObjectBlock(int x, int y, Block block, int meta) {
         setObjectBlock(x, y, block);
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
-        chunk.setMeta(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, meta);
+        chunk.setState(Chunk.localOf(x), Chunk.flatY(Chunk.LAYER_OBJECT), Chunk.localOf(y), meta);
     }
 
     /**
@@ -681,8 +700,8 @@ public final class World implements BlockAccess {
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
         int localX = Chunk.localOf(x);
         int localY = Chunk.localOf(y);
-        chunk.setRawId(localX, localY, Chunk.LAYER_FLOOR, block.id());
-        chunk.setMeta(localX, localY, Chunk.LAYER_FLOOR, meta);
+        chunk.setRawId(localX, Chunk.flatY(Chunk.LAYER_FLOOR), localY, block.id());
+        chunk.setState(localX, Chunk.flatY(Chunk.LAYER_FLOOR), localY, meta);
     }
 
     /**
@@ -697,11 +716,11 @@ public final class World implements BlockAccess {
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
         int localX = Chunk.localOf(x);
         int localY = Chunk.localOf(y);
-        if (!chunk.getBlock(localX, localY, Chunk.LAYER_OBJECT).isAir()) {
+        if (!chunk.getBlock(localX, Chunk.flatY(Chunk.LAYER_OBJECT), localY).isAir()) {
             return false;
         }
         // Decoration path, see setObjectBlock: never marks the chunk as modified.
-        chunk.setRawId(localX, localY, Chunk.LAYER_OBJECT, block.id());
+        chunk.setRawId(localX, Chunk.flatY(Chunk.LAYER_OBJECT), localY, block.id());
         return true;
     }
 
@@ -725,7 +744,7 @@ public final class World implements BlockAccess {
             return false;
         }
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
-        chunk.setMeta(Chunk.localOf(x), Chunk.localOf(y), Chunk.LAYER_OBJECT, meta);
+        chunk.setState(Chunk.localOf(x), Chunk.flatY(Chunk.LAYER_OBJECT), Chunk.localOf(y), meta);
         return true;
     }
 
@@ -753,8 +772,8 @@ public final class World implements BlockAccess {
                         // A player who starts in the water of a lake has to wade out of it again.
                         continue;
                     }
-                    if (!getBlock(candidateX, candidateY, Chunk.LAYER_FLOOR).isAir()
-                            && !isSolid(candidateX, candidateY)) {
+                    if (!getFlatBlock(candidateX, candidateY, Chunk.LAYER_FLOOR).isAir()
+                            && !isFlatSolid(candidateX, candidateY)) {
                         return new int[] {candidateX, candidateY};
                     }
                 }
@@ -776,8 +795,8 @@ public final class World implements BlockAccess {
      * @return {@code true} when water, lava or another fluid stands in that cell
      */
     private boolean inFluid(int x, int y) {
-        return Fluids.byBlock(peekBlock(x, y, Chunk.LAYER_FLOOR)) != null
-                || Fluids.byBlock(peekBlock(x, y, Chunk.LAYER_OBJECT)) != null;
+        return Fluids.byBlock(peekFlatBlock(x, y, Chunk.LAYER_FLOOR)) != null
+                || Fluids.byBlock(peekFlatBlock(x, y, Chunk.LAYER_OBJECT)) != null;
     }
 
     /**

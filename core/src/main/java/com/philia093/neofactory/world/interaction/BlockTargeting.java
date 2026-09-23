@@ -110,7 +110,7 @@ public final class BlockTargeting {
             previousY = cellY;
             lastX = cellX;
             lastY = cellY;
-            if (!world.getBlock(cellX, cellY, layer).isAir()) {
+            if (!world.getFlatBlock(cellX, cellY, layer).isAir()) {
                 return BlockTarget.fromRay(cellX, cellY, layer);
             }
         }

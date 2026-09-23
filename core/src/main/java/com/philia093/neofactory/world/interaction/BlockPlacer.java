@@ -61,24 +61,24 @@ public final class BlockPlacer {
             // A material, a tool or a block that is never drawn, such as water.
             return false;
         }
-        if (!world.getBlock(target.x(), target.y(), target.layer()).isAir()) {
+        if (!world.getFlatBlock(target.x(), target.y(), target.layer()).isAir()) {
             return false;
         }
         if (target.layer() == Chunk.LAYER_FLOOR) {
-            if (world.hasObjectBlock(target.x(), target.y())) {
+            if (world.hasFlatObjectBlock(target.x(), target.y())) {
                 // The layer the player stands in is occupied: the ground below it is
                 // out of reach until that block is removed, building may never skip
                 // the layer the player is in.
                 return false;
             }
-        } else if (!world.hasGround(target.x(), target.y())) {
+        } else if (!world.hasFlatGround(target.x(), target.y())) {
             // Above a hole there is nothing to build on, the block would float.
             return false;
         }
 
-        world.setBlock(target.x(), target.y(), target.layer(), block);
+        world.setFlatBlock(target.x(), target.y(), target.layer(), block);
         if (player.collides(world, player.position().x, player.position().y)) {
-            world.setBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
+            world.setFlatBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
             return false;
         }
 

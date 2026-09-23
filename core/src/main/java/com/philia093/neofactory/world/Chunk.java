@@ -29,17 +29,15 @@ import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
  * than the current height moves it.
  * <p>
  * <b>The flat view.</b> The game still <i>is</i> flat: it draws the world from above, the player
- * walks on a plane and a block is one picture. While that is true, the two layers of the old world
- * live at {@link #LAYER_BASE_Y} and one above it, and every method that names a {@code layer} is
- * that flat view of the same storage:
- * <ul>
- *     <li>{@link #getBlock(int, int, int)} - the surface of a column and the cell above it</li>
- *     <li>{@link #getBlockAt(int, int, int)} - the whole column, which is what a world of cubes
- *         addresses</li>
- * </ul>
- * Both read and write the very same cells. The flat methods are marked as the ones that go away
- * once the game is played standing in the world instead of looking down on it, and the plain
- * {@code At} methods then take their names.
+ * walks on a plane and a block is one picture. While that is true, the two cells of the old world
+ * stand at {@link #flatY(int)} - the ground of a column and the cell the player walks in - and code
+ * that still thinks in layers asks that method for the height it means.
+ * <p>
+ * <b>A cell is addressed by its height.</b> The storage of a column is the storage a world of cubes
+ * needs: {@link #getBlock(int, int, int)} names the height of a cell, so the flat view is a layer of
+ * the very same cells and needs no methods of its own. Only three parts of it are left -
+ * {@link #flatY(int)}, {@link #flatLayer(int)} and {@link #isFlatHeight(int)} - and they go away
+ * with the view, once the game is played standing in the world instead of looking down on it.
  * <p>
  * A cell stores the id of a block and its state; the id is resolved into the actual {@link Block}
  * through the {@link BlockRegistry}, which is what keeps a section at eight kilobytes.
@@ -206,91 +204,6 @@ public final class Chunk {
     }
 
     /**
-     * Block of the flat view: a layer of the surface of a column.
-     *
-     * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
-     * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
-     * @param layer layer index, see {@link #LAYER_FLOOR} and {@link #LAYER_OBJECT}
-     * @return the stored block, {@link Blocks#AIR} for empty space
-     * @deprecated the flat view, see the class comment: the ground of a column really sits at
-     *         {@link #LAYER_BASE_Y}, and a world filled from the bottom up stops naming layers
-     */
-    @Deprecated
-    public Block getBlock(int localX, int localZ, int layer) {
-        return getBlockAt(localX, flatY(layer), localZ);
-    }
-
-    /**
-     * Stores a block in a layer of the flat view and marks the chunk for redrawing.
-     *
-     * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
-     * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
-     * @param layer layer index, see {@link #LAYER_FLOOR} and {@link #LAYER_OBJECT}
-     * @param block block to store, passing {@link Blocks#AIR} clears the position
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
-     */
-    @Deprecated
-    public void setBlock(int localX, int localZ, int layer, Block block) {
-        setBlockAt(localX, flatY(layer), localZ, block);
-    }
-
-    /**
-     * Raw id of a layer of the flat view, used by serialization.
-     *
-     * @param localX local X coordinate
-     * @param localZ local Z coordinate
-     * @param layer layer index
-     * @return the numeric block id
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
-     */
-    @Deprecated
-    public int rawId(int localX, int localZ, int layer) {
-        return rawIdAt(localX, flatY(layer), localZ);
-    }
-
-    /**
-     * Writes a raw id into a layer of the flat view, used by serialization.
-     *
-     * @param localX local X coordinate
-     * @param localZ local Z coordinate
-     * @param layer layer index
-     * @param id numeric block id
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
-     */
-    @Deprecated
-    public void setRawId(int localX, int localZ, int layer, int id) {
-        setRawIdAt(localX, flatY(layer), localZ, id);
-    }
-
-    /**
-     * State of a layer of the flat view.
-     *
-     * @param localX local X coordinate
-     * @param localZ local Z coordinate
-     * @param layer layer index
-     * @return the state, {@code 0} for a cell nothing wrote a state to
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
-     */
-    @Deprecated
-    public int meta(int localX, int localZ, int layer) {
-        return stateAt(localX, flatY(layer), localZ);
-    }
-
-    /**
-     * Writes the state of a layer of the flat view.
-     *
-     * @param localX local X coordinate
-     * @param localZ local Z coordinate
-     * @param layer layer index
-     * @param state state to store
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
-     */
-    @Deprecated
-    public void setMeta(int localX, int localZ, int layer, int state) {
-        setStateAt(localX, flatY(layer), localZ, state);
-    }
-
-    /**
      * Block of one cell of this column.
      *
      * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
@@ -298,8 +211,8 @@ public final class Chunk {
      * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
      * @return the stored block, {@link Blocks#AIR} for empty space
      */
-    public Block getBlockAt(int localX, int localY, int localZ) {
-        return BlockRegistry.byId(rawIdAt(localX, localY, localZ));
+    public Block getBlock(int localX, int localY, int localZ) {
+        return BlockRegistry.byId(rawId(localX, localY, localZ));
     }
 
     /**
@@ -310,8 +223,8 @@ public final class Chunk {
      * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
      * @param block block to store, passing {@link Blocks#AIR} clears the cell
      */
-    public void setBlockAt(int localX, int localY, int localZ, Block block) {
-        setRawIdAt(localX, localY, localZ, block.id());
+    public void setBlock(int localX, int localY, int localZ, Block block) {
+        setRawId(localX, localY, localZ, block.id());
     }
 
     /**
@@ -323,7 +236,7 @@ public final class Chunk {
      * @return the numeric block id, {@link Blocks#AIR_ID} for an empty cell
      * @throws IndexOutOfBoundsException when the height is outside the world
      */
-    public int rawIdAt(int localX, int localY, int localZ) {
+    public int rawId(int localX, int localY, int localZ) {
         checkY(localY);
         Section section = sections[localY / Section.SIZE];
         return section == null ? Blocks.AIR_ID
@@ -344,7 +257,7 @@ public final class Chunk {
      * @param id numeric block id
      * @throws IndexOutOfBoundsException when the height is outside the world
      */
-    public void setRawIdAt(int localX, int localY, int localZ, int id) {
+    public void setRawId(int localX, int localY, int localZ, int id) {
         checkY(localY);
         int sectionY = localY / Section.SIZE;
         Section section = sections[sectionY];
@@ -373,7 +286,7 @@ public final class Chunk {
      * @param localZ local Z coordinate
      * @return the state, {@code 0} for a cell nothing wrote a state to
      */
-    public int stateAt(int localX, int localY, int localZ) {
+    public int state(int localX, int localY, int localZ) {
         checkY(localY);
         Section section = sections[localY / Section.SIZE];
         return section == null ? 0 : section.state(localX, localY % Section.SIZE, localZ);
@@ -387,7 +300,7 @@ public final class Chunk {
      * @param localZ local Z coordinate
      * @param state state to store
      */
-    public void setStateAt(int localX, int localY, int localZ, int state) {
+    public void setState(int localX, int localY, int localZ, int state) {
         checkY(localY);
         int sectionY = localY / Section.SIZE;
         Section section = sections[sectionY];
@@ -403,20 +316,6 @@ public final class Chunk {
     }
 
     /**
-     * Block entity of a cell of the flat view.
-     *
-     * @param localX local X coordinate
-     * @param localZ local Z coordinate
-     * @param layer layer index
-     * @return the entity, or {@code null} when the cell carries none
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
-     */
-    @Deprecated
-    public BlockEntity blockEntity(int localX, int localZ, int layer) {
-        return blockEntityAt(localX, flatY(layer), localZ);
-    }
-
-    /**
      * Block entity of one cell of this column.
      *
      * @param localX local X coordinate
@@ -424,7 +323,7 @@ public final class Chunk {
      * @param localZ local Z coordinate
      * @return the entity, or {@code null} when the cell carries none
      */
-    public BlockEntity blockEntityAt(int localX, int localY, int localZ) {
+    public BlockEntity blockEntity(int localX, int localY, int localZ) {
         return blockEntities[blockEntitySlot(localX, localY, localZ)];
     }
 
@@ -437,16 +336,11 @@ public final class Chunk {
      */
     public BlockEntity setBlockEntity(BlockEntity entity) {
         Objects.requireNonNull(entity, "entity");
-        if (chunkOf(entity.x()) != chunkX || chunkOf(entity.y()) != chunkZ) {
+        if (chunkOf(entity.x()) != chunkX || chunkOf(entity.z()) != chunkZ) {
             throw new IllegalArgumentException("The block entity " + entity
                     + " does not belong to chunk (" + chunkX + ", " + chunkZ + ")");
         }
-        // A block entity is still placed by a layer, see the flat view in the class comment: the
-        // layer is its height and the old Y coordinate is the new Z one.
-        int localX = localOf(entity.x());
-        int localY = flatY(entity.layer());
-        int localZ = localOf(entity.y());
-        int slot = blockEntitySlot(localX, localY, localZ);
+        int slot = blockEntitySlot(localOf(entity.x()), entity.y(), localOf(entity.z()));
         BlockEntity previous = blockEntities[slot];
         if (previous != null) {
             active.remove(previous);
@@ -458,17 +352,15 @@ public final class Chunk {
     }
 
     /**
-     * Takes the block entity of a cell of the flat view out of this chunk.
+     * Takes the block entity of one cell of this column out of this chunk.
      *
      * @param localX local X coordinate
+     * @param localY local Y coordinate
      * @param localZ local Z coordinate
-     * @param layer layer index
      * @return the entity that was there, {@code null} when the cell carried none
-     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    @Deprecated
-    public BlockEntity removeBlockEntity(int localX, int localZ, int layer) {
-        int slot = blockEntitySlot(localX, flatY(layer), localZ);
+    public BlockEntity removeBlockEntity(int localX, int localY, int localZ) {
+        int slot = blockEntitySlot(localX, localY, localZ);
         BlockEntity previous = blockEntities[slot];
         if (previous == null) {
             return null;

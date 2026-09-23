@@ -191,8 +191,8 @@ public class Player extends Entity {
 
     /** {@code true} when the player stands in water or another liquid. */
     public boolean isInLiquid(World world) {
-        return world.getBlock(blockX(), blockY(), Chunk.LAYER_FLOOR).isLiquid()
-                || world.getBlock(blockX(), blockY(), Chunk.LAYER_OBJECT).isLiquid();
+        return world.getFlatBlock(blockX(), blockY(), Chunk.LAYER_FLOOR).isLiquid()
+                || world.getFlatBlock(blockX(), blockY(), Chunk.LAYER_OBJECT).isLiquid();
     }
 
     /**
@@ -261,7 +261,7 @@ public class Player extends Entity {
 
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
-                if (world.isSolid(x, y)) {
+                if (world.isFlatSolid(x, y)) {
                     return true;
                 }
             }

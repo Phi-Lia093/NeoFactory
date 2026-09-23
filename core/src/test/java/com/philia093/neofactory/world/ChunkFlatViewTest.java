@@ -40,49 +40,49 @@ class ChunkFlatViewTest {
     void aBlockWrittenOnALayerIsTheBlockOfTheColumnThere() {
         Chunk chunk = new Chunk(0, 0);
 
-        chunk.setBlock(3, 5, Chunk.LAYER_FLOOR, Blocks.STONE);
-        chunk.setBlock(3, 5, Chunk.LAYER_OBJECT, Blocks.TALL_GRASS);
+        chunk.setBlock(3, Chunk.flatY(Chunk.LAYER_FLOOR), 5, Blocks.STONE);
+        chunk.setBlock(3, Chunk.flatY(Chunk.LAYER_OBJECT), 5, Blocks.TALL_GRASS);
 
-        assertEquals(Blocks.STONE, chunk.getBlock(3, 5, Chunk.LAYER_FLOOR));
-        assertEquals(Blocks.TALL_GRASS, chunk.getBlock(3, 5, Chunk.LAYER_OBJECT));
+        assertEquals(Blocks.STONE, chunk.getBlock(3, Chunk.flatY(Chunk.LAYER_FLOOR), 5));
+        assertEquals(Blocks.TALL_GRASS, chunk.getBlock(3, Chunk.flatY(Chunk.LAYER_OBJECT), 5));
 
-        assertEquals(Blocks.STONE, chunk.getBlockAt(3, Chunk.LAYER_BASE_Y, 5),
+        assertEquals(Blocks.STONE, chunk.getBlock(3, Chunk.LAYER_BASE_Y, 5),
                 "the ground layer is the ground");
-        assertEquals(Blocks.TALL_GRASS, chunk.getBlockAt(3, Chunk.LAYER_BASE_Y + 1, 5),
+        assertEquals(Blocks.TALL_GRASS, chunk.getBlock(3, Chunk.LAYER_BASE_Y + 1, 5),
                 "and the other one is above it");
-        assertEquals(Blocks.AIR, chunk.getBlockAt(3, Chunk.LAYER_BASE_Y - 1, 5));
-        assertEquals(Blocks.AIR, chunk.getBlockAt(3, Chunk.LAYER_BASE_Y + 2, 5));
+        assertEquals(Blocks.AIR, chunk.getBlock(3, Chunk.LAYER_BASE_Y - 1, 5));
+        assertEquals(Blocks.AIR, chunk.getBlock(3, Chunk.LAYER_BASE_Y + 2, 5));
     }
 
     @Test
     void aBlockWrittenInTheColumnIsTheBlockOfItsLayer() {
         Chunk chunk = new Chunk(0, 0);
 
-        chunk.setBlockAt(7, Chunk.LAYER_BASE_Y, 9, Blocks.SAND);
+        chunk.setBlock(7, Chunk.LAYER_BASE_Y, 9, Blocks.SAND);
 
-        assertEquals(Blocks.SAND, chunk.getBlock(7, 9, Chunk.LAYER_FLOOR));
+        assertEquals(Blocks.SAND, chunk.getBlock(7, Chunk.flatY(Chunk.LAYER_FLOOR), 9));
     }
 
     @Test
     void aStateWrittenOnALayerIsTheStateOfTheColumnThere() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setBlock(1, 2, Chunk.LAYER_OBJECT, Blocks.WATER);
+        chunk.setBlock(1, Chunk.flatY(Chunk.LAYER_OBJECT), 2, Blocks.WATER);
 
-        chunk.setMeta(1, 2, Chunk.LAYER_OBJECT, 42);
+        chunk.setState(1, Chunk.flatY(Chunk.LAYER_OBJECT), 2, 42);
 
-        assertEquals(42, chunk.meta(1, 2, Chunk.LAYER_OBJECT), "the flat view read it back");
-        assertEquals(42, chunk.stateAt(1, Chunk.LAYER_BASE_Y + 1, 2), "and so did the column");
-        assertEquals(0, chunk.stateAt(1, Chunk.LAYER_BASE_Y, 2), "the layer below is untouched");
+        assertEquals(42, chunk.state(1, Chunk.flatY(Chunk.LAYER_OBJECT), 2), "the flat view read it back");
+        assertEquals(42, chunk.state(1, Chunk.LAYER_BASE_Y + 1, 2), "and so did the column");
+        assertEquals(0, chunk.state(1, Chunk.LAYER_BASE_Y, 2), "the layer below is untouched");
     }
 
     @Test
     void aStateWrittenInTheColumnIsTheStateOfItsLayer() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setBlockAt(4, Chunk.LAYER_BASE_Y, 6, Blocks.WATER);
+        chunk.setBlock(4, Chunk.LAYER_BASE_Y, 6, Blocks.WATER);
 
-        chunk.setStateAt(4, Chunk.LAYER_BASE_Y, 6, 7);
+        chunk.setState(4, Chunk.LAYER_BASE_Y, 6, 7);
 
-        assertEquals(7, chunk.meta(4, 6, Chunk.LAYER_FLOOR));
+        assertEquals(7, chunk.state(4, Chunk.flatY(Chunk.LAYER_FLOOR), 6));
     }
 
     @Test
@@ -91,35 +91,35 @@ class ChunkFlatViewTest {
 
         // The order a fluid writes in: the block first, which clears the state of the cell, then
         // the state that belongs to it.
-        chunk.setBlock(0, 0, Chunk.LAYER_OBJECT, Blocks.WATER);
-        chunk.setMeta(0, 0, Chunk.LAYER_OBJECT, 1);
-        assertEquals(1, chunk.meta(0, 0, Chunk.LAYER_OBJECT));
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0, Blocks.WATER);
+        chunk.setState(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0, 1);
+        assertEquals(1, chunk.state(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0));
 
-        chunk.setBlock(0, 0, Chunk.LAYER_FLOOR, Blocks.STONE);
-        assertEquals(1, chunk.meta(0, 0, Chunk.LAYER_OBJECT), "the state of the layer above stuck");
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_FLOOR), 0, Blocks.STONE);
+        assertEquals(1, chunk.state(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0), "the state of the layer above stuck");
 
         // Replacing the block does clear it, because the state belonged to the block that was there.
-        chunk.setBlock(0, 0, Chunk.LAYER_OBJECT, Blocks.LAVA);
-        assertEquals(0, chunk.meta(0, 0, Chunk.LAYER_OBJECT));
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0, Blocks.LAVA);
+        assertEquals(0, chunk.state(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0));
     }
 
     @Test
     void aStateSurvivesTheWritePathOfAWorld() {
         World world = new World(21);
 
-        world.setBlock(4, 4, Chunk.LAYER_OBJECT, Blocks.WATER);
-        world.setMeta(4, 4, Chunk.LAYER_OBJECT, 9);
+        world.setFlatBlock(4, 4, Chunk.LAYER_OBJECT, Blocks.WATER);
+        world.setFlatState(4, 4, Chunk.LAYER_OBJECT, 9);
 
-        assertEquals(Blocks.WATER, world.peekBlock(4, 4, Chunk.LAYER_OBJECT),
+        assertEquals(Blocks.WATER, world.peekFlatBlock(4, 4, Chunk.LAYER_OBJECT),
                 "the block of the layer came back");
-        assertEquals(9, world.peekMeta(4, 4, Chunk.LAYER_OBJECT), "and so did its state");
-        assertEquals(Blocks.WATER, world.getBlock(4, 4, Chunk.LAYER_OBJECT));
-        assertEquals(9, world.getMeta(4, 4, Chunk.LAYER_OBJECT));
+        assertEquals(9, world.peekFlatState(4, 4, Chunk.LAYER_OBJECT), "and so did its state");
+        assertEquals(Blocks.WATER, world.getFlatBlock(4, 4, Chunk.LAYER_OBJECT));
+        assertEquals(9, world.getFlatState(4, 4, Chunk.LAYER_OBJECT));
 
         // A fluid writes the same cell twice: the block, then the state that belongs to it.
-        world.setBlock(5, 5, Chunk.LAYER_OBJECT, Blocks.LAVA);
-        world.setMeta(5, 5, Chunk.LAYER_OBJECT, 3);
-        assertEquals(3, world.getMeta(5, 5, Chunk.LAYER_OBJECT));
+        world.setFlatBlock(5, 5, Chunk.LAYER_OBJECT, Blocks.LAVA);
+        world.setFlatState(5, 5, Chunk.LAYER_OBJECT, 3);
+        assertEquals(3, world.getFlatState(5, 5, Chunk.LAYER_OBJECT));
     }
 
     @Test
@@ -129,23 +129,23 @@ class ChunkFlatViewTest {
         assertEquals(Chunk.NO_BLOCK, chunk.highestBlockY(0, 0), "an empty column has no height");
         assertFalse(chunk.hasBlock(0, 0));
 
-        chunk.setBlock(0, 0, Chunk.LAYER_FLOOR, Blocks.STONE);
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_FLOOR), 0, Blocks.STONE);
         assertEquals(Chunk.LAYER_BASE_Y, chunk.highestBlockY(0, 0));
         assertTrue(chunk.hasBlock(0, 0));
 
-        chunk.setBlock(0, 0, Chunk.LAYER_OBJECT, Blocks.TALL_GRASS);
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0, Blocks.TALL_GRASS);
         assertEquals(Chunk.LAYER_BASE_Y + 1, chunk.highestBlockY(0, 0));
 
         // A block far above the surface moves the height as well.
-        chunk.setBlockAt(0, 200, 0, Blocks.STONE);
+        chunk.setBlock(0, 200, 0, Blocks.STONE);
         assertEquals(200, chunk.highestBlockY(0, 0));
 
         // Clearing the highest block makes the chunk look for the next one below it.
-        chunk.setBlockAt(0, 200, 0, Blocks.AIR);
+        chunk.setBlock(0, 200, 0, Blocks.AIR);
         assertEquals(Chunk.LAYER_BASE_Y + 1, chunk.highestBlockY(0, 0));
 
-        chunk.setBlock(0, 0, Chunk.LAYER_OBJECT, Blocks.AIR);
-        chunk.setBlock(0, 0, Chunk.LAYER_FLOOR, Blocks.AIR);
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_OBJECT), 0, Blocks.AIR);
+        chunk.setBlock(0, Chunk.flatY(Chunk.LAYER_FLOOR), 0, Blocks.AIR);
         assertEquals(Chunk.NO_BLOCK, chunk.highestBlockY(0, 0), "the column is empty again");
         assertFalse(chunk.hasBlock(0, 0));
     }
@@ -158,21 +158,21 @@ class ChunkFlatViewTest {
         assertEquals(0, chunk.sectionCount(), "an empty chunk holds no section");
         assertTrue(chunk.isEmptySection(groundSection));
 
-        chunk.setBlock(1, 1, Chunk.LAYER_FLOOR, Blocks.STONE);
+        chunk.setBlock(1, Chunk.flatY(Chunk.LAYER_FLOOR), 1, Blocks.STONE);
         assertEquals(1, chunk.sectionCount());
         assertEquals(Chunk.LAYER_BASE_Y / Section.SIZE, groundSection,
                 "the flat world sits in one section");
         assertFalse(chunk.isEmptySection(groundSection));
 
         // A block at the very top of the world costs one more section, and nothing in between.
-        chunk.setBlockAt(1, Constants.MAX_Y, 1, Blocks.STONE);
+        chunk.setBlock(1, Constants.MAX_Y, 1, Blocks.STONE);
         assertEquals(2, chunk.sectionCount());
     }
 
     @Test
     void theSectionsOfAChunkAreFoundByTheirIndex() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setBlockAt(0, 40, 0, Blocks.STONE);
+        chunk.setBlock(0, 40, 0, Blocks.STONE);
 
         assertEquals(2, 40 / Section.SIZE);
         assertEquals(32, chunk.section(2).originY(), "section two covers 32 to 47");
@@ -185,8 +185,8 @@ class ChunkFlatViewTest {
         Chunk chunk = new Chunk(0, 0);
 
         assertThrows(IndexOutOfBoundsException.class,
-                () -> chunk.setBlockAt(0, Constants.MAX_Y + 1, 0, Blocks.STONE));
+                () -> chunk.setBlock(0, Constants.MAX_Y + 1, 0, Blocks.STONE));
         assertThrows(IndexOutOfBoundsException.class,
-                () -> chunk.getBlockAt(0, Constants.MIN_Y - 1, 0));
+                () -> chunk.getBlock(0, Constants.MIN_Y - 1, 0));
     }
 }

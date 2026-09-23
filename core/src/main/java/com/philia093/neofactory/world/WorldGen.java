@@ -510,7 +510,7 @@ public final class WorldGen implements TerrainSampler {
         }
         int x = chunk.originX() + localX;
         int y = chunk.originZ() + localY;
-        chunk.setRawId(localX, localY, Chunk.LAYER_FLOOR, floorAt(x, y).id());
+        chunk.setRawId(localX, Chunk.flatY(Chunk.LAYER_FLOOR), localY, floorAt(x, y).id());
         chunk.markCellGenerated(localX, localY);
     }
 

@@ -88,6 +88,6 @@ public class SelectionRenderer {
      *         yellow while it holds nothing but its ground
      */
     public static Color colorOf(World world, BlockTarget target) {
-        return world.hasObjectBlock(target.x(), target.y()) ? OCCUPIED_COLOR : GROUND_COLOR;
+        return world.hasFlatObjectBlock(target.x(), target.y()) ? OCCUPIED_COLOR : GROUND_COLOR;
     }
 }

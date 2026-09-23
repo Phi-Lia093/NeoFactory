@@ -66,8 +66,8 @@ class WorldGenPreviewTest {
             for (int x = 0; x < SIZE; x++) {
                 int blockX = centerX + x;
                 int blockY = centerY + y;
-                int color = colorOf(world.getBlock(blockX, blockY, Chunk.LAYER_FLOOR));
-                Block above = world.getBlock(blockX, blockY, FluidFlow.OBJECT_LAYER);
+                int color = colorOf(world.getFlatBlock(blockX, blockY, Chunk.LAYER_FLOOR));
+                Block above = world.getFlatBlock(blockX, blockY, FluidFlow.OBJECT_LAYER);
                 if (!above.isAir()) {
                     // The object layer lies on top of the ground, the way the renderer draws it.
                     color = blend(color, colorOf(above), above == Blocks.WATER);

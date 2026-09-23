@@ -77,12 +77,12 @@ public class MiningController {
             required = 0.0f;
         }
 
-        Block block = world.getBlock(target.x(), target.y(), target.layer());
+        Block block = world.getFlatBlock(target.x(), target.y(), target.layer());
         if (block.isAir()) {
             reset();
             return false;
         }
-        if (target.layer() == Chunk.LAYER_FLOOR && world.hasObjectBlock(target.x(), target.y())) {
+        if (target.layer() == Chunk.LAYER_FLOOR && world.hasFlatObjectBlock(target.x(), target.y())) {
             // The layer the player stands in is still occupied: the ground below it is
             // out of reach until that block is gone, a break may never skip the layer
             // the player is in.
@@ -141,11 +141,11 @@ public class MiningController {
         // What a machine holds is handed over before the block goes: the entity is
         // removed with the block, see World#setBlock(int, int, int, Block), so its
         // content has to leave first or it would be lost with it.
-        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.layer());
+        BlockEntity entity = world.flatBlockEntity(target.x(), target.y(), target.layer());
         if (entity != null) {
             entity.onBroken(drops, target.centerX(), target.centerY());
         }
-        world.setBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
+        world.setFlatBlock(target.x(), target.y(), target.layer(), Blocks.AIR);
         if (!rule.canHarvest(block, tool)) {
             return;
         }

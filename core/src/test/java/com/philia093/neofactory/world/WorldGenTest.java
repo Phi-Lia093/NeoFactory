@@ -271,9 +271,9 @@ class WorldGenTest {
             }
         }
 
-        assertEquals(Blocks.LAVA, world.getBlock(poolX, poolY, FluidFlow.OBJECT_LAYER),
+        assertEquals(Blocks.LAVA, world.getFlatBlock(poolX, poolY, FluidFlow.OBJECT_LAYER),
                 "the decorator poured lava onto the cell of a pool");
-        Block ground = world.getBlock(poolX, poolY, Chunk.LAYER_FLOOR);
+        Block ground = world.getFlatBlock(poolX, poolY, Chunk.LAYER_FLOOR);
         assertTrue(ground == Blocks.STONE || ground == Blocks.GRAVEL,
                 "and the ground under it is scorched: " + ground);
 
@@ -293,7 +293,7 @@ class WorldGenTest {
                     // LavaLakeDecoration, so water there is right.
                     continue;
                 }
-                Block standing = world.getBlock(cellX, cellY, FluidFlow.OBJECT_LAYER);
+                Block standing = world.getFlatBlock(cellX, cellY, FluidFlow.OBJECT_LAYER);
                 assertTrue(standing == Blocks.LAVA || standing == Blocks.STONE,
                         "a pool of lava carries lava and the stone of its ring, nothing else: "
                                 + standing + " at (" + cellX + ", " + cellY + ")");
@@ -348,7 +348,7 @@ class WorldGenTest {
 
     /** The block a cell carries in the layer of the player. */
     private static Block waterOf(World world, BlockPos cell) {
-        return world.getBlock(cell.x(), cell.y(), FluidFlow.OBJECT_LAYER);
+        return world.getFlatBlock(cell.x(), cell.y(), FluidFlow.OBJECT_LAYER);
     }
 
     /** The four cells around one. */
@@ -372,7 +372,7 @@ class WorldGenTest {
         Set<BlockPos> found = new HashSet<>();
         for (int y = centerY - NEARBY; y <= centerY + NEARBY; y++) {
             for (int x = centerX - NEARBY; x <= centerX + NEARBY; x++) {
-                if (world.getBlock(x, y, FluidFlow.OBJECT_LAYER) == Fluids.WATER.block()) {
+                if (world.getFlatBlock(x, y, FluidFlow.OBJECT_LAYER) == Fluids.WATER.block()) {
                     found.add(BlockPos.of(x, y));
                 }
             }

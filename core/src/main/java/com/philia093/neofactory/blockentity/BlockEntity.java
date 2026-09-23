@@ -28,7 +28,7 @@ public abstract class BlockEntity {
     private final BlockEntityType type;
     private int x;
     private int y;
-    private int layer;
+    private int z;
 
     /**
      * Creates a block entity.
@@ -49,14 +49,14 @@ public abstract class BlockEntity {
         return x;
     }
 
-    /** Block Y coordinate this entity lies at. */
+    /** Block Y coordinate this entity lies at, its height in the world. */
     public final int y() {
         return y;
     }
 
-    /** Layer this entity lies in, see {@link com.philia093.neofactory.world.Chunk#LAYER_OBJECT}. */
-    public final int layer() {
-        return layer;
+    /** Block Z coordinate this entity lies at. */
+    public final int z() {
+        return z;
     }
 
     /**
@@ -66,18 +66,18 @@ public abstract class BlockEntity {
      * chunk, so nothing else has to set a position.
      *
      * @param x block X coordinate
-     * @param y block Y coordinate
-     * @param layer layer index
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
      */
-    public final void setPosition(int x, int y, int layer) {
+    public final void setPosition(int x, int y, int z) {
         this.x = x;
         this.y = y;
-        this.layer = layer;
+        this.z = z;
     }
 
     /** {@code true} when this entity lies at a cell. */
-    public final boolean isAt(int x, int y, int layer) {
-        return this.x == x && this.y == y && this.layer == layer;
+    public final boolean isAt(int x, int y, int z) {
+        return this.x == x && this.y == y && this.z == z;
     }
 
     /**
@@ -124,9 +124,9 @@ public abstract class BlockEntity {
      *
      * @param drops sink receiving the items
      * @param worldX world X coordinate of the block
-     * @param worldY world Y coordinate of the block
+     * @param worldZ world Z coordinate of the block
      */
-    public void onBroken(ItemDrops drops, float worldX, float worldY) {
+    public void onBroken(ItemDrops drops, float worldX, float worldZ) {
         // A block entity without content leaves nothing behind.
     }
 
@@ -154,6 +154,6 @@ public abstract class BlockEntity {
 
     @Override
     public String toString() {
-        return type.name() + "@" + x + "," + y + " layer " + layer;
+        return type.name() + "@" + x + "," + y + "," + z;
     }
 }

@@ -79,12 +79,12 @@ public final class FluidInteraction {
         int x = target.x();
         int y = target.y();
         int layer = target.layer();
-        Fluid fluid = Fluids.byBlock(world.getBlock(x, y, layer));
+        Fluid fluid = Fluids.byBlock(world.getFlatBlock(x, y, layer));
         if (fluid == null || !container.accepts(fluid)) {
             // No fluid there, or one this container never carries, such as oil in a bucket.
             return false;
         }
-        if (!FluidState.unpack(world.getMeta(x, y, layer)).isSource()) {
+        if (!FluidState.unpack(world.getFlatState(x, y, layer)).isSource()) {
             // The fluid only ran through this cell, the source that feeds it lies elsewhere.
             return false;
         }
@@ -102,8 +102,8 @@ public final class FluidInteraction {
             return false;
         }
 
-        world.setBlock(x, y, layer, Blocks.AIR);
-        world.setMeta(x, y, layer, 0);
+        world.setFlatBlock(x, y, layer, Blocks.AIR);
+        world.setFlatState(x, y, layer, 0);
         handOver(inventory, taken);
         LOGGER.info("Filled a {} at ({}, {}) of layer {}", filled.name(), x, y, layer);
         return true;
@@ -149,7 +149,7 @@ public final class FluidInteraction {
         int x = target.x();
         int y = target.y();
         int layer = target.layer();
-        if (!world.getBlock(x, y, layer).isAir()) {
+        if (!world.getFlatBlock(x, y, layer).isAir()) {
             // The cell is taken, by a wall, a plant or another fluid.
             return false;
         }
@@ -158,8 +158,8 @@ public final class FluidInteraction {
         }
 
         Fluid fluid = container.content();
-        world.setBlock(x, y, layer, fluid.block());
-        world.setMeta(x, y, layer, FluidState.SOURCE.pack());
+        world.setFlatBlock(x, y, layer, fluid.block());
+        world.setFlatState(x, y, layer, FluidState.SOURCE.pack());
         inventory.set(inventory.selectedSlot(), ItemStack.of(Buckets.empty(container.kind()), 1));
         LOGGER.info("Poured {} into ({}, {}) of layer {}", fluid.name(), x, y, layer);
         return true;
@@ -180,8 +180,8 @@ public final class FluidInteraction {
      */
     private static boolean mayStand(World world, int x, int y, int layer) {
         if (layer == Chunk.LAYER_FLOOR) {
-            return !world.hasObjectBlock(x, y);
+            return !world.hasFlatObjectBlock(x, y);
         }
-        return world.hasGround(x, y);
+        return world.hasFlatGround(x, y);
     }
 }

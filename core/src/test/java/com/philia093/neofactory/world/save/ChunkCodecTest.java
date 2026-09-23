@@ -47,11 +47,11 @@ class ChunkCodecTest {
     @Test
     void aBlockKeepsTheHeightItWasStoredAt() {
         Chunk written = new Chunk(0, 0);
-        written.setRawIdAt(CELL_X, HIGH_Y, CELL_Z, Blocks.STONE.id());
+        written.setRawId(CELL_X, HIGH_Y, CELL_Z, Blocks.STONE.id());
 
         Chunk read = roundTrip(written);
 
-        assertEquals(Blocks.STONE, read.getBlockAt(CELL_X, HIGH_Y, CELL_Z));
+        assertEquals(Blocks.STONE, read.getBlock(CELL_X, HIGH_Y, CELL_Z));
         assertEquals(HIGH_Y, read.highestBlockY(CELL_X, CELL_Z),
                 "the height map of the column lost the block");
     }
@@ -61,7 +61,7 @@ class ChunkCodecTest {
         Chunk chunk = new Chunk(0, 0);
         // An id no block uses: the palette keeps the number as it is, so the stored data
         // shows whether it was kept whole or cut down to its lowest byte.
-        chunk.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, 300);
+        chunk.setRawId(CELL_X, FLOOR_Y, CELL_Z, 300);
 
         assertTrue(storedPalette(chunk).contains(300), "the block id was cut off while writing");
     }
@@ -69,7 +69,7 @@ class ChunkCodecTest {
     @Test
     void aSectionThatHoldsNothingIsNotWritten() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
+        chunk.setRawId(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
 
         NbtList sections = ChunkCodec.write(chunk).getList(ChunkCodec.TAG_SECTIONS);
 
@@ -81,49 +81,49 @@ class ChunkCodecTest {
     @Test
     void aBlockAndItsStateComeBack() {
         Chunk written = new Chunk(0, 0);
-        written.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
-        written.setStateAt(CELL_X, FLOOR_Y, CELL_Z, 129);
+        written.setRawId(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
+        written.setState(CELL_X, FLOOR_Y, CELL_Z, 129);
 
         Chunk read = roundTrip(written);
 
-        assertEquals(Blocks.STONE, read.getBlockAt(CELL_X, FLOOR_Y, CELL_Z));
-        assertEquals(129, read.stateAt(CELL_X, FLOOR_Y, CELL_Z));
+        assertEquals(Blocks.STONE, read.getBlock(CELL_X, FLOOR_Y, CELL_Z));
+        assertEquals(129, read.state(CELL_X, FLOOR_Y, CELL_Z));
     }
 
     @Test
     void aStateOfASectionHighAboveTheGroundIsKept() {
         Chunk written = new Chunk(0, 0);
-        written.setRawIdAt(CELL_X, HIGH_Y, CELL_Z, Blocks.STONE.id());
-        written.setStateAt(CELL_X, HIGH_Y, CELL_Z, 5);
+        written.setRawId(CELL_X, HIGH_Y, CELL_Z, Blocks.STONE.id());
+        written.setState(CELL_X, HIGH_Y, CELL_Z, 5);
 
         Chunk read = roundTrip(written);
 
-        assertEquals(5, read.stateAt(CELL_X, HIGH_Y, CELL_Z));
+        assertEquals(5, read.state(CELL_X, HIGH_Y, CELL_Z));
     }
 
     @Test
     void twoSectionsOfOneColumnKeepTheirHeights() {
         Chunk written = new Chunk(0, 0);
-        written.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, Blocks.DIRT.id());
-        written.setRawIdAt(CELL_X, HIGH_Y, CELL_Z, Blocks.STONE.id());
+        written.setRawId(CELL_X, FLOOR_Y, CELL_Z, Blocks.DIRT.id());
+        written.setRawId(CELL_X, HIGH_Y, CELL_Z, Blocks.STONE.id());
 
         Chunk read = roundTrip(written);
 
-        assertEquals(Blocks.DIRT, read.getBlockAt(CELL_X, FLOOR_Y, CELL_Z));
-        assertEquals(Blocks.STONE, read.getBlockAt(CELL_X, HIGH_Y, CELL_Z));
-        assertEquals(Blocks.AIR, read.getBlockAt(CELL_X, FLOOR_Y + 1, CELL_Z),
+        assertEquals(Blocks.DIRT, read.getBlock(CELL_X, FLOOR_Y, CELL_Z));
+        assertEquals(Blocks.STONE, read.getBlock(CELL_X, HIGH_Y, CELL_Z));
+        assertEquals(Blocks.AIR, read.getBlock(CELL_X, FLOOR_Y + 1, CELL_Z),
                 "a block was read back into the wrong layer of the column");
     }
 
     @Test
     void aCellLosesItsStateWhenItsBlockChanges() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
-        chunk.setStateAt(CELL_X, FLOOR_Y, CELL_Z, 3);
+        chunk.setRawId(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
+        chunk.setState(CELL_X, FLOOR_Y, CELL_Z, 3);
 
-        chunk.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, Blocks.DIRT.id());
+        chunk.setRawId(CELL_X, FLOOR_Y, CELL_Z, Blocks.DIRT.id());
 
-        assertEquals(0, chunk.stateAt(CELL_X, FLOOR_Y, CELL_Z),
+        assertEquals(0, chunk.state(CELL_X, FLOOR_Y, CELL_Z),
                 "the state of the block that was there stayed behind");
     }
 
@@ -131,11 +131,11 @@ class ChunkCodecTest {
     void anIdTheGameDoesNotKnowBecomesAir() {
         Chunk written = new Chunk(0, 0);
         // A number no block of the game uses: reading it back would put a block where nothing is.
-        written.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, 5000);
+        written.setRawId(CELL_X, FLOOR_Y, CELL_Z, 5000);
 
         Chunk read = roundTrip(written);
 
-        assertEquals(Blocks.AIR, read.getBlockAt(CELL_X, FLOOR_Y, CELL_Z));
+        assertEquals(Blocks.AIR, read.getBlock(CELL_X, FLOOR_Y, CELL_Z));
     }
 
     @Test
@@ -157,7 +157,7 @@ class ChunkCodecTest {
     @Test
     void aSectionWithADamagedArrayIsRefused() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setRawIdAt(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
+        chunk.setRawId(CELL_X, FLOOR_Y, CELL_Z, Blocks.STONE.id());
         NbtCompound data = ChunkCodec.write(chunk);
         // A data array that cannot hold one index per cell of its section.
         NbtCompound blocks = data.getList(ChunkCodec.TAG_SECTIONS).getCompound(0)

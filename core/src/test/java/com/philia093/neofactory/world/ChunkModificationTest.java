@@ -32,8 +32,8 @@ class ChunkModificationTest {
     void generatedTerrainIsNotAPlayerChange() {
         World world = new World(4242, 0, 0);
         for (int x = -20; x <= 20; x++) {
-            world.getBlock(x, 0, Chunk.LAYER_FLOOR);
-            world.getBlock(x, 0, Chunk.LAYER_OBJECT);
+            world.getFlatBlock(x, 0, Chunk.LAYER_FLOOR);
+            world.getFlatBlock(x, 0, Chunk.LAYER_OBJECT);
         }
         world.ensureChunksAround(0, 0, 3);
 
@@ -57,13 +57,13 @@ class ChunkModificationTest {
     @Test
     void aBlockWrittenByThePlayerMarksItsChunk() {
         World world = new World(7, 0, 0);
-        world.setBlock(1, 2, Chunk.LAYER_OBJECT, Blocks.STONE);
+        world.setFlatBlock(1, 2, Chunk.LAYER_OBJECT, Blocks.STONE);
 
         Chunk chunk = world.chunkIfLoaded(0, 0);
         assertNotNull(chunk);
         assertTrue(chunk.isModified());
         assertEquals(1, world.modifiedChunkCount());
-        assertEquals(Blocks.STONE, world.getBlock(1, 2, Chunk.LAYER_OBJECT));
+        assertEquals(Blocks.STONE, world.getFlatBlock(1, 2, Chunk.LAYER_OBJECT));
     }
 
     @Test

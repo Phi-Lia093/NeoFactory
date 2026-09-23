@@ -145,7 +145,7 @@ public class WorldRenderer implements Disposable {
         int originY = chunk.originZ();
         for (int localY = fromLocalY; localY <= toLocalY; localY++) {
             for (int localX = fromLocalX; localX <= toLocalX; localX++) {
-                Block block = chunk.getBlock(localX, localY, layer);
+                Block block = chunk.getBlock(localX, Chunk.flatY(layer), localY);
                 if (block.isAir()) {
                     if (layer == Chunk.LAYER_FLOOR && chunk.isCellGenerated(localX, localY)) {
                         // The ground of a finished cell is always filled by the

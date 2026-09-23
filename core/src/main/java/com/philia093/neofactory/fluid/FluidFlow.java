@@ -120,7 +120,7 @@ public final class FluidFlow {
         for (int localY = 0; localY < Constants.CHUNK_SIZE; localY++) {
             for (int localX = 0; localX < Constants.CHUNK_SIZE; localX++) {
                 for (int layer : LAYERS) {
-                    if (Fluids.byBlock(chunk.getBlock(localX, localY, layer)) != null) {
+                    if (Fluids.byBlock(chunk.getBlock(localX, Chunk.flatY(layer), localY)) != null) {
                         mark(world, chunk.originX() + localX, chunk.originZ() + localY);
                         return;
                     }
@@ -269,7 +269,7 @@ public final class FluidFlow {
         Set<BlockPos> settled = new LinkedHashSet<>();
         for (Map.Entry<BlockPos, Integer> entry : wanted.entrySet()) {
             int level = entry.getValue();
-            FluidState current = stateAt(world, entry.getKey(), runner);
+            FluidState current = state(world, entry.getKey(), runner);
             if (current != null && current.level() == level && current.isSource() == (level == 0)) {
                 settled.add(entry.getKey());
             }
@@ -316,8 +316,8 @@ public final class FluidFlow {
     private boolean write(World world, BlockPos cell, Runner runner, FluidState state) {
         writing = true;
         try {
-            world.setBlock(cell.x(), cell.y(), runner.layer(), runner.fluid().block());
-            world.setMeta(cell.x(), cell.y(), runner.layer(), state.pack());
+            world.setFlatBlock(cell.x(), cell.y(), runner.layer(), runner.fluid().block());
+            world.setFlatState(cell.x(), cell.y(), runner.layer(), state.pack());
         } finally {
             writing = false;
         }
@@ -335,8 +335,8 @@ public final class FluidFlow {
     private boolean clear(World world, BlockPos cell, Runner runner) {
         writing = true;
         try {
-            world.setBlock(cell.x(), cell.y(), runner.layer(), Blocks.AIR);
-            world.setMeta(cell.x(), cell.y(), runner.layer(), 0);
+            world.setFlatBlock(cell.x(), cell.y(), runner.layer(), Blocks.AIR);
+            world.setFlatState(cell.x(), cell.y(), runner.layer(), 0);
         } finally {
             writing = false;
         }
@@ -371,7 +371,7 @@ public final class FluidFlow {
             for (int offsetY = -reach; offsetY <= reach; offsetY++) {
                 for (int offsetX = -reach; offsetX <= reach; offsetX++) {
                     BlockPos cell = mark.offset(offsetX, offsetY);
-                    if (region.contains(cell) || stateAt(world, cell, runner) == null) {
+                    if (region.contains(cell) || state(world, cell, runner) == null) {
                         continue;
                     }
                     region.add(cell);
@@ -403,7 +403,7 @@ public final class FluidFlow {
     private Set<BlockPos> sourcesOf(World world, Runner runner, Set<BlockPos> region) {
         Set<BlockPos> sources = new LinkedHashSet<>();
         for (BlockPos cell : region) {
-            FluidState state = stateAt(world, cell, runner);
+            FluidState state = state(world, cell, runner);
             if (state != null && state.isSource()) {
                 sources.add(cell);
             }
@@ -438,7 +438,7 @@ public final class FluidFlow {
             return false;
         }
         int layer = runner.layer();
-        Block block = world.peekBlock(x, y, layer);
+        Block block = world.peekFlatBlock(x, y, layer);
         boolean room = block.isAir() || block == runner.fluid().block();
         if (!room && layer == OBJECT_LAYER) {
             room = !block.isSolid() && Fluids.byBlock(block) == null;
@@ -446,7 +446,7 @@ public final class FluidFlow {
         if (!room) {
             return false;
         }
-        return layer != OBJECT_LAYER || world.hasGround(x, y);
+        return layer != OBJECT_LAYER || world.hasFlatGround(x, y);
     }
 
     /**
@@ -462,7 +462,7 @@ public final class FluidFlow {
     private static boolean touches(World world, Fluid fluid, int layer, int x, int y) {
         for (int offsetY = -1; offsetY <= 1; offsetY++) {
             for (int offsetX = -1; offsetX <= 1; offsetX++) {
-                if (Fluids.byBlock(world.peekBlock(x + offsetX, y + offsetY, layer)) == fluid) {
+                if (Fluids.byBlock(world.peekFlatBlock(x + offsetX, y + offsetY, layer)) == fluid) {
                     return true;
                 }
             }
@@ -478,11 +478,11 @@ public final class FluidFlow {
      * @param runner fluid and layer the cell has to carry
      * @return the state, or {@code null} when the cell carries something else
      */
-    private static FluidState stateAt(World world, BlockPos cell, Runner runner) {
-        if (world.peekBlock(cell.x(), cell.y(), runner.layer()) != runner.fluid().block()) {
+    private static FluidState state(World world, BlockPos cell, Runner runner) {
+        if (world.peekFlatBlock(cell.x(), cell.y(), runner.layer()) != runner.fluid().block()) {
             return null;
         }
-        return FluidState.unpack(world.peekMeta(cell.x(), cell.y(), runner.layer()));
+        return FluidState.unpack(world.peekFlatState(cell.x(), cell.y(), runner.layer()));
     }
 
     /**

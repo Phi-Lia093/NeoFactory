@@ -192,8 +192,8 @@ public final class ChunkCodec {
         for (BlockEntity entity : chunk.blockEntities()) {
             NbtCompound entry = new NbtCompound("");
             entry.putInt(SaveTags.BLOCK_ENTITY_X, Chunk.localOf(entity.x()));
-            entry.putInt(SaveTags.BLOCK_ENTITY_Y, Chunk.flatY(entity.layer()));
-            entry.putInt(SaveTags.BLOCK_ENTITY_Z, Chunk.localOf(entity.y()));
+            entry.putInt(SaveTags.BLOCK_ENTITY_Y, entity.y());
+            entry.putInt(SaveTags.BLOCK_ENTITY_Z, Chunk.localOf(entity.z()));
             entry.putString(SaveTags.BLOCK_ENTITY_ID, entity.type().name());
             NbtCompound data = new NbtCompound(SaveTags.DATA);
             entity.writeData(data);
@@ -230,14 +230,15 @@ public final class ChunkCodec {
             int localX = entry.getInt(SaveTags.BLOCK_ENTITY_X, -1);
             int blockY = entry.getInt(SaveTags.BLOCK_ENTITY_Y, -1);
             int localZ = entry.getInt(SaveTags.BLOCK_ENTITY_Z, -1);
-            // A block entity outside the two layers of the flat view has no cell it could stand in
-            // yet: the game still draws the world from above, see the class comment of Chunk.
-            if (!Chunk.contains(localX, localZ) || !Chunk.isFlatHeight(blockY)) {
+            // A block entity that is stored outside the cells of its chunk names nothing it could
+            // stand on: the entry is reported and skipped instead of being placed somewhere else.
+            if (!Chunk.contains(localX, localZ)
+                    || blockY < Constants.MIN_Y || blockY > Constants.MAX_Y) {
                 LOGGER.warn("Chunk ({}, {}) holds a block entity outside its cells at ({}, {}, {})",
                         chunk.chunkX(), chunk.chunkZ(), localX, blockY, localZ);
                 continue;
             }
-            Block block = chunk.getBlockAt(localX, blockY, localZ);
+            Block block = chunk.getBlock(localX, blockY, localZ);
             if (!type.name().equals(block.blockEntityTypeName())) {
                 LOGGER.warn("Chunk ({}, {}) holds a '{}' at ({}, {}, {}) but the block there is"
                         + " '{}', the entity is dropped", chunk.chunkX(), chunk.chunkZ(), typeName,
@@ -245,8 +246,7 @@ public final class ChunkCodec {
                 continue;
             }
             BlockEntity entity = type.create();
-            entity.setPosition(chunk.originX() + localX, chunk.originZ() + localZ,
-                    Chunk.flatLayer(blockY));
+            entity.setPosition(chunk.originX() + localX, blockY, chunk.originZ() + localZ);
             NbtCompound data = entry.getCompound(SaveTags.DATA);
             entity.readData(data == null ? new NbtCompound(SaveTags.DATA) : data);
             chunk.setBlockEntity(entity);
@@ -306,7 +306,7 @@ public final class ChunkCodec {
      * of the section is added to the local Y of a cell, so a section that stands high up in the world
      * lands where it belongs. An id the game does not know becomes air, the same way a block of a game
      * version that is gone would, and a state is written after its block, because writing a block
-     * clears the state of the cell, see {@link Chunk#setRawIdAt(int, int, int, int)}.
+     * clears the state of the cell, see {@link Chunk#setRawId(int, int, int, int)}.
      *
      * @param chunk chunk to fill
      * @param list list of sections, {@code null} when the file holds none
@@ -335,10 +335,10 @@ public final class ChunkCodec {
                     for (int x = 0; x < Section.SIZE; x++) {
                         Block block = BlockRegistry.byId(blocks[cell]);
                         if (block.id() != Blocks.AIR_ID) {
-                            chunk.setRawIdAt(x, originY + y, z, block.id());
+                            chunk.setRawId(x, originY + y, z, block.id());
                         }
                         if (states[cell] != 0) {
-                            chunk.setStateAt(x, originY + y, z, states[cell]);
+                            chunk.setState(x, originY + y, z, states[cell]);
                         }
                         cell++;
                     }
