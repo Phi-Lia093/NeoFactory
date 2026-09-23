@@ -46,7 +46,7 @@ public final class FileChunkStore implements ChunkStore {
 
     @Override
     public void loadInto(Chunk chunk) {
-        NbtCompound data = storage.read(chunk.chunkX(), chunk.chunkY());
+        NbtCompound data = storage.read(chunk.chunkX(), chunk.chunkZ());
         if (data == null) {
             // The file vanished between the check and the read, the chunk stays
             // empty and the seed fills it. Nothing the player built is at risk,
@@ -58,7 +58,7 @@ public final class FileChunkStore implements ChunkStore {
 
     @Override
     public void persist(Chunk chunk) {
-        storage.write(chunk.chunkX(), chunk.chunkY(), ChunkCodec.write(chunk));
+        storage.write(chunk.chunkX(), chunk.chunkZ(), ChunkCodec.write(chunk));
         // The file holds the content now, so the chunk is no longer the only copy
         // of the change and may be dropped from memory.
         chunk.clearModified();

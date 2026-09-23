@@ -131,8 +131,8 @@ class BlockEntityPersistenceTest {
         NbtList entities = data.getList(SaveTags.BLOCK_ENTITIES);
         NbtCompound entry = new NbtCompound("");
         entry.putInt(SaveTags.BLOCK_ENTITY_X, BUILT_X);
-        entry.putInt(SaveTags.BLOCK_ENTITY_Y, BUILT_Y);
-        entry.putInt(SaveTags.BLOCK_ENTITY_LAYER, Chunk.LAYER_OBJECT);
+        entry.putInt(SaveTags.BLOCK_ENTITY_Y, Chunk.flatY(Chunk.LAYER_OBJECT));
+        entry.putInt(SaveTags.BLOCK_ENTITY_Z, BUILT_Y);
         entry.putString(SaveTags.BLOCK_ENTITY_ID, "a_machine_that_never_shipped");
         entities.add(entry);
 

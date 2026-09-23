@@ -135,14 +135,14 @@ public class WorldRenderer implements Disposable {
             long tickCount) {
         int fromLocalX = Math.max(0, minX - chunk.originX());
         int toLocalX = Math.min(Constants.CHUNK_SIZE - 1, maxX - chunk.originX());
-        int fromLocalY = Math.max(0, minY - chunk.originY());
-        int toLocalY = Math.min(Constants.CHUNK_SIZE - 1, maxY - chunk.originY());
+        int fromLocalY = Math.max(0, minY - chunk.originZ());
+        int toLocalY = Math.min(Constants.CHUNK_SIZE - 1, maxY - chunk.originZ());
         if (fromLocalX > toLocalX || fromLocalY > toLocalY) {
             return;
         }
 
         int originX = chunk.originX();
-        int originY = chunk.originY();
+        int originY = chunk.originZ();
         for (int localY = fromLocalY; localY <= toLocalY; localY++) {
             for (int localX = fromLocalX; localX <= toLocalX; localX++) {
                 Block block = chunk.getBlock(localX, localY, layer);

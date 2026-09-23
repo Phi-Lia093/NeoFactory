@@ -509,7 +509,7 @@ public final class WorldGen implements TerrainSampler {
             return;
         }
         int x = chunk.originX() + localX;
-        int y = chunk.originY() + localY;
+        int y = chunk.originZ() + localY;
         chunk.setRawId(localX, localY, Chunk.LAYER_FLOOR, floorAt(x, y).id());
         chunk.markCellGenerated(localX, localY);
     }
@@ -545,7 +545,7 @@ public final class WorldGen implements TerrainSampler {
         for (int localY = 0; localY < CHUNK_SIZE; localY++) {
             for (int localX = 0; localX < CHUNK_SIZE; localX++) {
                 int x = chunk.originX() + localX;
-                int y = chunk.originY() + localY;
+                int y = chunk.originZ() + localY;
                 for (Decoration decoration : decorations) {
                     if (decoration.shouldPlaceAt(this, x, y)) {
                         decoration.place(world, this, x, y, randomFor(x, y));

@@ -147,11 +147,11 @@ public final class SaveTags {
     /** Local X coordinate of one block entity, inside its chunk. */
     public static final String BLOCK_ENTITY_X = "X";
 
-    /** Local Y coordinate of one block entity, inside its chunk. */
+    /** Block Y coordinate of one block entity, its height in the world. */
     public static final String BLOCK_ENTITY_Y = "Y";
 
-    /** Layer of one block entity. */
-    public static final String BLOCK_ENTITY_LAYER = "Layer";
+    /** Local Z coordinate of one block entity, inside its chunk. */
+    public static final String BLOCK_ENTITY_Z = "Z";
 
     /** Group of the world rules. */
     public static final String GAME_RULES = "GameRules";

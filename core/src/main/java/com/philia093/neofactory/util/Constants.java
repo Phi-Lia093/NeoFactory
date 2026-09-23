@@ -32,6 +32,39 @@ public final class Constants {
     /** Side length in blocks of a single square chunk. */
     public static final int CHUNK_SIZE = 16;
 
+    /** Side length in blocks of a single section, the unit a chunk is stored and meshed in. */
+    public static final int SECTION_SIZE = 16;
+
+    /**
+     * Amount of sections a chunk holds along its vertical axis.
+     * <p>
+     * Sixteen sections make a column of {@link #MAX_Y} blocks, which is the height of the original
+     * game. A chunk only pays for the sections that hold something, see
+     * {@link com.philia093.neofactory.world.Section}, so the number is a ceiling and not a cost: it
+     * says how tall a world may become before the storage format has to be told about it.
+     */
+    public static final int SECTION_COUNT = 16;
+
+    /** Lowest block height of the world. */
+    public static final int MIN_Y = 0;
+
+    /**
+     * Highest block height of the world.
+     * <p>
+     * A world is a column of {@link #SECTION_COUNT} sections of {@link #SECTION_SIZE} blocks. The
+     * height travels with every stored chunk as the index of its sections and not as a count, so
+     * moving this ceiling later is a change of this one number.
+     */
+    public static final int MAX_Y = MIN_Y + SECTION_COUNT * SECTION_SIZE - 1;
+
+    /**
+     * Height the surface of a body of water stands at.
+     * <p>
+     * A river, a lake and the sea fill up to this height, which is what makes water find its level
+     * across a landscape instead of following every dip of the ground.
+     */
+    public static final int SEA_LEVEL = 64;
+
     /**
      * Index of the floor layer inside a chunk.
      * <p>

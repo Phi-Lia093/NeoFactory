@@ -14,64 +14,86 @@ import java.util.Objects;
 import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
 
 /**
- * A square tile of the world, seen from above.
+ * A column of the world: sixteen blocks across, and as tall as the world is.
  * <p>
- * A chunk stores {@link Constants#CHUNK_SIZE} times
- * {@link Constants#CHUNK_SIZE} cells. Both axes are horizontal, there is no
- * vertical axis: the camera looks straight down on the world. Two independent
- * layers are kept per cell:
+ * The flat engine kept two layers per cell and a chunk was a square of tiles, because the camera
+ * looked straight down and a block was one picture. A world of cubes needs a height, and a column
+ * of two hundred and fifty six blocks per cell would cost every chunk the same whether it holds a
+ * mountain or a sky. A chunk is therefore a stack of {@link Section sections}, sixteen blocks tall
+ * each, and a section that holds nothing but air keeps no array at all: the sky above the trees is
+ * free, see {@link #section(int)}.
+ * <p>
+ * The chunk also remembers the highest block of every column. That height is what a generator
+ * asks for when it wants to know where the ground is, what the sky light starts from and what a
+ * spawn search walks along - and it is cheap to keep, because only a block that is placed higher
+ * than the current height moves it.
+ * <p>
+ * <b>The flat view.</b> The game still <i>is</i> flat: it draws the world from above, the player
+ * walks on a plane and a block is one picture. While that is true, the two layers of the old world
+ * live at {@link #LAYER_BASE_Y} and one above it, and every method that names a {@code layer} is
+ * that flat view of the same storage:
  * <ul>
- *     <li>{@link #LAYER_FLOOR} - the ground the player walks on, for example
- *         grass, sand or stone, produced by the biome driven generator</li>
- *     <li>{@link #LAYER_OBJECT} - the layer the player stands in, empty by
- *         default and used for trees, plants and everything the player places
- *         later on</li>
+ *     <li>{@link #getBlock(int, int, int)} - the surface of a column and the cell above it</li>
+ *     <li>{@link #getBlockAt(int, int, int)} - the whole column, which is what a world of cubes
+ *         addresses</li>
  * </ul>
- * A cell stores a block id and a state, both as full 32 bit numbers: the id is
- * resolved into the actual {@link Block} through the {@link BlockRegistry}, which
- * keeps the memory footprint small, and the state is what a block carries beyond
- * its id, see {@link #meta(int, int, int)}.
+ * Both read and write the very same cells. The flat methods are marked as the ones that go away
+ * once the game is played standing in the world instead of looking down on it, and the plain
+ * {@code At} methods then take their names.
+ * <p>
+ * A cell stores the id of a block and its state; the id is resolved into the actual {@link Block}
+ * through the {@link BlockRegistry}, which is what keeps a section at eight kilobytes.
  */
 public final class Chunk {
 
-    /** Number of block layers stored per cell. */
+    /** Number of layers of the flat view of this chunk. */
     public static final int LAYERS = 2;
 
-    /** Index of the generated ground layer. */
+    /** Index of the generated ground layer of the flat view. */
     public static final int LAYER_FLOOR = Constants.LAYER_FLOOR;
 
-    /** Index of the object layer holding trees, plants and player blocks. */
+    /** Index of the object layer of the flat view, the layer the player stands in. */
     public static final int LAYER_OBJECT = Constants.LAYER_OBJECT;
 
-    /** Amount of cells stored by a single chunk. */
+    /**
+     * Height the flat view of the world stands on.
+     * <p>
+     * The ground of a column is at this height and the layer the player stands in is one above it.
+     * A world that is filled from the bottom up puts its surface where the noise says it belongs and
+     * forgets this number altogether.
+     */
+    public static final int LAYER_BASE_Y = Constants.SEA_LEVEL;
+
+    /** Amount of columns stored by a single chunk. */
     public static final int CELL_COUNT = CHUNK_SIZE * CHUNK_SIZE;
 
+    /** Value of the height map for a column that holds no block at all. */
+    public static final int NO_BLOCK = -1;
+
     private final int chunkX;
-    private final int chunkY;
+    private final int chunkZ;
 
-    /** Block id of every cell, one number per cell and layer. */
-    private final int[] blocks;
-
-    /**
-     * State of every cell, one number per cell and layer.
-     * <p>
-     * The state is what a block carries beyond its id: the direction a machine
-     * faces, the shape a pipe has to be drawn with, whether a machine is running.
-     * Nothing interprets it yet, but it travels with the chunk, so a later system
-     * finds the state of a cell exactly where it left it. A cell whose block
-     * changes loses its state, see {@link #setRawId(int, int, int, int)}.
-     */
-    private final int[] meta;
+    /** Sections of this column, {@code null} where one holds nothing but air. */
+    private final Section[] sections = new Section[Constants.SECTION_COUNT];
 
     /**
-     * Block entity of every cell, {@code null} for a cell that carries none.
+     * Height of the highest block of every column, {@link #NO_BLOCK} for an empty one.
      * <p>
-     * The array is the lookup: a machine standing somewhere is found without walking
-     * anything. {@link #active} is what a tick walks instead, because the list holds the
-     * entities that are really there - a chunk with a single machine does not make the
-     * world look at {@link #CELL_COUNT} cells every tick.
+     * A short rather than a byte, because the top of the world does not fit into a signed one, see
+     * {@link Constants#MAX_Y}.
      */
-    private final BlockEntity[] blockEntities = new BlockEntity[CELL_COUNT * LAYERS];
+    private final short[] heightMap = new short[CELL_COUNT];
+
+    /**
+     * Block entity of every cell of this column, {@code null} for a cell that carries none.
+     * <p>
+     * The array is the lookup: a machine standing somewhere is found without walking anything.
+     * {@link #active} is what a tick walks instead, because the list holds the entities that are
+     * really there - a chunk with a single machine does not make the world look at every cell of
+     * every section every tick.
+     */
+    private final BlockEntity[] blockEntities =
+            new BlockEntity[CELL_COUNT * Constants.SECTION_COUNT];
 
     /** Block entities of this chunk, in the order they were put in. */
     private final List<BlockEntity> active = new ArrayList<>();
@@ -100,13 +122,14 @@ public final class Chunk {
      *
      * @param chunkX chunk coordinate along the X axis, covers the block columns
      *               {@code chunkX * CHUNK_SIZE} to {@code chunkX * CHUNK_SIZE + CHUNK_SIZE - 1}
-     * @param chunkY chunk coordinate along the Y axis, same rule as {@code chunkX}
+     * @param chunkZ chunk coordinate along the Z axis, same rule as {@code chunkX}
      */
-    public Chunk(int chunkX, int chunkY) {
+    public Chunk(int chunkX, int chunkZ) {
         this.chunkX = chunkX;
-        this.chunkY = chunkY;
-        this.blocks = new int[CELL_COUNT * LAYERS];
-        this.meta = new int[CELL_COUNT * LAYERS];
+        this.chunkZ = chunkZ;
+        for (int column = 0; column < CELL_COUNT; column++) {
+            heightMap[column] = NO_BLOCK;
+        }
     }
 
     /** Chunk coordinate along the X axis. */
@@ -114,9 +137,9 @@ public final class Chunk {
         return chunkX;
     }
 
-    /** Chunk coordinate along the Y axis. */
-    public int chunkY() {
-        return chunkY;
+    /** Chunk coordinate along the Z axis, the second horizontal axis of the world. */
+    public int chunkZ() {
+        return chunkZ;
     }
 
     /** Block X coordinate of the first column of this chunk. */
@@ -124,112 +147,285 @@ public final class Chunk {
         return chunkX * CHUNK_SIZE;
     }
 
-    /** Block Y coordinate of the first row of this chunk. */
-    public int originY() {
-        return chunkY * CHUNK_SIZE;
+    /** Block Z coordinate of the first column of this chunk. */
+    public int originZ() {
+        return chunkZ * CHUNK_SIZE;
     }
 
     /**
-     * Returns the block stored in a specific layer.
+     * The section of this chunk that covers a height.
+     *
+     * @param sectionY index of the section along the vertical axis
+     * @return the section, or {@code null} while it holds nothing but air
+     */
+    public Section section(int sectionY) {
+        return sections[sectionY];
+    }
+
+    /** Amount of sections of this chunk that hold at least one block. */
+    public int sectionCount() {
+        int count = 0;
+        for (Section section : sections) {
+            if (section != null && !section.isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * {@code true} while a section of this chunk holds nothing but air.
+     * <p>
+     * A section that holds nothing keeps no array, which is what makes the air above a landscape
+     * free. A caller that walks the column of a chunk asks this before it looks at the section, and
+     * a chunk that is stored writes only the sections that really hold something.
+     *
+     * @param sectionY index of the section along the vertical axis
+     * @return {@code true} when the section carries no block
+     */
+    public boolean isEmptySection(int sectionY) {
+        Section section = sections[sectionY];
+        return section == null || section.isEmpty();
+    }
+
+    /**
+     * Height of the highest block of a column.
+     *
+     * @param localX local X coordinate
+     * @param localZ local Z coordinate
+     * @return the block Y coordinate of the highest block, or {@link #NO_BLOCK} for a column that
+     *         holds nothing at all
+     */
+    public int highestBlockY(int localX, int localZ) {
+        return heightMap[cellIndex(localX, localZ)];
+    }
+
+    /** {@code true} when a column of this chunk holds at least one block. */
+    public boolean hasBlock(int localX, int localZ) {
+        return highestBlockY(localX, localZ) != NO_BLOCK;
+    }
+
+    /**
+     * Block of the flat view: a layer of the surface of a column.
      *
      * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
-     * @param localY local Y coordinate, {@code 0 <= localY < CHUNK_SIZE}
+     * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
      * @param layer layer index, see {@link #LAYER_FLOOR} and {@link #LAYER_OBJECT}
      * @return the stored block, {@link Blocks#AIR} for empty space
+     * @deprecated the flat view, see the class comment: the ground of a column really sits at
+     *         {@link #LAYER_BASE_Y}, and a world filled from the bottom up stops naming layers
      */
-    public Block getBlock(int localX, int localY, int layer) {
-        return BlockRegistry.byId(blocks[index(localX, localY, layer)]);
+    @Deprecated
+    public Block getBlock(int localX, int localZ, int layer) {
+        return getBlockAt(localX, flatY(layer), localZ);
     }
 
     /**
-     * Stores a block in a specific layer and marks the chunk for redrawing.
+     * Stores a block in a layer of the flat view and marks the chunk for redrawing.
      *
      * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
-     * @param localY local Y coordinate, {@code 0 <= localY < CHUNK_SIZE}
+     * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
      * @param layer layer index, see {@link #LAYER_FLOOR} and {@link #LAYER_OBJECT}
      * @param block block to store, passing {@link Blocks#AIR} clears the position
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    public void setBlock(int localX, int localY, int layer, Block block) {
-        setRawId(localX, localY, layer, block.id());
+    @Deprecated
+    public void setBlock(int localX, int localZ, int layer, Block block) {
+        setBlockAt(localX, flatY(layer), localZ, block);
     }
 
     /**
-     * Returns the raw id stored at a position, used by serialization.
+     * Raw id of a layer of the flat view, used by serialization.
      *
      * @param localX local X coordinate
-     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
      * @param layer layer index
      * @return the numeric block id
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    public int rawId(int localX, int localY, int layer) {
-        return blocks[index(localX, localY, layer)];
+    @Deprecated
+    public int rawId(int localX, int localZ, int layer) {
+        return rawIdAt(localX, flatY(layer), localZ);
     }
 
     /**
-     * Writes a raw block id, used by serialization and world generation.
-     * <p>
-     * A cell whose block changes loses its state: the state of the block that was
-     * there belongs to that block and means nothing for the one that takes its
-     * place.
+     * Writes a raw id into a layer of the flat view, used by serialization.
      *
      * @param localX local X coordinate
-     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
      * @param layer layer index
      * @param id numeric block id
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    public void setRawId(int localX, int localY, int layer, int id) {
-        int slot = index(localX, localY, layer);
-        if (blocks[slot] == id) {
-            return;
-        }
-        blocks[slot] = id;
-        meta[slot] = 0;
-        dirty = true;
+    @Deprecated
+    public void setRawId(int localX, int localZ, int layer, int id) {
+        setRawIdAt(localX, flatY(layer), localZ, id);
     }
 
     /**
-     * Returns the state stored for a cell.
+     * State of a layer of the flat view.
      *
      * @param localX local X coordinate
-     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
      * @param layer layer index
      * @return the state, {@code 0} for a cell nothing wrote a state to
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    public int meta(int localX, int localY, int layer) {
-        return meta[index(localX, localY, layer)];
+    @Deprecated
+    public int meta(int localX, int localZ, int layer) {
+        return stateAt(localX, flatY(layer), localZ);
     }
 
     /**
-     * Writes the state of a cell.
-     * <p>
-     * The state is what a block carries beyond its id, see {@link #meta}. Writing
-     * it marks the chunk for redrawing, because a state is usually what a renderer
-     * draws differently.
+     * Writes the state of a layer of the flat view.
+     *
+     * @param localX local X coordinate
+     * @param localZ local Z coordinate
+     * @param layer layer index
+     * @param state state to store
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
+     */
+    @Deprecated
+    public void setMeta(int localX, int localZ, int layer, int state) {
+        setStateAt(localX, flatY(layer), localZ, state);
+    }
+
+    /**
+     * Block of one cell of this column.
+     *
+     * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
+     * @param localY local Y coordinate, {@code MIN_Y} to {@code MAX_Y}
+     * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
+     * @return the stored block, {@link Blocks#AIR} for empty space
+     */
+    public Block getBlockAt(int localX, int localY, int localZ) {
+        return BlockRegistry.byId(rawIdAt(localX, localY, localZ));
+    }
+
+    /**
+     * Stores a block in one cell of this column and marks the chunk for redrawing.
+     *
+     * @param localX local X coordinate, {@code 0 <= localX < CHUNK_SIZE}
+     * @param localY local Y coordinate, {@code MIN_Y} to {@code MAX_Y}
+     * @param localZ local Z coordinate, {@code 0 <= localZ < CHUNK_SIZE}
+     * @param block block to store, passing {@link Blocks#AIR} clears the cell
+     */
+    public void setBlockAt(int localX, int localY, int localZ, Block block) {
+        setRawIdAt(localX, localY, localZ, block.id());
+    }
+
+    /**
+     * Raw id of one cell of this column, used by serialization and world generation.
      *
      * @param localX local X coordinate
      * @param localY local Y coordinate
-     * @param layer layer index
-     * @param state state to store
+     * @param localZ local Z coordinate
+     * @return the numeric block id, {@link Blocks#AIR_ID} for an empty cell
+     * @throws IndexOutOfBoundsException when the height is outside the world
      */
-    public void setMeta(int localX, int localY, int layer, int state) {
-        int slot = index(localX, localY, layer);
-        if (meta[slot] == state) {
-            return;
+    public int rawIdAt(int localX, int localY, int localZ) {
+        checkY(localY);
+        Section section = sections[localY / Section.SIZE];
+        return section == null ? Blocks.AIR_ID
+                : section.rawId(localX, localY % Section.SIZE, localZ);
+    }
+
+    /**
+     * Writes a raw block id into one cell of this column.
+     * <p>
+     * A cell whose block changes loses its state: the state of the block that was there belongs to
+     * that block and means nothing for the one that takes its place. A block that is placed above
+     * the highest one of its column becomes the new highest, and clearing the highest one makes the
+     * chunk look for the next block below it, see {@link #highestBlockY(int, int)}.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
+     * @param id numeric block id
+     * @throws IndexOutOfBoundsException when the height is outside the world
+     */
+    public void setRawIdAt(int localX, int localY, int localZ, int id) {
+        checkY(localY);
+        int sectionY = localY / Section.SIZE;
+        Section section = sections[sectionY];
+        if (section == null) {
+            if (id == Blocks.AIR_ID) {
+                return;
+            }
+            section = new Section(sectionY);
+            sections[sectionY] = section;
         }
-        meta[slot] = state;
+        int insideY = localY % Section.SIZE;
+        boolean wasFilled = section.rawId(localX, insideY, localZ) != Blocks.AIR_ID;
+        section.setRawId(localX, insideY, localZ, id);
+        boolean filled = id != Blocks.AIR_ID;
+        if (wasFilled != filled) {
+            updateHeight(localX, localZ, localY, filled);
+        }
         dirty = true;
     }
 
     /**
-     * Returns the block entity of a cell.
+     * State of one cell of this column.
      *
      * @param localX local X coordinate
      * @param localY local Y coordinate
+     * @param localZ local Z coordinate
+     * @return the state, {@code 0} for a cell nothing wrote a state to
+     */
+    public int stateAt(int localX, int localY, int localZ) {
+        checkY(localY);
+        Section section = sections[localY / Section.SIZE];
+        return section == null ? 0 : section.state(localX, localY % Section.SIZE, localZ);
+    }
+
+    /**
+     * Writes the state of one cell of this column.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
+     * @param state state to store
+     */
+    public void setStateAt(int localX, int localY, int localZ, int state) {
+        checkY(localY);
+        int sectionY = localY / Section.SIZE;
+        Section section = sections[sectionY];
+        if (section == null) {
+            if (state == 0) {
+                return;
+            }
+            section = new Section(sectionY);
+            sections[sectionY] = section;
+        }
+        section.setState(localX, localY % Section.SIZE, localZ, state);
+        dirty = true;
+    }
+
+    /**
+     * Block entity of a cell of the flat view.
+     *
+     * @param localX local X coordinate
+     * @param localZ local Z coordinate
      * @param layer layer index
      * @return the entity, or {@code null} when the cell carries none
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    public BlockEntity blockEntity(int localX, int localY, int layer) {
-        return blockEntities[index(localX, localY, layer)];
+    @Deprecated
+    public BlockEntity blockEntity(int localX, int localZ, int layer) {
+        return blockEntityAt(localX, flatY(layer), localZ);
+    }
+
+    /**
+     * Block entity of one cell of this column.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
+     * @return the entity, or {@code null} when the cell carries none
+     */
+    public BlockEntity blockEntityAt(int localX, int localY, int localZ) {
+        return blockEntities[blockEntitySlot(localX, localY, localZ)];
     }
 
     /**
@@ -241,11 +437,16 @@ public final class Chunk {
      */
     public BlockEntity setBlockEntity(BlockEntity entity) {
         Objects.requireNonNull(entity, "entity");
-        if (chunkOf(entity.x()) != chunkX || chunkOf(entity.y()) != chunkY) {
+        if (chunkOf(entity.x()) != chunkX || chunkOf(entity.y()) != chunkZ) {
             throw new IllegalArgumentException("The block entity " + entity
-                    + " does not belong to chunk (" + chunkX + ", " + chunkY + ")");
+                    + " does not belong to chunk (" + chunkX + ", " + chunkZ + ")");
         }
-        int slot = index(localOf(entity.x()), localOf(entity.y()), entity.layer());
+        // A block entity is still placed by a layer, see the flat view in the class comment: the
+        // layer is its height and the old Y coordinate is the new Z one.
+        int localX = localOf(entity.x());
+        int localY = flatY(entity.layer());
+        int localZ = localOf(entity.y());
+        int slot = blockEntitySlot(localX, localY, localZ);
         BlockEntity previous = blockEntities[slot];
         if (previous != null) {
             active.remove(previous);
@@ -257,15 +458,17 @@ public final class Chunk {
     }
 
     /**
-     * Takes the block entity of a cell out of this chunk.
+     * Takes the block entity of a cell of the flat view out of this chunk.
      *
      * @param localX local X coordinate
-     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
      * @param layer layer index
      * @return the entity that was there, {@code null} when the cell carried none
+     * @deprecated the flat view, see {@link #getBlock(int, int, int)}
      */
-    public BlockEntity removeBlockEntity(int localX, int localY, int layer) {
-        int slot = index(localX, localY, layer);
+    @Deprecated
+    public BlockEntity removeBlockEntity(int localX, int localZ, int layer) {
+        int slot = blockEntitySlot(localX, flatY(layer), localZ);
         BlockEntity previous = blockEntities[slot];
         if (previous == null) {
             return null;
@@ -405,19 +608,115 @@ public final class Chunk {
         return Math.floorDiv(blockCoordinate, CHUNK_SIZE);
     }
 
-    private static int cellIndex(int localX, int localY) {
-        return localY * CHUNK_SIZE + localX;
-    }
-
-    private static int index(int localX, int localY, int layer) {
+    /**
+     * Height the flat view of a layer stands at.
+     *
+     * @param layer layer index, see {@link #LAYER_FLOOR} and {@link #LAYER_OBJECT}
+     * @return the block Y coordinate of that layer
+     * @throws IndexOutOfBoundsException when no layer carries that index
+     */
+    public static int flatY(int layer) {
         if (layer < 0 || layer >= LAYERS) {
             throw new IndexOutOfBoundsException("Layer out of range: " + layer);
         }
-        if (!contains(localX, localY)) {
-            throw new IndexOutOfBoundsException(
-                    "Block out of range: localX=" + localX + ", localY=" + localY);
+        return LAYER_BASE_Y + layer;
+    }
+
+    /**
+     * {@code true} when a height is one of the layers of the flat view.
+     * <p>
+     * The game is drawn from above and only ever writes the base height and the cell above it, see
+     * {@link #flatY(int)}, so every other height is not part of the flat view yet. A reader that
+     * stumbles over a cell outside those two layers reports it instead of mapping it to a layer that
+     * does not exist.
+     *
+     * @param blockY block Y coordinate to test
+     * @return {@code true} when a layer of the flat view stands at that height
+     */
+    public static boolean isFlatHeight(int blockY) {
+        return blockY >= LAYER_BASE_Y && blockY < LAYER_BASE_Y + LAYERS;
+    }
+
+    /**
+     * Layer the flat view of the world stands at a height, the inverse of {@link #flatY(int)}.
+     *
+     * @param blockY block Y coordinate, see {@link #flatY(int)}
+     * @return the layer index that stands at that height
+     * @throws IndexOutOfBoundsException when no layer of the flat view stands there
+     */
+    public static int flatLayer(int blockY) {
+        if (!isFlatHeight(blockY)) {
+            throw new IndexOutOfBoundsException("No layer of the flat view at height " + blockY);
         }
-        return layer * CELL_COUNT + cellIndex(localX, localY);
+        return blockY - LAYER_BASE_Y;
+    }
+
+    /**
+     * Keeps the highest block of a column up to date.
+     * <p>
+     * A block that is placed above the current height becomes the new one. Clearing the highest
+     * block makes the chunk walk down the column until it finds the next block, which is what keeps
+     * the height honest when the player digs the surface away: the ground of the column is then the
+     * block that was below it.
+     *
+     * @param localX local X coordinate
+     * @param localZ local Z coordinate
+     * @param localY height that changed
+     * @param filled {@code true} when a block took the cell, {@code false} when it was cleared
+     */
+    private void updateHeight(int localX, int localZ, int localY, boolean filled) {
+        int column = cellIndex(localX, localZ);
+        int highest = heightMap[column];
+        if (filled) {
+            if (localY > highest) {
+                heightMap[column] = (short) localY;
+            }
+            return;
+        }
+        if (localY != highest) {
+            return;
+        }
+        for (int y = localY - 1; y >= Constants.MIN_Y; y--) {
+            Section section = sections[y / Section.SIZE];
+            if (section != null && section.rawId(localX, y % Section.SIZE, localZ) != Blocks.AIR_ID) {
+                heightMap[column] = (short) y;
+                return;
+            }
+        }
+        heightMap[column] = (short) NO_BLOCK;
+    }
+
+    /**
+     * Verifies that a height lies inside the world.
+     *
+     * @param localY local Y coordinate to check
+     * @throws IndexOutOfBoundsException when the height is outside the world
+     */
+    private static void checkY(int localY) {
+        if (localY < Constants.MIN_Y || localY > Constants.MAX_Y) {
+            throw new IndexOutOfBoundsException("Height outside the world: " + localY);
+        }
+    }
+
+    /**
+     * Slot of a block entity inside the lookup array of this chunk.
+     *
+     * @param localX local X coordinate
+     * @param localY local Y coordinate
+     * @param localZ local Z coordinate
+     * @return the slot, one per cell of the section the height falls into
+     */
+    private static int blockEntitySlot(int localX, int localY, int localZ) {
+        checkY(localY);
+        return (localY / Section.SIZE) * CELL_COUNT + cellIndex(localX, localZ);
+    }
+
+    private static int cellIndex(int localX, int localZ) {
+        if (!contains(localX, localZ)) {
+            throw new IndexOutOfBoundsException(
+                    "Column out of range: localX=" + localX + ", localZ=" + localZ);
+        }
+        return localZ * CHUNK_SIZE + localX;
     }
 }
 

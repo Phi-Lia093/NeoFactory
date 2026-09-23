@@ -121,7 +121,7 @@ public final class FluidFlow {
             for (int localX = 0; localX < Constants.CHUNK_SIZE; localX++) {
                 for (int layer : LAYERS) {
                     if (Fluids.byBlock(chunk.getBlock(localX, localY, layer)) != null) {
-                        mark(world, chunk.originX() + localX, chunk.originY() + localY);
+                        mark(world, chunk.originX() + localX, chunk.originZ() + localY);
                         return;
                     }
                 }

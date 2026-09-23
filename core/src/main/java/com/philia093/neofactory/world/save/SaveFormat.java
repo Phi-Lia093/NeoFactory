@@ -17,8 +17,15 @@ public final class SaveFormat {
      * version is refused instead of guessed at, see
      * {@link LevelData} and {@link ChunkCodec}. Every change of the layout bumps
      * this number.
+     * <p>
+     * <b>What version 2 changed.</b> A chunk is no longer two flat layers of sixteen by sixteen
+     * cells: it is a column of {@link com.philia093.neofactory.world.Section sections} of sixteen
+     * blocks on every side, stored one entry per section that carries something, each with its block
+     * ids and its states packed into a palette. A world of version 1 therefore cannot be read any
+     * more - its cells live in two layers that a world of cubes knows nothing about - and the game
+     * says so instead of filling the world with blocks that were never there.
      */
-    public static final int DATA_VERSION = 1;
+    public static final int DATA_VERSION = 2;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

@@ -25,7 +25,7 @@ public final class InMemoryChunkStore implements ChunkStore {
 
     @Override
     public void loadInto(Chunk chunk) {
-        NbtCompound data = chunks.get(BlockPos.pack(chunk.chunkX(), chunk.chunkY()));
+        NbtCompound data = chunks.get(BlockPos.pack(chunk.chunkX(), chunk.chunkZ()));
         if (data != null) {
             ChunkCodec.read(chunk, data);
         }
@@ -33,7 +33,7 @@ public final class InMemoryChunkStore implements ChunkStore {
 
     @Override
     public void persist(Chunk chunk) {
-        chunks.put(BlockPos.pack(chunk.chunkX(), chunk.chunkY()), ChunkCodec.write(chunk));
+        chunks.put(BlockPos.pack(chunk.chunkX(), chunk.chunkZ()), ChunkCodec.write(chunk));
         chunk.clearModified();
     }
 

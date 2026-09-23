@@ -166,20 +166,28 @@ decoration depends on nothing but the seed and its coordinates. That split is wh
 makes a save cost what was built instead of what is loaded, and it is what allows a
 distant chunk to be written and dropped from memory in one step.
 
-A stored chunk holds the id and the state of a cell as full 32 bit numbers, so the
-game never runs out of room for the blocks a factory is built from: an ore, a machine,
-a pipe and a cable are each just another id. The state is what a block carries beyond
-its id - the direction a machine faces, the shape a pipe is drawn with - and it travels
-with the chunk, while a cell whose block changes loses the state it had.
+A stored chunk is a column of sections, and it holds the cell of every section that
+carries something: the block id of a cell and its state travel as full 32 bit numbers,
+so the game never runs out of room for the blocks a factory is built from - an ore, a
+machine, a pipe and a cable are each just another id. A section that holds nothing but
+air is not written at all, which is what keeps the sky above a landscape out of the
+file, and the array of a section is stored as a palette plus one packed index per cell,
+so a piece of terrain that repeats six blocks spends a few bits per block instead of
+four bytes. The state is what a block carries beyond its id - the direction a machine
+faces, the shape a pipe is drawn with - and it travels with the chunk, while a cell
+whose block changes loses the state it had.
 
 What a block carries beyond that - the slots, the buffer and the tanks of a machine - is
-stored with the chunk as well, as a list of block entities next to the two arrays. An
+stored with the chunk as well, as a list of block entities next to the sections. An
 entry whose type the game no longer knows, or one whose block is gone, is reported and
 skipped, so a chunk always opens.
 
 The format version travels with every file and is checked while reading. The game is
 still being built, so nothing is converted between versions: a world written by another
-version is refused with a clear reason instead of being read halfway.
+version is refused with a clear reason instead of being read halfway. Version 2 is the
+one that turned the two flat layers of a chunk into the column of sections a world of
+cubes needs, so a world of version 1 is refused instead of being read into a shape it
+never had.
 
 ## Build and run
 

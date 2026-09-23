@@ -345,7 +345,7 @@ public final class World implements BlockAccess {
         while (iterator.hasNext()) {
             Chunk chunk = iterator.next().getValue();
             if (Math.abs(chunk.chunkX() - centerChunkX) <= keepRadius
-                    && Math.abs(chunk.chunkY() - centerChunkY) <= keepRadius) {
+                    && Math.abs(chunk.chunkZ() - centerChunkY) <= keepRadius) {
                 continue;
             }
             if (chunk.isModified()) {
