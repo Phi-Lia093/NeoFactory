@@ -38,9 +38,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * up. The checks themselves are the regression net: a renamed picture or a lost
  * file fails the build instead of showing up as a missing tile while playing.
  * <p>
- * The art of a top-down game only needs the view from above, which is why the
- * block folder may not hold side or bottom faces, see
- * {@link #theBlockFolderStoresTopFacesOnly()}.
+ * The art of a top-down game only needed the view from above, which is why the block folder of the
+ * flat engine held 271 pictures of the pack and not 356: the side, the bottom and the front of
+ * every block had been deleted, and this class failed the build when one of them came back. A world
+ * of cubes shows six faces, so they were fetched home again by
+ * {@code build/verify/extract_3d_assets.ps1} and the rule turned around: every face of a block that
+ * is more than one picture has to be there, see {@link #everyFaceOfAMultiFaceBlockExists()}.
  */
 class TextureAuditTest {
 
@@ -49,18 +52,6 @@ class TextureAuditTest {
 
     /** Report listing what the game uses and what it does not. */
     private static final Path REPORT = Path.of("build", "reports", "texture-audit.txt");
-
-    /**
-     * Faces of the art pack whose file name carries no suffix.
-     * <p>
-     * The pack names the side of an oak log {@code log_oak} and its top
-     * {@code log_oak_top}, so a rule that only looks at suffixes would keep the side
-     * faces of the logs, of the sandstone and of a few other blocks.
-     */
-    private static final Set<String> SIDE_FACES_WITHOUT_SUFFIX = Set.of("log_acacia",
-            "log_big_oak", "log_birch", "log_jungle", "log_oak", "log_spruce",
-            "hopper_outside", "quartz_block_lines", "quartz_block_chiseled",
-            "sandstone_normal", "sandstone_carved", "sandstone_smooth");
 
     @BeforeAll
     static void registerGameData() {
@@ -130,34 +121,29 @@ class TextureAuditTest {
     }
 
     /**
-     * {@code true} when a picture name uses a side, a bottom or another face that a
-     * view from above never shows.
-     *
-     * @param name file name without extension
-     * @return {@code true} for a face the game does not need
+     * Every face of a block that is more than one picture is really there.
+     * <p>
+     * The list lives in {@link MultiFaceTextures} and holds the 78 pictures the flat engine deleted,
+     * plus the metadata of the seven sheets whose animation is described outside of them. The check
+     * is the net under that art: a face that was renamed, lost while the pack was replaced or
+     * mistyped in the script that fetched it fails the build here, instead of showing up as a hole
+     * in the world that a player finds before anybody else does.
      */
-    private static boolean isOtherFace(String name) {
-        return name.matches(".*(_side|_bottom|_front|_end|_upper|_lower|_inner"
-                + "|_inside|_base|_face).*")
-                || name.endsWith("_back")
-                || name.endsWith("_stem")
-                || SIDE_FACES_WITHOUT_SUFFIX.contains(name);
-    }
-
     @Test
-    void theBlockFolderStoresTopFacesOnly() throws IOException {
-        List<String> otherFaces = new ArrayList<>();
-        try (Stream<Path> files = Files.list(ASSETS.resolve("blocks"))) {
-            for (Path file : files.toList()) {
-                String name = file.getFileName().toString();
-                if (name.endsWith(".png") && isOtherFace(name.substring(0, name.length() - 4))) {
-                    otherFaces.add(name);
-                }
+    void everyFaceOfAMultiFaceBlockExists() {
+        List<String> missing = new ArrayList<>();
+        for (String face : MultiFaceTextures.FACES) {
+            if (!Files.isRegularFile(ASSETS.resolve("blocks").resolve(face + ".png"))) {
+                missing.add("blocks/" + face + ".png");
             }
         }
-        assertTrue(otherFaces.isEmpty(), "the block folder holds faces a top down view"
-                + " never shows, delete them or extend this rule:\n"
-                + String.join("\n", otherFaces));
+        for (String sheet : MultiFaceTextures.ANIMATED_SHEETS) {
+            if (!Files.isRegularFile(ASSETS.resolve("blocks").resolve(sheet + ".png.mcmeta"))) {
+                missing.add("blocks/" + sheet + ".png.mcmeta");
+            }
+        }
+        assertTrue(missing.isEmpty(), "the faces of a world of cubes are missing, run"
+                + " build/verify/extract_3d_assets.ps1:\n" + String.join("\n", missing));
     }
 
     @Test
@@ -177,13 +163,20 @@ class TextureAuditTest {
                 usedItems.add(item.overlayTexture().substring(Item.ITEM_FOLDER.length()));
             }
         }
+        // The faces of the blocks that are more than one picture are kept on purpose: the blocks
+        // name them one by one as the world grows its third axis, see MultiFaceTextures. Listing
+        // them as art nothing references would hide the art that is really spare.
+        Set<String> usedBlocksAndKeptFaces = new TreeSet<>(usedBlocks);
+        usedBlocksAndKeptFaces.addAll(MultiFaceTextures.FACES);
 
         StringBuilder report = new StringBuilder();
         report.append("# Texture audit\n\n");
         report.append("Referenced blocks: ").append(usedBlocks.size()).append('\n');
-        report.append("Referenced items: ").append(usedItems.size()).append("\n\n");
+        report.append("Referenced items: ").append(usedItems.size()).append('\n');
+        report.append("Faces kept for a world of cubes: ")
+                .append(MultiFaceTextures.FACES.size()).append("\n\n");
 
-        List<String> spareBlocks = spare(ASSETS.resolve("blocks"), usedBlocks);
+        List<String> spareBlocks = spare(ASSETS.resolve("blocks"), usedBlocksAndKeptFaces);
         List<String> spareItems = spare(ASSETS.resolve("items"), usedItems);
         report.append("## Blocks nothing references (").append(spareBlocks.size()).append(")\n");
         appendAll(report, spareBlocks);

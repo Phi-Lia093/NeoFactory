@@ -16,6 +16,19 @@ public final class Constants {
     /** Size of a single block in world units, equal to the texture size in pixels. */
     public static final int TILE_SIZE = 16;
 
+    /**
+     * Size of a single block in world units, the unit the world of cubes is measured in.
+     * <p>
+     * One block covers one unit, so a coordinate of {@code 5.5} is the middle of the block
+     * {@code 5} and the height of a player is written as {@code 1.8} instead of {@code 28.8}. The
+     * flat engine measured the world in pixels of the art instead, see {@link #TILE_SIZE}, which is
+     * why every camera, movement and save number of the old world carries a factor of sixteen in
+     * it. As the world grows its third axis, the two are told apart: this is the size of a block,
+     * {@code TILE_SIZE} is the size of a picture, and the old constant is retired once nothing
+     * counts in pixels any more.
+     */
+    public static final float BLOCK_SIZE = 1.0f;
+
     /** Side length in blocks of a single square chunk. */
     public static final int CHUNK_SIZE = 16;
 

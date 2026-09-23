@@ -127,7 +127,7 @@ world is stored on disk so that a session can be continued later.
 | Package | Contents |
 | --- | --- |
 | `fluid` | what a fluid is and where it stands: the kinds, their sheet and colour, the state of a cell, the spread of a spill and the containers that carry it |
-| `block` | block types and the id/name lookup table, ids are stable across save games |
+| `block` | block types, the six faces of a cube and the picture each face is drawn from, and the id/name lookup table, ids are stable across save games |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
@@ -142,7 +142,7 @@ world is stored on disk so that a session can be continued later.
 | `render` | world, entity, selection and font rendering |
 | `screen` | the screens and the manager that switches between them |
 | `input` | keyboard and mouse state |
-| `util` | constants and the NBT layer the save format is built on |
+| `util` | constants, the box a world of cubes is measured against, and the NBT layer the save format is built on |
 
 ## Where the game writes
 
@@ -199,13 +199,12 @@ writes a picture of itself into `core/build/reports`.
 
 ## Art
 
-The camera looks straight down, so a block only needs its top face: side, bottom
-and front pictures of the art pack were removed from `assets/blocks`, which keeps
-the folder to tiles the game can actually show. `gradlew :core:test` writes the list
-of spare pictures - art nothing references yet, kept for later systems - to
-`core/build/reports/texture-audit.txt`. The same test fails when a block or an item
-points at a picture that is not there, and when a side or bottom face sneaks back
-into the block folder.
+The camera looks straight down so far, so a block was drawn as a single tile and only its
+top face was kept: `gradlew :core:test` writes the list of spare pictures - art nothing
+references yet, kept for later systems - to `core/build/reports/texture-audit.txt`. The
+same test fails when a block or an item points at a picture that is not there, and since
+the world grew its third axis it fails the other way round as well: every face of a block
+that is more than one picture has to be present, see the paragraph below.
 
 In a slot a block item does not show that tile as a flat square: the game folds it
 into a small cube at run time, see `BlockIconFactory`. The two side faces the view
@@ -248,6 +247,20 @@ around the darker core inside it, and `Item#overlayTexture` is that second layer
 colours while the shape below takes the tint. `gradlew :core:test` paints every shape of every
 material into `core/build/reports/material-preview.png`, one row per material and one column per
 shape, which is how the colours of ten metals are reviewed without starting the game.
+
+The flat engine only ever needed the view from above, so the side, the bottom and the front of every
+block had been deleted: `assets/blocks` held 271 pictures of the art pack instead of 356, and a test
+even failed the build when one of them came back. A world of cubes shows six faces, so
+`build/verify/extract_3d_assets.ps1` fetches the missing ones home - the 78 faces of the 43 blocks
+that are more than one picture, and the metadata of the seven sheets whose animation is written
+outside of them - together with the three sets a rounder world needs: `colormap` holds the two
+pictures the grass and the leaves are painted through, `environment` the sun, the moon and its
+phases, the clouds, the rain and the snow, and `misc` the underwater filter, the vignette and the
+shadow an entity drops. The list of faces lives in `MultiFaceTextures` and is watched by the audit,
+so a face that is renamed, lost while the pack is replaced or mistyped in the script is a failed
+build and never a hole in the world. `BlockFace` names the six faces of a cube - with the way each
+one lies in space and the light it catches - and `FaceSet` gives every one of them a picture, one
+fallback at a time, so a block of six pictures stays three lines.
 
 `gui/inventory_icons.png` holds every panel of the interface. Since the creative
 inventory arrived it also carries that screen's art - the two panels, the tab in its two
