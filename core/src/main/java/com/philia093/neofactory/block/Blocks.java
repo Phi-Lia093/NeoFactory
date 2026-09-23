@@ -194,6 +194,11 @@ public final class Blocks {
         // colour is applied at draw time through the tint.
         GRASS = Block.builder(GRASS_ID, "grass")
                 .texture("grass_top")
+                .faces(FaceSet.builder()
+                        .all("grass_side")
+                        .top("grass_top")
+                        .bottom("dirt")
+                        .build())
                 .ground(true)
                 .tint(new Color(0.60f, 0.80f, 0.36f, 1.0f))
                 .hardness(0.6f)
@@ -254,6 +259,11 @@ public final class Blocks {
         // center of a tree clearly distinguishable from its leaves.
         LOG_OAK = Block.builder(LOG_OAK_ID, "log_oak")
                 .texture("log_oak_top")
+                .faces(FaceSet.builder()
+                        .all("log_oak")
+                        .top("log_oak_top")
+                        .bottom("log_oak_top")
+                        .build())
                 .solid(true)
                 .hardness(2.0f)
                 .build();

@@ -32,6 +32,7 @@ public final class Block {
     private final int harvestLevel;
     private final String blockEntityTypeName;
     private final Animation animation;
+    private final FaceSet faces;
 
     private Block(Builder builder) {
         this.id = builder.id;
@@ -46,6 +47,10 @@ public final class Block {
         this.harvestLevel = builder.harvestLevel;
         this.blockEntityTypeName = builder.blockEntityTypeName;
         this.animation = builder.animation;
+        // A block that named no set of its own is one picture on every face, which is what most of the
+        // art pack is; a block the world never draws keeps an empty set, see FaceSet.NONE.
+        this.faces = builder.faces != null ? builder.faces
+                : (builder.texture.isEmpty() ? FaceSet.NONE : FaceSet.of(builder.texture));
     }
 
     /** Unique numeric id, also used as the palette index inside chunks. */
@@ -178,6 +183,20 @@ public final class Block {
         return animation != null && animation.isAnimated();
     }
 
+    /**
+     * The picture of every face of this block.
+     * <p>
+     * The flat engine drew a block as one picture seen from above, which is what {@link #texture()}
+     * still names. A world of cubes shows six faces, so the mesher asks this set instead: a block that
+     * named no set of its own shows one picture on every face, and a block that did - the grass, the
+     * log, the machine - keeps its top, its sides and its front apart, see {@link FaceSet}.
+     *
+     * @return the set of pictures, never {@code null}, empty for a block that is never drawn
+     */
+    public FaceSet faces() {
+        return faces;
+    }
+
     /** {@code true} when this block has a texture that can be drawn. */
     public boolean isDrawable() {
         return !texture.isEmpty() && !isAir();
@@ -267,6 +286,7 @@ public final class Block {
         private int harvestLevel;
         private String blockEntityTypeName = "";
         private Animation animation;
+        private FaceSet faces;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -363,6 +383,18 @@ public final class Block {
          */
         public Builder animation(int frames, int frameTicks) {
             return animation(new Animation(frames, frameTicks));
+        }
+
+        /**
+         * Sets the picture of every face of this block.
+         * <p>
+         * A block that does not call this shows its one {@link #texture(String)} on all six faces.
+         *
+         * @param faces set of pictures, one per face
+         */
+        public Builder faces(FaceSet faces) {
+            this.faces = Objects.requireNonNull(faces, "faces");
+            return this;
         }
 
         public Block build() {
