@@ -316,8 +316,8 @@ public final class FluidFlow {
     private boolean write(World world, BlockPos cell, Runner runner, FluidState state) {
         writing = true;
         try {
-            world.setFlatBlock(cell.x(), cell.y(), runner.layer(), runner.fluid().block());
-            world.setFlatState(cell.x(), cell.y(), runner.layer(), state.pack());
+            world.setBlock(cell.x(), Chunk.flatY(runner.layer()), cell.y(), runner.fluid().block());
+            world.setState(cell.x(), Chunk.flatY(runner.layer()), cell.y(), state.pack());
         } finally {
             writing = false;
         }
@@ -335,8 +335,8 @@ public final class FluidFlow {
     private boolean clear(World world, BlockPos cell, Runner runner) {
         writing = true;
         try {
-            world.setFlatBlock(cell.x(), cell.y(), runner.layer(), Blocks.AIR);
-            world.setFlatState(cell.x(), cell.y(), runner.layer(), 0);
+            world.setBlock(cell.x(), Chunk.flatY(runner.layer()), cell.y(), Blocks.AIR);
+            world.setState(cell.x(), Chunk.flatY(runner.layer()), cell.y(), 0);
         } finally {
             writing = false;
         }
@@ -479,10 +479,10 @@ public final class FluidFlow {
      * @return the state, or {@code null} when the cell carries something else
      */
     private static FluidState state(World world, BlockPos cell, Runner runner) {
-        if (world.peekFlatBlock(cell.x(), cell.y(), runner.layer()) != runner.fluid().block()) {
+        if (world.peekBlock(cell.x(), Chunk.flatY(runner.layer()), cell.y()) != runner.fluid().block()) {
             return null;
         }
-        return FluidState.unpack(world.peekFlatState(cell.x(), cell.y(), runner.layer()));
+        return FluidState.unpack(world.peekState(cell.x(), Chunk.flatY(runner.layer()), cell.y()));
     }
 
     /**

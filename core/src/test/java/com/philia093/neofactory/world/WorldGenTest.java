@@ -348,7 +348,7 @@ class WorldGenTest {
 
     /** The block a cell carries in the layer of the player. */
     private static Block waterOf(World world, BlockPos cell) {
-        return world.getFlatBlock(cell.x(), cell.y(), FluidFlow.OBJECT_LAYER);
+        return world.getBlock(cell.x(), Chunk.flatY(FluidFlow.OBJECT_LAYER), cell.y());
     }
 
     /** The four cells around one. */

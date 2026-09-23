@@ -549,47 +549,8 @@ public final class World implements BlockAccess {
         return removed;
     }
 
-    /**
-     * Reads a block of the flat view without generating anything.
-     *
-     * @param x block X coordinate along the first horizontal axis
-     * @param z block Z coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and {@link Chunk#LAYER_OBJECT}
-     * @return the stored block, {@link Blocks#AIR} when the chunk is not loaded
-     * @deprecated the flat view, see {@link #peekBlock(int, int, int)}
-     */
-    @Deprecated
-    public Block peekFlatBlock(int x, int z, int layer) {
-        return peekBlock(x, Chunk.flatY(layer), z);
-    }
 
-    /**
-     * Reads the state of a cell of the flat view without generating anything.
-     *
-     * @param x block X coordinate along the first horizontal axis
-     * @param z block Z coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and {@link Chunk#LAYER_OBJECT}
-     * @return the stored state, {@code 0} when the chunk is not loaded
-     * @deprecated the flat view, see {@link #peekState(int, int, int)}
-     */
-    @Deprecated
-    public int peekFlatState(int x, int z, int layer) {
-        return peekState(x, Chunk.flatY(layer), z);
-    }
 
-    /**
-     * Block entity of a cell of the flat view, without generating anything.
-     *
-     * @param x block X coordinate along the first horizontal axis
-     * @param z block Z coordinate along the second horizontal axis
-     * @param layer layer index, see {@link Chunk#LAYER_FLOOR} and {@link Chunk#LAYER_OBJECT}
-     * @return the entity, or {@code null} when the cell carries none
-     * @deprecated the flat view, see {@link #blockEntity(int, int, int)}
-     */
-    @Deprecated
-    public BlockEntity flatBlockEntity(int x, int z, int layer) {
-        return blockEntity(x, Chunk.flatY(layer), z);
-    }
 
     /** Amount of block entities in the chunks that are loaded right now. */
     public int blockEntityCount() {
@@ -789,8 +750,9 @@ public final class World implements BlockAccess {
                         // A player who starts in the water of a lake has to wade out of it again.
                         continue;
                     }
-                    if (!getFlatBlock(candidateX, candidateY, Chunk.LAYER_FLOOR).isAir()
-                            && !isFlatSolid(candidateX, candidateY)) {
+                    if (!getBlock(candidateX, Chunk.flatY(Chunk.LAYER_FLOOR), candidateY).isAir()
+                            && !(isSolid(candidateX, Chunk.flatY(Chunk.LAYER_OBJECT), candidateY)
+                            || isSolid(candidateX, Chunk.flatY(Chunk.LAYER_FLOOR), candidateY))) {
                         return new int[] {candidateX, candidateY};
                     }
                 }
@@ -812,8 +774,8 @@ public final class World implements BlockAccess {
      * @return {@code true} when water, lava or another fluid stands in that cell
      */
     private boolean inFluid(int x, int y) {
-        return Fluids.byBlock(peekFlatBlock(x, y, Chunk.LAYER_FLOOR)) != null
-                || Fluids.byBlock(peekFlatBlock(x, y, Chunk.LAYER_OBJECT)) != null;
+        return Fluids.byBlock(peekBlock(x, Chunk.flatY(Chunk.LAYER_FLOOR), y)) != null
+                || Fluids.byBlock(peekBlock(x, Chunk.flatY(Chunk.LAYER_OBJECT), y)) != null;
     }
 
     /**
