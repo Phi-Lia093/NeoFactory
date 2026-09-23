@@ -22,22 +22,16 @@ public final class MeshData {
     /** Highest amount of vertices one mesh may hold, the limit of a sixteen bit index. */
     public static final int MAX_VERTICES = 65_535;
 
-    /** Amount of floats of one vertex: position, texture coordinate and picture layer. */
-    public static final int FLOATS_PER_VERTEX = 6;
-
-    /** Amount of bytes one vertex adds to the colour buffer. */
-    public static final int COLOUR_BYTES = 4;
-
-    /** Amount of bytes one vertex covers in the vertex buffer. */
-    public static final int VERTEX_BYTES = FLOATS_PER_VERTEX * Float.BYTES + COLOUR_BYTES;
+    /** Amount of floats of one vertex: position, texture coordinate, picture layer and colour. */
+    public static final int FLOATS_PER_VERTEX = 10;
 
     /** Amount of floats one triangle covers. */
     public static final int FLOATS_PER_TRIANGLE = FLOATS_PER_VERTEX * 3;
 
-    private final float[] vertices = new float[MAX_VERTICES * FLOATS_PER_VERTEX];
+    /** Offset of the red of a vertex inside its floats. */
+    public static final int RED = 6;
 
-    /** One colour per vertex, red first and alpha last, the order a packed colour has. */
-    private final byte[] colours = new byte[MAX_VERTICES * COLOUR_BYTES];
+    private final float[] vertices = new float[MAX_VERTICES * FLOATS_PER_VERTEX];
 
     private final short[] indices = new short[MAX_VERTICES * 3 / 2];
 
@@ -88,12 +82,10 @@ public final class MeshData {
         vertices[base + 3] = u;
         vertices[base + 4] = v;
         vertices[base + 5] = layer;
-
-        int colour = index * COLOUR_BYTES;
-        colours[colour] = pack(red);
-        colours[colour + 1] = pack(green);
-        colours[colour + 2] = pack(blue);
-        colours[colour + 3] = (byte) 0xFF;
+        vertices[base + 6] = clamp(red);
+        vertices[base + 7] = clamp(green);
+        vertices[base + 8] = clamp(blue);
+        vertices[base + 9] = 1.0f;
 
         vertexCount++;
         return index;
@@ -118,20 +110,14 @@ public final class MeshData {
         return vertices;
     }
 
-    /** The written colours, four bytes per corner. */
-    public byte[] colourBytes() {
-        return colours;
-    }
-
     /** The written indices, three per triangle. */
     public short[] indexShorts() {
         return indices;
     }
 
-    /** A colour component as a byte, clamped to the range a colour has. */
-    private static byte pack(float component) {
-        float clamped = Math.min(1.0f, Math.max(0.0f, component));
-        return (byte) ((int) (clamped * 255.0f + 0.5f));
+    /** A colour component, kept inside the range a colour has. */
+    private static float clamp(float component) {
+        return Math.min(1.0f, Math.max(0.0f, component));
     }
 
     @Override

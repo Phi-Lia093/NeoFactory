@@ -118,12 +118,12 @@ class SectionMesherTest {
 
         List<MeshData> meshes = mesh();
 
-        int lowest = 255;
-        int highest = 0;
+        float lowest = 2.0f;
+        float highest = -1.0f;
         for (MeshData mesh : meshes) {
-            byte[] colours = mesh.colourBytes();
+            float[] vertices = mesh.vertexFloats();
             for (int corner = 0; corner < mesh.vertexCount(); corner++) {
-                int red = colours[corner * MeshData.COLOUR_BYTES] & 0xFF;
+                float red = vertices[corner * MeshData.FLOATS_PER_VERTEX + MeshData.RED];
                 lowest = Math.min(lowest, red);
                 highest = Math.max(highest, red);
             }
@@ -212,10 +212,10 @@ class SectionMesherTest {
         int brightest = -1;
         for (MeshData mesh : meshes) {
             float[] vertices = mesh.vertexFloats();
-            byte[] colours = mesh.colourBytes();
             for (int corner = 0; corner < mesh.vertexCount(); corner++) {
                 if ((int) vertices[corner * MeshData.FLOATS_PER_VERTEX + 5] == layer) {
-                    int red = colours[corner * MeshData.COLOUR_BYTES] & 0xFF;
+                    int red = (int) (vertices[corner * MeshData.FLOATS_PER_VERTEX + MeshData.RED]
+                            * 255.0f + 0.5f);
                     brightest = Math.max(brightest, red);
                 }
             }
