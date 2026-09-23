@@ -5,7 +5,9 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
@@ -31,13 +33,17 @@ import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.material.Materials;
+import com.philia093.neofactory.render.BlockPictures;
+import com.philia093.neofactory.render.BlockShader;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.EntityRendererRegistry;
 import com.philia093.neofactory.render.ItemEntityRenderer;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.render.PlayerRenderer;
 import com.philia093.neofactory.render.SelectionRenderer;
+import com.philia093.neofactory.render.SectionMeshCache;
 import com.philia093.neofactory.render.WorldRenderer;
+import com.philia093.neofactory.render.WorldRenderer3D;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.ChunkStreamer;
@@ -102,6 +108,25 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Seconds between two automatic saves while the world is played. */
     private static final float AUTOSAVE_INTERVAL = 300.0f;
 
+    /** Field of view of the camera that stands in the world, in degrees. */
+    private static final float CUBE_FIELD_OF_VIEW = 70.0f;
+
+    /** Distance the camera of a world of cubes starts drawing at, in blocks. */
+    private static final float CUBE_NEAR = 0.05f;
+
+    /** Distance that camera sees, in blocks, which is also where the fog ends. */
+    private static final float CUBE_VIEW_DISTANCE = 192.0f;
+
+    /** Distance behind the player that camera stands, in blocks. */
+    private static final float CUBE_CAMERA_BACK = 6.0f;
+
+    /** Height above the player that camera stands, in blocks. */
+    private static final float CUBE_CAMERA_HEIGHT = 4.0f;
+
+    /** Colour the frame is cleared with and the distance fades into, shared and never written. */
+    private static final Color SKY =
+            new Color(Constants.SKY_RED, Constants.SKY_GREEN, Constants.SKY_BLUE, 1.0f);
+
     private final OrthographicCamera camera;
     private final ExtendViewport worldViewport;
     private final SpriteBatch batch;
@@ -118,6 +143,19 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
     private final WorldRenderer worldRenderer;
     private final PlayerRenderer playerRenderer;
+
+    /**
+     * The world drawn as cubes, {@code null} while the driver cannot hold a texture array.
+     * <p>
+     * The launcher asks for an OpenGL 3.2 core context, which is what a texture array needs, see
+     * {@link BlockPictures}; a driver that cannot answer it keeps the flat renderer, so the game opens
+     * either way and only the look of the world differs.
+     */
+    private final BlockPictures pictures;
+    private final BlockShader blockShader;
+    private final SectionMeshCache sectionMeshes;
+    private final WorldRenderer3D cubeRenderer;
+    private final PerspectiveCamera cubeCamera;
 
     /** Draws an item that lies on the ground. */
     private final ItemEntityRenderer itemEntityRenderer;
@@ -347,6 +385,29 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         this.worldRenderer = new WorldRenderer(batch, textures);
         this.playerRenderer = new PlayerRenderer(batch, textures);
         this.itemEntityRenderer = new ItemEntityRenderer(batch, textures);
+
+        // The world is drawn as cubes wherever the driver holds a texture array, which is what the
+        // launcher asks for: the pictures of every block become one array, the mesher turns a section
+        // into the faces that are seen and the shader draws them through a camera that stands in the
+        // world. A driver that cannot answer that request keeps the flat renderer above.
+        if (Gdx.gl30 != null) {
+            this.pictures = new BlockPictures();
+            pictures.build();
+            this.blockShader = new BlockShader();
+            this.sectionMeshes = new SectionMeshCache(pictures);
+            this.cubeRenderer = new WorldRenderer3D(sectionMeshes, blockShader, pictures);
+            this.cubeCamera = new PerspectiveCamera(CUBE_FIELD_OF_VIEW, 1.0f, 1.0f);
+            cubeCamera.near = CUBE_NEAR;
+            cubeCamera.far = CUBE_VIEW_DISTANCE;
+            LOGGER.info("The world is drawn as cubes, {} pictures in the array", pictures.layerCount());
+        } else {
+            this.pictures = null;
+            this.blockShader = null;
+            this.sectionMeshes = null;
+            this.cubeRenderer = null;
+            this.cubeCamera = null;
+            LOGGER.warn("This driver holds no texture array, the world is drawn from above");
+        }
         // The player is an entity like any other, so it is drawn by the same pass
         // over the entity list; the marker renderer stays the thing that knows how.
         entityRenderers.register(EntityTypes.PLAYER, entity -> playerRenderer.render((Player) entity));
@@ -538,20 +599,51 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         clearScreen();
 
-        worldViewport.apply();
-        centerCameraOnPlayer();
+        if (cubeRenderer != null) {
+            renderCubes();
+        } else {
+            worldViewport.apply();
+            centerCameraOnPlayer();
 
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        worldRenderer.render(world, camera, world.tickCount());
-        entityRenderers.render(world.entities().all());
-        selectionRenderer.render(world, target);
-        batch.end();
+            batch.setProjectionMatrix(camera.combined);
+            batch.begin();
+            worldRenderer.render(world, camera, world.tickCount());
+            entityRenderers.render(world.entities().all());
+            selectionRenderer.render(world, target);
+            batch.end();
+        }
 
         renderInterface(delta);
 
         logDebugStatistics();
         countPlayTime(delta);
+    }
+
+    /**
+     * Draws one frame of the world as cubes.
+     * <p>
+     * The camera stands behind and above the player and looks at them, which is the view a player of a
+     * world of cubes expects until the eyes of the player carry the direction, see {@code Player}
+     * facing the mouse. Its field of view is set with the window, so a resize does not stretch the
+     * world, and the depth buffer is cleared and tested, which is what makes a block hide the one
+     * behind it.
+     */
+    private void renderCubes() {
+        cubeCamera.viewportWidth = Gdx.graphics.getWidth();
+        cubeCamera.viewportHeight = Gdx.graphics.getHeight();
+        Vector2 facing = player.facing();
+        cubeCamera.position.set(player.position().x - facing.x * CUBE_CAMERA_BACK,
+                player.position().y + CUBE_CAMERA_HEIGHT,
+                player.position().z - facing.y * CUBE_CAMERA_BACK);
+        cubeCamera.lookAt(player.position().x, player.position().y + 0.5f, player.position().z);
+        cubeCamera.up.set(0.0f, 1.0f, 0.0f);
+        cubeCamera.update();
+
+        Gdx.gl.glClearColor(SKY.r, SKY.g, SKY.b, 1.0f);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
+        cubeRenderer.render(world, cubeCamera, SKY);
+        Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
     }
 
     /**
@@ -565,6 +657,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     public void renderFrozen(float delta) {
         clearScreen();
+
+        if (cubeRenderer != null) {
+            renderCubes();
+            renderInterface(delta);
+            return;
+        }
 
         worldViewport.apply();
         centerCameraOnPlayer();
@@ -643,6 +741,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
         batch.dispose();
         worldRenderer.dispose();
+        if (cubeRenderer != null) {
+            cubeRenderer.dispose();
+        }
         super.dispose();
     }
 
