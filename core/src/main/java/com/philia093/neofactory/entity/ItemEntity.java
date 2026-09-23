@@ -1,10 +1,11 @@
 package com.philia093.neofactory.entity;
 
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.util.nbt.NbtCompound;
+import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.save.SaveTags;
 
@@ -53,7 +54,7 @@ public class ItemEntity extends Entity {
     private static final float DESPAWN_SECONDS = 300.0f;
 
     /** Reused vector pointing from the item to the player. */
-    private final Vector2 towards = new Vector2();
+    private final Vector3 towards = new Vector3();
 
     /** Items this entity stands for, empty only for a broken save game. */
     private ItemStack stack = ItemStack.EMPTY;
@@ -65,15 +66,31 @@ public class ItemEntity extends Entity {
     private float age;
 
     /**
+     * Creates an item lying on the ground of the flat view.
+     * <p>
+     * The game is still drawn from above, so the cell a body stands in is the upper one of a column,
+     * see {@link com.philia093.neofactory.world.Chunk#flatY(int)}. This is the constructor the drop
+     * sinks of that view use; it goes away with the view.
+     *
+     * @param x world X coordinate of the item
+     * @param z world Z coordinate of the item
+     * @param stack items this entity stands for, copied by the constructor
+     */
+    public ItemEntity(float x, float z, ItemStack stack) {
+        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.TILE_SIZE, z, stack);
+    }
+
+    /**
      * Creates an item on the ground.
      *
      * @param x world X coordinate of the item
-     * @param y world Y coordinate of the item
+     * @param y world Y coordinate of the item, its height
+     * @param z world Z coordinate of the item
      * @param stack items this entity stands for, copied by the constructor
      */
-    public ItemEntity(float x, float y, ItemStack stack) {
+    public ItemEntity(float x, float y, float z, ItemStack stack) {
         super(EntityTypes.ITEM);
-        position.set(x, y);
+        position.set(x, y, z);
         if (stack != null && !stack.isEmpty()) {
             this.stack = stack.copy();
         }
@@ -157,7 +174,8 @@ public class ItemEntity extends Entity {
         if (velocity.isZero()) {
             return;
         }
-        position.add(velocity.x * delta, velocity.y * delta);
+        position.x += velocity.x * delta;
+        position.z += velocity.z * delta;
         velocity.scl((float) Math.pow(SLIDE_PER_SECOND, delta));
         if (velocity.len2() < 1.0f) {
             velocity.setZero();
@@ -177,7 +195,8 @@ public class ItemEntity extends Entity {
             return;
         }
         float step = Math.min(distance, MAGNET_SPEED_BLOCKS * Constants.TILE_SIZE * delta);
-        position.add(towards.scl(step / distance));
+        position.x += towards.x * step / distance;
+        position.z += towards.z * step / distance;
     }
 
     @Override
@@ -199,6 +218,6 @@ public class ItemEntity extends Entity {
 
     @Override
     public String toString() {
-        return "ItemEntity(" + stack + "@" + position.x + "," + position.y + ")";
+        return "ItemEntity(" + stack + "@" + position.x + "," + position.y + "," + position.z + ")";
     }
 }

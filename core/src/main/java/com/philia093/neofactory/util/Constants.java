@@ -95,6 +95,15 @@ public final class Constants {
     public static final float PLAYER_HITBOX = 0.7f;
 
     /**
+     * Height of the body of the player in blocks.
+     * <p>
+     * The body of the flat view was a square that slid over the ground and had no height at all. A
+     * world of cubes gives it one: a player stands on its feet and is as tall as a person, which is
+     * what a doorway, a tunnel and a step have to fit around it.
+     */
+    public static final float PLAYER_HEIGHT = 1.8f;
+
+    /**
      * Visual scale of the player marker. The marker is an 8 by 8 pixel icon,
      * a scale of two makes it fill a single block tile.
      */

@@ -371,10 +371,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // The crafting field of the inventory is a work field: when the screen closes, what
         // is left in it is dropped where the player stands instead of being hidden, see
         // ContainerMenu and Slot.Rule.WORK.
-        inventoryGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().y));
+        inventoryGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().z));
         // A stack that a creative player drags out of the grid lands on the ground instead
         // of going back into an inventory that refills itself anyway.
-        creativeGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().y));
+        creativeGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().z));
 
         if (fresh) {
             // A new world starts at its spawn point and gets a starter kit, because
@@ -425,10 +425,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         boolean storedPosition = !fresh && (data.playerX() != 0.0f || data.playerY() != 0.0f);
         if (!storedPosition) {
             Player spawned = Player.spawnOnGround(world, world.spawnX(), world.spawnY());
-            data.setSpawn(spawned.blockX(), spawned.blockY());
+            data.setSpawn(spawned.blockX(), spawned.blockZ());
             return spawned;
         }
-        Player player = new Player(data.playerX(), data.playerY());
+        int blockX = MathUtils.floor(data.playerX() / Constants.TILE_SIZE);
+        int blockZ = MathUtils.floor(data.playerY() / Constants.TILE_SIZE);
+        Player player = new Player(data.playerX(),
+                world.surfaceY(blockX, blockZ) * Constants.TILE_SIZE, data.playerY());
         player.facing().set(data.rotationX(), data.rotationY());
         if (player.facing().isZero()) {
             player.facing().set(1.0f, 0.0f);
@@ -454,7 +457,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     public int save() {
         data.setLastPlayed(System.currentTimeMillis());
-        data.capturePlayer(player.position().x, player.position().y,
+        data.capturePlayer(player.position().x, player.position().z,
                 player.facing().x, player.facing().y, player.inventory());
         int chunks = WorldSaver.save(game.screens().storage(), summary, data, world,
                 player.inventory());
@@ -698,7 +701,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             player.setSpeedScale(zoom);
             updateInteraction(delta);
         }
-        world.entities().update(world, delta, player.blockX(), player.blockY());
+        world.entities().update(world, delta, player.blockX(), player.blockZ());
         tickWorld(delta);
         closeMachineIfUnloaded();
         streamChunks(false);
@@ -937,7 +940,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * the player are the world coordinates of the camera center.
      */
     private void centerCameraOnPlayer() {
-        camera.position.set(player.position().x, player.position().y, 0.0f);
+        camera.position.set(player.position().x, player.position().z, 0.0f);
         camera.zoom = zoom;
         camera.up.set(0.0f, 1.0f, 0.0f);
         camera.direction.set(0.0f, 0.0f, -1.0f);
@@ -967,7 +970,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         float visibleBlocksY = worldViewport.getWorldHeight() * zoom / Constants.TILE_SIZE;
         float halfBlocks = Math.max(visibleBlocksX, visibleBlocksY) * 0.5f;
         float blockX = player.position().x / Constants.TILE_SIZE;
-        float blockY = player.position().y / Constants.TILE_SIZE;
+        float blockY = player.position().z / Constants.TILE_SIZE;
 
         if (immediate) {
             streamer.fill(world, blockX, blockY, halfBlocks);
@@ -1040,7 +1043,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (held.isEmpty()) {
             inventory.set(inventory.selectedSlot(), ItemStack.EMPTY);
         }
-        drops.drop(dropped, player.position().x, player.position().y);
+        drops.drop(dropped, player.position().x, player.position().z);
     }
 
     /** Short description of the targeted cell, used by the status log. */

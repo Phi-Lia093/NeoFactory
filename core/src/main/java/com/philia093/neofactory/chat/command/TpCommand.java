@@ -59,8 +59,8 @@ public final class TpCommand implements Command {
             return;
         }
         Player player = context.player();
-        player.position().set(x * Constants.TILE_SIZE, y * Constants.TILE_SIZE);
-        player.velocity().set(0.0f, 0.0f);
+        player.position().set(x * Constants.TILE_SIZE, player.position().y, y * Constants.TILE_SIZE);
+        player.velocity().setZero();
         player.halt();
         context.log().addSystem("Teleported to block (" + formatCoordinate(x) + ", "
                 + formatCoordinate(y) + ").");

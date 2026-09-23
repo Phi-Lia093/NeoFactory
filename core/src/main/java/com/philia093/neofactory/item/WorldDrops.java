@@ -40,14 +40,17 @@ public class WorldDrops implements ItemDrops {
     }
 
     @Override
-    public void drop(ItemStack stack, float worldX, float worldY) {
+    public void drop(ItemStack stack, float worldX, float worldZ) {
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        ItemEntity entity = new ItemEntity(worldX, worldY, stack);
+        int blockX = MathUtils.floor(worldX / Constants.TILE_SIZE);
+        int blockZ = MathUtils.floor(worldZ / Constants.TILE_SIZE);
+        ItemEntity entity = new ItemEntity(worldX,
+                world.surfaceY(blockX, blockZ) * Constants.TILE_SIZE, worldZ, stack);
         float angle = MathUtils.random(0.0f, MathUtils.PI2);
         float speed = MathUtils.random(MIN_SPEED_BLOCKS, MAX_SPEED_BLOCKS) * Constants.TILE_SIZE;
-        entity.velocity().set(MathUtils.cos(angle), MathUtils.sin(angle)).scl(speed);
+        entity.velocity().set(MathUtils.cos(angle) * speed, 0.0f, MathUtils.sin(angle) * speed);
         world.entities().spawn(entity);
     }
 

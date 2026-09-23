@@ -5,7 +5,9 @@ import com.philia093.neofactory.chat.ChatMessage;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.support.TestCommandContext;
+import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.support.TestRegistries;
+import com.philia093.neofactory.util.Constants;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -122,13 +124,13 @@ class ChatCommandsTest {
 
     @Test
     void teleportMovesThePlayerToABlock() {
-        context.player.position().set(1.0f, 2.0f);
-        context.player.velocity().set(5.0f, 5.0f);
+        context.player.position().set(1.0f, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.TILE_SIZE, 2.0f);
+        context.player.velocity().set(5.0f, 0.0f, 5.0f);
 
         registry.run("/tp 12 34", context);
 
         assertEquals(192.0f, context.player.position().x, 0.001f);
-        assertEquals(544.0f, context.player.position().y, 0.001f);
+        assertEquals(544.0f, context.player.position().z, 0.001f);
         assertEquals(0.0f, context.player.velocity().x, 0.001f, "the walk is stopped");
         assertEquals("Teleported to block (12, 34).", context.lastLine().text());
     }
@@ -138,7 +140,7 @@ class ChatCommandsTest {
         registry.run("/tp 1.5 -2", context);
 
         assertEquals(24.0f, context.player.position().x, 0.001f);
-        assertEquals(-32.0f, context.player.position().y, 0.001f);
+        assertEquals(-32.0f, context.player.position().z, 0.001f);
         assertEquals("Teleported to block (1.50, -2).", context.lastLine().text());
     }
 

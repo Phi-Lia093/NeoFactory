@@ -96,7 +96,7 @@ public class ItemEntityRenderer implements EntityRenderer {
         // One pixel of the icon as it is drawn in the world, the outline is that large.
         float pixel = size / Constants.ITEM_ICON_SIZE;
         float left = itemEntity.position().x - half;
-        float bottom = itemEntity.position().y - half + bobOffset(itemEntity.age());
+        float bottom = itemEntity.position().z - half + bobOffset(itemEntity.age());
 
         TextureRegion outline = textures.itemOutline(item);
         if (outline != null) {

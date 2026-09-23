@@ -63,7 +63,7 @@ class EntityPersistenceTest {
         assertNotNull(restored);
         assertEquals(1, loader.world().entities().count());
         assertEquals(120.0f, restored.position().x, 1.0e-4f);
-        assertEquals(96.0f, restored.position().y, 1.0e-4f);
+        assertEquals(96.0f, restored.position().z, 1.0e-4f);
         assertEquals(0.0f, restored.facing().x, 1.0e-4f);
         assertEquals(1.0f, restored.facing().y, 1.0e-4f);
         assertEquals(3, restored.inventory().selectedSlot());

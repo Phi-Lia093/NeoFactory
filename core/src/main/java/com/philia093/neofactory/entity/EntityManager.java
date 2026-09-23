@@ -98,11 +98,13 @@ public final class EntityManager {
      * @param radius distance in world units
      * @return the entities inside that circle, in spawn order
      */
-    public List<Entity> near(float worldX, float worldY, float radius) {
+    public List<Entity> near(float worldX, float worldZ, float radius) {
         List<Entity> found = new ArrayList<>();
         float radiusSquared = radius * radius;
         for (Entity entity : entities) {
-            if (entity.position().dst2(worldX, worldY) <= radiusSquared) {
+            float dx = entity.position().x - worldX;
+            float dz = entity.position().z - worldZ;
+            if (dx * dx + dz * dz <= radiusSquared) {
                 found.add(entity);
             }
         }
@@ -120,13 +122,13 @@ public final class EntityManager {
      * @param world world the entities live in
      * @param delta time since the last frame in seconds
      * @param playerBlockX block X coordinate of the player
-     * @param playerBlockY block Y coordinate of the player
+     * @param playerBlockZ block Z coordinate of the player
      */
-    public void update(World world, float delta, float playerBlockX, float playerBlockY) {
+    public void update(World world, float delta, float playerBlockX, float playerBlockZ) {
         float tile = Constants.TILE_SIZE;
         float rangeSquared = ACTIVE_RANGE_BLOCKS * tile * ACTIVE_RANGE_BLOCKS * tile;
         float centerX = playerBlockX * tile;
-        float centerY = playerBlockY * tile;
+        float centerZ = playerBlockZ * tile;
 
         Iterator<Entity> iterator = entities.iterator();
         while (iterator.hasNext()) {
@@ -135,7 +137,9 @@ public final class EntityManager {
                 iterator.remove();
                 continue;
             }
-            boolean far = entity.position().dst2(centerX, centerY) > rangeSquared;
+            float dx = entity.position().x - centerX;
+            float dz = entity.position().z - centerZ;
+            boolean far = dx * dx + dz * dz > rangeSquared;
             if (!far || entity.type() == EntityTypes.PLAYER) {
                 entity.update(world, delta);
             }

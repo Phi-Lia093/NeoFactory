@@ -59,7 +59,7 @@ public class PlayerRenderer {
         float size = Constants.MAP_ICON_CELL_SIZE * Constants.PLAYER_ICON_SCALE;
         float half = size * 0.5f;
         float centerX = player.position().x;
-        float centerY = player.position().y;
+        float centerY = player.position().z;
 
         float angle = MathUtils.atan2(player.facing().y, player.facing().x)
                 * MathUtils.radiansToDegrees + ICON_TIP_OFFSET_DEGREES;

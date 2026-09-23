@@ -48,8 +48,11 @@ public final class SaveTags {
     /** World X coordinate of the player. */
     public static final String POS_X = "PosX";
 
-    /** World Y coordinate of the player. */
+    /** World Y coordinate of a body, its height in the world. */
     public static final String POS_Y = "PosY";
+
+    /** World Z coordinate of a body. */
+    public static final String POS_Z = "PosZ";
 
     /** Facing X component of the player. */
     public static final String ROTATION_X = "RotationX";
@@ -99,8 +102,11 @@ public final class SaveTags {
     /** Velocity X component of an entity, world units per second. */
     public static final String VEL_X = "VelX";
 
-    /** Velocity Y component of an entity, world units per second. */
+    /** Velocity Y component of an entity, its speed towards the sky, world units per second. */
     public static final String VEL_Y = "VelY";
+
+    /** Velocity Z component of an entity, world units per second. */
+    public static final String VEL_Z = "VelZ";
 
     /** State of the world in which the entity was stored, used when it comes back. */
     public static final String ENTITY_AGE = "Age";

@@ -11,11 +11,11 @@ public final class EntityTypes {
 
     /** The player, one per world. */
     public static final EntityType PLAYER = new EntityType(1, "player",
-            () -> new Player(0.0f, 0.0f));
+            () -> new Player(0.0f, 0.0f, 0.0f));
 
     /** Items lying on the ground after a block was broken. */
     public static final EntityType ITEM = new EntityType(2, "item",
-            () -> new ItemEntity(0.0f, 0.0f, null));
+            () -> new ItemEntity(0.0f, 0.0f, 0.0f, null));
 
     /** Id the next entity type will get. */
     public static final int NEXT_FREE_ID = 3;

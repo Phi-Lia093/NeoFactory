@@ -1,6 +1,6 @@
 package com.philia093.neofactory.entity;
 
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.save.SaveTags;
@@ -34,11 +34,16 @@ public abstract class Entity {
     private final EntityType type;
     private final UUID uuid;
 
-    /** Position of the entity center in world units, one block is TILE_SIZE of them. */
-    protected final Vector2 position = new Vector2();
+    /**
+     * Position of the entity in world units.
+     * <p>
+     * X points east, Y is the height and Z points south, the axes of a world of cubes. One block
+     * covers {@link Constants#BLOCK_SIZE} world units.</p>
+     */
+    protected final Vector3 position = new Vector3();
 
-    /** Velocity in world units per second. */
-    protected final Vector2 velocity = new Vector2();
+    /** Velocity in world units per second, along the same three axes. */
+    protected final Vector3 velocity = new Vector3();
 
     /** Set once the entity left the world, checked by the entity manager. */
     private boolean removed;
@@ -73,13 +78,13 @@ public abstract class Entity {
         return uuid;
     }
 
-    /** Live position of the entity center, do not mutate directly. */
-    public final Vector2 position() {
+    /** Live position of the entity, do not mutate directly. */
+    public final Vector3 position() {
         return position;
     }
 
     /** Live velocity of the entity, do not mutate directly. */
-    public final Vector2 velocity() {
+    public final Vector3 velocity() {
         return velocity;
     }
 
@@ -120,8 +125,10 @@ public abstract class Entity {
         target.putLong(SaveTags.UUID_LEAST, uuid.getLeastSignificantBits());
         target.putFloat(SaveTags.POS_X, position.x);
         target.putFloat(SaveTags.POS_Y, position.y);
+        target.putFloat(SaveTags.POS_Z, position.z);
         target.putFloat(SaveTags.VEL_X, velocity.x);
         target.putFloat(SaveTags.VEL_Y, velocity.y);
+        target.putFloat(SaveTags.VEL_Z, velocity.z);
 
         NbtCompound data = new NbtCompound(SaveTags.ENTITY_DATA);
         writeData(data);
@@ -138,9 +145,11 @@ public abstract class Entity {
      */
     public final void readFrom(NbtCompound source) {
         position.set(source.getFloat(SaveTags.POS_X, 0.0f),
-                source.getFloat(SaveTags.POS_Y, 0.0f));
+                source.getFloat(SaveTags.POS_Y, 0.0f),
+                source.getFloat(SaveTags.POS_Z, 0.0f));
         velocity.set(source.getFloat(SaveTags.VEL_X, 0.0f),
-                source.getFloat(SaveTags.VEL_Y, 0.0f));
+                source.getFloat(SaveTags.VEL_Y, 0.0f),
+                source.getFloat(SaveTags.VEL_Z, 0.0f));
 
         NbtCompound data = source.getCompound(SaveTags.ENTITY_DATA);
         readData(data == null ? new NbtCompound(SaveTags.ENTITY_DATA) : data);
@@ -171,6 +180,6 @@ public abstract class Entity {
 
     @Override
     public String toString() {
-        return type.name() + "@" + position.x + "," + position.y;
+        return type.name() + "@" + position.x + "," + position.y + "," + position.z;
     }
 }

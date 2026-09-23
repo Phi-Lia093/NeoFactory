@@ -62,30 +62,46 @@ public class Player extends Entity {
     private float speedScale = 1.0f;
 
     /**
-     * Creates a player at a position.
+     * Creates a player standing in a column of the flat view.
+     * <p>
+     * The game is still drawn from above, so a column has a ground layer and the cell above it and a
+     * body stands in the upper one, see {@link Chunk#flatY(int)}. This is the constructor the screens
+     * of that view use; it goes away with the view.
      *
      * @param x world X coordinate of the player center
-     * @param y world Y coordinate of the player center
+     * @param z world Z coordinate of the player center
      */
-    public Player(float x, float y) {
+    public Player(float x, float z) {
+        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.TILE_SIZE, z);
+    }
+
+    /**
+     * Creates a player standing at a position.
+     *
+     * @param x world X coordinate of the player center
+     * @param y world Y coordinate of the feet of the player
+     * @param z world Z coordinate of the player center
+     */
+    public Player(float x, float y, float z) {
         super(EntityTypes.PLAYER);
-        position.set(x, y);
+        position.set(x, y, z);
     }
 
     /**
      * Creates a player standing in the middle of a walkable cell.
      * <p>
      * The spawn cell is searched for, so the player never starts inside a tree or
-     * on top of a hole.
+     * on top of a hole, and its feet are put on the surface of that column.
      *
      * @param world world the player lives in
      * @param x preferred block X coordinate of the spawn
-     * @param y preferred block Y coordinate of the spawn
-     * @return a player centered in a walkable cell
+     * @param z preferred block Z coordinate of the spawn
+     * @return a player centered in a walkable cell, standing on its ground
      */
-    public static Player spawnOnGround(World world, int x, int y) {
-        int[] cell = world.findSpawnPosition(x, y);
+    public static Player spawnOnGround(World world, int x, int z) {
+        int[] cell = world.findSpawnPosition(x, z);
         return new Player((cell[0] + 0.5f) * Constants.TILE_SIZE,
+                world.surfaceY(cell[0], cell[1]) * Constants.TILE_SIZE,
                 (cell[1] + 0.5f) * Constants.TILE_SIZE);
     }
 
@@ -142,9 +158,14 @@ public class Player extends Entity {
         return MathUtils.floor(position.x / Constants.TILE_SIZE);
     }
 
-    /** Block Y coordinate the player currently stands in. */
+    /** Block Y coordinate of the feet of the player, its height in the world. */
     public int blockY() {
         return MathUtils.floor(position.y / Constants.TILE_SIZE);
+    }
+
+    /** Block Z coordinate the player currently stands in. */
+    public int blockZ() {
+        return MathUtils.floor(position.z / Constants.TILE_SIZE);
     }
 
     /**
@@ -191,8 +212,7 @@ public class Player extends Entity {
 
     /** {@code true} when the player stands in water or another liquid. */
     public boolean isInLiquid(World world) {
-        return world.getFlatBlock(blockX(), blockY(), Chunk.LAYER_FLOOR).isLiquid()
-                || world.getFlatBlock(blockX(), blockY(), Chunk.LAYER_OBJECT).isLiquid();
+        return world.getBlock(blockX(), blockY(), blockZ()).isLiquid();
     }
 
     /**
@@ -207,62 +227,75 @@ public class Player extends Entity {
      */
     @Override
     public void update(World world, float delta) {
-        velocity.set(moveInput).scl(Constants.PLAYER_SPEED * Constants.TILE_SIZE * speedScale);
-        if (velocity.isZero()) {
+        float speed = Constants.PLAYER_SPEED * Constants.TILE_SIZE * speedScale;
+        velocity.set(moveInput.x * speed, 0.0f, moveInput.y * speed);
+        if (moveInput.isZero()) {
+            velocity.setZero();
             return;
         }
-        moveWithCollision(world, velocity.x * delta, velocity.y * delta);
+        moveWithCollision(world, velocity.x * delta, velocity.z * delta);
     }
 
     /**
      * Moves the player and stops the movement at solid blocks.
      * <p>
-     * The two axes are resolved separately so that walking into a wall still
-     * allows sliding along it.
+     * The two horizontal axes are resolved separately so that walking into a wall still
+     * allows sliding along it. The height of the body is left alone: the flat view knows no
+     * gravity, so a body that stands on its ground keeps standing on it.
      *
      * @param world world used for collision tests
      * @param stepX requested movement along the X axis
-     * @param stepY requested movement along the Y axis
+     * @param stepZ requested movement along the Z axis
      */
-    private void moveWithCollision(World world, float stepX, float stepY) {
+    private void moveWithCollision(World world, float stepX, float stepZ) {
         if (stepX != 0.0f) {
             float candidateX = position.x + stepX;
-            if (collides(world, candidateX, position.y)) {
+            if (collides(world, candidateX, position.z)) {
                 velocity.x = 0.0f;
             } else {
                 position.x = candidateX;
             }
         }
-        if (stepY != 0.0f) {
-            float candidateY = position.y + stepY;
-            if (collides(world, position.x, candidateY)) {
-                velocity.y = 0.0f;
+        if (stepZ != 0.0f) {
+            float candidateZ = position.z + stepZ;
+            if (collides(world, position.x, candidateZ)) {
+                velocity.z = 0.0f;
             } else {
-                position.y = candidateY;
+                position.z = candidateZ;
             }
         }
     }
 
     /**
-     * Tests the square player box against the solid cells of the world.
+     * Tests the box of the player against the solid cells of the world.
+     * <p>
+     * The body of the flat view was a square that slid over the ground; a world of cubes gives it a
+     * height, so the box is {@link Constants#PLAYER_HITBOX} wide and
+     * {@link Constants#PLAYER_HEIGHT} tall, and every cell it covers decides whether the body may
+     * stand there. Its feet are at the position of the entity.
      *
      * @param world world to test against
      * @param centerX candidate world X coordinate of the player center
-     * @param centerY candidate world Y coordinate of the player center
+     * @param centerZ candidate world Z coordinate of the player center
      * @return {@code true} when the box overlaps at least one solid cell
      */
-    public boolean collides(World world, float centerX, float centerY) {
+    public boolean collides(World world, float centerX, float centerZ) {
         float size = Constants.TILE_SIZE;
         float half = Constants.PLAYER_HITBOX * 0.5f * size;
+        float height = Constants.PLAYER_HEIGHT * size;
         int minX = MathUtils.floor((centerX - half) / size);
         int maxX = MathUtils.floor((centerX + half - SKIN_WIDTH) / size);
-        int minY = MathUtils.floor((centerY - half) / size);
-        int maxY = MathUtils.floor((centerY + half - SKIN_WIDTH) / size);
+        int minZ = MathUtils.floor((centerZ - half) / size);
+        int maxZ = MathUtils.floor((centerZ + half - SKIN_WIDTH) / size);
+        int minY = MathUtils.floor(position.y / size);
+        int maxY = MathUtils.floor((position.y + height - SKIN_WIDTH) / size);
 
         for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                if (world.isFlatSolid(x, y)) {
-                    return true;
+            for (int z = minZ; z <= maxZ; z++) {
+                for (int y = minY; y <= maxY; y++) {
+                    if (world.isSolid(x, y, z)) {
+                        return true;
+                    }
                 }
             }
         }

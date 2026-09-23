@@ -76,7 +76,7 @@ public final class BlockTargeting {
         float centerZ = (cellZ + 0.5f) * Constants.TILE_SIZE;
         float reach = Constants.PLAYER_REACH * Constants.TILE_SIZE;
         float dx = centerX - player.position().x;
-        float dz = centerZ - player.position().y;
+        float dz = centerZ - player.position().z;
         return dx * dx + dz * dz <= reach * reach;
     }
 
@@ -96,7 +96,7 @@ public final class BlockTargeting {
     private static BlockTarget alongSight(World world, Player player, int cellY) {
         float tile = Constants.TILE_SIZE;
         float startX = player.position().x / tile;
-        float startZ = player.position().y / tile;
+        float startZ = player.position().z / tile;
         float directionX = player.facing().x;
         float directionZ = player.facing().y;
 

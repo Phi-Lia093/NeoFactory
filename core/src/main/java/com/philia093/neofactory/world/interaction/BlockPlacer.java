@@ -97,7 +97,7 @@ public final class BlockPlacer {
         }
 
         world.setBlock(cell.x(), cell.y(), cell.z(), block);
-        if (player.collides(world, player.position().x, player.position().y)) {
+        if (player.collides(world, player.position().x, player.position().z)) {
             world.setBlock(cell.x(), cell.y(), cell.z(), Blocks.AIR);
             return false;
         }

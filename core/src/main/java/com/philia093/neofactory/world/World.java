@@ -6,6 +6,7 @@ import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.entity.EntityManager;
 import com.philia093.neofactory.fluid.FluidFlow;
 import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -453,6 +454,22 @@ public final class World implements BlockAccess {
     public void setState(int x, int y, int z, int state) {
         Chunk chunk = preparedChunk(x, z);
         chunk.setState(Chunk.localOf(x), y, Chunk.localOf(z), state);
+    }
+
+    /**
+     * Height the surface of a column stands at, the cell a body stands in.
+     * <p>
+     * This is what a spawn, a teleport and a drop ask for: the cell above the highest block of the
+     * column, which is the ground a body walks on and not the block that ground is made of.
+     *
+     * @param x block X coordinate
+     * @param z block Z coordinate
+     * @return the height of the cell above the highest block, {@code MIN_Y} for an empty column
+     */
+    public int surfaceY(int x, int z) {
+        Chunk chunk = preparedChunk(x, z);
+        int highest = chunk.highestBlockY(Chunk.localOf(x), Chunk.localOf(z));
+        return highest == Chunk.NO_BLOCK ? Constants.MIN_Y : highest + 1;
     }
 
     /**

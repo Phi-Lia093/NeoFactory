@@ -5,6 +5,7 @@ import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Constants;
+import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -132,7 +133,7 @@ class ItemEntityTest {
     void aThrownItemSlidesAndComesToRest() {
         World world = new World(SEED, 0, 0);
         ItemEntity item = new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
-        item.velocity().set(Constants.TILE_SIZE * 3.0f, 0.0f);
+        item.velocity().set(Constants.TILE_SIZE * 3.0f, 0.0f, 0.0f);
         world.entities().spawn(item);
 
         item.update(world, 0.1f);
