@@ -599,12 +599,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         clearScreen();
 
+        // The camera of the flat view is kept centred on the player even while the world is drawn as
+        // cubes: the mouse is unprojected through it to decide where the player looks, see
+        // InputHandler#applyTo, so leaving it stale would make the player face a direction that has
+        // nothing to do with the pointer.
+        worldViewport.apply();
+        centerCameraOnPlayer();
+
         if (cubeRenderer != null) {
             renderCubes();
         } else {
-            worldViewport.apply();
-            centerCameraOnPlayer();
-
             batch.setProjectionMatrix(camera.combined);
             batch.begin();
             worldRenderer.render(world, camera, world.tickCount());
@@ -658,14 +662,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     public void renderFrozen(float delta) {
         clearScreen();
 
+        // The camera of the flat view follows the player here as well, so the pointer keeps deciding
+        // where the player looks while the pause menu is up, see GameScreen#render.
+        worldViewport.apply();
+        centerCameraOnPlayer();
+
         if (cubeRenderer != null) {
             renderCubes();
             renderInterface(delta);
             return;
         }
-
-        worldViewport.apply();
-        centerCameraOnPlayer();
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
