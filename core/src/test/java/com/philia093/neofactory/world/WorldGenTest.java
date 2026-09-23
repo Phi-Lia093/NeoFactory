@@ -359,7 +359,7 @@ class WorldGenTest {
     /** The water of the object layer around the spawn of a world. */
     private static Set<BlockPos> waterAround(World world) {
         int centerX = world.spawnX();
-        int centerY = world.spawnY();
+        int centerY = world.spawnZ();
         int radius = NEARBY / Constants.CHUNK_SIZE + 1;
         int centerChunkX = Chunk.chunkOf(centerX);
         int centerChunkY = Chunk.chunkOf(centerY);

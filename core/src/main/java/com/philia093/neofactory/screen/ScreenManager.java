@@ -165,7 +165,7 @@ public class ScreenManager {
         data.setLastPlayed(data.created());
 
         World world = new World(seed, 0, 0);
-        data.setSpawn(world.spawnX(), world.spawnY());
+        data.setSpawn(world.spawnX(), world.spawnZ());
         LOGGER.info("Created world '{}' (seed {})", summary.displayName(), seed);
         return startWorld(summary, world, data, true);
     }

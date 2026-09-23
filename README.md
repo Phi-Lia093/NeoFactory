@@ -187,7 +187,7 @@ still being built, so nothing is converted between versions: a world written by 
 version is refused with a clear reason instead of being read halfway. Version 2 is the
 one that turned the two flat layers of a chunk into the column of sections a world of
 cubes needs, so a world of version 1 is refused instead of being read into a shape it
-never had.
+never had, and version 3 names the spawn and the player of the level file by X and Z.
 
 ## Build and run
 

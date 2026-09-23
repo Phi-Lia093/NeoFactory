@@ -30,8 +30,8 @@ public final class SaveTags {
     /** Block X coordinate of the spawn. */
     public static final String SPAWN_X = "SpawnX";
 
-    /** Block Y coordinate of the spawn. */
-    public static final String SPAWN_Y = "SpawnY";
+    /** Block Z coordinate of the spawn. */
+    public static final String SPAWN_Z = "SpawnZ";
 
     /** Creation timestamp. */
     public static final String CREATED = "Created";

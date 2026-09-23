@@ -78,7 +78,7 @@ public final class World implements BlockAccess {
     private final Set<Long> generating = new HashSet<>();
 
     private final int spawnX;
-    private final int spawnY;
+    private final int spawnZ;
 
     /** Fluids that run through this world, see {@link FluidFlow}. */
     private final FluidFlow fluids = new FluidFlow();
@@ -100,10 +100,10 @@ public final class World implements BlockAccess {
      *
      * @param seed world seed, selects the generated terrain
      * @param spawnX block X coordinate the player would like to start near
-     * @param spawnY block Y coordinate the player would like to start near
+     * @param spawnZ block Y coordinate the player would like to start near
      */
-    public World(int seed, int spawnX, int spawnY) {
-        this(seed, spawnX, spawnY, null);
+    public World(int seed, int spawnX, int spawnZ) {
+        this(seed, spawnX, spawnZ, null);
     }
 
     /**
@@ -116,10 +116,10 @@ public final class World implements BlockAccess {
      *
      * @param seed world seed, selects the generated terrain
      * @param spawnX block X coordinate the player would like to start near
-     * @param spawnY block Y coordinate the player would like to start near
+     * @param spawnZ block Y coordinate the player would like to start near
      * @param store store holding the chunks of this world, may be {@code null}
      */
-    public World(int seed, int spawnX, int spawnY, ChunkStore store) {
+    public World(int seed, int spawnX, int spawnZ, ChunkStore store) {
         this.seed = seed;
         this.generator = new WorldGen(seed);
         this.store = store;
@@ -127,20 +127,20 @@ public final class World implements BlockAccess {
         // Biomes cover large areas, so the requested point is only a hint: the
         // nearest grassy cell is used instead, which keeps the start of the game
         // inside a landscape that can carry trees and grass.
-        int[] spawn = generator.findSpawnBiome(spawnX, spawnY);
+        int[] spawn = generator.findSpawnBiome(spawnX, spawnZ);
         this.spawnX = spawn[0];
-        this.spawnY = spawn[1];
-        if (this.spawnX != spawnX || this.spawnY != spawnY) {
+        this.spawnZ = spawn[1];
+        if (this.spawnX != spawnX || this.spawnZ != spawnZ) {
             LOGGER.info("Spawn moved from ({}, {}) to ({}, {}) to reach a grassy biome",
-                    spawnX, spawnY, this.spawnX, this.spawnY);
+                    spawnX, spawnZ, this.spawnX, this.spawnZ);
         }
 
         // The area is finished before anything looks for a free cell inside it:
         // an unfinished chunk would plant its trees later and could bury whatever
         // already stands there, the player included.
-        ensureChunksAround(this.spawnX, this.spawnY, SPAWN_CHUNK_RADIUS);
+        ensureChunksAround(this.spawnX, this.spawnZ, SPAWN_CHUNK_RADIUS);
         LOGGER.info("World {} created with {} chunks around spawn ({}, {})",
-                seed, chunks.size(), this.spawnX, this.spawnY);
+                seed, chunks.size(), this.spawnX, this.spawnZ);
     }
 
     /** Seed this world was generated from. */
@@ -154,8 +154,8 @@ public final class World implements BlockAccess {
     }
 
     /** Block Y coordinate the player starts near. */
-    public int spawnY() {
-        return spawnY;
+    public int spawnZ() {
+        return spawnZ;
     }
 
     /** Generator producing the terrain of this world. */

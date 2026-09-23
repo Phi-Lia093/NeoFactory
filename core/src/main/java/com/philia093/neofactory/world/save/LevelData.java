@@ -13,7 +13,7 @@ import com.philia093.neofactory.world.GameMode;
  * world familiar and makes it easy to add entries later:
  * <pre>
  * NeoFactory
- *  +- DataVersion, WorldName, GameMode, Seed, SpawnX, SpawnY, Created, LastPlayed, PlayedMillis
+ *  +- DataVersion, WorldName, GameMode, Seed, SpawnX, SpawnZ, Created, LastPlayed, PlayedMillis
  *  +- Player
  *  |   +- PosX, PosY, RotationX, RotationY, SelectedSlot
  *  |   +- Inventory: [ {Slot, id, Count}, ... ]
@@ -38,13 +38,13 @@ public final class LevelData {
 
     private int seed;
     private int spawnX;
-    private int spawnY;
+    private int spawnZ;
     private long created;
     private long lastPlayed;
     private long playedMillis;
 
     private float playerX;
-    private float playerY;
+    private float playerZ;
     private float rotationX;
     private float rotationY;
     private int selectedSlot;
@@ -83,7 +83,7 @@ public final class LevelData {
         data.gameMode = readGameMode(root.getString(SaveTags.GAME_MODE, ""));
         data.seed = root.getInt(SaveTags.SEED, 0);
         data.spawnX = root.getInt(SaveTags.SPAWN_X, 0);
-        data.spawnY = root.getInt(SaveTags.SPAWN_Y, 0);
+        data.spawnZ = root.getInt(SaveTags.SPAWN_Z, 0);
         data.created = root.getLong(SaveTags.CREATED, System.currentTimeMillis());
         data.lastPlayed = root.getLong(SaveTags.LAST_PLAYED, data.created);
         data.playedMillis = root.getLong(SaveTags.PLAYED_MILLIS, 0L);
@@ -91,7 +91,7 @@ public final class LevelData {
         NbtCompound player = root.getCompound(SaveTags.PLAYER);
         if (player != null) {
             data.playerX = player.getFloat(SaveTags.POS_X, 0.0f);
-            data.playerY = player.getFloat(SaveTags.POS_Y, 0.0f);
+            data.playerZ = player.getFloat(SaveTags.POS_Z, 0.0f);
             data.rotationX = player.getFloat(SaveTags.ROTATION_X, 0.0f);
             data.rotationY = player.getFloat(SaveTags.ROTATION_Y, 0.0f);
             data.selectedSlot = player.getInt(SaveTags.SELECTED_SLOT, 0);
@@ -163,14 +163,14 @@ public final class LevelData {
         root.putString(SaveTags.GAME_MODE, gameMode.modeName());
         root.putInt(SaveTags.SEED, seed);
         root.putInt(SaveTags.SPAWN_X, spawnX);
-        root.putInt(SaveTags.SPAWN_Y, spawnY);
+        root.putInt(SaveTags.SPAWN_Z, spawnZ);
         root.putLong(SaveTags.CREATED, created);
         root.putLong(SaveTags.LAST_PLAYED, lastPlayed);
         root.putLong(SaveTags.PLAYED_MILLIS, playedMillis);
 
         NbtCompound player = new NbtCompound(SaveTags.PLAYER);
         player.putFloat(SaveTags.POS_X, playerX);
-        player.putFloat(SaveTags.POS_Y, playerY);
+        player.putFloat(SaveTags.POS_Z, playerZ);
         player.putFloat(SaveTags.ROTATION_X, rotationX);
         player.putFloat(SaveTags.ROTATION_Y, rotationY);
         player.putInt(SaveTags.SELECTED_SLOT, selectedSlot);
@@ -192,15 +192,15 @@ public final class LevelData {
      * Copies the state of a player into this data.
      *
      * @param playerX world X coordinate of the player
-     * @param playerY world Y coordinate of the player
+     * @param playerZ world Y coordinate of the player
      * @param rotationX facing X component of the player
      * @param rotationY facing Y component of the player
      * @param inventory inventory of the player
      */
-    public void capturePlayer(float playerX, float playerY, float rotationX, float rotationY,
+    public void capturePlayer(float playerX, float playerZ, float rotationX, float rotationY,
             PlayerInventory inventory) {
         this.playerX = playerX;
-        this.playerY = playerY;
+        this.playerZ = playerZ;
         this.rotationX = rotationX;
         this.rotationY = rotationY;
         this.selectedSlot = inventory.selectedSlot();
@@ -250,14 +250,14 @@ public final class LevelData {
     }
 
     /** Block Y coordinate the player starts near. */
-    public int spawnY() {
-        return spawnY;
+    public int spawnZ() {
+        return spawnZ;
     }
 
     /** Sets the spawn point of the world. */
-    public void setSpawn(int spawnX, int spawnY) {
+    public void setSpawn(int spawnX, int spawnZ) {
         this.spawnX = spawnX;
-        this.spawnY = spawnY;
+        this.spawnZ = spawnZ;
     }
 
     /** Time the world was created at, in milliseconds since 1970. */
@@ -302,8 +302,8 @@ public final class LevelData {
     }
 
     /** World Y coordinate of the player. */
-    public float playerY() {
-        return playerY;
+    public float playerZ() {
+        return playerZ;
     }
 
     /** Facing X component of the player. */
@@ -323,7 +323,7 @@ public final class LevelData {
 
     @Override
     public String toString() {
-        return "LevelData(" + worldName + ", seed " + seed + ", spawn (" + spawnX + ", " + spawnY
+        return "LevelData(" + worldName + ", seed " + seed + ", spawn (" + spawnX + ", " + spawnZ
                 + "), played " + playedMillis / 1000L + "s)";
     }
 }

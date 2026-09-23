@@ -50,7 +50,7 @@ class WorldGenPreviewTest {
     void writesThePictureOfAGeneratedPatch() throws IOException {
         World world = new World(SEED);
         int centerX = world.spawnX() - SIZE / 2;
-        int centerY = world.spawnY() - SIZE / 2;
+        int centerY = world.spawnZ() - SIZE / 2;
         int radius = SIZE / 16 + 2;
         int centerChunkX = Chunk.chunkOf(centerX);
         int centerChunkY = Chunk.chunkOf(centerY);

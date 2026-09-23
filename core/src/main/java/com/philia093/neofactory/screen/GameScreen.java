@@ -422,16 +422,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * @return the player
      */
     private static Player createPlayer(World world, LevelData data, boolean fresh) {
-        boolean storedPosition = !fresh && (data.playerX() != 0.0f || data.playerY() != 0.0f);
+        boolean storedPosition = !fresh && (data.playerX() != 0.0f || data.playerZ() != 0.0f);
         if (!storedPosition) {
-            Player spawned = Player.spawnOnGround(world, world.spawnX(), world.spawnY());
+            Player spawned = Player.spawnOnGround(world, world.spawnX(), world.spawnZ());
             data.setSpawn(spawned.blockX(), spawned.blockZ());
             return spawned;
         }
         int blockX = MathUtils.floor(data.playerX() / Constants.TILE_SIZE);
-        int blockZ = MathUtils.floor(data.playerY() / Constants.TILE_SIZE);
+        int blockZ = MathUtils.floor(data.playerZ() / Constants.TILE_SIZE);
         Player player = new Player(data.playerX(),
-                world.surfaceY(blockX, blockZ) * Constants.TILE_SIZE, data.playerY());
+                world.surfaceY(blockX, blockZ) * Constants.TILE_SIZE, data.playerZ());
         player.facing().set(data.rotationX(), data.rotationY());
         if (player.facing().isZero()) {
             player.facing().set(1.0f, 0.0f);

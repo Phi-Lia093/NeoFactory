@@ -52,12 +52,12 @@ public final class WorldLoader {
      * @param storage storage holding the file
      * @param summary save game to open
      * @param spawnX block X coordinate of the spawn to use when the file holds none
-     * @param spawnY block Y coordinate of the spawn to use when the file holds none
+     * @param spawnZ block Y coordinate of the spawn to use when the file holds none
      * @return the loaded world
      * @throws SaveException when the file cannot be read
      */
     public static WorldLoader open(WorldStorage storage, SaveSummary summary, int spawnX,
-            int spawnY) {
+            int spawnZ) {
         File file = summary.levelFile();
         NbtCompound root;
         try {
@@ -73,14 +73,14 @@ public final class WorldLoader {
         // A world created by an older build may have no spawn stored yet, the caller
         // then decides where to start.
         int spawnBlockX = root.contains(SaveTags.SPAWN_X) ? data.spawnX() : spawnX;
-        int spawnBlockY = root.contains(SaveTags.SPAWN_Y) ? data.spawnY() : spawnY;
+        int spawnBlockY = root.contains(SaveTags.SPAWN_Z) ? data.spawnZ() : spawnZ;
 
         FileChunkStore store = new FileChunkStore(summary.folder());
 
         World world = new World(data.seed(), spawnBlockX, spawnBlockY, store);
         int entities = world.entities().load(root.getList(SaveTags.ENTITIES), world);
         world.loadChunksAround(data.playerX() / Constants.TILE_SIZE,
-                data.playerY() / Constants.TILE_SIZE, LOAD_CHUNK_RADIUS, Integer.MAX_VALUE);
+                data.playerZ() / Constants.TILE_SIZE, LOAD_CHUNK_RADIUS, Integer.MAX_VALUE);
 
         int stored = store.storedChunkCount();
         LOGGER.info("Opened world '{}' (seed {}) with {} stored chunks and {} entities",
