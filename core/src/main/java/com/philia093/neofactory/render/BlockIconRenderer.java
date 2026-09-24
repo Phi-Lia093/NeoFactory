@@ -19,6 +19,7 @@ import com.badlogic.gdx.utils.IntMap;
 import com.badlogic.gdx.utils.IntSet;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.BlockRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -57,8 +58,16 @@ public class BlockIconRenderer implements Disposable {
      */
     private static final Vector3 DIRECTION = new Vector3(1f, 0.85f, 1f).nor();
 
-    /** How far the camera stands from the middle of the cube, in blocks. */
-    private static final float DISTANCE = 3.9f;
+    /**
+     * How far the camera stands from the middle of the cube, in blocks.
+     * <p>
+     * It stands as close as a cube of {@link ItemCubeMeshes#SIZE} may without a corner of it reaching past
+     * the frame. At this distance the cube covers about nine tenths of the frame up and four fifths of it
+     * across, which is what makes a block read in a cell as small as {@code Constants.ITEM_ICON_SIZE};
+     * farther away it shrinks next to the flat pictures of the other items, nearer it loses the corners of
+     * its top face at the edges of the cell.
+     */
+    private static final float DISTANCE = 3.3f;
 
     /** Field of view of the icon camera, narrow so the cube keeps its flat look. */
     private static final float FIELD_OF_VIEW = 12f;
@@ -77,6 +86,15 @@ public class BlockIconRenderer implements Disposable {
 
     /** Transparency a pixel of an icon has to reach to count as solid, out of {@code 255}. */
     private static final int SOLID_ALPHA = 250;
+
+    /**
+     * Least share of an icon the cube has to cover to be worth showing.
+     * <p>
+     * A cube seen from a corner above covers about two thirds of its frame, so anything near a quarter is
+     * a drawing that went wrong rather than a small block: the tile the block was folded from reads better
+     * than a speck in the middle of a slot.
+     */
+    private static final float MINIMUM_COVERAGE = 0.25f;
 
     private final BlockShader shader;
     private final BlockPictures pictures;
@@ -167,6 +185,34 @@ public class BlockIconRenderer implements Disposable {
     }
 
     /**
+     * Draws the icon of every kind of block that fills its cell, before any slot asks for one.
+     * <p>
+     * An icon is drawn into a frame of its own, and the interface draws the picture of that frame in the
+     * very frame it was drawn in when the first slot that holds a block is reached. Nothing about that
+     * should matter - a picture of a frame is a picture like any other - but a slot that asked for the
+     * very first icon of a world stayed empty until a screen that holds many blocks, such as the
+     * inventory, asked for one: a screen full of icons is what a player should never have to open to see
+     * what they carry. So every icon is drawn here instead, while the world is being put together and no
+     * frame is half drawn, and a slot only ever asks for an icon that is already there.
+     * <p>
+     * A block that does not fill its cell - grass, leaves, anything with a shape of its own - has no cube
+     * to draw and is left alone: the interface folds its tile instead, see {@link BlockTextureCache}.
+     */
+    public void prime() {
+        int drawn = 0;
+        for (Block block : BlockRegistry.all()) {
+            if (block.isTransparent()) {
+                continue;
+            }
+            if (icon(block) != null) {
+                drawn++;
+            }
+        }
+        LOGGER.info("{} of the {} kinds of block are drawn as themselves in a slot, the rest keep their "
+                + "folded tile", drawn, BlockRegistry.count());
+    }
+
+    /**
      * Icon of a block, drawn on first use and kept afterwards.
      *
      * @param block block to show
@@ -245,20 +291,21 @@ public class BlockIconRenderer implements Disposable {
     }
 
     /**
-     * Checks what the cube of a block put into the frame, and reports it.
+     * Checks what the cube of a block put into the frame, and reports it when it is too little.
      * <p>
      * A frame that stays empty, or one that is filled with nothing but see-through pixels, is an icon that
      * cannot be seen - and where an icon will look is one of the few things of this game that no test can
-     * check, because the frame it is drawn into needs a graphics card. So every icon reports itself once,
-     * when it is drawn, and a block whose drawing did not arrive keeps the tile it used to be folded from
-     * instead of leaving an empty slot behind: a slot with an old icon in it is a look to report, a slot
-     * with nothing in it is a player who cannot tell what they carry.
+     * check, because the frame it is drawn into needs a graphics card. So a block whose drawing did not
+     * arrive keeps the tile it used to be folded from instead of leaving an empty slot behind: a slot with
+     * an old icon in it is a look to report, a slot with nothing in it is a player who cannot tell what
+     * they carry. Only a drawing that is too poor to show is written down - {@link #prime()} reports how
+     * many icons came out well as a whole.
      * <p>
      * The count is taken while the frame is still the bound one, because reading reads the frame that is
      * bound.
      *
      * @param block block that was drawn
-     * @return {@code true} when the frame holds solid pixels, which is what an icon needs
+     * @return {@code true} when the frame holds a picture worth showing in a slot
      */
     private static boolean reachedTheFrame(Block block) {
         byte[] pixels = ScreenUtils.getFrameBufferPixels(0, 0, SIZE, SIZE, false);
@@ -273,8 +320,6 @@ public class BlockIconRenderer implements Disposable {
                 solid++;
             }
         }
-        LOGGER.info("The icon of '{}' covers {} of the {} pixels of its frame, {} of them solid",
-                block.name(), covered, SIZE * SIZE, solid);
         if (covered == 0) {
             LOGGER.warn("The cube of '{}' never reached the frame of its icon, so the frame is empty; the "
                     + "block keeps its folded tile", block.name());
@@ -285,6 +330,13 @@ public class BlockIconRenderer implements Disposable {
                     + "would be invisible; the block keeps its folded tile", block.name());
             return false;
         }
+        if (covered < SIZE * SIZE * MINIMUM_COVERAGE) {
+            LOGGER.warn("The cube of '{}' covers only {} of the {} pixels of its icon, which is too little "
+                    + "to read; the block keeps its folded tile", block.name(), covered, SIZE * SIZE);
+            return false;
+        }
+        LOGGER.debug("The icon of '{}' covers {} of the {} pixels of its frame, {} of them solid",
+                block.name(), covered, SIZE * SIZE, solid);
         return true;
     }
 

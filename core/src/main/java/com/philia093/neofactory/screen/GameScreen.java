@@ -433,8 +433,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             cubeCamera.near = CUBE_NEAR;
             cubeCamera.far = CUBE_VIEW_DISTANCE;
             // A slot shows a block by drawing the block itself, and that drawing shares the shader and the
-            // pictures of the world, so what a slot holds looks like what the world holds.
+            // pictures of the world, so what a slot holds looks like what the world holds. The icons are
+            // drawn right away and not while a slot asks for them, see BlockIconRenderer#prime.
             this.blockIconRenderer = new BlockIconRenderer(blockShader, pictures);
+            blockIconRenderer.prime();
             textures.setBlockIconRenderer(blockIconRenderer);
             LOGGER.info("The world is drawn as cubes, {} pictures in the array", pictures.layerCount());
         } else {

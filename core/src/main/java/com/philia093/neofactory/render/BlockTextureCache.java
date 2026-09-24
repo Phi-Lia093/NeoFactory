@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.badlogic.gdx.utils.ObjectSet;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.util.Constants;
@@ -57,6 +58,9 @@ public class BlockTextureCache implements Disposable {
 
     /** Filled cells, painted once per item, see {@link #fluidCellIcon(Item)}. */
     private final ObjectMap<String, TextureRegion> cellIcons = new ObjectMap<>();
+
+    /** Names of the icons that could not be read, so each of them is reported once and not per slot. */
+    private final ObjectSet<String> missingIcons = new ObjectSet<>();
 
     /** Cubes folded from a block tile, keyed by texture name and frame. */
     private final ObjectMap<String, TextureRegion> foldedIcons = new ObjectMap<>();
@@ -279,6 +283,17 @@ public class BlockTextureCache implements Disposable {
      * @return the icon, or {@code null} when the picture is missing
      */
     public TextureRegion itemIcon(Item item) {
+        TextureRegion icon = iconOrNull(item);
+        if (icon == null && missingIcons.add(item.name())) {
+            // A slot with nothing in it is a player who cannot tell what they carry, so a picture that
+            // cannot be read is reported - once, because this is asked for every slot of every screen.
+            LOGGER.warn("The icon of '{}' cannot be read, so a slot holding it stays empty", item.name());
+        }
+        return icon;
+    }
+
+    /** The icon of an item, or {@code null} when none of the ways to a picture worked. */
+    private TextureRegion iconOrNull(Item item) {
         if (item.isBlockItem() && item.block() != null && !item.block().isTransparent()) {
             // A world of cubes shows the block itself, see BlockIconRenderer; the folded tile is what
             // stands in for it while there is no graphics card that can draw one, or in the flat view.
