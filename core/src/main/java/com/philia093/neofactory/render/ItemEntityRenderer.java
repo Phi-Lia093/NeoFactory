@@ -67,7 +67,7 @@ public class ItemEntityRenderer implements EntityRenderer {
     /**
      * Side length of a dropped item icon, in world units.
      * <p>
-     * One block is {@link Constants#TILE_SIZE} units, so the icon covers
+      * One block is {@link Constants#BLOCK_SIZE} unit, so the icon covers
      * {@code 1 / sqrt(2)} of the cell it lies in.
      *
      * @return the side length in world units

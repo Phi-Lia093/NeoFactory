@@ -12,7 +12,7 @@ import java.util.Locale;
  * The two numbers are block coordinates, the very same ones the debug log prints
  * for the player and a block, so {@code /tp 12 34} puts the player on block
  * {@code 12, 34}. Decimals are allowed, which makes the position exact; the values
- * are multiplied by {@link Constants#TILE_SIZE} because entities live in world
+  * are multiplied by {@link Constants#BLOCK_SIZE} because entities live in world
  * units. The speed is dropped as well, so the player never keeps the momentum of
  * the walk that came before the jump.
  */

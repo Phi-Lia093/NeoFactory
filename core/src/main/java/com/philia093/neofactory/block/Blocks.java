@@ -18,7 +18,7 @@ import com.badlogic.gdx.graphics.Color;
  * material it is made of: stone, sand and grass are hard, yet the player stands on
  * them. {@link #AIR} is ground as well, which keeps a hole the player dug passable.
  * <p>
- * A block that is neither declares itself an obstacle in both layers. Forgetting
+  * A block that is neither declares itself an obstacle in every cell it fills. Forgetting
  * {@code .ground(true)} on a ground block would freeze the player, because then
  * every cell of the world would count as an obstacle, and forgetting
  * {@code .solid(true)} on a block such as {@link #PLANKS_OAK} would let the player
