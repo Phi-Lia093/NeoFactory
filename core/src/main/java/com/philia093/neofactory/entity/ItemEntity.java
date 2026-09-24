@@ -66,21 +66,6 @@ public class ItemEntity extends Entity {
     private float age;
 
     /**
-     * Creates an item lying on the ground of the flat view.
-     * <p>
-     * The game is still drawn from above, so the cell a body stands in is the upper one of a column,
-     * see {@link com.philia093.neofactory.world.Chunk#flatY(int)}. This is the constructor the drop
-     * sinks of that view use; it goes away with the view.
-     *
-     * @param x world X coordinate of the item
-     * @param z world Z coordinate of the item
-     * @param stack items this entity stands for, copied by the constructor
-     */
-    public ItemEntity(float x, float z, ItemStack stack) {
-        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.BLOCK_SIZE, z, stack);
-    }
-
-    /**
      * Creates an item on the ground.
      *
      * @param x world X coordinate of the item

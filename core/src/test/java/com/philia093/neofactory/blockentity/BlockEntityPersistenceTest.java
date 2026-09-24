@@ -80,19 +80,19 @@ class BlockEntityPersistenceTest {
 
         chunk.setBlockEntity(entity);
 
-        assertEquals(entity, chunk.blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
+        assertEquals(entity, chunk.blockEntity(BUILT_X, 65, BUILT_Y));
         assertEquals(1, chunk.blockEntityCount());
 
-        chunk.removeBlockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y);
+        chunk.removeBlockEntity(BUILT_X, 65, BUILT_Y);
 
         assertEquals(0, chunk.blockEntityCount());
-        assertNull(chunk.blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
+        assertNull(chunk.blockEntity(BUILT_X, 65, BUILT_Y));
     }
 
     @Test
     void aMachineTravelsThroughTheChunkFile() {
         Chunk written = new Chunk(0, 0);
-        written.setRawId(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.FURNACE.id());
+        written.setRawId(BUILT_X, 65, BUILT_Y, Blocks.FURNACE.id());
         MachineBlockEntity furnace = furnace(BUILT_X, BUILT_Y);
         furnace.machine().inventory().set(SmeltingMachine.INPUT, ItemStack.of(Items.IRON_ORE, 3));
         furnace.machine().inventory().set(SmeltingMachine.FUEL, ItemStack.of(Items.COAL, 2));
@@ -101,12 +101,12 @@ class BlockEntityPersistenceTest {
         Chunk read = new Chunk(0, 0);
         ChunkCodec.read(read, ChunkCodec.write(written));
 
-        BlockEntity restored = read.blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y);
+        BlockEntity restored = read.blockEntity(BUILT_X, 65, BUILT_Y);
         assertNotNull(restored, "the machine was lost while writing or reading");
         assertEquals("furnace", restored.type().name());
         assertEquals(BUILT_X, restored.x());
         assertEquals(BUILT_Y, restored.z(), "the second horizontal coordinate came back");
-        assertEquals(Chunk.flatY(Chunk.LAYER_OBJECT), restored.y(), "and its height");
+        assertEquals(65, restored.y(), "and its height");
         Machine machine = ((MachineBlockEntity) restored).machine();
         assertEquals(3, machine.inventory().get(SmeltingMachine.INPUT).count());
         assertEquals(2, machine.inventory().get(SmeltingMachine.FUEL).count());
@@ -127,12 +127,12 @@ class BlockEntityPersistenceTest {
     @Test
     void anUnknownTypeIsSkipped() {
         Chunk chunk = new Chunk(0, 0);
-        chunk.setRawId(BUILT_X, BUILT_Y, Chunk.LAYER_OBJECT, Blocks.FURNACE.id());
+        chunk.setRawId(BUILT_X, BUILT_Y, 1, Blocks.FURNACE.id());
         NbtCompound data = ChunkCodec.write(chunk);
         NbtList entities = data.getList(SaveTags.BLOCK_ENTITIES);
         NbtCompound entry = new NbtCompound("");
         entry.putInt(SaveTags.BLOCK_ENTITY_X, BUILT_X);
-        entry.putInt(SaveTags.BLOCK_ENTITY_Y, Chunk.flatY(Chunk.LAYER_OBJECT));
+        entry.putInt(SaveTags.BLOCK_ENTITY_Y, 65);
         entry.putInt(SaveTags.BLOCK_ENTITY_Z, BUILT_Y);
         entry.putString(SaveTags.BLOCK_ENTITY_ID, "a_machine_that_never_shipped");
         entities.add(entry);
@@ -150,7 +150,7 @@ class BlockEntityPersistenceTest {
 
         // A player builds a furnace and fills it.
         World world = new World(SEED, 0, 0);
-        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.FURNACE);
+        world.setBlock(BUILT_X, 65, BUILT_Y, Blocks.FURNACE);
         MachineBlockEntity placed = furnace(BUILT_X, BUILT_Y);
         world.addBlockEntity(placed);
         placed.machine().inventory().set(SmeltingMachine.INPUT, ItemStack.of(Items.IRON_ORE, 2));
@@ -166,7 +166,7 @@ class BlockEntityPersistenceTest {
 
         // The player comes back to the same spot.
         WorldLoader loader = WorldLoader.open(storage, storage.list().get(0), 0, 0);
-        BlockEntity reopened = loader.world().blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y);
+        BlockEntity reopened = loader.world().blockEntity(BUILT_X, 65, BUILT_Y);
 
         assertNotNull(reopened, "the furnace was lost with the save game");
         Machine machine = ((MachineBlockEntity) reopened).machine();
@@ -180,15 +180,15 @@ class BlockEntityPersistenceTest {
     @Test
     void replacingTheBlockTakesItsEntityWithIt() {
         World world = new World(SEED, 0, 0);
-        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.FURNACE);
+        world.setBlock(BUILT_X, 65, BUILT_Y, Blocks.FURNACE);
         world.addBlockEntity(furnace(BUILT_X, BUILT_Y));
         assertEquals(1, world.blockEntityCount());
 
-        world.setBlock(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y, Blocks.AIR);
+        world.setBlock(BUILT_X, 65, BUILT_Y, Blocks.AIR);
 
         assertEquals(0, world.blockEntityCount(),
                 "a machine stayed behind where nothing stands");
-        assertNull(world.blockEntity(BUILT_X, Chunk.flatY(Chunk.LAYER_OBJECT), BUILT_Y));
+        assertNull(world.blockEntity(BUILT_X, 65, BUILT_Y));
     }
 
     /** Runs the world for a number of ticks, the way the frames of the game would. */
@@ -201,7 +201,7 @@ class BlockEntityPersistenceTest {
     /** An empty furnace placed at a cell. */
     private static MachineBlockEntity furnace(int x, int y) {
         MachineBlockEntity entity = (MachineBlockEntity) BlockEntityTypes.FURNACE.create();
-        entity.setPosition(x, Chunk.flatY(Chunk.LAYER_OBJECT), y);
+        entity.setPosition(x, 65, y);
         return entity;
     }
 

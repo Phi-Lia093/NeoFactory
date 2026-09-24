@@ -80,20 +80,6 @@ public class Player extends Entity {
     private float speedScale = 1.0f;
 
     /**
-     * Creates a player standing in a column of the flat view.
-     * <p>
-     * The game is still drawn from above, so a column has a ground layer and the cell above it and a
-     * body stands in the upper one, see {@link Chunk#flatY(int)}. This is the constructor the screens
-     * of that view use; it goes away with the view.
-     *
-     * @param x world X coordinate of the player center
-     * @param z world Z coordinate of the player center
-     */
-    public Player(float x, float z) {
-        this(x, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.BLOCK_SIZE, z);
-    }
-
-    /**
      * Creates a player standing at a position.
      *
      * @param x world X coordinate of the player center

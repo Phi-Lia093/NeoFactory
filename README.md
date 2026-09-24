@@ -1,22 +1,23 @@
 # NeoFactory
 
-A 2D top-down sandbox game in the spirit of Minecraft, built with
+A voxel sandbox game in the spirit of Minecraft, built with
 [libGDX](https://libgdx.com/).
 
-The camera looks straight down on the world, which is a plane of square blocks. The
-player walks over the terrain, digs blocks out of it and builds new ones, and the
-world is stored on disk so that a session can be continued later.
+The player stands in a world of cubes: a chunk is a column of sections, a block is one unit on
+every side, and the view is from inside the body. The eyes pick the cell a break or a build
+applies to, so a wall is built against from the side and a bridge grows sideways. The world is
+stored on disk so that a session can be continued later.
 
 ## What is in the game today
 
 - **Terrain** - noise based biomes (plains, forest, desert, snow and a rocky one)
   with grass, trees, ore clusters and decorative plants, all generated from the
   world seed.
-- **Two block layers** - the floor the player walks on and the object layer the
-  player stands in, which holds trees, plants and everything the player places.
-- **Digging and building** - the left button breaks the aimed block while it is
-  held, the right button builds the held block, both limited by the reach of the
-  player and both able to address the layer below the feet.
+- **Digging and building** - the left button breaks the block the eyes meet while it
+  is held, the right button builds the held block into the cell behind the face the
+  line of sight entered, and both are limited by the reach of the player. A block
+  hangs on whatever it is built against, so a wall is built against and a bridge
+  grows sideways.
 - **Inventory and hotbar** - nine hotbar slots, a full inventory screen, and
   dropped items that fall on the ground and are picked up by walking over them.
 - **Save games** - one folder per world, a level file plus one file per chunk the
@@ -27,13 +28,13 @@ world is stored on disk so that a session can be continued later.
 - **Entities** - a framework the player and dropped items are built on, with one
   type registry and one save layout they share.
 - **World** - a seeded generator builds the terrain from noise fields: regions of grass, sand,
-  rock and snow, ore clusters in the stone, and the water of the landscape. A river follows the
-  contour line of a field of its own, so it winds and is as wide as the slope of the field allows;
-  a lake is a lobe of a fractal field and never a circle; a pool of lava is dropped by a
-  decoration instead of a biome, the way the original drops it into a hollow. The bed of a river is
-  gravel, clay and sand, the water stands above it in the layer the player walks in, and every cell
-  of it is a source. What holds a body of water is the ring of sand, gravel and stone around it -
-  dig one of those cells away and the water runs into the hole.
+  rock and snow, ore clusters in the stone, and the valleys a river and a lake carved. A river
+  follows the contour line of a field of its own, so it winds and is as wide as the slope of the
+  field allows; a lake is a lobe of a fractal field and never a circle. The bed of such a valley is
+  gravel, clay and sand, and nothing is poured over it: a fluid is a material of the industry and
+  never a block of the world. A world is created as one of two lands, see `WorldType` - the
+  landscape of its seed, or the flat table of bedrock, soil and grass that every cell of its
+  surface shares, which is what a world to build and to try something out in is made of.
 - **Machines** - the furnace, the first machine of the game: it is built from an item,
   keeps its slots, its fuel and its work in a block entity that travels with its chunk,
   runs in fixed ticks as long as its chunk is loaded, and hands what it holds back to
@@ -64,19 +65,14 @@ world is stored on disk so that a session can be continued later.
   stack dragged out of it lands on the ground. `/gamemode survival` goes back, and the mode
   is stored with the world.
 
-- **Fluids** - water and lava stand in either layer and the two never mix: poured on the grass
-  they lie in the layer the player stands in, poured into a hole they fill the ground layer, and
-  a spill of one of them reaches through neither. While they are poured they follow the rules of
-  a block - nothing over a hole, nothing into a taken cell, nothing that skips a layer - and then
-  they spread on their own, one ring every few ticks, until they have reached as far as their
-  fluid allows: seven cells for water, three for lava. A wall holds a spill back, a plant is
-  flooded, a lake of water never covers lava, and a source that a bucket takes away drains
-  everything that lived from it ring by ring. A bucket carries water and lava and nothing else, a
-  cell carries any fluid the industry will bring: every fluid shares one grey scale picture and is
-  painted while it is drawn, and a filled cell shows its fluid in the window and keeps the steel
-  around it grey. An empty container stacks like any other material, a full one does not: filling
-  a bucket out of a stack of empty ones leaves the rest of the stack in the hand and puts the full
-  bucket into the inventory, where it takes a slot of its own.
+- **Fluids** - a fluid is a material of the industry and no longer a block of the world: water and
+  lava are held in the tank of a machine and carried by a bucket or a cell, and a recipe asks for
+  them by amount. Neither is ever met in the terrain, so nothing spreads, nothing floods and no
+  picture of a fluid is drawn into the world. A bucket carries water and lava and nothing else, a
+  cell carries any fluid the industry will bring, and a filled cell shows its fluid in the window
+  while the steel around it stays grey. An empty container stacks like any other material, a full
+  one does not: filling a bucket out of a stack of empty ones leaves the rest of the stack in the
+  hand and puts the full bucket into the inventory, where it takes a slot of its own.
 
 - **Materials** - a factory holds hundreds of them, and a metal is not one item but nineteen: a
   dust, a small and a tiny pile of it, an ingot, a nugget, a plate, a foil, a rod, a long rod, a
@@ -98,16 +94,11 @@ world is stored on disk so that a session can be continued later.
 | Input | Action |
 | --- | --- |
 | `W`, `A`, `S`, `D` | walk |
-| mouse | aim, the player looks at the cursor |
+| mouse | turn the view, the block the eyes meet is what an action applies to |
 | mouse wheel | select a hotbar slot |
-| `CTRL` + mouse wheel | zoom the camera instead |
-| left mouse button | break the aimed block while held; a click on the hotbar selects that slot |
-| right mouse button | build the held block into the aimed cell; a bucket pours its fluid into an empty cell and a bucket over a source of water or lava fills itself |
+| left mouse button | break the block the eyes meet while held; a click on the hotbar selects that slot |
 | `1` to `9` | select a hotbar slot |
-| `-` / `=` | zoom out / in while held (numpad `-` and `+` do the same) |
 | `[` / `]` | keep fewer / more chunks around the player |
-| `SHIFT` | address the layer below the feet instead of the layer the player stands in |
-| `Q` | drop one item, `SHIFT` + `Q` the whole stack: the hotbar slot during play, the slot under the mouse while the inventory is open |
 | mouse outside the panel | throw the carried stack into the world while a container is open; a stack put into the creative grid disappears instead |
 | `E` | open and close the inventory; while the world is played in creative mode it opens the creative inventory instead |
 | typing in the search box | filter the creative inventory by name, `BACKSPACE` deletes a character; while the box has the keyboard a letter belongs into it, so `E` and `T` type instead of opening a screen, and only `ESCAPE` and the function keys still reach the game |
@@ -126,7 +117,7 @@ world is stored on disk so that a session can be continued later.
 
 | Package | Contents |
 | --- | --- |
-| `fluid` | what a fluid is and where it stands: the kinds, their sheet and colour, the state of a cell, the spread of a spill and the containers that carry it |
+| `fluid` | what a fluid is: the kinds, the colour a tank and a cell paint it in, and the containers that carry it |
 | `block` | block types, the six faces of a cube and the picture each face is drawn from, and the id/name lookup table, ids are stable across save games |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |

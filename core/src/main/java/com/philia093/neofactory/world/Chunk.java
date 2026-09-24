@@ -44,24 +44,6 @@ import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
  */
 public final class Chunk {
 
-    /** Number of layers of the flat view of this chunk. */
-    public static final int LAYERS = 2;
-
-    /** Index of the generated ground layer of the flat view. */
-    public static final int LAYER_FLOOR = Constants.LAYER_FLOOR;
-
-    /** Index of the object layer of the flat view, the layer the player stands in. */
-    public static final int LAYER_OBJECT = Constants.LAYER_OBJECT;
-
-    /**
-     * Height the flat view of the world stands on.
-     * <p>
-     * The ground of a column is at this height and the layer the player stands in is one above it.
-     * A world that is filled from the bottom up puts its surface where the noise says it belongs and
-     * forgets this number altogether.
-     */
-    public static final int LAYER_BASE_Y = Constants.SEA_LEVEL;
-
     /** Amount of columns stored by a single chunk. */
     public static final int CELL_COUNT = CHUNK_SIZE * CHUNK_SIZE;
 
@@ -498,49 +480,6 @@ public final class Chunk {
      */
     public static int chunkOf(int blockCoordinate) {
         return Math.floorDiv(blockCoordinate, CHUNK_SIZE);
-    }
-
-    /**
-     * Height the flat view of a layer stands at.
-     *
-     * @param layer layer index, see {@link #LAYER_FLOOR} and {@link #LAYER_OBJECT}
-     * @return the block Y coordinate of that layer
-     * @throws IndexOutOfBoundsException when no layer carries that index
-     */
-    public static int flatY(int layer) {
-        if (layer < 0 || layer >= LAYERS) {
-            throw new IndexOutOfBoundsException("Layer out of range: " + layer);
-        }
-        return LAYER_BASE_Y + layer;
-    }
-
-    /**
-     * {@code true} when a height is one of the layers of the flat view.
-     * <p>
-     * The game is drawn from above and only ever writes the base height and the cell above it, see
-     * {@link #flatY(int)}, so every other height is not part of the flat view yet. A reader that
-     * stumbles over a cell outside those two layers reports it instead of mapping it to a layer that
-     * does not exist.
-     *
-     * @param blockY block Y coordinate to test
-     * @return {@code true} when a layer of the flat view stands at that height
-     */
-    public static boolean isFlatHeight(int blockY) {
-        return blockY >= LAYER_BASE_Y && blockY < LAYER_BASE_Y + LAYERS;
-    }
-
-    /**
-     * Layer the flat view of the world stands at a height, the inverse of {@link #flatY(int)}.
-     *
-     * @param blockY block Y coordinate, see {@link #flatY(int)}
-     * @return the layer index that stands at that height
-     * @throws IndexOutOfBoundsException when no layer of the flat view stands there
-     */
-    public static int flatLayer(int blockY) {
-        if (!isFlatHeight(blockY)) {
-            throw new IndexOutOfBoundsException("No layer of the flat view at height " + blockY);
-        }
-        return blockY - LAYER_BASE_Y;
     }
 
     /**

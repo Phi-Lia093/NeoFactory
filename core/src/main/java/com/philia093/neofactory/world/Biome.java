@@ -42,16 +42,16 @@ public enum Biome {
      * its own, which is what makes it wind instead of run straight, see
      * {@code WorldGen#biomeAt(int, int)}.
      */
-    RIVER("river", 0),
+    RIVER_VALLEY("river_valley", 0),
 
     /**
      * A lake, the wide cousin of the river.
      * <p>
-     * The same bed and the same water as {@link #RIVER}, above a shape the noise of the terrain
+     * The same bed and the same water as {@link #RIVER_VALLEY}, above a shape the noise of the terrain
      * drew: a lobe of a fractal field, never a circle. It is also the level a lake of lava is
      * laid out on, see {@code LavaLakeDecoration}.
      */
-    LAKE("lake", 0);
+    LAKE_VALLEY("lake_valley", 0);
 
     private final String name;
     private final int weight;
@@ -81,8 +81,8 @@ public enum Biome {
     public Block floorBlock() {
         switch (this) {
             case DESERT:
-            case RIVER:
-            case LAKE:
+            case RIVER_VALLEY:
+            case LAKE_VALLEY:
                 return Blocks.SAND;
             case ROCKY:
                 return Blocks.STONE;
@@ -103,8 +103,8 @@ public enum Biome {
         switch (this) {
             case DESERT:
                 return Blocks.SANDSTONE;
-            case RIVER:
-            case LAKE:
+            case RIVER_VALLEY:
+            case LAKE_VALLEY:
                 // Clay is what lies under a bank, the material a river carries along.
                 return Blocks.CLAY;
             case ROCKY:
@@ -126,8 +126,8 @@ public enum Biome {
         switch (this) {
             case DESERT:
             case ROCKY:
-            case RIVER:
-            case LAKE:
+            case RIVER_VALLEY:
+            case LAKE_VALLEY:
                 return Blocks.GRAVEL;
             case SNOWY:
                 return Blocks.STONE;

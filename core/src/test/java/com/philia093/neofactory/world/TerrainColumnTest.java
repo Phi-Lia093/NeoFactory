@@ -75,7 +75,7 @@ class TerrainColumnTest {
 
         for (int x = -SAMPLE * 4; x < SAMPLE * 4; x += 5) {
             for (int z = -SAMPLE * 4; z < SAMPLE * 4; z += 5) {
-                if (!generator.isRiverAt(x, z) && !generator.isLakeAt(x, z)) {
+                if (!generator.isRiverValleyAt(x, z) && !generator.isLakeValleyAt(x, z)) {
                     continue;
                 }
                 columns++;

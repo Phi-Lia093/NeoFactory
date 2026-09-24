@@ -32,8 +32,8 @@ class ChunkModificationTest {
     void generatedTerrainIsNotAPlayerChange() {
         World world = new World(4242, 0, 0);
         for (int x = -20; x <= 20; x++) {
-            world.getBlock(x, Chunk.flatY(Chunk.LAYER_FLOOR), 0);
-            world.getBlock(x, Chunk.flatY(Chunk.LAYER_OBJECT), 0);
+            world.getBlock(x, 64, 0);
+            world.getBlock(x, 65, 0);
         }
         world.ensureChunksAround(0, 0, 3);
 
@@ -57,26 +57,26 @@ class ChunkModificationTest {
     @Test
     void aBlockWrittenByThePlayerMarksItsChunk() {
         World world = new World(7, 0, 0);
-        world.setBlock(1, Chunk.flatY(Chunk.LAYER_OBJECT), 2, Blocks.STONE);
+        world.setBlock(1, 65, 2, Blocks.STONE);
 
         Chunk chunk = world.chunkIfLoaded(0, 0);
         assertNotNull(chunk);
         assertTrue(chunk.isModified());
         assertEquals(1, world.modifiedChunkCount());
-        assertEquals(Blocks.STONE, world.getBlock(1, Chunk.flatY(Chunk.LAYER_OBJECT), 2));
+        assertEquals(Blocks.STONE, world.getBlock(1, 65, 2));
     }
 
     @Test
     void readingAStoredChunkClearsTheFlag() {
         Chunk written = new Chunk(0, 0);
-        written.setRawId(5, 6, Chunk.LAYER_OBJECT, Blocks.STONE.id());
+        written.setRawId(5, 6, 1, Blocks.STONE.id());
         written.markModified();
         NbtCompound data = ChunkCodec.write(written);
 
         Chunk read = new Chunk(0, 0);
         ChunkCodec.read(read, data);
 
-        assertEquals(Blocks.STONE, read.getBlock(5, 6, Chunk.LAYER_OBJECT));
+        assertEquals(Blocks.STONE, read.getBlock(5, 6, 1));
         // The file is the authority now, so nothing is pending for a save.
         assertFalse(read.isModified());
     }

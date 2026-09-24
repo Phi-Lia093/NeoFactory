@@ -19,7 +19,7 @@ import java.util.List;
 public final class TestCommandContext implements CommandContext {
 
     /** Player every command of the test works on. */
-    public final Player player = new Player(0.0f, 0.0f);
+    public final Player player = new Player(0.0f, 0.0f, 0.0f);
 
     /** Chat the answers of the commands are collected in. */
     public final ChatLog log = new ChatLog();

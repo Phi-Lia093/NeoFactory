@@ -124,7 +124,7 @@ class ChatCommandsTest {
 
     @Test
     void teleportMovesThePlayerToABlock() {
-        context.player.position().set(1.0f, Chunk.flatY(Chunk.LAYER_OBJECT) * Constants.BLOCK_SIZE, 2.0f);
+        context.player.position().set(1.0f, 65 * Constants.BLOCK_SIZE, 2.0f);
         context.player.velocity().set(5.0f, 0.0f, 5.0f);
 
         registry.run("/tp 12 34", context);

@@ -19,12 +19,6 @@ import com.philia093.neofactory.block.BlockFace;
  */
 public interface BlockAccess {
 
-    /** Height of the ground layer of the flat view, the layer the player walks on. */
-    int FLAT_FLOOR_Y = Chunk.flatY(Chunk.LAYER_FLOOR);
-
-    /** Height of the object layer of the flat view, the layer the player walks in. */
-    int FLAT_OBJECT_Y = Chunk.flatY(Chunk.LAYER_OBJECT);
-
     /**
      * Returns a block of the world.
      *
@@ -99,19 +93,6 @@ public interface BlockAccess {
     }
 
     /**
-     * {@code true} when a block or a fluid may stand in an empty cell.
-     * <p>
-     * Something to stand on is what keeps a block from floating: the cell below has to hold one. The
-     * ground layer of the flat view is the exception, because the world the game draws today has no
-     * terrain below it: the floor of a column is the bottom of that world, and a hole dug into it
-     * could never be filled again without this.
-     *
-     * @param x block X coordinate
-     * @param y block Y coordinate, the height
-     * @param z block Z coordinate
-     * @return {@code true} when a block or a fluid may be placed here
-     */
-    /**
      * {@code true} when a cell may hold a block of its own.
      * <p>
      * A block is attached to whatever it is built against, and a line of sight brings the face it entered
@@ -127,27 +108,10 @@ public interface BlockAccess {
      */
     default boolean hasSupport(int x, int y, int z, BlockFace face) {
         if (face == null) {
-            return hasSupport(x, y, z);
+            // A cell the mouse named knows no side, so the ground below it has to carry the block.
+            return hasBlock(x, y - 1, z);
         }
         return hasBlock(x - face.x(), y - face.y(), z - face.z());
     }
-
-    /**
-     * {@code true} when a cell holds a block, the ground of the flat view included.
-     *
-     * @param x block X coordinate
-     * @param y block Y coordinate, the height
-     * @param z block Z coordinate
-     * @return {@code true} when that cell is not empty
-     */
-    default boolean hasSupport(int x, int y, int z) {
-        return y == FLAT_FLOOR_Y || hasBlock(x, y - 1, z);
-    }
-
-
-
-
-
-
 
 }

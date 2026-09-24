@@ -49,7 +49,7 @@ class EntityPersistenceTest {
         SaveSummary summary = storage.create("Entities", SEED, 0, 0);
 
         World world = new World(SEED, 0, 0);
-        Player player = new Player(120.0f, 96.0f);
+        Player player = new Player(120.0f, 65.0f, 96.0f);
         player.facing().set(0.0f, 1.0f);
         player.inventory().set(3, ItemStack.of(Items.DIAMOND, 5));
         player.inventory().setSelectedSlot(3);
@@ -88,7 +88,7 @@ class EntityPersistenceTest {
     void aDiscardedEntityLeavesTheWorld() {
         EntityManager manager = new EntityManager();
         World world = new World(SEED, 0, 0);
-        Player player = new Player(10.0f, 10.0f);
+        Player player = new Player(10.0f, 65.0f, 10.0f);
         manager.spawn(player);
 
         player.discard();

@@ -368,11 +368,11 @@ public final class WorldGen implements TerrainSampler {
         // The water of a river and of a lake covers every other biome: a river runs through a
         // forest as well as through a desert, and the field that draws it does not care where it
         // is. That is why both answer before the biome field is asked at all.
-        if (isRiverAt(x, y)) {
-            return Biome.RIVER;
+        if (isRiverValleyAt(x, y)) {
+            return Biome.RIVER_VALLEY;
         }
-        if (isLakeAt(x, y)) {
-            return Biome.LAKE;
+        if (isLakeValleyAt(x, y)) {
+            return Biome.LAKE_VALLEY;
         }
         return Biome.fromNormalized(biomeShareAt(x, y));
     }
@@ -388,7 +388,7 @@ public final class WorldGen implements TerrainSampler {
      * @param y block coordinate along the second horizontal axis
      * @return {@code true} when the cell lies under the water of a river
      */
-    public boolean isRiverAt(int x, int y) {
+    public boolean isRiverValleyAt(int x, int y) {
         return !isFlat()
                 && Math.abs(bodyAt(riverNoise, RIVER_FREQUENCY, x, y) - 0.5f) <= RIVER_HALF_WIDTH;
     }
@@ -404,7 +404,7 @@ public final class WorldGen implements TerrainSampler {
      * @param y block coordinate along the second horizontal axis
      * @return {@code true} when the cell lies under the water of a lake
      */
-    public boolean isLakeAt(int x, int y) {
+    public boolean isLakeValleyAt(int x, int y) {
         return !isFlat() && bodyAt(lakeNoise, LAKE_FREQUENCY, x, y) >= LAKE_THRESHOLD;
     }
 
@@ -460,7 +460,7 @@ public final class WorldGen implements TerrainSampler {
             return Blocks.GRASS;
         }
         Biome biome = biomeAt(x, y);
-        if (biome == Biome.RIVER || biome == Biome.LAKE || isBankOf(x, y)) {
+        if (biome == Biome.RIVER_VALLEY || biome == Biome.LAKE_VALLEY || isBankOf(x, y)) {
             // The bed of a valley and the bank around it are made of the same three materials - sand,
             // clay and gravel - and the game has no fluid block, so what is left of a river is the shape
             // it carved. Handling the bank here and not in a decoration is what keeps the shore solid
@@ -476,14 +476,14 @@ public final class WorldGen implements TerrainSampler {
 
     /** {@code true} when a river or a lake touches the cell, which makes it a bank. */
     private boolean isBankOf(int x, int y) {
-        return isWaterAt(x + 1, y) || isWaterAt(x - 1, y)
-                || isWaterAt(x, y + 1) || isWaterAt(x, y - 1);
+        return isValleyAt(x + 1, y) || isValleyAt(x - 1, y)
+                || isValleyAt(x, y + 1) || isValleyAt(x, y - 1);
     }
 
     /** {@code true} when the water of a river or of a lake covers a cell. */
-    private boolean isWaterAt(int x, int y) {
+    private boolean isValleyAt(int x, int y) {
         Biome biome = biomeAt(x, y);
-        return biome == Biome.RIVER || biome == Biome.LAKE;
+        return biome == Biome.RIVER_VALLEY || biome == Biome.LAKE_VALLEY;
     }
 
     /**
@@ -601,7 +601,7 @@ public final class WorldGen implements TerrainSampler {
                         + (shape - 0.5f) * 2.0f * HEIGHT_RELIEF
                         + (detail - 0.5f) * 2.0f * DETAIL_RELIEF),
                 LOWEST_GROUND, HIGHEST_GROUND);
-        if (isRiverAt(x, y) || isLakeAt(x, y)) {
+        if (isRiverValleyAt(x, y) || isLakeValleyAt(x, y)) {
             return Math.min(height, SEA_LEVEL - RIVER_DEPTH);
         }
         return height;

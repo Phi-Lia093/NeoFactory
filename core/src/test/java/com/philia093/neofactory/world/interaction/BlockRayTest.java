@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class BlockRayTest {
 
     /** Height the object layer of the flat view stands at, where the tests build their walls. */
-    private static final int OBJECT_Y = Chunk.flatY(Chunk.LAYER_OBJECT);
+    private static final int OBJECT_Y = 65;
 
     /** Height of the ground layer, where the tests look down onto. */
-    private static final int FLOOR_Y = Chunk.flatY(Chunk.LAYER_FLOOR);
+    private static final int FLOOR_Y = 64;
 
     /** Reach of the player, the distance a ray may walk. */
     private static final float REACH = 4.5f;

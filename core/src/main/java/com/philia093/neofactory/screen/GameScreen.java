@@ -45,7 +45,6 @@ import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.render.PlayerRenderer;
 import com.philia093.neofactory.render.SelectionRenderer;
 import com.philia093.neofactory.render.SectionMeshCache;
-import com.philia093.neofactory.render.WorldRenderer;
 import com.philia093.neofactory.render.WorldRenderer3D;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
@@ -177,7 +176,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final Player player;
     private final InputHandler inputHandler;
 
-    private final WorldRenderer worldRenderer;
     private final PlayerRenderer playerRenderer;
 
     /**
@@ -424,7 +422,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         this.player = preparePlayer(world, data, fresh);
         this.inputHandler = new InputHandler();
 
-        this.worldRenderer = new WorldRenderer(batch, textures);
         this.playerRenderer = new PlayerRenderer(batch, textures);
         this.itemEntityRenderer = new ItemEntityRenderer(batch, textures);
 
@@ -645,23 +642,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         clearScreen();
 
-        // The camera of the flat view is kept centred on the player even while the world is drawn as
-        // cubes: the mouse is unprojected through it to decide where the player looks, see
-        // InputHandler#applyTo, so leaving it stale would make the player face a direction that has
-        // nothing to do with the pointer.
         worldViewport.apply();
         centerCameraOnPlayer();
-
-        if (cubeRenderer != null) {
-            renderCubes();
-        } else {
-            batch.setProjectionMatrix(camera.combined);
-            batch.begin();
-            worldRenderer.render(world, camera, world.tickCount());
-            entityRenderers.render(world.entities().all());
-            selectionRenderer.render(world, target);
-            batch.end();
-        }
+        renderCubes();
 
         countFrames(delta);
         renderInterface(delta);
@@ -715,19 +698,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         worldViewport.apply();
         centerCameraOnPlayer();
 
-        if (cubeRenderer != null) {
-            renderCubes();
-            renderInterface(delta);
-            return;
-        }
-
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        worldRenderer.render(world, camera, world.tickCount());
-        entityRenderers.render(world.entities().all());
-        selectionRenderer.render(world, target);
-        batch.end();
-
+        renderCubes();
         renderInterface(delta);
     }
 
@@ -907,7 +878,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             LOGGER.error("Unable to save the world while closing it", e);
         }
         batch.dispose();
-        worldRenderer.dispose();
         if (blockIconRenderer != null) {
             // The icons are textures of this screen, and the cache that hands them out - which outlives
             // the screen - has to stop asking for them before they are gone.
@@ -982,7 +952,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             // The world is played: the keyboard walks and the pointer turns the view, see InputHandler.
             // A screen that is open keeps both to itself, which is why this runs here and not above.
             inputHandler.update(player, camera);
-            player.setSpeedScale(cubeRenderer == null ? zoom : Constants.BLOCK_SIZE);
+            player.setSpeedScale(Constants.BLOCK_SIZE);
             if (inputHandler.isJumpDown()) {
                 player.jump();
             }
@@ -1067,17 +1037,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * @param delta time since the last frame in seconds
      */
     private void updateInteraction(float delta) {
-        if (cubeRenderer != null) {
-            // A body that stands in the world aims with its eyes: the cell is what the ray from them
-            // meets inside the reach, and the face it entered through is what a block is built against.
-            target = BlockTargeting.selectInSight(world, player, player.lookDirection(lookDirection));
-        } else {
-            worldMouse.set(Gdx.input.getX(), Gdx.input.getY());
-            worldViewport.unproject(worldMouse);
-
-            int layer = inputHandler.isGroundLayerDown() ? Chunk.LAYER_FLOOR : Chunk.LAYER_OBJECT;
-            target = BlockTargeting.select(world, player, worldMouse.x, worldMouse.y, layer);
-        }
+        // A body that stands in the world aims with its eyes: the cell is what the ray from them meets
+        // inside the reach, and the face it entered through is what a block is built against, see
+        // BlockTargeting#selectInSight.
+        target = BlockTargeting.selectInSight(world, player, player.lookDirection(lookDirection));
 
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 inputHandler.isBreakingDown());
@@ -1288,13 +1251,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return;
         }
         debugFrameCounter = 0;
-        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | mode {} | tiles {} | chunks {} "
+        LOGGER.info("World '{}' | Block ({}, {}) | zoom {} | mode {} | chunks {} "
                         + "(view {}, stored {}, changed {}) | stream +{}/-{} | entities {} | machines {} "
                         + "| ticks {} | hotbar {} | inventory {} | chat {} | target {} | gui {} | fps {}",
                 summary.displayName(),
                 player.blockX(), player.blockY(), String.format("%.2f", zoom),
                 gameMode().modeName(),
-                worldRenderer.drawnTileCount(), world.chunkCount(), streamer.viewDistance(),
+                world.chunkCount(), streamer.viewDistance(),
                 world.storedChunkCount(), world.modifiedChunkCount(),
                 streamer.lastLoaded(), streamer.lastUnloaded(),
                 world.entities().count(),

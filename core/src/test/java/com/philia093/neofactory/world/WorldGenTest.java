@@ -43,7 +43,7 @@ class WorldGenTest {
     private static final int SETTLE_LIMIT = 200;
 
     /** Biomes that carry water of their own, see {@link Biome}. */
-    private static final Set<Biome> WATER_BIOMES = Set.of(Biome.RIVER, Biome.LAKE);
+    private static final Set<Biome> VALLEY_BIOMES = Set.of(Biome.RIVER_VALLEY, Biome.LAKE_VALLEY);
 
     private static WorldGen generator;
     private static boolean[][] river;
@@ -67,7 +67,7 @@ class WorldGenTest {
         boolean[][] grid = new boolean[SAMPLE][SAMPLE];
         for (int y = 0; y < SAMPLE; y++) {
             for (int x = 0; x < SAMPLE; x++) {
-                grid[y][x] = wantRiver ? generator.isRiverAt(x, y) : generator.isLakeAt(x, y);
+                grid[y][x] = wantRiver ? generator.isRiverValleyAt(x, y) : generator.isLakeValleyAt(x, y);
             }
         }
         return grid;
@@ -87,20 +87,20 @@ class WorldGenTest {
     }
 
     /** {@code true} when a cell of a grid carries water, the patch ending counts as no water. */
-    private static boolean waterAt(boolean[][] grid, int x, int y) {
+    private static boolean valleyAt(boolean[][] grid, int x, int y) {
         return x >= 0 && x < SAMPLE && y >= 0 && y < SAMPLE && grid[y][x];
     }
 
     /** {@code true} when all four neighbours of a cell carry water as well. */
     private static boolean inside(boolean[][] grid, int x, int y) {
-        return waterAt(grid, x + 1, y) && waterAt(grid, x - 1, y)
-                && waterAt(grid, x, y + 1) && waterAt(grid, x, y - 1);
+        return valleyAt(grid, x + 1, y) && valleyAt(grid, x - 1, y)
+                && valleyAt(grid, x, y + 1) && valleyAt(grid, x, y - 1);
     }
 
     /** {@code true} when one of the four neighbours of a cell carries water as well. */
-    private static boolean nearWater(boolean[][] grid, int x, int y) {
-        return waterAt(grid, x + 1, y) || waterAt(grid, x - 1, y)
-                || waterAt(grid, x, y + 1) || waterAt(grid, x, y - 1);
+    private static boolean nearValley(boolean[][] grid, int x, int y) {
+        return valleyAt(grid, x + 1, y) || valleyAt(grid, x - 1, y)
+                || valleyAt(grid, x, y + 1) || valleyAt(grid, x, y - 1);
     }
 
     @Test
@@ -114,7 +114,7 @@ class WorldGenTest {
         int ends = 0;
         for (int y = 0; y < SAMPLE; y++) {
             for (int x = 0; x < SAMPLE; x++) {
-                if (river[y][x] && !nearWater(river, x, y)) {
+                if (river[y][x] && !nearValley(river, x, y)) {
                     ends++;
                 }
             }
@@ -155,7 +155,7 @@ class WorldGenTest {
     }
 
     @Test
-    void aBedOfABodyOfWaterIsSandClayOrGravel() {
+    void aValleyBedIsSandClayOrGravel() {
         for (int y = 0; y < SAMPLE; y++) {
             for (int x = 0; x < SAMPLE; x++) {
                 if (river[y][x] || lake[y][x]) {
@@ -169,20 +169,20 @@ class WorldGenTest {
     void theBiomeFieldNeverProducesARiverOrALake() {
         for (int step = 0; step <= 1000; step++) {
             Biome biome = Biome.fromNormalized(step / 1000.0f);
-            assertFalse(WATER_BIOMES.contains(biome),
+            assertFalse(VALLEY_BIOMES.contains(biome),
                     "water comes from its own field and never from the biome field: " + biome);
         }
     }
 
     @Test
-    void theBiomeOfACellIsTheWaterThatCoversIt() {
+    void theBiomeOfACellIsTheValleyThatCarvesIt() {
         // A decorator sees the terrain only through the sampler, so the two answers have to agree
         // wherever either of them is asked.
         TerrainSampler terrain = generator;
         for (int y = -200; y <= 200; y += 7) {
             for (int x = -200; x <= 200; x += 7) {
-                boolean water = generator.isRiverAt(x, y) || generator.isLakeAt(x, y);
-                assertEquals(water, WATER_BIOMES.contains(terrain.biomeAt(x, y)),
+                boolean water = generator.isRiverValleyAt(x, y) || generator.isLakeValleyAt(x, y);
+                assertEquals(water, VALLEY_BIOMES.contains(terrain.biomeAt(x, y)),
                         "the biome of a cell is the water that covers it, at (" + x + ", " + y + ")");
             }
         }
@@ -194,8 +194,8 @@ class WorldGenTest {
         for (int index = 0; index < 200; index++) {
             int x = index * 37 - 3000;
             int y = index * 53 - 4000;
-            assertEquals(generator.isRiverAt(x, y), other.isRiverAt(x, y));
-            assertEquals(generator.isLakeAt(x, y), other.isLakeAt(x, y));
+            assertEquals(generator.isRiverValleyAt(x, y), other.isRiverValleyAt(x, y));
+            assertEquals(generator.isLakeValleyAt(x, y), other.isLakeValleyAt(x, y));
             assertEquals(generator.floorAt(x, y), other.floorAt(x, y));
         }
     }

@@ -32,6 +32,15 @@ class ItemEntityTest {
     /** Second coordinate of the position the tests drop items at. */
     private static final float DROP_Y = 100.0f;
 
+    /**
+     * Height the cases work at.
+     * <p>
+     * The ground of the test world stands around the level of the sea, so a body and an item placed
+     * well above it stand in the air together: an item never falls in this build, so the distance the
+     * pickup rules measure is the one across the ground.
+     */
+    private static final float DROP_HEIGHT = 65.0f * Constants.BLOCK_SIZE;
+
     @BeforeAll
     static void registerGameData() {
         TestRegistries.ensure();
@@ -40,9 +49,9 @@ class ItemEntityTest {
     @Test
     void anItemWalksIntoTheInventoryOfThePlayer() {
         World world = new World(SEED, 0, 0);
-        Player player = new Player(DROP_X, DROP_Y);
+        Player player = new Player(DROP_X, DROP_HEIGHT, DROP_Y);
         world.entities().spawn(player);
-        ItemEntity item = new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 5));
+        ItemEntity item = new ItemEntity(DROP_X, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 5));
         world.entities().spawn(item);
 
         // The pickup delay has to pass before anything is picked up.
@@ -58,10 +67,10 @@ class ItemEntityTest {
     @Test
     void whatDoesNotFitStaysOnTheGround() {
         World world = new World(SEED, 0, 0);
-        Player player = new Player(DROP_X, DROP_Y);
+        Player player = new Player(DROP_X, DROP_HEIGHT, DROP_Y);
         fill(player.inventory());
         world.entities().spawn(player);
-        ItemEntity item = new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 5));
+        ItemEntity item = new ItemEntity(DROP_X, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 5));
         world.entities().spawn(item);
 
         item.update(world, 1.0f);
@@ -73,7 +82,7 @@ class ItemEntityTest {
     @Test
     void anItemIsGoneAfterAWhile() {
         World world = new World(SEED, 0, 0);
-        ItemEntity item = new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
+        ItemEntity item = new ItemEntity(DROP_X, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
         item.update(world, 10.0f);
@@ -85,7 +94,7 @@ class ItemEntityTest {
     @Test
     void theStoredItemComesBack() {
         EntityManager manager = new EntityManager();
-        manager.spawn(new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 7)));
+        manager.spawn(new ItemEntity(DROP_X, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 7)));
 
         EntityManager restored = new EntityManager();
         assertEquals(1, restored.load(manager.save(), new World(SEED, 0, 0)));
@@ -99,10 +108,10 @@ class ItemEntityTest {
     @Test
     void anItemIsDrawnTowardsANearbyPlayer() {
         World world = new World(SEED, 0, 0);
-        Player player = new Player(DROP_X, DROP_Y);
+        Player player = new Player(DROP_X, DROP_HEIGHT, DROP_Y);
         world.entities().spawn(player);
         float twoBlocks = 2.0f * Constants.BLOCK_SIZE;
-        ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
+        ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
         // Nothing happens while the pickup delay runs.
@@ -117,10 +126,10 @@ class ItemEntityTest {
     @Test
     void anItemTooFarAwayIsLeftAlone() {
         World world = new World(SEED, 0, 0);
-        Player player = new Player(DROP_X, DROP_Y);
+        Player player = new Player(DROP_X, DROP_HEIGHT, DROP_Y);
         world.entities().spawn(player);
         float farAway = 6.0f * Constants.BLOCK_SIZE;
-        ItemEntity item = new ItemEntity(DROP_X + farAway, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
+        ItemEntity item = new ItemEntity(DROP_X + farAway, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
         item.update(world, 1.0f);
@@ -132,7 +141,7 @@ class ItemEntityTest {
     @Test
     void aThrownItemSlidesAndComesToRest() {
         World world = new World(SEED, 0, 0);
-        ItemEntity item = new ItemEntity(DROP_X, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
+        ItemEntity item = new ItemEntity(DROP_X, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         item.velocity().set(Constants.BLOCK_SIZE * 3.0f, 0.0f, 0.0f);
         world.entities().spawn(item);
 
@@ -151,11 +160,11 @@ class ItemEntityTest {
     @Test
     void aFullInventoryDoesNotAttractAnything() {
         World world = new World(SEED, 0, 0);
-        Player player = new Player(DROP_X, DROP_Y);
+        Player player = new Player(DROP_X, DROP_HEIGHT, DROP_Y);
         fill(player.inventory());
         world.entities().spawn(player);
         float twoBlocks = 2.0f * Constants.BLOCK_SIZE;
-        ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
+        ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
 
         item.update(world, 1.0f);
@@ -168,11 +177,11 @@ class ItemEntityTest {
     @Test
     void anItemIsPulledInAgainWhenAPlaceIsFree() {
         World world = new World(SEED, 0, 0);
-        Player player = new Player(DROP_X, DROP_Y);
+        Player player = new Player(DROP_X, DROP_HEIGHT, DROP_Y);
         fill(player.inventory());
         world.entities().spawn(player);
         float twoBlocks = 2.0f * Constants.BLOCK_SIZE;
-        ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
+        ItemEntity item = new ItemEntity(DROP_X + twoBlocks, DROP_HEIGHT, DROP_Y, ItemStack.of(Items.DIAMOND, 1));
         world.entities().spawn(item);
         item.update(world, 1.0f);
         float waiting = item.position().dst(player.position());
