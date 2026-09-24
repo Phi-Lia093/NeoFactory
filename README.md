@@ -86,7 +86,7 @@ stored on disk so that a session can be continued later.
   plate of iron is `iron_plate` and reads as "Iron Plate" over "Fe" in its tooltip: the name first,
   the formula of the material under it, and the search box of the creative inventory finds an item
   by that formula as well. The picture of a shape holds brightness only and the colour of the
-  material is multiplied over it while the item is drawn - the very trick the fluids use - so no
+  material is multiplied over it while the item is drawn - the very trick the cells of the fluids use - so no
   material needs art of its own. The iron ingot therefore keeps the id it always had in
   `Items.IRON_INGOT_ID` although its definition now lives with the material.
 ## Controls
@@ -217,23 +217,16 @@ leaves keep their flat picture, they do not fill a cell. `gradlew :core:test` wr
 a sheet that shows the result to `core/build/reports/block-icons-preview.png`, with a
 few blocks enlarged in `block-icons-detail.png`.
 
-Water and lava are the fluids of the game, and they share one picture:
-`assets/blocks/generic_fluid.png` holds brightness only, and the colour of the fluid is multiplied
-with it while the world draws it, see `Fluids`. The sheet is built from the still water of the art
-pack by `build/verify/grayscale_fluid.ps1`, which keeps the brightest channel of every pixel, so
-the frames of the animation and the transparency travel with it; the script takes a `-Source` and a
-`-Target`, so any picture of the pack can become the sheet of the game. Water and lava therefore
-differ in their colour alone, and a fluid of the industry that arrives later is one more colour of
-the same picture. The sheet is played where the block stands: `Block.Animation` says how many cells
-a picture holds and how long one is shown, `BlockAnimation` picks the frame that belongs to the
-running tick of the world, and the renderer knows nothing but those two. The cell of a fluid is one
-grey scale picture as well, but
+Water and lava are the fluids of the game, and neither has a picture of its own any more: a fluid is
+a name and a colour, see `Fluids`. The colour is what a tank of a machine and the window of a cell
+are painted with, which is why the game needs no sheet of water and no sheet of lava. The cell of a
+fluid is one grey scale picture instead, and
 only its window takes the colour of the fluid: `CellIconFactory` paints the two pixels wide and
 ten pixels tall window in the middle of the cell and leaves the steel of the container grey, so a
 cell of water and a cell of oil are the same object with something else inside. A new fluid needs
-a colour, a line in `Fluids` and an entry in `Buckets` and nothing else. `gradlew :core:test`
-paints the frames of both fluids next to the buckets and the cells into
-`core/build/reports/fluid-preview.png`.
+a colour, a line in `Fluids` and an entry in `Buckets` and nothing else. (`gradlew :core:test` drew
+the frames of both fluids next to the buckets and the cells into `core/build/reports/fluid-preview.png`
+while the sheet existed; the preview of the fluids is gone with it.)
 
 Every shape a material comes in is drawn from one grey scale picture as well, and the colour of the
 material reaches it the same way: `assets/items/generic_ingot.png`, `generic_plate.png`,
