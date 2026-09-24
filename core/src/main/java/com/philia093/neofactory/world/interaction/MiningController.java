@@ -21,6 +21,14 @@ import java.util.Objects;
  * letting the button go starts the count again, which is what the original game
  * does as well.
  * <p>
+ * Any cell the line of sight reaches can be broken, whatever face the line entered it through and
+ * whatever stands on or beside it: a wall comes apart from the side as well as from above, and the
+ * ground under a column is carried away after the blocks over it. The view from above could ask for
+ * the cell over the target to be empty first, because there the top of a column was the only cell a
+ * player could ever name; in a world of cubes that rule would leave nothing but the surface
+ * breakable. What a break removes is only ever the cell itself - a block that loses its support
+ * stays where it is, because nothing here falls yet.
+ * <p>
  * How long a break may take at the least is decided here as well: a rule that
  * breaks instantly would otherwise remove a whole row of blocks in one frame, so
  * a held button waits {@link Constants#MINIMUM_BREAK_TIME} between two blocks. A
@@ -79,12 +87,6 @@ public class MiningController {
 
         Block block = world.getBlock(target.x(), target.y(), target.z());
         if (block.isAir()) {
-            reset();
-            return false;
-        }
-        if (world.hasBlock(target.x(), target.y() + 1, target.z())) {
-            // Something still stands on the cell: a break never leaves a block hanging over
-            // nothing, so the cell above has to go first.
             reset();
             return false;
         }
