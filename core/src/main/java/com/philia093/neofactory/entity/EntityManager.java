@@ -125,7 +125,6 @@ public final class EntityManager {
      * @param playerBlockZ block Z coordinate of the player
      */
     public void update(World world, float delta, float playerBlockX, float playerBlockZ) {
-        float tile = Constants.TILE_SIZE;
         float rangeSquared = ACTIVE_RANGE_BLOCKS * Constants.BLOCK_SIZE * ACTIVE_RANGE_BLOCKS * Constants.BLOCK_SIZE;
         float centerX = playerBlockX * Constants.BLOCK_SIZE;
         float centerZ = playerBlockZ * Constants.BLOCK_SIZE;

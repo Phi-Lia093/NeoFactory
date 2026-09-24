@@ -737,30 +737,48 @@ public final class World implements BlockAccess {
      * @param y preferred block Y coordinate
      * @return a block coordinate pair, {@code {x, y}}, the caller can spawn in
      */
-    public int[] findSpawnPosition(int x, int y) {
+    public int[] findSpawnPosition(int x, int z) {
         for (int radius = 0; radius <= SPAWN_SEARCH_RADIUS; radius++) {
-            for (int dy = -radius; dy <= radius; dy++) {
+            for (int dz = -radius; dz <= radius; dz++) {
                 for (int dx = -radius; dx <= radius; dx++) {
-                    if (Math.max(Math.abs(dx), Math.abs(dy)) != radius) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
                         continue;
                     }
                     int candidateX = x + dx;
-                    int candidateY = y + dy;
-                    if (inFluid(candidateX, candidateY)) {
-                        // A player who starts in the water of a lake has to wade out of it again.
-                        continue;
-                    }
-                    if (!getBlock(candidateX, Chunk.flatY(Chunk.LAYER_FLOOR), candidateY).isAir()
-                            && !(isSolid(candidateX, Chunk.flatY(Chunk.LAYER_OBJECT), candidateY)
-                            || isSolid(candidateX, Chunk.flatY(Chunk.LAYER_FLOOR), candidateY))) {
-                        return new int[] {candidateX, candidateY};
+                    int candidateZ = z + dz;
+                    if (isWalkable(candidateX, candidateZ)) {
+                        return new int[] {candidateX, candidateZ};
                     }
                 }
             }
         }
         LOGGER.warn("No walkable spawn cell within {} blocks of ({}, {}), falling back",
-                SPAWN_SEARCH_RADIUS, x, y);
-        return new int[] {x, y};
+                SPAWN_SEARCH_RADIUS, x, z);
+        return new int[] {x, z};
+    }
+
+    /**
+     * {@code true} when a body may be put down in a column.
+     * <p>
+     * The ground of the column has to be solid and not a fluid, the cell the body would stand in has to be
+     * free of both, and so has the cell above it, because a body is taller than one block. A player who
+     * starts in the water of a lake has to wade out of it again, and one who starts over a hole or on top
+     * of lava falls or burns before the first frame is over - so both are refused.
+     *
+     * @param x block X coordinate
+     * @param z block Z coordinate
+     * @return {@code true} when that column is a place to stand
+     */
+    private boolean isWalkable(int x, int z) {
+        int feet = surfaceY(x, z);
+        if (feet <= Constants.MIN_Y) {
+            // An empty column has no ground to stand on at all.
+            return false;
+        }
+        Block ground = getBlock(x, feet - 1, z);
+        return ground.isSolid() && !ground.isLiquid()
+                && !getBlock(x, feet, z).isLiquid() && !isSolid(x, feet, z)
+                && !isSolid(x, feet + 1, z);
     }
 
     /**

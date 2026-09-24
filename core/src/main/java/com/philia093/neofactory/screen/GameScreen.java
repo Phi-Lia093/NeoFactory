@@ -145,6 +145,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Colour of the crosshair: a grey that reads on a picture of any colour, never written. */
     private static final Color CROSSHAIR_COLOR = new Color(0.8f, 0.8f, 0.8f, 0.6f);
 
+    /**
+     * Longest step the movement of the bodies may take, in seconds.
+     * <p>
+     * A slow frame - the first ones of a world, or a stall - is a long step for a body that falls, long
+     * enough to pass through ground that is one block thick, see the rule in {@code Player}. The movement
+     * is never handed more than this, so a slow frame becomes a moment of slow motion instead of a hole in
+     * the world.
+     */
+    private static final float LONGEST_PHYSICS_STEP = 0.05f;
+
     /** Frames counted since the last second was up. */
     private int framesThisSecond;
 
@@ -979,7 +989,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             }
             updateInteraction(delta);
         }
-        world.entities().update(world, delta, player.blockX(), player.blockZ());
+        // The bodies are moved with a step no slow frame may stretch, see LONGEST_PHYSICS_STEP.
+            float step = Math.min(delta, LONGEST_PHYSICS_STEP);
+            world.entities().update(world, step, player.blockX(), player.blockZ());
         tickWorld(delta);
         closeMachineIfUnloaded();
         streamChunks(false);

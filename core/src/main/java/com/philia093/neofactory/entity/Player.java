@@ -18,7 +18,7 @@ import com.philia093.neofactory.world.save.SaveTags;
  * the player may walk in any direction, the camera follows its position.
  * <p>
  * The position is stored in world units, one block covering
- * {@link Constants#TILE_SIZE} of them, which is the same unit the renderer uses
+ * {@link Constants#BLOCK_SIZE} of them, which is the same unit the renderer uses
  * to place a tile. Block coordinates are derived on demand through
  * {@link #blockX()} and {@link #blockY()}.
  * <p>
@@ -40,6 +40,14 @@ public class Player extends Entity {
      * overlapping and the player would stop a whole hitbox away from every wall.
      */
     private static final float SKIN_WIDTH = 1.0e-3f;
+
+    /**
+     * Longest step the height of a body may take at once, in blocks.
+     * <p>
+     * The ground of the world is a single block thick, so a step longer than that would step right over
+     * it: a fall is walked in pieces of this length, see {@code moveVertically}.
+     */
+    private static final float LONGEST_STEP = 0.5f;
 
     /** Length below which the movement vector counts as zero. */
     private static final float MIN_INPUT_LENGTH = 1.0e-4f;
@@ -241,17 +249,17 @@ public class Player extends Entity {
 
     /** Block X coordinate the player currently stands in. */
     public int blockX() {
-        return MathUtils.floor(position.x / Constants.TILE_SIZE);
+        return MathUtils.floor(position.x / Constants.BLOCK_SIZE);
     }
 
     /** Block Y coordinate of the feet of the player, its height in the world. */
     public int blockY() {
-        return MathUtils.floor(position.y / Constants.TILE_SIZE);
+        return MathUtils.floor(position.y / Constants.BLOCK_SIZE);
     }
 
     /** Block Z coordinate the player currently stands in. */
     public int blockZ() {
-        return MathUtils.floor(position.z / Constants.TILE_SIZE);
+        return MathUtils.floor(position.z / Constants.BLOCK_SIZE);
     }
 
     /**
@@ -363,20 +371,43 @@ public class Player extends Entity {
      * A fall ends where the feet meet the top of a block, and the body is put back on that top instead
      * of into it: a body that is drawn into a block can never be moved out of it again, because every
      * step it takes still overlaps the block.
+     * <p>
+     * A long step is walked in pieces of at most {@link #LONGEST_STEP} blocks, because the ground is one
+     * block thick: a body that falls further than that in one go steps from above the ground to below it,
+     * finds nothing at the place it asks about and keeps falling through a floor that was right under its
+     * feet. That is how a player who entered a world on the slow first frames fell out of it.
      *
      * @param world world used for collision tests
      * @param stepY requested movement along the height
      */
     private void moveVertically(World world, float stepY) {
+        float remaining = stepY;
+        while (Math.abs(remaining) > LONGEST_STEP) {
+            if (!stepVertically(world, Math.copySign(LONGEST_STEP, stepY))) {
+                return;
+            }
+            remaining -= Math.copySign(LONGEST_STEP, stepY);
+        }
+        stepVertically(world, remaining);
+    }
+
+    /**
+     * One piece of a vertical movement.
+     *
+     * @param world world used for collision tests
+     * @param stepY movement of this piece, never longer than {@link #LONGEST_STEP} blocks
+     * @return {@code true} when the body moved, {@code false} when it landed or was stopped
+     */
+    private boolean stepVertically(World world, float stepY) {
         float candidateY = position.y + stepY;
         if (!collides(world, position.x, candidateY, position.z)) {
             onGround = false;
             position.y = candidateY;
-            return;
+            return true;
         }
         velocity.y = 0.0f;
         if (stepY > 0.0f) {
-            return;
+            return false;
         }
         // The feet come to rest on the block that stopped the fall.
         position.y = MathUtils.floor(candidateY) + 1.0f;
@@ -385,6 +416,7 @@ public class Player extends Entity {
             position.y += 1.0f;
         }
         onGround = true;
+        return false;
     }
 
     /**
@@ -444,6 +476,11 @@ public class Player extends Entity {
      * @return {@code true} when the box overlaps at least one solid cell
      */
     public boolean collides(World world, float centerX, float centerY, float centerZ) {
+        // The world has a bottom, and it is a floor: a body that reaches it stands on it instead of falling
+        // out of the world and asking about a cell that is not there.
+        if (centerY < Constants.MIN_Y) {
+            return true;
+        }
         float half = Constants.PLAYER_HITBOX * 0.5f;
         float height = Constants.PLAYER_HEIGHT;
         int minX = MathUtils.floor(centerX - half);
@@ -451,7 +488,7 @@ public class Player extends Entity {
         int minZ = MathUtils.floor(centerZ - half);
         int maxZ = MathUtils.floor(centerZ + half - SKIN_WIDTH);
         int minY = MathUtils.floor(centerY);
-        int maxY = MathUtils.floor(centerY + height - SKIN_WIDTH);
+        int maxY = Math.min(Constants.MAX_Y, MathUtils.floor(centerY + height - SKIN_WIDTH));
 
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
