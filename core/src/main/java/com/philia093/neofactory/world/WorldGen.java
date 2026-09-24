@@ -35,6 +35,13 @@ import static com.philia093.neofactory.util.Constants.SEA_LEVEL;
  * Keeping those phases apart is what makes on demand chunk generation safe: no
  * step of generation ever reads a chunk that could still be empty, so generation
  * cannot recurse into itself.
+ * <p>
+ * The generator builds one of two lands, see {@link WorldType}: the landscape described above, or the
+ * table of blocks a flat world is, where every column is the same height and nothing is planted on it.
+ * The type travels with the world, because a chunk is generated exactly once and would not match a
+ * world that was created as the other type. Only the few places that depend on the land ask for it -
+ * the height of a column, the block on top of it, the bodies of water and the decorations - and
+ * nothing else does: what stands above the ground is the work of the same code in both worlds.
  */
 public final class WorldGen implements TerrainSampler {
 
@@ -240,7 +247,30 @@ public final class WorldGen implements TerrainSampler {
     /** Distance between two probed points of the spawn search, in blocks. */
     private static final int SPAWN_BIOME_SEARCH_STEP = 4;
 
+    // ------------------------------------------------------------------
+    // The land of a flat world
+    // ------------------------------------------------------------------
+
+    /** Height of the bedrock of a flat world, the block the world ends at. */
+    private static final int FLAT_BEDROCK_Y = Constants.MIN_Y;
+
+    /** Height of the soil of a flat world, one block above the bedrock. */
+    private static final int FLAT_SOIL_Y = Constants.MIN_Y + 1;
+
+    /**
+     * Height of the grass of a flat world, the block a body walks on.
+     * <p>
+     * The table stands at the very bottom of the world, which is what keeps a flat world at one
+     * section per chunk: the land costs a chunk almost nothing, and a hole dug into it is one step
+     * below the surface, so a mechanic can be tried out without walking anywhere.
+     */
+    private static final int FLAT_GROUND_Y = Constants.MIN_Y + 2;
+
     private final int seed;
+
+    /** Land this generator builds, see {@link WorldType}. */
+    private final WorldType type;
+
     private final Noise biomeNoise;
     private final Noise patchNoise;
     private final Noise riverNoise;
@@ -255,12 +285,23 @@ public final class WorldGen implements TerrainSampler {
     private final List<Decoration> decorations;
 
     /**
-     * Creates a generator.
+     * Creates a generator of the landscape the seed describes.
      *
      * @param seed world seed, every value produces a different world
      */
     public WorldGen(int seed) {
+        this(seed, WorldType.NORMAL);
+    }
+
+    /**
+     * Creates a generator of one kind of land.
+     *
+     * @param seed world seed, every value produces a different world
+     * @param type land to build, {@code null} builds the landscape the seed describes
+     */
+    public WorldGen(int seed, WorldType type) {
         this.seed = seed;
+        this.type = type == null ? WorldType.NORMAL : type;
         // Derived seeds keep the noise fields uncorrelated while staying
         // reproducible for a given world seed.
         this.biomeNoise = new Noise(seed * 31 + 1);
@@ -276,16 +317,36 @@ public final class WorldGen implements TerrainSampler {
         this.oreBlockSeed = seed * 59 + 5;
 
         List<Decoration> built = new ArrayList<>();
-        // The ground, the water of a river and the lava of a pool all belong to the terrain itself, see
-        // fillColumn: what is left for a decorator is what grows on the ground.
-        built.add(new TreeDecoration(seed));
-        built.add(new GrassDecoration(seed));
+        // A flat world is left bare: a decorator that asks the land for a height finds the same one in
+        // every column, so the only thing it could plant is a forest of trees side by side.
+        if (!isFlat()) {
+            // The ground, the water of a river and the lava of a pool all belong to the terrain itself, see
+            // fillColumn: what is left for a decorator is what grows on the ground.
+            built.add(new TreeDecoration(seed));
+            built.add(new GrassDecoration(seed));
+        }
         this.decorations = Collections.unmodifiableList(built);
     }
 
     /** Seed the whole world was derived from. */
     public int seed() {
         return seed;
+    }
+
+    /** Land this generator builds, see {@link WorldType}. */
+    public WorldType type() {
+        return type;
+    }
+
+    /**
+     * {@code true} when this generator builds the table of blocks of a flat world.
+     * <p>
+     * Every question about the land answers with the one column such a world is made of: no field of
+     * noise draws it, no river cuts through it, no lake or pool lies on it and no biome covers it. The
+     * few methods below that do ask are the only places the two lands are told apart.
+     */
+    private boolean isFlat() {
+        return type == WorldType.FLAT;
     }
 
     /** Decorators planted by this generator, in placement order. */
@@ -324,6 +385,11 @@ public final class WorldGen implements TerrainSampler {
 
     @Override
     public Biome biomeAt(int x, int y) {
+        if (isFlat()) {
+            // The whole table is covered by the one green biome, which is also the biome a spawn looks
+            // for, so a flat world starts wherever it was asked to start.
+            return Biome.PLAINS;
+        }
         // The water of a river and of a lake covers every other biome: a river runs through a
         // forest as well as through a desert, and the field that draws it does not care where it
         // is. That is why both answer before the biome field is asked at all.
@@ -348,7 +414,8 @@ public final class WorldGen implements TerrainSampler {
      * @return {@code true} when the cell lies under the water of a river
      */
     public boolean isRiverAt(int x, int y) {
-        return Math.abs(bodyAt(riverNoise, RIVER_FREQUENCY, x, y) - 0.5f) <= RIVER_HALF_WIDTH;
+        return !isFlat()
+                && Math.abs(bodyAt(riverNoise, RIVER_FREQUENCY, x, y) - 0.5f) <= RIVER_HALF_WIDTH;
     }
 
     /**
@@ -363,13 +430,13 @@ public final class WorldGen implements TerrainSampler {
      * @return {@code true} when the cell lies under the water of a lake
      */
     public boolean isLakeAt(int x, int y) {
-        return bodyAt(lakeNoise, LAKE_FREQUENCY, x, y) >= LAKE_THRESHOLD;
+        return !isFlat() && bodyAt(lakeNoise, LAKE_FREQUENCY, x, y) >= LAKE_THRESHOLD;
     }
 
     /**
      * {@code true} when a pool of lava lies on a cell.
      * <p>
-     * The lava itself is poured by {@code LavaLakeDecoration}, which asks this method, but the field
+     * The lava itself is poured while the column is filled, see {@link #fillColumn}, but the field
      * belongs here for the same reason the fields of the river and the lake do: the ground of a cell
      * has to answer where it is and what it is made of, see {@link #floorAt(int, int)}. A tree that
      * asked the ground without knowing about the lava was planted in the middle of a pool.
@@ -380,7 +447,7 @@ public final class WorldGen implements TerrainSampler {
      */
     @Override
     public boolean isLavaPoolAt(int x, int y) {
-        return bodyAt(lavaNoise, POOL_FREQUENCY, x, y) >= POOL_THRESHOLD;
+        return !isFlat() && bodyAt(lavaNoise, POOL_FREQUENCY, x, y) >= POOL_THRESHOLD;
     }
 
     /**
@@ -429,6 +496,11 @@ public final class WorldGen implements TerrainSampler {
 
     @Override
     public Block floorAt(int x, int y) {
+        if (isFlat()) {
+            // Grass from edge to edge: no bank of a body of water, no scorched ground of a pool and no
+            // patch of a second material anywhere.
+            return Blocks.GRASS;
+        }
         Biome biome = biomeAt(x, y);
         if (biome == Biome.RIVER || biome == Biome.LAKE || isBankOf(x, y)) {
             // The bed of a body of water and the bank around it are made of the same three materials -
@@ -540,6 +612,10 @@ public final class WorldGen implements TerrainSampler {
      *         coordinates when nothing was found
      */
     public int[] findSpawnBiome(int startX, int startY) {
+        if (isFlat()) {
+            // Every cell of the table is grass, so the requested point is already a place to start.
+            return new int[] {startX, startY};
+        }
         for (int radius = 0; radius <= SPAWN_BIOME_SEARCH_RADIUS;
                 radius += SPAWN_BIOME_SEARCH_STEP) {
             int steps = radius == 0
@@ -579,6 +655,9 @@ public final class WorldGen implements TerrainSampler {
      * @return the block Y coordinate of the highest block of that column
      */
     public int groundY(int x, int y) {
+        if (isFlat()) {
+            return FLAT_GROUND_Y;
+        }
         float shape = heightNoise.fbm2(x, y, HEIGHT_OCTAVES, HEIGHT_FREQUENCY, HEIGHT_PERSISTENCE);
         float detail = detailNoise.fbm2(x, y, DETAIL_OCTAVES, DETAIL_FREQUENCY, DETAIL_PERSISTENCE);
         int height = MathUtils.clamp(Math.round(SEA_LEVEL + LAND_ABOVE_SEA
@@ -630,6 +709,10 @@ public final class WorldGen implements TerrainSampler {
      * @param z block Z coordinate of the column
      */
     private void fillColumn(Chunk chunk, int localX, int localZ, int x, int z) {
+        if (isFlat()) {
+            fillFlatColumn(chunk, localX, localZ);
+            return;
+        }
         int ground = groundY(x, z);
         Block surface = floorAt(x, z);
         Block soil = subsoilOf(surface);
@@ -658,6 +741,24 @@ public final class WorldGen implements TerrainSampler {
             chunk.setRawId(localX, y, localZ, (pool ? Fluids.LAVA : Fluids.WATER).block().id());
             chunk.setState(localX, y, localZ, FluidState.SOURCE.pack());
         }
+    }
+
+    /**
+     * Fills one column of a flat world.
+     * <p>
+     * Three blocks and nothing else: the bedrock the world ends at, one layer of soil over it and one
+     * layer of grass on top. No stone, no ore, no water and no lava, because the point of such a world
+     * is that a player always knows what is under their feet: a hole dug into the ground shows dirt and
+     * then bedrock, no matter where it is dug.
+     *
+     * @param chunk chunk owning the column
+     * @param localX local X coordinate inside the chunk
+     * @param localZ local Z coordinate inside the chunk
+     */
+    private static void fillFlatColumn(Chunk chunk, int localX, int localZ) {
+        chunk.setRawId(localX, FLAT_BEDROCK_Y, localZ, Blocks.BEDROCK.id());
+        chunk.setRawId(localX, FLAT_SOIL_Y, localZ, Blocks.DIRT.id());
+        chunk.setRawId(localX, FLAT_GROUND_Y, localZ, Blocks.GRASS.id());
     }
 
     /** Material of the soil under the surface block of a column. */

@@ -24,6 +24,14 @@ public final class SaveTags {
      */
     public static final String GAME_MODE = "GameMode";
 
+    /**
+     * Terrain the world is made of.
+     * <p>
+     * The entry is written since flat worlds exist; a world stored before that carries none and is
+     * read as {@code normal}, see {@link com.philia093.neofactory.world.WorldType#byName(String)}.
+     */
+    public static final String WORLD_TYPE = "WorldType";
+
     /** Seed of the terrain. */
     public static final String SEED = "Seed";
 

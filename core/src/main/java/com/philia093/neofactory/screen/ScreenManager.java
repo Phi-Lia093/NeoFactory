@@ -3,6 +3,7 @@ package com.philia093.neofactory.screen;
 import com.badlogic.gdx.Screen;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.WorldType;
 import com.philia093.neofactory.world.save.LevelData;
 import com.philia093.neofactory.world.save.SaveSummary;
 import com.philia093.neofactory.world.save.WorldLoader;
@@ -154,19 +155,22 @@ public class ScreenManager {
      *
      * @param name requested name of the world
      * @param seed seed of the terrain
+     * @param type land the world is made of, {@code null} generates the landscape of the seed
      * @return the playable screen of the new world
      */
-    public GameScreen createWorld(String name, int seed) {
+    public GameScreen createWorld(String name, int seed, WorldType type) {
         SaveSummary summary = storage.create(name, seed, 0, 0);
         LevelData data = new LevelData();
         data.setWorldName(summary.displayName());
         data.setSeed(seed);
+        data.setWorldType(type);
         data.setCreated(System.currentTimeMillis());
         data.setLastPlayed(data.created());
 
-        World world = new World(seed, 0, 0);
+        World world = new World(seed, 0, 0, null, type);
         data.setSpawn(world.spawnX(), world.spawnZ());
-        LOGGER.info("Created world '{}' (seed {})", summary.displayName(), seed);
+        LOGGER.info("Created world '{}' (seed {}, {} land)", summary.displayName(), seed,
+                data.worldType().typeName());
         return startWorld(summary, world, data, true);
     }
 

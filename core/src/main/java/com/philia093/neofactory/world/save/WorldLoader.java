@@ -77,7 +77,7 @@ public final class WorldLoader {
 
         FileChunkStore store = new FileChunkStore(summary.folder());
 
-        World world = new World(data.seed(), spawnBlockX, spawnBlockY, store);
+        World world = new World(data.seed(), spawnBlockX, spawnBlockY, store, data.worldType());
         int entities = world.entities().load(root.getList(SaveTags.ENTITIES), world);
         world.loadChunksAround(data.playerX() / Constants.BLOCK_SIZE,
                 data.playerZ() / Constants.BLOCK_SIZE, LOAD_CHUNK_RADIUS, Integer.MAX_VALUE);

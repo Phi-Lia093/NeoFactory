@@ -57,6 +57,10 @@ public final class World implements BlockAccess {
     private static final int SPAWN_SEARCH_RADIUS = 32;
 
     private final int seed;
+
+    /** Land this world is made of, see {@link WorldType}. */
+    private final WorldType type;
+
     private final WorldGen generator;
     private final Map<Long, Chunk> chunks = new LinkedHashMap<>();
 
@@ -92,7 +96,7 @@ public final class World implements BlockAccess {
      * @param seed world seed, selects the generated terrain
      */
     public World(int seed) {
-        this(seed, 0, 0, null);
+        this(seed, 0, 0, null, WorldType.NORMAL);
     }
 
     /**
@@ -120,8 +124,27 @@ public final class World implements BlockAccess {
      * @param store store holding the chunks of this world, may be {@code null}
      */
     public World(int seed, int spawnX, int spawnZ, ChunkStore store) {
+        this(seed, spawnX, spawnZ, store, WorldType.NORMAL);
+    }
+
+    /**
+     * Creates a world of a chosen kind of land and prepares the chunks around the spawn point.
+     * <p>
+     * The type decides what the generator makes of every column, see {@link WorldGen}: the landscape
+     * of the seed or the table of blocks a flat world is. It belongs to the world from the first
+     * chunk on, because a chunk is generated exactly once - a world that is opened again is built
+     * from the type it was stored with and never from another one.
+     *
+     * @param seed world seed, selects the generated terrain
+     * @param spawnX block X coordinate the player would like to start near
+     * @param spawnZ block Y coordinate the player would like to start near
+     * @param store store holding the chunks of this world, may be {@code null}
+     * @param type land to generate, {@code null} generates the landscape of the seed
+     */
+    public World(int seed, int spawnX, int spawnZ, ChunkStore store, WorldType type) {
         this.seed = seed;
-        this.generator = new WorldGen(seed);
+        this.type = type == null ? WorldType.NORMAL : type;
+        this.generator = new WorldGen(seed, this.type);
         this.store = store;
 
         // Biomes cover large areas, so the requested point is only a hint: the
@@ -146,6 +169,11 @@ public final class World implements BlockAccess {
     /** Seed this world was generated from. */
     public int seed() {
         return seed;
+    }
+
+    /** Land this world is made of, see {@link WorldType}. */
+    public WorldType worldType() {
+        return type;
     }
 
     /** Block X coordinate the player starts near. */
