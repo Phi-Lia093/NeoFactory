@@ -33,6 +33,15 @@ public final class ChunkStreamer {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
+    /**
+     * Time one frame may spend revealing new terrain, in nanoseconds.
+     * <p>
+     * A chunk costs a few milliseconds to make, and a player who walks into new terrain asks for one after
+     * the other. The budget is what keeps such a frame short: revealing slower means the terrain appears a
+     * little later, which no player notices, while a frame that runs three times as long is felt at once.
+     */
+    private static final long REVEAL_BUDGET_NANOS = 3_000_000L;
+
     /** Minimum chunks kept in memory, follows the view distance. */
     private int viewDistance = Constants.CHUNK_VIEW_DISTANCE;
 
@@ -121,8 +130,22 @@ public final class ChunkStreamer {
 
         lastUnloaded = world.unloadChunksOutside(centerChunkX, centerChunkY,
                 loadRadius + Constants.CHUNK_UNLOAD_MARGIN);
-        lastLoaded = world.loadChunksAround(playerBlockX, playerBlockY, loadRadius,
-                Constants.CHUNK_LOADS_PER_FRAME);
+        // Making a chunk costs a few milliseconds, so a frame may not reveal as many as it could: the
+        // reveal runs to a budget of its own and stops there, which keeps a frame that walks into new
+        // terrain as short as one that stands still. The count is still the ceiling, so a fast machine
+        // reveals terrain at the pace the constant allows.
+        lastLoaded = 0;
+        long deadline = System.nanoTime() + REVEAL_BUDGET_NANOS;
+        while (lastLoaded < Constants.CHUNK_LOADS_PER_FRAME) {
+            int loaded = world.loadChunksAround(playerBlockX, playerBlockY, loadRadius, 1);
+            if (loaded == 0) {
+                break;
+            }
+            lastLoaded += loaded;
+            if (System.nanoTime() >= deadline) {
+                break;
+            }
+        }
     }
 
     /** Chunks loaded by the most recent update. */

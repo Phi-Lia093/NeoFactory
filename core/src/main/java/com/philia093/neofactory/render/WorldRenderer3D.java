@@ -81,6 +81,7 @@ public class WorldRenderer3D implements Disposable {
     public void render(World world, PerspectiveCamera camera, Color sky) {
         drawnSections = 0;
         drawnMeshes = 0;
+        cache.beginFrame();
         shader.begin(camera, pictures, sky, camera.far * FOG_START_SHARE, camera.far);
         for (Chunk chunk : world.chunks()) {
             int originX = chunk.originX();

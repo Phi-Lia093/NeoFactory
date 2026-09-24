@@ -30,6 +30,23 @@ public class SectionMeshCache implements Disposable {
     /** Meshes of every section that was built, keyed by chunk and section. */
     private final ObjectMap<Long, Array<Mesh>> built = new ObjectMap<>();
 
+    /** Meshes of a section that is waiting for its turn, drawn by nobody and holding nothing. */
+    private final Array<Mesh> notYet = new Array<>(0);
+
+    /** Sections the frame that is running may still mesh, see {@link #beginFrame()}. */
+    private int buildsLeft;
+
+    /**
+     * Sections one frame may mesh.
+     * <p>
+     * Meshing a section costs a few milliseconds, and turning the view or walking into new terrain asks
+     * for one section after the other: without a limit a player who turns around asks for the work of a
+     * whole second in the frames of a moment. A section that has to wait is not drawn for a frame or two
+     * and appears as soon as it is its turn, which nobody notices - while a frame that runs twenty times
+     * as long is felt at once.
+     */
+    private static final int BUILDS_PER_FRAME = 2;
+
     /**
      * Creates a cache.
      *
@@ -37,6 +54,17 @@ public class SectionMeshCache implements Disposable {
      */
     public SectionMeshCache(BlockPictures pictures) {
         this.pictures = pictures;
+    }
+
+    /**
+     * Starts a frame, and with it the budget of sections this frame may mesh.
+     * <p>
+     * The renderer calls this once per frame. A section that changed is meshed whatever the budget says,
+     * because a hole a player just dug has to disappear at once; the budget is about the terrain that
+     * comes into view, which may wait.
+     */
+    public void beginFrame() {
+        buildsLeft = BUILDS_PER_FRAME;
     }
 
     /**
@@ -55,6 +83,12 @@ public class SectionMeshCache implements Disposable {
             return meshes;
         }
         boolean changed = section.isDirty();
+        if (meshes == null && buildsLeft <= 0) {
+            // The budget of this frame is spent: the section waits for its turn and is not drawn until
+            // then, see BUILDS_PER_FRAME. A section that changed never waits, it is rebuilt right here.
+            return notYet;
+        }
+        buildsLeft--;
         if (meshes != null) {
             dispose(meshes);
         }

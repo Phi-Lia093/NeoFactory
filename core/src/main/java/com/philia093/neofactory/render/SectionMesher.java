@@ -94,6 +94,11 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, Pictures pictures) {
+        // The blocks around the section are read once and kept as one flag per cell: whether that cell
+        // hides the face of the block behind it. The mesher asks that question thousands of times - once
+        // per face and three times per corner of a face - and every single ask used to be a read of the
+        // world, which made a section cost more than the whole rest of a frame.
+        boolean[] hiding = hidingAround(blocks);
         List<MeshData> meshes = new ArrayList<>();
         MeshData mesh = new MeshData();
         for (int x = 0; x < Section.SIZE; x++) {
@@ -104,7 +109,7 @@ public final class SectionMesher {
                         continue;
                     }
                     for (BlockFace face : BlockFace.ALL) {
-                        if (hides(blocks.blockAt(x + face.x(), y + face.y(), z + face.z()))) {
+                        if (hiding(hiding, x + face.x(), y + face.y(), z + face.z())) {
                             continue;
                         }
                         String picture = block.faces().face(face);
@@ -119,7 +124,7 @@ public final class SectionMesher {
                             meshes.add(mesh);
                             mesh = new MeshData();
                         }
-                        addFace(mesh, block, face, layer, x, y, z, originX, originY, originZ, blocks);
+                        addFace(mesh, block, face, layer, x, y, z, originX, originY, originZ, hiding);
                     }
                 }
             }
@@ -128,6 +133,35 @@ public final class SectionMesher {
             meshes.add(mesh);
         }
         return meshes;
+    }
+
+    /**
+     * Reads the cell of the shell around the section once, as the one question the mesher asks over and
+     * over, see {@link #build}.
+     *
+     * @param blocks blocks of the section and of the shell around it
+     * @return one flag per cell of the shell, laid out by {@link #shellIndex(int, int, int)}
+     */
+    private static boolean[] hidingAround(Blocks blocks) {
+        boolean[] hiding = new boolean[SHELL * SHELL * SHELL];
+        for (int x = -1; x <= Section.SIZE; x++) {
+            for (int y = -1; y <= Section.SIZE; y++) {
+                for (int z = -1; z <= Section.SIZE; z++) {
+                    hiding[shellIndex(x, y, z)] = hides(blocks.blockAt(x, y, z));
+                }
+            }
+        }
+        return hiding;
+    }
+
+    /** {@code true} when the cell of the shell at a local coordinate hides what is behind it. */
+    private static boolean hiding(boolean[] hiding, int x, int y, int z) {
+        return hiding[shellIndex(x, y, z)];
+    }
+
+    /** Index of a cell of the shell, whose centre is the cell {@code (0, 0, 0)} of the section. */
+    private static int shellIndex(int x, int y, int z) {
+        return ((x + 1) * SHELL + (y + 1)) * SHELL + (z + 1);
     }
 
     /**
@@ -146,11 +180,11 @@ public final class SectionMesher {
      * @param blocks blocks around the face, needed for the shadow of a corner
      */
     private static void addFace(MeshData mesh, Block block, BlockFace face, int layer, int x, int y,
-            int z, int originX, int originY, int originZ, Blocks blocks) {
+            int z, int originX, int originY, int originZ, boolean[] hiding) {
         Color tint = block.tint();
         int[] corners = new int[4];
         for (int corner = 0; corner < 4; corner++) {
-            float light = face.shade() * occlusion(blocks, x, y, z, face, corner);
+            float light = face.shade() * occlusion(hiding, x, y, z, face, corner);
             corners[corner] = mesh.addVertex(
                     originX + x + face.cornerX(corner),
                     originY + y + face.cornerY(corner),
@@ -210,7 +244,7 @@ public final class SectionMesher {
      * @param corner corner of the face, {@code 0} to {@code 3}
      * @return the brightness, {@code OCCLUSION[0]} to {@code 1}
      */
-    private static float occlusion(Blocks blocks, int x, int y, int z, BlockFace face, int corner) {
+    private static float occlusion(boolean[] hiding, int x, int y, int z, BlockFace face, int corner) {
         int nx = face.x();
         int ny = face.y();
         int nz = face.z();
@@ -224,17 +258,17 @@ public final class SectionMesher {
         boolean sideB;
         boolean diagonal;
         if (nx != 0) {
-            sideA = hides(blocks.blockAt(x + nx, y + dy, z));
-            sideB = hides(blocks.blockAt(x + nx, y, z + dz));
-            diagonal = hides(blocks.blockAt(x + nx, y + dy, z + dz));
+            sideA = hiding(hiding, x + nx, y + dy, z);
+            sideB = hiding(hiding, x + nx, y, z + dz);
+            diagonal = hiding(hiding, x + nx, y + dy, z + dz);
         } else if (ny != 0) {
-            sideA = hides(blocks.blockAt(x + dx, y + ny, z));
-            sideB = hides(blocks.blockAt(x, y + ny, z + dz));
-            diagonal = hides(blocks.blockAt(x + dx, y + ny, z + dz));
+            sideA = hiding(hiding, x + dx, y + ny, z);
+            sideB = hiding(hiding, x, y + ny, z + dz);
+            diagonal = hiding(hiding, x + dx, y + ny, z + dz);
         } else {
-            sideA = hides(blocks.blockAt(x + dx, y, z + nz));
-            sideB = hides(blocks.blockAt(x, y + dy, z + nz));
-            diagonal = hides(blocks.blockAt(x + dx, y + dy, z + nz));
+            sideA = hiding(hiding, x + dx, y, z + nz);
+            sideB = hiding(hiding, x, y + dy, z + nz);
+            diagonal = hiding(hiding, x + dx, y + dy, z + nz);
         }
 
         if (sideA && sideB) {
@@ -243,6 +277,8 @@ public final class SectionMesher {
         int occluders = (sideA ? 1 : 0) + (sideB ? 1 : 0) + (diagonal ? 1 : 0);
         return OCCLUSION[3 - occluders];
     }
+
+    private static final int SHELL = Section.SIZE + 2;
 
     /**
      * {@code true} when a block hides the face of the block behind it.
