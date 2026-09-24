@@ -22,14 +22,17 @@ import org.apache.logging.log4j.Logger;
  * <p>
  * A build goes into the cell the player aims at, and when that cell is taken it goes into the cell
  * behind the face the line of sight entered through, see {@link BlockTarget#neighbour()}: that is how a
- * wall is built against and how a bridge grows from the block it is laid on. A cell the mouse named
- * carries no face, and then the taken cell simply refuses the build.
+ * wall is built against and how a bridge grows from the block it is laid on.
  * <p>
- * A block needs something to stand on, see
- * {@link com.philia093.neofactory.world.BlockAccess#hasSupport(int, int, int)}: a cell without a block
- * below it is a hole in the air, and a block there would float. A block that would end up inside the
- * player is refused as well: the check runs on the changed world and undoes the write when the player
- * no longer fits.
+ * <b>What carries a new block.</b> A block hangs on what it is built against, so the cell behind the
+ * face of the aim is what has to be filled - a wall carries the block beside it and the ground carries
+ * the block above it. A cell the mouse named carries no face, and then the rule of the view from above
+ * answers instead: the ground below it has to be filled, see
+ * {@link com.philia093.neofactory.world.BlockAccess#hasSupport(int, int, int,
+ * com.philia093.neofactory.block.BlockFace)}. Without that difference a player could build on the ground
+ * and nowhere else, which is what a world of cubes must not do. A block that would end up inside the
+ * player is refused as well: the check runs on the changed world and undoes the write when the player no
+ * longer fits.
  */
 public final class BlockPlacer {
 
@@ -92,7 +95,7 @@ public final class BlockPlacer {
     private static boolean buildInto(World world, Player player, BlockTarget cell, Block block,
             PlayerInventory inventory, ItemStack held) {
         if (!world.getBlock(cell.x(), cell.y(), cell.z()).isAir()
-                || !world.hasSupport(cell.x(), cell.y(), cell.z())) {
+                || !world.hasSupport(cell.x(), cell.y(), cell.z(), cell.face())) {
             return false;
         }
 

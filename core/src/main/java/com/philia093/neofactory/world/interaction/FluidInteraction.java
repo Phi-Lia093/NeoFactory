@@ -1,5 +1,6 @@
 package com.philia093.neofactory.world.interaction;
 
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidFlow;
@@ -153,7 +154,7 @@ public final class FluidInteraction {
             // The cell is taken, by a wall, a plant or another fluid.
             return false;
         }
-        if (!mayStand(world, x, y, z)) {
+        if (!mayStand(world, x, y, z, target.face())) {
             return false;
         }
 
@@ -166,21 +167,22 @@ public final class FluidInteraction {
     }
 
     /**
-     * {@code true} when a fluid may stand in an empty cell of a layer.
+     * {@code true} when a fluid may stand in an empty cell.
      * <p>
-     * The two layers answer differently, exactly like a block does: the ground below the feet is
-     * out of reach while the layer the player stands in holds something, and the layer the player
-     * stands in needs ground below it.
+     * A fluid is poured against whatever the aim met: a wall holds it, a floor carries it, and a cell
+     * with nothing around it is refused, because a fluid that hangs in the air would run nowhere. The
+     * side the cell was entered through is what the bucket is poured against, see
+     * {@link com.philia093.neofactory.world.BlockAccess#hasSupport(int, int, int,
+     * com.philia093.neofactory.block.BlockFace)}.
      *
      * @param world world to read
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @param layer layer the fluid would stand in
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param face face the cell was entered through, {@code null} when no side is known
      * @return {@code true} when the fluid may be poured there
      */
-    private static boolean mayStand(World world, int x, int y, int z) {
-        // A fluid stands on something: a cell without a block below it is a hole in the air, and
-        // what a bucket pours into such a hole would float.
-        return world.hasSupport(x, y, z);
+    private static boolean mayStand(World world, int x, int y, int z, BlockFace face) {
+        return world.hasSupport(x, y, z, face);
     }
 }

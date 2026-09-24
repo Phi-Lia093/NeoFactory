@@ -1,6 +1,7 @@
 package com.philia093.neofactory.world;
 
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.BlockFace;
 
 /**
  * Read and write access to the blocks of a world.
@@ -110,6 +111,35 @@ public interface BlockAccess {
      * @param y block Y coordinate, the height
      * @param z block Z coordinate
      * @return {@code true} when a block or a fluid may be placed here
+     */
+    /**
+     * {@code true} when a cell may hold a block of its own.
+     * <p>
+     * A block is attached to whatever it is built against, and a line of sight brings the face it entered
+     * the cell through with it: the cell behind that face is what the block hangs on, so a wall is built
+     * against and a bridge grows sideways. A cell the mouse named knows no side, and the rule of the flat
+     * view answers instead - the ground below it - because there is nothing else to ask.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param face face the cell was entered through, {@code null} when no side is known
+     * @return {@code true} when the cell has something to hold on to
+     */
+    default boolean hasSupport(int x, int y, int z, BlockFace face) {
+        if (face == null) {
+            return hasSupport(x, y, z);
+        }
+        return hasBlock(x - face.x(), y - face.y(), z - face.z());
+    }
+
+    /**
+     * {@code true} when a cell holds a block, the ground of the flat view included.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @return {@code true} when that cell is not empty
      */
     default boolean hasSupport(int x, int y, int z) {
         return y == FLAT_FLOOR_Y || hasBlock(x, y - 1, z);
