@@ -3,6 +3,7 @@ package com.philia093.neofactory.world.interaction;
 import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidFlow;
 import com.philia093.neofactory.fluid.FluidState;
@@ -32,8 +33,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FluidInteractionTest {
 
-    /** Layer the fluids of the tests stand in: the one the player stands in. */
-    private static final int LAYER = Chunk.LAYER_OBJECT;
+    /** HEIGHT the fluids of the tests stand in: the one the player stands in. */
+    private static final int GROUND = Constants.SEA_LEVEL;
+
+    /** Height the fluids of the tests stand at, one block above their ground. */
+    private static final int HEIGHT = GROUND + 1;
 
     /** Seed of the test world, a fixed one keeps a failure reproducible. */
     private static final int SEED = 777;
@@ -82,7 +86,7 @@ class FluidInteractionTest {
 
         assertEquals(Items.WATER_BUCKET, inventory.heldStack().item());
         assertEquals(Blocks.AIR, blockAt(0, 0), "the source is gone");
-        assertEquals(0, world.getState(0, Chunk.flatY(LAYER), 0), "and its state went with it");
+        assertEquals(0, world.getState(0, HEIGHT, 0), "and its state went with it");
     }
 
     @Test
@@ -93,7 +97,7 @@ class FluidInteractionTest {
 
         assertEquals(Items.BUCKET, inventory.heldStack().item(), "the player holds an empty bucket");
         assertEquals(Fluids.WATER.block(), blockAt(0, 0));
-        assertTrue(FluidState.unpack(world.getState(0, Chunk.flatY(LAYER), 0)).isSource(),
+        assertTrue(FluidState.unpack(world.getState(0, HEIGHT, 0)).isSource(),
                 "what a bucket pours is a source");
     }
 
@@ -141,7 +145,7 @@ class FluidInteractionTest {
 
     @Test
     void pouringIntoATakenCellDoesNothing() {
-        world.setBlock(0, Chunk.flatY(LAYER), 0, Blocks.STONE);
+        world.setBlock(0, HEIGHT, 0, Blocks.STONE);
         hold(Items.WATER_BUCKET);
 
         assertFalse(use(0, 0), "the cell is taken");
@@ -204,73 +208,73 @@ class FluidInteractionTest {
 
     @Test
     void aFluidIsPouredIntoTheLayerThePlayerAimsAt() {
-        // A hole in the ground: the player may aim at the ground layer and pour into it.
-        world.setBlock(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, Blocks.AIR);
+        // A hole in the ground: the player may aim at the ground HEIGHT and pour into it.
+        world.setBlock(0, GROUND, 0, Blocks.AIR);
         hold(Items.WATER_BUCKET);
 
-        assertTrue(use(0, 0, FluidFlow.FLOOR_LAYER), "water runs into the hole");
+        assertTrue(use(0, 0, GROUND), "water runs into the hole");
 
-        assertEquals(Fluids.WATER.block(), blockAt(0, 0, FluidFlow.FLOOR_LAYER));
-        assertEquals(Blocks.AIR, blockAt(0, 0, LAYER), "and not into the layer above");
+        assertEquals(Fluids.WATER.block(), blockAt(0, 0, GROUND));
+        assertEquals(Blocks.AIR, blockAt(0, 0, HEIGHT), "and not into the HEIGHT above");
     }
 
     @Test
     void groundBlocksTheWaterOfItsOwnLayer() {
         hold(Items.WATER_BUCKET);
 
-        assertFalse(use(0, 0, FluidFlow.FLOOR_LAYER), "the ground is in the way");
+        assertFalse(use(0, 0, GROUND), "the ground is in the way");
 
-        assertEquals(Blocks.STONE, blockAt(0, 0, FluidFlow.FLOOR_LAYER), "the ground stayed");
+        assertEquals(Blocks.STONE, blockAt(0, 0, GROUND), "the ground stayed");
         assertEquals(Items.WATER_BUCKET, inventory.heldStack().item(), "and the bucket stayed full");
     }
 
     @Test
     void nothingIsPouredOverAHole() {
-        world.setBlock(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, Blocks.AIR);
+        world.setBlock(0, GROUND, 0, Blocks.AIR);
         hold(Items.WATER_BUCKET);
 
-        assertFalse(use(0, 0, LAYER), "water over a hole would float in the air");
+        assertFalse(use(0, 0, HEIGHT), "water over a hole would float in the air");
 
-        assertEquals(Blocks.AIR, blockAt(0, 0, LAYER));
+        assertEquals(Blocks.AIR, blockAt(0, 0, HEIGHT));
         assertEquals(Items.WATER_BUCKET, inventory.heldStack().item());
     }
 
     @Test
     void aFluidDoesNotCareWhatStandsAboveIt() {
-        world.setBlock(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, Blocks.AIR);
-        world.setBlock(0, Chunk.flatY(LAYER), 0, Blocks.TALL_GRASS);
+        world.setBlock(0, GROUND, 0, Blocks.AIR);
+        world.setBlock(0, HEIGHT, 0, Blocks.TALL_GRASS);
         hold(Items.WATER_BUCKET);
 
         // A world of cubes has no layers to skip: a cell of the ground is filled when it is empty and
         // the world carries it, no matter what stands in the cell above - which is what a spill under
         // a plant looks like. The flat view knew only two cells per column, so it had to keep the
         // ground out of reach until the cell the player stands in was empty.
-        assertTrue(use(0, 0, FluidFlow.FLOOR_LAYER), "the ground below a plant takes water");
-        assertEquals(Fluids.WATER.block(), blockAt(0, 0, FluidFlow.FLOOR_LAYER));
-        assertEquals(Blocks.TALL_GRASS, blockAt(0, 0, LAYER), "the plant above is untouched");
+        assertTrue(use(0, 0, GROUND), "the ground below a plant takes water");
+        assertEquals(Fluids.WATER.block(), blockAt(0, 0, GROUND));
+        assertEquals(Blocks.TALL_GRASS, blockAt(0, 0, HEIGHT), "the plant above is untouched");
     }
 
     @Test
     void aBucketIsFilledFromTheLayerThePlayerAimsAt() {
-        world.setBlock(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, Fluids.WATER.block());
-        world.setState(0, Chunk.flatY(FluidFlow.FLOOR_LAYER), 0, FluidState.SOURCE.pack());
+        world.setBlock(0, GROUND, 0, Fluids.WATER.block());
+        world.setState(0, GROUND, 0, FluidState.SOURCE.pack());
         hold(Items.BUCKET);
 
-        assertFalse(use(0, 0, LAYER), "there is no water in the layer above");
-        assertTrue(use(0, 0, FluidFlow.FLOOR_LAYER), "but there is water in the ground");
+        assertFalse(use(0, 0, HEIGHT), "there is no water in the HEIGHT above");
+        assertTrue(use(0, 0, GROUND), "but there is water in the ground");
 
         assertEquals(Items.WATER_BUCKET, inventory.heldStack().item());
-        assertEquals(Blocks.AIR, blockAt(0, 0, FluidFlow.FLOOR_LAYER), "the hole is dry again");
+        assertEquals(Blocks.AIR, blockAt(0, 0, GROUND), "the hole is dry again");
     }
 
-    /** Uses the held stack on a cell of the fluid layer. */
+    /** Uses the held stack on a cell of the fluid HEIGHT. */
     private boolean use(int x, int y) {
-        return use(x, y, LAYER);
+        return use(x, y, HEIGHT);
     }
 
-    /** Uses the held stack on a cell of a layer, the way the flat view names it. */
-    private boolean use(int x, int y, int layer) {
-        return FluidInteraction.use(world, BlockTarget.of(x, Chunk.flatY(layer), y), inventory);
+    /** Uses the held stack on a cell of a HEIGHT, the way the flat view names it. */
+    private boolean use(int x, int y, int HEIGHT) {
+        return FluidInteraction.use(world, BlockTarget.of(x, HEIGHT, y), inventory);
     }
 
     /** Puts an item into the hand of the player. */
@@ -280,18 +284,18 @@ class FluidInteractionTest {
 
     /** Puts the block of a fluid into a cell and marks it as a source. */
     private void pourFluid(Fluid fluid, int x, int y) {
-        world.setBlock(x, Chunk.flatY(LAYER), y, fluid.block());
-        world.setState(x, Chunk.flatY(LAYER), y, FluidState.SOURCE.pack());
+        world.setBlock(x, HEIGHT, y, fluid.block());
+        world.setState(x, HEIGHT, y, FluidState.SOURCE.pack());
     }
 
-    /** Empties the object layer of a patch around the spawn, so a spill has room to run. */
+    /** Empties the object HEIGHT of a patch around the spawn, so a spill has room to run. */
     private void clearPatch() {
         for (int y = -PATCH; y <= PATCH; y++) {
             for (int x = -PATCH; x <= PATCH; x++) {
-                world.setBlock(x, Chunk.flatY(FluidFlow.FLOOR_LAYER), y, Blocks.STONE);
-                world.setState(x, Chunk.flatY(FluidFlow.FLOOR_LAYER), y, 0);
-                world.setBlock(x, Chunk.flatY(LAYER), y, Blocks.AIR);
-                world.setState(x, Chunk.flatY(LAYER), y, 0);
+                world.setBlock(x, GROUND, y, Blocks.STONE);
+                world.setState(x, GROUND, y, 0);
+                world.setBlock(x, HEIGHT, y, Blocks.AIR);
+                world.setState(x, HEIGHT, y, 0);
             }
         }
     }
@@ -303,13 +307,13 @@ class FluidInteractionTest {
         }
     }
 
-    /** Block of a cell of the layer the fluids live in. */
+    /** Block of a cell of the HEIGHT the fluids live in. */
     private Block blockAt(int x, int y) {
-        return blockAt(x, y, LAYER);
+        return blockAt(x, y, HEIGHT);
     }
 
-    /** Block of a cell of a layer. */
-    private Block blockAt(int x, int y, int layer) {
-        return world.getBlock(x, Chunk.flatY(layer), y);
+    /** Block of a cell of a HEIGHT. */
+    private Block blockAt(int x, int y, int HEIGHT) {
+        return world.getBlock(x, HEIGHT, y);
     }
 }

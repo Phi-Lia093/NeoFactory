@@ -436,11 +436,10 @@ public final class World implements BlockAccess {
         // This is the public write path of the world: everything reaching it is a
         // player change and has to survive unloading and saving.
         chunk.markModified();
-        // Water and lava are looked at again where something happened: a wall built through a
-        // lake holds the water back, a hole in that wall lets it through, and a source that was
-        // taken away stops feeding the water that lived from it. The flow itself still runs on the
-        // layers of the flat view, see FluidFlow, which is why it is handed the column.
-        fluids.mark(this, x, z);
+        // Water and lava are looked at again where something happened: a wall built through a lake holds
+        // the water back, a hole in that wall lets it through, and a source that was taken away stops
+        // feeding the water that lived from it.
+        fluids.mark(this, x, y, z);
     }
 
     /**

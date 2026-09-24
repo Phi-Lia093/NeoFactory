@@ -18,6 +18,9 @@ dependencies {
 
 test {
   useJUnitPlatform()
+  // A world of cubes costs more memory than a world of two flat layers: the tests build real worlds -
+  // the preview of the terrain alone holds several hundred chunks of them - so the worker gets room.
+  maxHeapSize = '1g'
   testLogging {
     events "failed"
     exceptionFormat "full"

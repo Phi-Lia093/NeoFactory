@@ -49,6 +49,7 @@ class WorldGenPreviewTest {
     @Test
     void writesThePictureOfAGeneratedPatch() throws IOException {
         World world = new World(SEED);
+        WorldGen generator = new WorldGen(SEED);
         int centerX = world.spawnX() - SIZE / 2;
         int centerY = world.spawnZ() - SIZE / 2;
         int radius = SIZE / 16 + 2;
@@ -66,8 +67,8 @@ class WorldGenPreviewTest {
             for (int x = 0; x < SIZE; x++) {
                 int blockX = centerX + x;
                 int blockY = centerY + y;
-                int color = colorOf(world.getBlock(blockX, Chunk.flatY(Chunk.LAYER_FLOOR), blockY));
-                Block above = world.getBlock(blockX, Chunk.flatY(FluidFlow.OBJECT_LAYER), blockY);
+                int color = colorOf(world.getBlock(blockX, generator.groundY(blockX, blockY), blockY));
+                Block above = world.getBlock(blockX, generator.surfaceY(blockX, blockY), blockY);
                 if (!above.isAir()) {
                     // The object layer lies on top of the ground, the way the renderer draws it.
                     color = blend(color, colorOf(above), above == Blocks.WATER);

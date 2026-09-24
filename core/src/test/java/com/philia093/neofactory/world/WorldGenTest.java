@@ -321,8 +321,7 @@ class WorldGenTest {
                     continue;
                 }
                 assertFalse(
-                        FluidFlow.mayStand(world, Fluids.WATER, neighbour.x(), neighbour.y(),
-                                FluidFlow.OBJECT_LAYER),
+                        FluidFlow.mayStand(world, Fluids.WATER, neighbour.x(), waterY(neighbour.x(), neighbour.y()), neighbour.y()),
                         "the ring around a body of water holds it in, so (" + neighbour.x() + ", "
                                 + neighbour.y() + ") beside (" + cell.x() + ", " + cell.y()
                                 + ") may not take water");
@@ -354,8 +353,12 @@ class WorldGenTest {
     }
 
     /** The block a cell carries in the layer of the player. */
+    private static int waterY(int x, int y) {
+        return generator.groundY(x, y) + 1;
+    }
+
     private static Block waterOf(World world, BlockPos cell) {
-        return world.getBlock(cell.x(), Chunk.flatY(FluidFlow.OBJECT_LAYER), cell.y());
+        return world.getBlock(cell.x(), waterY(cell.x(), cell.y()), cell.y());
     }
 
     /** The four cells around one. */
@@ -379,7 +382,7 @@ class WorldGenTest {
         Set<BlockPos> found = new HashSet<>();
         for (int y = centerY - NEARBY; y <= centerY + NEARBY; y++) {
             for (int x = centerX - NEARBY; x <= centerX + NEARBY; x++) {
-                if (world.getBlock(x, Chunk.flatY(FluidFlow.OBJECT_LAYER), y) == Fluids.WATER.block()) {
+                if (world.getBlock(x, waterY(x, y), y) == Fluids.WATER.block()) {
                     found.add(BlockPos.of(x, y));
                 }
             }

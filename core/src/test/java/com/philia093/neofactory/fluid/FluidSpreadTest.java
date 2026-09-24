@@ -1,109 +1,128 @@
 package com.philia093.neofactory.fluid;
 
+import com.badlogic.gdx.utils.LongMap;
+import com.badlogic.gdx.utils.LongSet;
 import com.philia093.neofactory.support.TestRegistries;
-import com.philia093.neofactory.world.BlockPos;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Checks where a fluid stands once it has run.
+ * Checks where a fluid runs, without a world and without a window.
  * <p>
- * The spread is arithmetic on positions, so a made up field is enough to prove what matters: a
- * level counts the steps to the nearest source, two sources share what lies between them, a wall
- * is walked around and never through, and a fluid that may stand nowhere is not fed at all.
+ * The walk is arithmetic on positions: it is handed the cells a fluid grows from and a question - may it
+ * stand here? - and answers with a state per cell. Everything the world side is built on is checked here:
+ * a fluid spreads sideways one step at a time and never climbs, and it falls for free, which is what lets
+ * water run down a cliff and spread along the floor below it.
  */
 class FluidSpreadTest {
 
-    /** A field without a single obstacle. */
-    private static final FluidSpread.Cells OPEN = (x, y) -> true;
+    /** Every cell of an empty world, so a case only has to say what is in the way. */
+    private static final FluidSpread.Cells OPEN = (x, y, z) -> true;
 
     @BeforeAll
-    static void register() {
+    static void registerGameData() {
         TestRegistries.ensure();
     }
 
     @Test
-    void waterRunsSevenCellsFromItsSource() {
-        Map<BlockPos, Integer> levels = FluidSpread.settle(List.of(BlockPos.of(0, 0)),
-                Fluids.WATER, OPEN);
+    void aSpillGrowsOneRingPerStep() {
+        LongSet sources = new LongSet();
+        sources.add(FluidSpread.key(0, 0, 0));
 
-        assertEquals(0, levels.get(BlockPos.of(0, 0)), "the source itself");
-        assertEquals(7, levels.get(BlockPos.of(7, 0)), "seven cells to the east");
-        assertEquals(7, levels.get(BlockPos.of(0, -7)), "seven cells to the south");
-        assertEquals(4, levels.get(BlockPos.of(2, 2)), "the level counts the steps");
-        assertNull(levels.get(BlockPos.of(8, 0)), "the ring after the last one is not reached");
-        assertEquals(2 * 7 * 8 + 1, levels.size(), "the diamond of a spread of seven");
+        LongMap<FluidState> settled = FluidSpread.settle(sources, Fluids.WATER, OPEN);
+
+        assertEquals(FluidState.SOURCE, settled.get(FluidSpread.key(0, 0, 0)),
+                "a source is where the water starts");
+        assertEquals(FluidState.flowing(1), settled.get(FluidSpread.key(1, 0, 0)), "one step away");
+        assertEquals(FluidState.flowing(2), settled.get(FluidSpread.key(2, 0, 0)), "two steps away");
+        assertNull(settled.get(FluidSpread.key(Fluids.WATER.range() + 1, 0, 0)),
+                "and it stops at the range of the fluid");
     }
 
     @Test
-    void lavaReachesThreeCells() {
-        Map<BlockPos, Integer> levels = FluidSpread.settle(List.of(BlockPos.of(0, 0)),
-                Fluids.LAVA, OPEN);
+    void waterFallsForFreeAndSpreadsAtTheBottom() {
+        // A floor at y = 0 only: everything above it is open, so the water falls from the source at y = 3
+        // down to the floor and runs along it.
+        FluidSpread.Cells airAboveTheFloor = (x, y, z) -> y > 0;
+        LongSet sources = new LongSet();
+        sources.add(FluidSpread.key(0, 3, 0));
 
-        assertEquals(3, levels.get(BlockPos.of(3, 0)));
-        assertNull(levels.get(BlockPos.of(4, 0)), "lava is thicker than water");
-        assertEquals(2 * 3 * 4 + 1, levels.size());
+        LongMap<FluidState> settled = FluidSpread.settle(sources, Fluids.WATER, airAboveTheFloor);
+
+        assertNull(settled.get(FluidSpread.key(0, 0, 0)), "the floor itself holds no water");
+        assertEquals(FluidState.fallen(0), settled.get(FluidSpread.key(0, 1, 0)),
+                "the foot of the fall is as strong as the source above it");
+        assertEquals(FluidState.flowing(1), settled.get(FluidSpread.key(1, 1, 0)),
+                "and from there the water runs along the floor");
+        assertEquals(FluidState.flowing(2), settled.get(FluidSpread.key(2, 1, 0)), "one ring further");
     }
 
     @Test
-    void theNearestSourceWins() {
-        Map<BlockPos, Integer> levels = FluidSpread.settle(
-                List.of(BlockPos.of(0, 0), BlockPos.of(10, 0)), Fluids.WATER, OPEN);
+    void aFluidThatCanFallDoesNotSpreadSideways() {
+        // A single hole under the source: the water goes through it instead of soaking the wall beside it.
+        FluidSpread.Cells holeBelow = (x, y, z) -> y != 0 || x == 0;
+        LongSet sources = new LongSet();
+        sources.add(FluidSpread.key(0, 1, 0));
 
-        assertEquals(1, levels.get(BlockPos.of(1, 0)));
-        assertEquals(1, levels.get(BlockPos.of(9, 0)));
-        assertEquals(5, levels.get(BlockPos.of(5, 0)), "the middle is fed by both");
-        assertEquals(0, levels.get(BlockPos.of(10, 0)), "and the second source keeps its level");
+        LongMap<FluidState> settled = FluidSpread.settle(sources, Fluids.WATER, holeBelow);
+
+        assertEquals(FluidState.fallen(0), settled.get(FluidSpread.key(0, 0, 0)), "it fell into the hole");
+        assertNull(settled.get(FluidSpread.key(1, 1, 0)),
+                "and did not run along the ground it could have fallen from");
+        assertTrue(settled.containsKey(FluidSpread.key(1, 0, 0)),
+                "it runs along the floor of the hole instead");
     }
 
     @Test
-    void aWallStopsTheWaterAndIsWalkedAround() {
-        // A wall at x = 2 that reaches upwards from the source, so the water has to take the
-        // way around its southern end.
-        FluidSpread.Cells cells = (x, y) -> x != 2 || y < 0;
-        Map<BlockPos, Integer> levels = FluidSpread.settle(List.of(BlockPos.of(0, 0)),
-                Fluids.WATER, cells);
+    void aFluidNeverClimbs() {
+        LongSet sources = new LongSet();
+        sources.add(FluidSpread.key(0, 0, 0));
 
-        assertNull(levels.get(BlockPos.of(2, 1)), "the wall is not flooded");
-        assertNull(levels.get(BlockPos.of(2, 3)), "and neither is the cell behind it");
-        assertTrue(levels.containsKey(BlockPos.of(2, -2)), "the water finds the way around");
-        assertTrue(levels.get(BlockPos.of(2, -2)) > 3, "and that way is longer");
+        LongMap<FluidState> settled = FluidSpread.settle(sources, Fluids.WATER, OPEN);
+
+        assertNull(settled.get(FluidSpread.key(0, 1, 0)), "nothing above the source");
+        assertNull(settled.get(FluidSpread.key(0, -1, 0)),
+                "and nothing below it either: falling needs an open cell under a cell of the fluid");
     }
 
     @Test
-    void aSourceThatMayStandNowhereFeedsNothing() {
-        FluidSpread.Cells buried = (x, y) -> x != 0 || y != 0;
+    void twoSourcesShareTheWaterBetweenThem() {
+        LongSet sources = new LongSet();
+        sources.add(FluidSpread.key(0, 0, 0));
+        sources.add(FluidSpread.key(2, 0, 0));
 
-        Map<BlockPos, Integer> levels = FluidSpread.settle(List.of(BlockPos.of(0, 0)),
-                Fluids.WATER, buried);
+        LongMap<FluidState> settled = FluidSpread.settle(sources, Fluids.WATER, OPEN);
 
-        assertTrue(levels.isEmpty(), "a source inside a wall is dropped");
+        assertEquals(FluidState.SOURCE, settled.get(FluidSpread.key(0, 0, 0)));
+        assertEquals(FluidState.SOURCE, settled.get(FluidSpread.key(2, 0, 0)));
+        assertEquals(FluidState.flowing(1), settled.get(FluidSpread.key(1, 0, 0)),
+                "the cell between them is one step from either source");
     }
 
     @Test
-    void aCellThatTwoSourcesBothNameIsListedOnce() {
-        Map<BlockPos, Integer> levels = FluidSpread.settle(
-                List.of(BlockPos.of(0, 0), BlockPos.of(0, 0), BlockPos.of(1, 0)), Fluids.WATER, OPEN);
+    void aSourceThatCannotStandIsDropped() {
+        LongSet sources = new LongSet();
+        sources.add(FluidSpread.key(0, 0, 0));
 
-        assertEquals(0, levels.get(BlockPos.of(0, 0)), "the source keeps its level");
-        assertEquals(0, levels.get(BlockPos.of(1, 0)), "and so does the second one");
+        LongMap<FluidState> settled = FluidSpread.settle(sources, Fluids.WATER, (x, y, z) -> false);
+
+        assertTrue(settled.size == 0, "a source buried in a wall feeds nothing");
     }
 
     @Test
-    void theNeighboursOfACellAreItsFourSides() {
-        List<BlockPos> neighbours = FluidSpread.neighbours(BlockPos.of(2, 3));
+    void aPackedCellReadsBackAsTheCellItWas() {
+        long cell = FluidSpread.key(-13, 70, 5);
 
-        assertEquals(4, neighbours.size(), "the world is seen from above, so there are four");
-        assertTrue(neighbours.contains(BlockPos.of(2, 4)), "to the north");
-        assertTrue(neighbours.contains(BlockPos.of(2, 2)), "to the south");
-        assertTrue(neighbours.contains(BlockPos.of(3, 3)), "to the east");
-        assertTrue(neighbours.contains(BlockPos.of(1, 3)), "to the west");
+        assertEquals(-13, FluidSpread.xOf(cell));
+        assertEquals(70, FluidSpread.yOf(cell));
+        assertEquals(5, FluidSpread.zOf(cell));
+        assertEquals(cell, FluidSpread.key(FluidSpread.xOf(cell), FluidSpread.yOf(cell),
+                FluidSpread.zOf(cell)), "and packing what was read gives the same number");
+        assertEquals(FluidSpread.key(-13, 69, 5), FluidSpread.below(cell), "the cell under it");
+        assertEquals(FluidSpread.key(-13, 71, 5), FluidSpread.above(cell), "and the one over it");
     }
 }

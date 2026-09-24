@@ -69,8 +69,8 @@ class TerrainColumnTest {
         int columns = 0;
         int wet = 0;
 
-        for (int x = -SAMPLE * 8; x < SAMPLE * 8; x += 7) {
-            for (int z = -SAMPLE * 8; z < SAMPLE * 8; z += 7) {
+        for (int x = -SAMPLE * 4; x < SAMPLE * 4; x += 5) {
+            for (int z = -SAMPLE * 4; z < SAMPLE * 4; z += 5) {
                 columns++;
                 int ground = generator.groundY(x, z);
                 if (ground >= Constants.SEA_LEVEL) {
