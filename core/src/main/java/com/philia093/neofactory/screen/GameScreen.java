@@ -879,8 +879,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // which is what lets a player turn all the way around.
         boolean captured = cubeRenderer != null && !isInterfaceOpen();
         Gdx.input.setCursorCatched(captured);
+        inputHandler.setFirstPerson(cubeRenderer != null);
         inputHandler.setLookCaptured(captured);
-        inputHandler.update(player, camera);
         if (creativeGui.isOpen()) {
             // While the creative inventory is up the wheel walks through its list
             // instead of zooming the camera.
@@ -896,6 +896,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         } else {
             applyWheel(zoomSteps);
             applyZoomDemand(delta);
+            // The world is played: the keyboard walks and the pointer turns the view, see InputHandler.
+            // A screen that is open keeps both to itself, which is why this runs here and not above.
+            inputHandler.update(player, camera);
             player.setSpeedScale(cubeRenderer == null ? zoom : Constants.BLOCK_SIZE);
             if (inputHandler.isJumpDown()) {
                 player.jump();

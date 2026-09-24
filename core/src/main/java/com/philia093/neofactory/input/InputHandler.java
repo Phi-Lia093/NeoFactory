@@ -34,6 +34,25 @@ public class InputHandler extends InputAdapter {
     private boolean lookCaptured;
 
     /**
+     * Whether the world is looked at from inside a body instead of from above.
+     * <p>
+     * The two views are aimed differently: a world drawn from above is aimed at by pointing at a cell,
+     * which turns the player towards the pointer, while a body that stands in the world turns with the
+     * movement of the pointer. Keeping the two apart is what stops the view from turning while a screen
+     * that owns the pointer is open, see {@link #setFirstPerson(boolean)}.
+     */
+    private boolean firstPerson;
+
+    /**
+     * Tells the handler which view the world is looked at through.
+     *
+     * @param firstPerson {@code true} while the world is drawn as cubes around the player
+     */
+    public void setFirstPerson(boolean firstPerson) {
+        this.firstPerson = firstPerson;
+    }
+
+    /**
      * Makes the pointer turn the view.
      *
      * @param captured {@code true} while the world is played and no screen is up
@@ -152,15 +171,17 @@ public class InputHandler extends InputAdapter {
      */
     public void update(Player player, OrthographicCamera camera) {
         player.setMoveInput(readAxis(KEY_LEFT, KEY_RIGHT), readAxis(KEY_DOWN, KEY_UP));
-        if (lookCaptured) {
-            // A captured pointer reports how far it moved instead of where it is, and that movement is
-            // the turn of the view: moving the pointer right turns the view right and moving it up looks
-            // up, which is the sign a player of the original game expects. The screen is 0,0 in its
-            // upper left corner, so looking up is the negative of the movement on that axis.
+        if (!firstPerson) {
+            // The flat view turns the player towards the pointer, which is where the pointer names a
+            // place in the world.
+            player.lookAt(mouseWorldX(camera), mouseWorldY(camera));
+        } else if (lookCaptured) {
+            // The view of a body turns with the movement of the pointer and only while the world holds
+            // it: a screen that is open owns the pointer, so the view stands still until it closes.
+            // Moving the pointer right turns the view right and moving it up looks up, which is what a
+            // player of the original game expects; the screen counts its Y downwards, hence the sign.
             player.turn(Gdx.input.getDeltaX() * Constants.MOUSE_SENSITIVITY,
                     -Gdx.input.getDeltaY() * Constants.MOUSE_SENSITIVITY);
-        } else {
-            player.lookAt(mouseWorldX(camera), mouseWorldY(camera));
         }
     }
 

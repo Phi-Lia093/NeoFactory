@@ -318,13 +318,14 @@ public class Player extends Entity {
         float speed = Constants.PLAYER_SPEED * Constants.BLOCK_SIZE * speedScale;
         // The keyboard asks for a walk in the frame of the view: forward is where the player looks and
         // right is the right hand of that view. The direction of a yaw is (-sin, 0, cos) and its right
-        // hand is up x direction = (cos, 0, sin), see #yaw(), so turning the pointer turns the walk.
+        // hand is the cross product of that direction with the up axis, (direction x up) =
+        // (-cos, 0, -sin) - the order matters, because up x direction is the left hand.
         float sin = MathUtils.sinDeg(yaw);
         float cos = MathUtils.cosDeg(yaw);
         float forward = moveInput.y;
         float sideways = moveInput.x;
-        velocity.x = (sideways * cos - forward * sin) * speed;
-        velocity.z = (forward * cos + sideways * sin) * speed;
+        velocity.x = (-sideways * cos - forward * sin) * speed;
+        velocity.z = (forward * cos - sideways * sin) * speed;
 
         // The world pulls the body towards the ground and a jump pushes it away from it, see #jump().
         velocity.y -= Constants.GRAVITY * delta;
