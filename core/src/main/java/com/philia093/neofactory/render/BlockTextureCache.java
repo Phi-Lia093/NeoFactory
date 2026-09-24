@@ -61,6 +61,14 @@ public class BlockTextureCache implements Disposable {
     /** Cubes folded from a block tile, keyed by texture name and frame. */
     private final ObjectMap<String, TextureRegion> foldedIcons = new ObjectMap<>();
 
+    /**
+     * Draws the icon of a block from the block itself, {@code null} while there is none.
+     * <p>
+     * It is set while the world is drawn as cubes, because drawing off screen needs a frame buffer; a
+     * slot asked for a block before that is given the folded tile instead, see {@link #itemIcon(Item)}.
+     */
+    private BlockIconRenderer blockIconRenderer;
+
     /** Outlined icons of dropped items, keyed by texture name and frame. */
     private final ObjectMap<String, TextureRegion> itemOutlines = new ObjectMap<>();
 
@@ -272,7 +280,12 @@ public class BlockTextureCache implements Disposable {
      */
     public TextureRegion itemIcon(Item item) {
         if (item.isBlockItem() && item.block() != null && !item.block().isTransparent()) {
-            TextureRegion cube = blockIcon(item.texture(), item.iconFrame());
+            // A world of cubes shows the block itself, see BlockIconRenderer; the folded tile is what
+            // stands in for it while there is no graphics card that can draw one, or in the flat view.
+            TextureRegion cube = blockIconRenderer == null ? null : blockIconRenderer.icon(item.block());
+            if (cube == null) {
+                cube = blockIcon(item.texture(), item.iconFrame());
+            }
             if (cube != null) {
                 return cube;
             }
@@ -284,6 +297,19 @@ public class BlockTextureCache implements Disposable {
             }
         }
         return iconRegion(item.texture(), item.iconFrame());
+    }
+
+    /**
+     * Installs the renderer that draws the icon of a block from the block itself.
+     * <p>
+     * The caller owns the renderer and hands its work over here, because the interface asks this cache
+     * for every icon it draws. While none is installed the folded tile is used, which is what the flat
+     * view and a machine without a frame buffer keep, see {@link BlockIconRenderer}.
+     *
+     * @param renderer renderer to ask for the icons of blocks, {@code null} to fold the tiles again
+     */
+    public void setBlockIconRenderer(BlockIconRenderer renderer) {
+        this.blockIconRenderer = renderer;
     }
 
     /**

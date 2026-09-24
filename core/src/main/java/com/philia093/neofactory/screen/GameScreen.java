@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
@@ -34,6 +35,7 @@ import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.material.Materials;
+import com.philia093.neofactory.render.BlockIconRenderer;
 import com.philia093.neofactory.render.BlockPictures;
 import com.philia093.neofactory.render.BlockShader;
 import com.philia093.neofactory.render.BlockTextureCache;
@@ -131,6 +133,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Distance of the line that reports how fast the game runs from the upper left corner. */
     private static final float PERFORMANCE_MARGIN = 3.0f;
 
+    /** Length of one arm of the crosshair, in interface pixels. */
+    private static final float CROSSHAIR_ARM = 4.0f;
+
+    /** Thickness of the crosshair, in interface pixels. */
+    private static final float CROSSHAIR_THICKNESS = 1.0f;
+
+    /** Gap the arms keep from the middle, in interface pixels, so the cell is not covered. */
+    private static final float CROSSHAIR_GAP = 1.0f;
+
+    /** Colour of the crosshair: a grey that reads on a picture of any colour, never written. */
+    private static final Color CROSSHAIR_COLOR = new Color(0.8f, 0.8f, 0.8f, 0.6f);
+
     /** Frames counted since the last second was up. */
     private int framesThisSecond;
 
@@ -169,6 +183,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final SectionMeshCache sectionMeshes;
     private final WorldRenderer3D cubeRenderer;
     private final PerspectiveCamera cubeCamera;
+    /** Draws the icon of a block by drawing the block, {@code null} while the flat view is used. */
+    private final BlockIconRenderer blockIconRenderer;
+
 
     /** Reused direction of the view, so a frame does not fill the heap with vectors. */
     private final Vector3 lookDirection = new Vector3();
@@ -415,6 +432,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.cubeCamera = new PerspectiveCamera(CUBE_FIELD_OF_VIEW, 1.0f, 1.0f);
             cubeCamera.near = CUBE_NEAR;
             cubeCamera.far = CUBE_VIEW_DISTANCE;
+            // A slot shows a block by drawing the block itself, and that drawing shares the shader and the
+            // pictures of the world, so what a slot holds looks like what the world holds.
+            this.blockIconRenderer = new BlockIconRenderer(blockShader, pictures);
+            textures.setBlockIconRenderer(blockIconRenderer);
             LOGGER.info("The world is drawn as cubes, {} pictures in the array", pictures.layerCount());
         } else {
             this.pictures = null;
@@ -422,6 +443,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.sectionMeshes = null;
             this.cubeRenderer = null;
             this.cubeCamera = null;
+            this.blockIconRenderer = null;
             LOGGER.warn("This driver holds no texture array, the world is drawn from above");
         }
         // The player is an entity like any other, so it is drawn by the same pass
@@ -736,6 +758,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
+        drawCrosshair();
         drawPerformance();
         batch.end();
         batch.setColor(Color.WHITE);
@@ -791,6 +814,44 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 + " | cached " + cubeRenderer.cachedSectionCount();
     }
 
+    /**
+     * Draws the little mark in the middle of the screen that shows where the view points.
+     * <p>
+     * A world drawn as cubes is aimed at with the middle of the screen: the cell a click touches is the
+     * nearest one along the line through that middle, see the target of the player, so a small cross there
+     * is what tells a player where the hand will land. It is drawn only while the world is played - an
+     * interface owns the pointer, and a view from above aims with the pointer itself, so neither needs a
+     * mark.
+     * <p>
+     * The arms keep a gap from the middle, so the cell under the mark stays visible, and the grey is light
+     * enough to read against a bright sky and dark enough to read against stone. The four bars are whole
+     * pixels wide, which is what keeps the mark sharp when the interface is blown up.
+     * <p>
+     * The caller has to have begun the batch of the interface.
+     */
+    private void drawCrosshair() {
+        if (cubeRenderer == null || isInterfaceOpen()) {
+            return;
+        }
+        TextureRegion pixel = game.textures().whitePixel();
+        if (pixel == null) {
+            return;
+        }
+        float middleX = Math.round(uiViewport.getWorldWidth() * 0.5f);
+        float middleY = Math.round(uiViewport.getWorldHeight() * 0.5f);
+        float half = CROSSHAIR_THICKNESS * 0.5f;
+        batch.setColor(CROSSHAIR_COLOR);
+        batch.draw(pixel, middleX - CROSSHAIR_GAP - CROSSHAIR_ARM, middleY - half,
+                CROSSHAIR_ARM, CROSSHAIR_THICKNESS);
+        batch.draw(pixel, middleX + CROSSHAIR_GAP, middleY - half,
+                CROSSHAIR_ARM, CROSSHAIR_THICKNESS);
+        batch.draw(pixel, middleX - half, middleY - CROSSHAIR_GAP - CROSSHAIR_ARM,
+                CROSSHAIR_THICKNESS, CROSSHAIR_ARM);
+        batch.draw(pixel, middleX - half, middleY + CROSSHAIR_GAP,
+                CROSSHAIR_THICKNESS, CROSSHAIR_ARM);
+        batch.setColor(Color.WHITE);
+    }
+
     @Override
     public void resize(int width, int height) {
         super.resize(width, height);
@@ -831,6 +892,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
         batch.dispose();
         worldRenderer.dispose();
+        if (blockIconRenderer != null) {
+            // The icons are textures of this screen, and the cache that hands them out - which outlives
+            // the screen - has to stop asking for them before they are gone.
+            game.textures().setBlockIconRenderer(null);
+            blockIconRenderer.dispose();
+        }
         if (cubeRenderer != null) {
             cubeRenderer.dispose();
         }
