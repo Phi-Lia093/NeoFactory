@@ -3,6 +3,7 @@ package com.philia093.neofactory.render;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.LongSet;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
@@ -32,6 +33,16 @@ public class SectionMeshCache implements Disposable {
 
     /** Meshes of a section that is waiting for its turn, drawn by nobody and holding nothing. */
     private final Array<Mesh> notYet = new Array<>(0);
+
+    /**
+     * Sections whose mesh is out of date because a section next to them was built.
+     * <p>
+     * A section keeps its mesh until it is its turn to be built again, so a frame that is busy never
+     * leaves a hole in the world: what changes for a moment is that a border block draws a face that its
+     * new neighbour hides, which is invisible from everywhere but the seam itself. Dropping the mesh
+     * instead - which the cache used to do - turns every build into twenty six holes.
+     */
+    private final LongSet stale = new LongSet();
 
     /** Sections the frame that is running may still mesh, see {@link #beginFrame()}. */
     private int buildsLeft;
@@ -79,10 +90,13 @@ public class SectionMeshCache implements Disposable {
         long key = key(chunk.chunkX(), sectionY, chunk.chunkZ());
         Section section = chunk.section(sectionY);
         Array<Mesh> meshes = built.get(key);
-        if (meshes != null && !section.isDirty()) {
+        // A section is built again when its own blocks changed, or when a section next to it was built
+        // and may have hidden a face of it. Only the first of the two reaches on to the neighbours itself.
+        boolean changed = meshes != null && section.isDirty();
+        boolean mayBeOutOfDate = stale.remove(key);
+        if (meshes != null && !changed && !mayBeOutOfDate) {
             return meshes;
         }
-        boolean changed = section.isDirty();
         if (meshes == null && buildsLeft <= 0) {
             // The budget of this frame is spent: the section waits for its turn and is not drawn until
             // then, see BUILDS_PER_FRAME. A section that changed never waits, it is rebuilt right here.
@@ -135,10 +149,16 @@ public class SectionMeshCache implements Disposable {
                     if (dx == 0 && dy == 0 && dz == 0) {
                         continue;
                     }
-                    Array<Mesh> meshes = built.remove(
-                            key(chunk.chunkX() + dx, sectionY + dy, chunk.chunkZ() + dz));
-                    if (meshes != null) {
-                        dispose(meshes);
+                    if (dy < 0 && sectionY == 0 || dy > 0
+                            && sectionY >= Constants.SECTION_COUNT - 1) {
+                        continue;
+                    }
+                    long key = key(chunk.chunkX() + dx, sectionY + dy, chunk.chunkZ() + dz);
+                    if (built.containsKey(key)) {
+                        // The mesh stays where it is and is drawn until this section is built again: it
+                        // may show a face that the new blocks hide, which is invisible from nearly
+                        // everywhere, and that is still better than a hole that blinks for a few frames.
+                        stale.add(key);
                     }
                 }
             }
