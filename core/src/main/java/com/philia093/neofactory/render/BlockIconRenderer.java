@@ -4,7 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
@@ -35,9 +35,10 @@ import java.nio.IntBuffer;
  * block that stands in the world, seen from a corner above.
  * <p>
  * The cube is drawn once per kind of block into a frame of its own, and the icon is the picture of that
- * frame: a slot costs the drawing of a picture and no work at all after the first time. The camera
- * looks at the cube from {@link #DIRECTION} with a narrow field of view, which is the flat look of a
- * block item rather than the wide look of a room.
+ * frame: a slot costs the drawing of a picture and no work at all after the first time. The camera looks
+ * at the cube from a corner above it with parallel rays, which is the flat look of a block item - no edge
+ * of it converges and no face of it is squashed towards the viewer - and the frame itself is measured off
+ * the cube, so a block is drawn as large as the cell allows.
  * <p>
  * <b>Baking needs a graphics card.</b> Drawing off screen needs a frame buffer, so a renderer is only
  * made while the world itself is drawn as cubes, and a slot asked for a block before that keeps the
@@ -54,23 +55,30 @@ public class BlockIconRenderer implements Disposable {
      * Direction the camera looks at the cube from, seen from the cube.
      * <p>
      * A share of height above the two sides that are shown is what makes the top face read as a top face:
-     * without it the icon is a view along the horizon and the block looks like a wall.
+     * without it the icon is a view along the horizon and the block looks like a wall. The share here lifts
+     * the eye about thirty degrees above that horizon, which is the corner the original game draws a block
+     * item from.
      */
     private static final Vector3 DIRECTION = new Vector3(1f, 0.85f, 1f).nor();
 
     /**
      * How far the camera stands from the middle of the cube, in blocks.
      * <p>
-     * It stands as close as a cube of {@link ItemCubeMeshes#SIZE} may without a corner of it reaching past
-     * the frame. At this distance the cube covers about nine tenths of the frame up and four fifths of it
-     * across, which is what makes a block read in a cell as small as {@code Constants.ITEM_ICON_SIZE};
-     * farther away it shrinks next to the flat pictures of the other items, nearer it loses the corners of
-     * its top face at the edges of the cell.
+     * The rays of an icon run parallel, see {@link #iconCamera()}, so the distance has no say in how large
+     * a block looks; it only has to put the cube between the near and the far plane of the camera.
      */
     private static final float DISTANCE = 3.3f;
 
-    /** Field of view of the icon camera, narrow so the cube keeps its flat look. */
-    private static final float FIELD_OF_VIEW = 12f;
+    /**
+     * Share of the frame the cube covers at its widest.
+     * <p>
+     * The frame is square while the outline of a cube seen from this corner is taller than it is wide, so
+     * the height of the outline is what sizes the frame and a little room is left at the sides. Almost the
+     * whole height with a couple of pixels of margin is what makes a block read in a cell of
+     * {@code Constants.ITEM_ICON_SIZE} pixels, where the flat picture of every other item fills its cell
+     * from edge to edge.
+     */
+    private static final float FILL = 0.96f;
 
     /** Colour the distance fades into, put out of reach: an icon is never foggy. */
     private static final Color NO_FOG = new Color(0f, 0f, 0f, 1f);
@@ -110,8 +118,8 @@ public class BlockIconRenderer implements Disposable {
      */
     private final Array<FrameBuffer> frames = new Array<>();
 
-    /** Camera of the icon, looking at the middle of the cube from a corner above it. */
-    private final PerspectiveCamera camera;
+    /** Camera of the icon: a flat look at the cube from a corner above it, see {@link #iconCamera()}. */
+    private final OrthographicCamera camera;
 
     /** Moves the cube to the middle of the frame, because a cube is meshed from the origin. */
     private final Matrix4 model = new Matrix4();
@@ -126,18 +134,52 @@ public class BlockIconRenderer implements Disposable {
     private final IntBuffer viewport = BufferUtils.newIntBuffer(4);
 
     /**
-     * The camera an icon is drawn through.
+     * The camera an icon is drawn through: a flat, square look at the cube from a corner above it.
      * <p>
-     * It is built apart from the renderer because it is the whole look of an icon: where the cube of a
-     * block lands in its frame and how much of the frame it fills follow from these numbers alone, and
-     * {@link #reportAim()} writes the result down when a renderer is made.
+     * The rays of a picture of a block run parallel instead of meeting in an eye, which is the look the
+     * block icons of the original game have: every edge of the cube keeps its length and no face of it is
+     * squashed towards the viewer. The frame is then measured off the cube itself - its eight corners are
+     * put on the two axes of the view and the square that holds them all with a share of {@link #FILL} of
+     * it is the frame - so a block is drawn as large as it may be without a corner reaching past an edge,
+     * which is what a cell of {@code Constants.ITEM_ICON_SIZE} pixels needs.
+     * <p>
+     * The frame is put on the middle of that outline and not on the middle of the cube, so the little room
+     * it leaves is shared between the top and the bottom of it.
      *
-     * @return a camera looking at the middle of a cube from a corner above it
+     * @return a camera looking at a cube from a corner above it with parallel rays
      */
-    static PerspectiveCamera iconCamera() {
-        PerspectiveCamera camera = new PerspectiveCamera(FIELD_OF_VIEW, SIZE, SIZE);
-        camera.position.set(DIRECTION).scl(DISTANCE);
-        camera.lookAt(0f, 0f, 0f);
+    static OrthographicCamera iconCamera() {
+        Vector3 forward = new Vector3(DIRECTION).scl(-1f);
+        // The right hand of the view is the up of the world across the way the camera looks and its up is
+        // across both; of the two ways to read that up, the one that keeps the world upright is taken.
+        Vector3 right = new Vector3(Vector3.Y).crs(forward).nor();
+        Vector3 up = new Vector3(forward).crs(right).nor();
+        if (up.y < 0f) {
+            up.scl(-1f);
+            right.scl(-1f);
+        }
+        float half = ItemCubeMeshes.SIZE * 0.5f;
+        float above = 0f;
+        float below = 0f;
+        float beside = 0f;
+        Vector3 corner = new Vector3();
+        for (int x = -1; x <= 1; x += 2) {
+            for (int y = -1; y <= 1; y += 2) {
+                for (int z = -1; z <= 1; z += 2) {
+                    corner.set(x * half, y * half, z * half);
+                    float high = corner.dot(up);
+                    above = Math.max(above, high);
+                    below = Math.max(below, -high);
+                    beside = Math.max(beside, Math.abs(corner.dot(right)));
+                }
+            }
+        }
+        Vector3 middle = new Vector3(up).scl((above - below) * 0.5f);
+        OrthographicCamera camera = new OrthographicCamera();
+        camera.viewportWidth = Math.max(above + below, 2f * beside) / FILL;
+        camera.viewportHeight = camera.viewportWidth;
+        camera.position.set(DIRECTION).scl(DISTANCE).add(middle);
+        camera.lookAt(middle);
         camera.near = DISTANCE - 1f;
         camera.far = DISTANCE + 1f;
         camera.update();
@@ -145,26 +187,16 @@ public class BlockIconRenderer implements Disposable {
     }
 
     /**
-     * Writes down where the middle of a cube lands in the frame of an icon.
+     * Writes down how the icons are looked at.
      * <p>
-     * Where an icon lands cannot be checked by a test, because the frame it is drawn into needs a graphics
-     * card; it is checked by running the game, and this line is what makes that check possible: the middle
-     * of the cube of every icon is dead ahead of the camera, so it has to land in the middle of the frame -
-     * around {@code (0, 0)}, where {@code (-1, -1)} is the lower left corner of the frame and {@code (1, 1)}
-     * its upper right one. A middle that lands anywhere else says the aim of the camera is wrong; a middle
-     * that lands there says the drawing into the frame is what to look at.
+     * How an icon looks cannot be checked by a test, because the frame it is drawn into needs a graphics
+     * card; the numbers it is drawn from are written down here instead, so the frame an icon is built from
+     * can be read next to what a player sees. {@link #prime()} then reports how many icons came out well
+     * and every icon that came out too poor to show is reported by {@link #reachedTheFrame(Block)}.
      */
-    private void reportAim() {
-        float[] combined = camera.combined.val;
-        float depth = combined[15];
-        if (depth == 0f) {
-            LOGGER.warn("The camera of a block icon has no depth, the middle of its cube is nowhere");
-            return;
-        }
-        LOGGER.info("A block icon is seen from {} through a field of view of {} over a distance of {} of a "
-                        + "frame; the middle of the cube lands at ({}, {})",
-                camera.position, camera.fieldOfView, DISTANCE,
-                combined[12] / depth, combined[13] / depth);
+    private void reportLook() {
+        LOGGER.info("A block icon is looked at with parallel rays from {}, a frame of {} blocks holds the "
+                        + "whole cube with {} of it covered", camera.position, camera.viewportWidth, FILL);
     }
 
     /**
@@ -181,7 +213,7 @@ public class BlockIconRenderer implements Disposable {
         float half = ItemCubeMeshes.SIZE * 0.5f;
         this.model.idt().translate(-half, -half, -half)
                 .scale(ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE);
-        reportAim();
+        reportLook();
     }
 
     /**
