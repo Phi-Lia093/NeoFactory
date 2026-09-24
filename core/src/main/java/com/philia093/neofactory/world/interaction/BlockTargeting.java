@@ -1,6 +1,7 @@
 package com.philia093.neofactory.world.interaction;
 
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector3;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
@@ -78,6 +79,33 @@ public final class BlockTargeting {
         float dx = centerX - player.position().x;
         float dz = centerZ - player.position().z;
         return dx * dx + dz * dz <= reach * reach;
+    }
+
+    /**
+     * Finds the cell the eyes of the player meet, the way a body that stands in the world aims.
+     * <p>
+     * The ray leaves the eyes of the player along the direction of the view - yaw and pitch, see
+     * {@link Player#lookDirection(Vector3)} - and the first cell that holds a block is what the player
+     * looks at, together with the face the ray entered it through, which is what a block is built
+     * against. The height of the view is therefore part of the aim: standing on a mountain and looking
+     * down reaches a cell the flat view could never name.
+     * <p>
+     * The ray starts a little in front of the eyes, because the cell the player stands in holds the
+     * ground below their feet and would otherwise be what the ray meets first.
+     *
+     * @param world world holding the blocks
+     * @param player player the ray starts at and the reach belongs to
+     * @param direction direction of the view, normalized
+     * @return the cell the eyes meet, or {@code null} when nothing is within reach
+     */
+    public static BlockTarget selectInSight(World world, Player player, Vector3 direction) {
+        float eyeY = player.position().y + Constants.PLAYER_EYE_HEIGHT;
+        BlockRay.Hit hit = BlockRay.cast(world,
+                player.position().x + direction.x * START_AHEAD, eyeY + direction.y * START_AHEAD,
+                player.position().z + direction.z * START_AHEAD,
+                direction.x, direction.y, direction.z, Constants.PLAYER_REACH,
+                (access, x, y, z) -> !access.getBlock(x, y, z).isAir());
+        return hit == null ? null : BlockTarget.of(hit);
     }
 
     /**

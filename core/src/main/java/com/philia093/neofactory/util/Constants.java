@@ -91,6 +91,27 @@ public final class Constants {
      */
     public static final float PLAYER_SPEED = 12.0f;
 
+    /**
+     * Height of the eyes of the player in blocks.
+     * <p>
+     * A body stands on its feet and looks out of its eyes, so the camera of a player that stands in the
+     * world is put this far above the feet - a little under the top of the body, the way a person is
+     * built.
+     */
+    public static final float PLAYER_EYE_HEIGHT = 1.62f;
+
+    /**
+     * Degrees the view turns per pixel the pointer moves.
+     * <p>
+     * The pointer is captured while the world is played, so it reports how far it moved instead of
+     * where it is: this factor is what turns that movement into a turn of the view, and it is the one
+     * number a player would ask to change if the view felt too fast or too slow.
+     */
+    public static final float MOUSE_SENSITIVITY = 0.15f;
+
+    /** Highest angle the view may look up or down, in degrees, just short of straight up. */
+    public static final float PITCH_LIMIT = 89.0f;
+
     /** Side length of the square player collision box in blocks. */
     public static final float PLAYER_HITBOX = 0.7f;
 

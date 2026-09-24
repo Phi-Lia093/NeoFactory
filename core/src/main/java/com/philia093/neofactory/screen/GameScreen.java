@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.blockentity.BlockEntity;
@@ -156,6 +157,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final SectionMeshCache sectionMeshes;
     private final WorldRenderer3D cubeRenderer;
     private final PerspectiveCamera cubeCamera;
+
+    /** Reused direction of the view, so a frame does not fill the heap with vectors. */
+    private final Vector3 lookDirection = new Vector3();
 
     /** Draws an item that lies on the ground. */
     private final ItemEntityRenderer itemEntityRenderer;
@@ -493,10 +497,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         int blockZ = MathUtils.floor(data.playerZ() / Constants.BLOCK_SIZE);
         Player player = new Player(data.playerX(),
                 world.surfaceY(blockX, blockZ) * Constants.BLOCK_SIZE, data.playerZ());
-        player.facing().set(data.rotationX(), data.rotationY());
-        if (player.facing().isZero()) {
-            player.facing().set(1.0f, 0.0f);
-        }
+        player.setView(data.rotationX(), data.rotationY());
         data.applyInventory(player.inventory());
         return player;
     }
@@ -519,7 +520,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     public int save() {
         data.setLastPlayed(System.currentTimeMillis());
         data.capturePlayer(player.position().x, player.position().z,
-                player.facing().x, player.facing().y, player.inventory());
+                player.yaw(), player.pitch(), player.inventory());
         int chunks = WorldSaver.save(game.screens().storage(), summary, data, world,
                 player.inventory());
         autosaveTimer = 0.0f;
@@ -626,20 +627,19 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /**
      * Draws one frame of the world as cubes.
      * <p>
-     * The camera stands behind and above the player and looks at them, which is the view a player of a
-     * world of cubes expects until the eyes of the player carry the direction, see {@code Player}
-     * facing the mouse. Its field of view is set with the window, so a resize does not stretch the
-     * world, and the depth buffer is cleared and tested, which is what makes a block hide the one
-     * behind it.
+     * The camera is the eye of the player: it stands where the eyes are, {@link Constants#PLAYER_EYE_HEIGHT}
+     * above the feet, and looks where the view points, so the world is seen from inside the body and the
+     * pointer turns it all the way around. Its field of view is set with the window, so a resize does not
+     * stretch the world, and the depth buffer is cleared and tested, which is what makes a block hide the
+     * one behind it.
      */
     private void renderCubes() {
         cubeCamera.viewportWidth = Gdx.graphics.getWidth();
         cubeCamera.viewportHeight = Gdx.graphics.getHeight();
-        Vector2 facing = player.facing();
-        cubeCamera.position.set(player.position().x - facing.x * CUBE_CAMERA_BACK,
-                player.position().y + CUBE_CAMERA_HEIGHT,
-                player.position().z - facing.y * CUBE_CAMERA_BACK);
-        cubeCamera.lookAt(player.position().x, player.position().y + 0.5f, player.position().z);
+        player.lookDirection(lookDirection);
+        cubeCamera.position.set(player.position().x,
+                player.position().y + Constants.PLAYER_EYE_HEIGHT, player.position().z);
+        cubeCamera.direction.set(lookDirection);
         cubeCamera.up.set(0.0f, 1.0f, 0.0f);
         cubeCamera.update();
 
@@ -789,6 +789,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
 
         float zoomSteps = inputHandler.consumeZoomSteps();
+
+        // The pointer turns the view while the world is played and is handed back to the interface the
+        // moment a screen opens, so a slot can be clicked. A captured pointer never leaves the window,
+        // which is what lets a player turn all the way around.
+        boolean captured = cubeRenderer != null && !isInterfaceOpen();
+        Gdx.input.setCursorCatched(captured);
+        inputHandler.setLookCaptured(captured);
+        inputHandler.update(player, camera);
         if (creativeGui.isOpen()) {
             // While the creative inventory is up the wheel walks through its list
             // instead of zooming the camera.
@@ -804,7 +812,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         } else {
             applyWheel(zoomSteps);
             applyZoomDemand(delta);
-            inputHandler.update(player, camera);
             player.setSpeedScale(zoom);
             updateInteraction(delta);
         }
@@ -885,11 +892,17 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * @param delta time since the last frame in seconds
      */
     private void updateInteraction(float delta) {
-        worldMouse.set(Gdx.input.getX(), Gdx.input.getY());
-        worldViewport.unproject(worldMouse);
+        if (cubeRenderer != null) {
+            // A body that stands in the world aims with its eyes: the cell is what the ray from them
+            // meets inside the reach, and the face it entered through is what a block is built against.
+            target = BlockTargeting.selectInSight(world, player, player.lookDirection(lookDirection));
+        } else {
+            worldMouse.set(Gdx.input.getX(), Gdx.input.getY());
+            worldViewport.unproject(worldMouse);
 
-        int layer = inputHandler.isGroundLayerDown() ? Chunk.LAYER_FLOOR : Chunk.LAYER_OBJECT;
-        target = BlockTargeting.select(world, player, worldMouse.x, worldMouse.y, layer);
+            int layer = inputHandler.isGroundLayerDown() ? Chunk.LAYER_FLOOR : Chunk.LAYER_OBJECT;
+            target = BlockTargeting.select(world, player, worldMouse.x, worldMouse.y, layer);
+        }
 
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 inputHandler.isBreakingDown());

@@ -2,6 +2,7 @@ package com.philia093.neofactory.entity;
 
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.util.nbt.NbtCompound;
@@ -43,8 +44,14 @@ public class Player extends Entity {
     /** Length below which the movement vector counts as zero. */
     private static final float MIN_INPUT_LENGTH = 1.0e-4f;
 
-    /** Normalized direction the player is looking at, set from the mouse. */
-    private final Vector2 facing = new Vector2(1.0f, 0.0f);
+    /** Facing direction the flat view starts with, seen from above, and the view it belongs to. */
+    private final Vector2 facing = new Vector2(0.0f, 1.0f);
+
+    /** Yaw of the view in degrees, see {@link #yaw()}. */
+    private float yaw;
+
+    /** Pitch of the view in degrees, see {@link #pitch()}. */
+    private float pitch;
 
     /** Walking direction requested by the keyboard, normalized or zero. */
     private final Vector2 moveInput = new Vector2();
@@ -105,9 +112,86 @@ public class Player extends Entity {
                 (cell[1] + 0.5f) * Constants.BLOCK_SIZE);
     }
 
-    /** Live facing direction, always normalized. */
+    /**
+     * Direction the player looks in, on the plane of X and Z, derived from {@link #yaw()}.
+     * <p>
+     * The flat view turns the player towards the cursor, so it needs the direction as a vector; a body
+     * that stands in the world carries a yaw and a pitch instead, see {@link #turn(float, float)}. Do
+     * not write into this vector: it belongs to the player.
+     */
     public Vector2 facing() {
         return facing;
+    }
+
+    /**
+     * Yaw of the view in degrees, the compass the player faces.
+     * <p>
+     * Zero looks south, along {@code +Z}, and the view turns clockwise seen from above as the number
+     * grows: ninety looks west, along {@code -X}, exactly the way the original game counts it. The
+     * direction of the view is {@code (-sin(yaw), 0, cos(yaw))}.
+     */
+    public float yaw() {
+        return yaw;
+    }
+
+    /** Pitch of the view in degrees, positive looks up, {@code -PITCH_LIMIT} to {@code +PITCH_LIMIT}. */
+    public float pitch() {
+        return pitch;
+    }
+
+    /**
+     * Turns the view.
+     *
+     * @param deltaYaw degrees to turn by, positive turns to the right
+     * @param deltaPitch degrees to look up by, positive looks up
+     */
+    public void turn(float deltaYaw, float deltaPitch) {
+        setView(yaw + deltaYaw, pitch + deltaPitch);
+    }
+
+    /**
+     * Points the view somewhere.
+     *
+     * @param yaw yaw in degrees, see {@link #yaw()}
+     * @param pitch pitch in degrees, kept inside {@link Constants#PITCH_LIMIT}
+     */
+    public void setView(float yaw, float pitch) {
+        this.yaw = wrapDegrees(yaw);
+        this.pitch = MathUtils.clamp(pitch, -Constants.PITCH_LIMIT, Constants.PITCH_LIMIT);
+        updateFacing();
+    }
+
+    /**
+     * Direction the view looks in, in space.
+     * <p>
+     * This is what a camera is placed with and what a line of sight is cast along, see
+     * {@link com.philia093.neofactory.world.interaction.BlockRay}. The pixel size of the block is
+     * applied by the caller, which is why the vector is a direction and not a distance.
+     *
+     * @param out vector to write, returned for chaining
+     * @return the direction, normalized
+     */
+    public Vector3 lookDirection(Vector3 out) {
+        float cosPitch = MathUtils.cosDeg(pitch);
+        out.set(-MathUtils.sinDeg(yaw) * cosPitch, MathUtils.sinDeg(pitch),
+                MathUtils.cosDeg(yaw) * cosPitch);
+        return out.nor();
+    }
+
+    /** Turns the compass into the range {@code -180} to {@code 180}. */
+    private static float wrapDegrees(float degrees) {
+        float wrapped = degrees % 360.0f;
+        if (wrapped > 180.0f) {
+            wrapped -= 360.0f;
+        } else if (wrapped < -180.0f) {
+            wrapped += 360.0f;
+        }
+        return wrapped;
+    }
+
+    /** Keeps the vector the flat view reads in step with the yaw of the view. */
+    private void updateFacing() {
+        facing.set(-MathUtils.sinDeg(yaw), MathUtils.cosDeg(yaw));
     }
 
     /**
@@ -126,19 +210,18 @@ public class Player extends Entity {
 
     @Override
     protected void writeData(NbtCompound data) {
-        data.putFloat(SaveTags.ROTATION_X, facing.x);
-        data.putFloat(SaveTags.ROTATION_Y, facing.y);
+        data.putFloat(SaveTags.ROTATION_X, yaw);
+        data.putFloat(SaveTags.ROTATION_Y, pitch);
         data.putInt(SaveTags.SELECTED_SLOT, inventory.selectedSlot());
         data.put(SaveTags.writeInventory(inventory));
     }
 
     @Override
     protected void readData(NbtCompound data) {
-        facing.set(data.getFloat(SaveTags.ROTATION_X, 1.0f),
-                data.getFloat(SaveTags.ROTATION_Y, 0.0f));
-        if (facing.isZero()) {
-            facing.set(1.0f, 0.0f);
-        }
+        // A world written before the player carried a compass holds the two components of its facing
+        // direction in these tags; read as a yaw they name a direction instead of an angle, which is
+        // wrong but harmless, and the format refuses a world of another version anyway.
+        setView(data.getFloat(SaveTags.ROTATION_X, 0.0f), data.getFloat(SaveTags.ROTATION_Y, 0.0f));
         SaveTags.readInventory(inventory, data.getList(SaveTags.INVENTORY));
         inventory.setSelectedSlot(data.getInt(SaveTags.SELECTED_SLOT, 0));
     }
@@ -190,13 +273,15 @@ public class Player extends Entity {
      * @param worldX world X coordinate to look at
      * @param worldY world Y coordinate to look at
      */
-    public void lookAt(float worldX, float worldY) {
+    public void lookAt(float worldX, float worldZ) {
         float dx = worldX - position.x;
-        float dy = worldY - position.y;
-        if (Math.abs(dx) < MIN_INPUT_LENGTH && Math.abs(dy) < MIN_INPUT_LENGTH) {
+        float dz = worldZ - position.z;
+        if (Math.abs(dx) < MIN_INPUT_LENGTH && Math.abs(dz) < MIN_INPUT_LENGTH) {
             return;
         }
-        facing.set(dx, dy).nor();
+        // The flat view asks for a direction, the view of a body in the world is a yaw: the two agree
+        // because the direction of a yaw is (-sin(yaw), 0, cos(yaw)), see #yaw().
+        setView(MathUtils.atan2(-dx, dz) * MathUtils.radiansToDegrees, pitch);
     }
 
     /**
@@ -228,11 +313,19 @@ public class Player extends Entity {
     @Override
     public void update(World world, float delta) {
         float speed = Constants.PLAYER_SPEED * Constants.BLOCK_SIZE * speedScale;
-        velocity.set(moveInput.x * speed, 0.0f, moveInput.y * speed);
         if (moveInput.isZero()) {
             velocity.setZero();
             return;
         }
+        // The keyboard asks for a walk in the frame of the view: forward is where the player looks and
+        // right is the right hand of that view, so turning the mouse turns the walk with it. The
+        // direction of a yaw is (-sin, 0, cos) and its right hand is (-cos, 0, sin), see #yaw().
+        float sin = MathUtils.sinDeg(yaw);
+        float cos = MathUtils.cosDeg(yaw);
+        float forward = moveInput.y;
+        float sideways = moveInput.x;
+        velocity.set((-forward * sin - sideways * cos) * speed, 0.0f,
+                (forward * cos + sideways * sin) * speed);
         moveWithCollision(world, velocity.x * delta, velocity.z * delta);
     }
 

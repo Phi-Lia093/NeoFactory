@@ -6,6 +6,7 @@ import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.util.Constants;
 
 /**
  * Translates raw mouse and keyboard state into player actions.
@@ -22,6 +23,29 @@ import com.philia093.neofactory.entity.Player;
  * {@link #consumeInventoryToggle()} and {@link #consumeHotbarSelection()}.
  */
 public class InputHandler extends InputAdapter {
+
+    /**
+     * Whether the pointer turns the view instead of naming a place in the world.
+     * <p>
+     * A world drawn from above is aimed at by pointing at a cell; a body that stands in the world turns
+     * its view with the pointer, which the screen asks for while the world is played and lets go of the
+     * moment an interface opens, see {@link #setLookCaptured(boolean)}.
+     */
+    private boolean lookCaptured;
+
+    /**
+     * Makes the pointer turn the view.
+     *
+     * @param captured {@code true} while the world is played and no screen is up
+     */
+    public void setLookCaptured(boolean captured) {
+        this.lookCaptured = captured;
+    }
+
+    /** {@code true} while the pointer turns the view, see {@link #setLookCaptured(boolean)}. */
+    public boolean isLookCaptured() {
+        return lookCaptured;
+    }
 
     /** Movement key for walking towards positive X. */
     private static final int KEY_RIGHT = Input.Keys.D;
@@ -128,7 +152,16 @@ public class InputHandler extends InputAdapter {
      */
     public void update(Player player, OrthographicCamera camera) {
         player.setMoveInput(readAxis(KEY_LEFT, KEY_RIGHT), readAxis(KEY_DOWN, KEY_UP));
-        player.lookAt(mouseWorldX(camera), mouseWorldY(camera));
+        if (lookCaptured) {
+            // A captured pointer reports how far it moved instead of where it is, and that movement is
+            // the turn of the view: moving the pointer right turns the view right and moving it up looks
+            // up, which is the sign a player of the original game expects. The screen is 0,0 in its
+            // upper left corner, so looking up is the negative of the movement on that axis.
+            player.turn(Gdx.input.getDeltaX() * Constants.MOUSE_SENSITIVITY,
+                    -Gdx.input.getDeltaY() * Constants.MOUSE_SENSITIVITY);
+        } else {
+            player.lookAt(mouseWorldX(camera), mouseWorldY(camera));
+        }
     }
 
     @Override
