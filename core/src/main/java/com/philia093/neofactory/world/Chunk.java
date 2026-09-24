@@ -28,16 +28,13 @@ import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
  * spawn search walks along - and it is cheap to keep, because only a block that is placed higher
  * than the current height moves it.
  * <p>
- * <b>The flat view.</b> The game still <i>is</i> flat: it draws the world from above, the player
- * walks on a plane and a block is one picture. While that is true, the two cells of the old world
- * stand at {@link #flatY(int)} - the ground of a column and the cell the player walks in - and code
- * that still thinks in layers asks that method for the height it means.
+ * <b>Nothing here knows the view from above.</b> A chunk of that engine was a square of tiles,
+ * because the camera looked straight down and a block was one picture. What a chunk stores today is
+ * a column and nothing else: no layer, no plane and no second horizontal axis is named anywhere.
  * <p>
- * <b>A cell is addressed by its height.</b> The storage of a column is the storage a world of cubes
- * needs: {@link #getBlock(int, int, int)} names the height of a cell, so the flat view is a layer of
- * the very same cells and needs no methods of its own. Only three parts of it are left -
- * {@link #flatY(int)}, {@link #flatLayer(int)} and {@link #isFlatHeight(int)} - and they go away
- * with the view, once the game is played standing in the world instead of looking down on it.
+ * <b>A cell is addressed by its height.</b> {@link #getBlock(int, int, int)} names the height of a
+ * cell, so a whole column of the world is reached through one chunk and no layer or plane is named
+ * anywhere.
  * <p>
  * A cell stores the id of a block and its state; the id is resolved into the actual {@link Block}
  * through the {@link BlockRegistry}, which is what keeps a section at eight kilobytes.

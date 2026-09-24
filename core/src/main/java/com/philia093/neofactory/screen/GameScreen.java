@@ -179,11 +179,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final PlayerRenderer playerRenderer;
 
     /**
-     * The world drawn as cubes, {@code null} while the driver cannot hold a texture array.
+     * The world drawn as cubes.
      * <p>
      * The launcher asks for an OpenGL 3.2 core context, which is what a texture array needs, see
-     * {@link BlockPictures}; a driver that cannot answer it keeps the flat renderer, so the game opens
-     * either way and only the look of the world differs.
+     * {@link BlockPictures}: the pictures of every block become one array and the mesher turns a
+     * section into the faces that array is drawn with. This renderer is therefore what the game draws
+     * with and nothing else - the view from above it replaced is gone.
      */
     private final BlockPictures pictures;
     private final BlockShader blockShader;
@@ -452,7 +453,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.cubeRenderer = null;
             this.cubeCamera = null;
             this.blockIconRenderer = null;
-            LOGGER.warn("This driver holds no texture array, the world is drawn from above");
+            LOGGER.warn("This driver holds no texture array, the world of cubes cannot be drawn");
         }
         // The player is an entity like any other, so it is drawn by the same pass
         // over the entity list; the marker renderer stays the thing that knows how.

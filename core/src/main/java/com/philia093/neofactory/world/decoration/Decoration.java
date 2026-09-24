@@ -7,7 +7,7 @@ import java.util.Random;
 /**
  * A feature that is planted on top of the generated floor.
  * <p>
- * Decorations fill the {@link World#LAYER_OBJECT object layer}: trees, plants,
+ * Decorations fill the object layer: trees, plants,
  * boulders, chests and everything else that is not part of the ground. Adding a
  * new kind of scenery therefore means writing one subclass and registering it in
  * {@link com.philia093.neofactory.world.WorldGen}, no other code has to change.

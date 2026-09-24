@@ -23,12 +23,12 @@ import static com.philia093.neofactory.util.Constants.SEA_LEVEL;
  * The generator works in two clearly separated phases:
  * <ol>
  *     <li><b>Floor generation</b> - {@link #generateCell} and
- *         {@link #generateFloor} write the {@link Chunk#LAYER_FLOOR ground} of a
+ *         {@link #generateFloor} write the ground of a
  *         cell. Both only evaluate noise, they never look at another chunk.</li>
  *     <li><b>Decoration</b> - {@link #decorate} plants trees and plants on top of
  *         a finished floor. Decorators decide through {@link TerrainSampler},
  *         which is also noise based, and write into the
- *         {@link Chunk#LAYER_OBJECT object layer} only.</li>
+ *         object layer only.</li>
  * </ol>
  * Keeping those phases apart is what makes on demand chunk generation safe: no
  * step of generation ever reads a chunk that could still be empty, so generation

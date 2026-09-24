@@ -12,10 +12,8 @@ import com.philia093.neofactory.block.BlockFace;
  * <p>
  * <b>A cell is named by three coordinates.</b> X points east, Y points up and Z points south, the
  * axes of the original game, so a block is addressed by {@code (x, y, z)} and the height of a cell
- * is its Y coordinate. The flat engine had no height: it named a layer, and its second horizontal
- * axis was called Y. Nothing of that is left in the names here - a caller that still thinks in
- * layers asks {@link Chunk#flatY(int)} for the height it means, which is the only part of the flat
- * view this interface still carries, see {@link #FLAT_FLOOR_Y}.
+ * is its Y coordinate. Nothing here names a layer or a plane: the ground of a column is the block
+ * below it, and every other cell of the column is reached by its own height.
  */
 public interface BlockAccess {
 

@@ -8,7 +8,7 @@ import com.philia093.neofactory.block.Blocks;
  * <p>
  * A biome is picked for every cell from a low frequency noise field, exactly
  * like the overworld biomes of Minecraft. The biome decides which block forms
- * the {@link Chunk#LAYER_FLOOR floor} of that cell and which decorations may be
+ * the floor of that cell and which decorations may be
  * planted on it by the {@link com.philia093.neofactory.world.decoration.Decoration
  * decorators}.
  */
