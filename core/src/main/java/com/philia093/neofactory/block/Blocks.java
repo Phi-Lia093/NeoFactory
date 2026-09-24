@@ -38,18 +38,18 @@ public final class Blocks {
     public static final int SAND_ID = 5;
     public static final int GRAVEL_ID = 6;
     public static final int CLAY_ID = 7;
-    public static final int LOG_OAK_ID = 9;
-    public static final int LEAVES_OAK_ID = 10;
-    public static final int PLANKS_OAK_ID = 11;
-    public static final int SANDSTONE_ID = 12;
-    public static final int COAL_ORE_ID = 13;
-    public static final int IRON_ORE_ID = 14;
-    public static final int SNOW_ID = 15;
-    public static final int TALL_GRASS_ID = 16;
-    public static final int FURNACE_ID = 17;
+    public static final int LOG_OAK_ID = 8;
+    public static final int LEAVES_OAK_ID = 9;
+    public static final int PLANKS_OAK_ID = 10;
+    public static final int SANDSTONE_ID = 11;
+    public static final int COAL_ORE_ID = 12;
+    public static final int IRON_ORE_ID = 13;
+    public static final int SNOW_ID = 14;
+    public static final int TALL_GRASS_ID = 15;
+    public static final int FURNACE_ID = 16;
 
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 19;
+    public static final int NEXT_FREE_ID = 17;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
