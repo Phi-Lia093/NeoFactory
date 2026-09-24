@@ -283,13 +283,13 @@ public final class SectionMesher {
     /**
      * {@code true} when a block hides the face of the block behind it.
      * <p>
-     * A cell that holds nothing, a fluid or a picture one can see through hides nothing: the face behind
-     * it is drawn, which is what lets a canopy of leaves or a wall of glass show what stands behind it.
+     * A cell that holds nothing or a picture one can see through hides nothing: the face behind it is
+     * drawn, which is what lets a canopy of leaves or a wall of glass show what stands behind it.
      *
      * @param block block standing in the cell next to a face
      * @return {@code true} when the face behind it is not drawn
      */
     private static boolean hides(Block block) {
-        return !block.isAir() && !block.isTransparent() && !block.isLiquid();
+        return !block.isAir() && !block.isTransparent();
     }
 }

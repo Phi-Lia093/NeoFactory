@@ -91,10 +91,7 @@ public final class MultiFaceTextures {
             "sandstone_bottom", "sandstone_carved", "sandstone_normal", "sandstone_smooth",
 
             // The rim of a slab and the sides of a block of TNT.
-            "stone_slab_side", "tnt_bottom", "tnt_side",
-
-            // The flowing sheets of water and of lava, which the world draws in both layers.
-            "lava_flow", "lava_still", "water_flow", "water_still");
+            "stone_slab_side", "tnt_bottom", "tnt_side");
 
     /**
      * Sheets whose animation is described by a metadata file next to them.
@@ -105,7 +102,7 @@ public final class MultiFaceTextures {
      * of frames and loses its meaning without it, so the pair is kept together.
      */
     public static final List<String> ANIMATED_SHEETS = List.of("fire_layer_0", "fire_layer_1",
-            "lava_flow", "lava_still", "portal", "water_flow", "water_still");
+            "portal");
 
     private MultiFaceTextures() {
         // Utility class: never instantiated.

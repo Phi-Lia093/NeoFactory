@@ -35,8 +35,7 @@ class BucketsTest {
      */
     private static Fluid oilOfTheIndustry() {
         TestRegistries.ensure();
-        return new Fluid("oil", new Color(0.1f, 0.1f, 0.1f, 1.0f), "generic_fluid", 1, 4, 3, 10,
-                false, Blocks.STONE);
+        return new Fluid("oil", new Color(0.1f, 0.1f, 0.1f, 1.0f), false);
     }
 
     @BeforeAll

@@ -54,7 +54,6 @@ import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
-import com.philia093.neofactory.world.interaction.FluidInteraction;
 import com.philia093.neofactory.world.interaction.BlockTarget;
 import com.philia093.neofactory.world.interaction.BlockTargeting;
 import com.philia093.neofactory.world.interaction.InstantMining;
@@ -1101,11 +1100,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return false;
         }
         if (openMachine()) {
-            return true;
-        }
-        if (FluidInteraction.use(world, target, player.inventory())) {
-            // A bucket or a cell was filled or poured, the world changed without a block being
-            // built, see FluidInteraction.
             return true;
         }
         String itemName = player.inventory().heldStack().item().displayName();

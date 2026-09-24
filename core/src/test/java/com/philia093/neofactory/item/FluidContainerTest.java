@@ -17,16 +17,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Checks what a container carries and what it refuses.
  * <p>
- * The difference between a bucket and a cell is the whole point of the two: a bucket is the tool
- * for the fluids that stand in the world as a block and pour into it, and it must never hold a
- * fluid of the industry, while a cell takes every fluid the game knows. The rules are checked on
- * the value and on the items the game builds from it.
+ * The difference between a bucket and a cell is the whole point of the two: a bucket is the tool of
+ * the fluids the game carries in the open - water and lava - and it must never hold a fluid of the
+ * industry, while a cell takes every fluid the game knows. The rules are checked on the value and on
+ * the items the game builds from it.
  */
 class FluidContainerTest {
 
-    /** A fluid of the industry, one that has no block in the world and no bucket. */
-    private static final Fluid OIL = new Fluid("oil", new Color(0.1f, 0.1f, 0.1f, 1.0f),
-            "blocks/fluid/oil_still", 1, 4, 3, 10, false, Blocks.STONE);
+    /** A fluid of the industry, one that has no bucket and no name a bucket knows. */
+    private static final Fluid OIL = new Fluid("oil", new Color(0.1f, 0.1f, 0.1f, 1.0f), false);
 
     @BeforeAll
     static void register() {

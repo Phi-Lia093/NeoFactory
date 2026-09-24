@@ -215,13 +215,14 @@ class SectionTest {
     }
 
     @Test
-    void aStateIsWideEnoughForTheFluidOfACell() {
+    void aStateIsWideEnoughForASystemOfTheFactory() {
         Section section = new Section(LOWEST);
-        section.setRawId(2, 3, 4, Blocks.WATER.id());
+        section.setRawId(2, 3, 4, Blocks.STONE.id());
 
-        // A source packs its level and its flag into nine bits, which is what a byte could not hold.
+        // A state is not a byte: a system that packs a level into it needs more than eight bits, which
+        // is what makes room for the shapes a machine or a pipe will take.
         section.setState(2, 3, 4, 256);
-        assertEquals(256, section.state(2, 3, 4), "the source flag survived the storage");
+        assertEquals(256, section.state(2, 3, 4), "a state beyond a byte survived the storage");
 
         section.setState(2, 3, 4, Section.MAX_STATE);
         assertEquals(Section.MAX_STATE, section.state(2, 3, 4));

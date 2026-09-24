@@ -306,10 +306,6 @@ public class Player extends Entity {
         velocity.setZero();
     }
 
-    /** {@code true} when the player stands in water or another liquid. */
-    public boolean isInLiquid(World world) {
-        return world.getBlock(blockX(), blockY(), blockZ()).isLiquid();
-    }
 
     /**
      * Advances the player by one frame.

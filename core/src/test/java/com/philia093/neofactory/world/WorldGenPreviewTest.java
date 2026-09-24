@@ -2,7 +2,6 @@ package com.philia093.neofactory.world;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
-import com.philia093.neofactory.fluid.FluidFlow;
 import com.philia093.neofactory.support.TestRegistries;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -71,7 +70,7 @@ class WorldGenPreviewTest {
                 Block above = world.getBlock(blockX, generator.surfaceY(blockX, blockY), blockY);
                 if (!above.isAir()) {
                     // The object layer lies on top of the ground, the way the renderer draws it.
-                    color = blend(color, colorOf(above), above == Blocks.WATER);
+                    color = blend(color, colorOf(above), false);
                 }
                 fill(image, x, y, color);
             }
@@ -137,12 +136,6 @@ class WorldGenPreviewTest {
         }
         if (block == Blocks.SNOW) {
             return 0xFFF2F7FA;
-        }
-        if (block == Blocks.WATER) {
-            return 0xFF2F5FE8;
-        }
-        if (block == Blocks.LAVA) {
-            return 0xFFFF6A1E;
         }
         if (block == Blocks.COAL_ORE) {
             return 0xFF3A3A3A;

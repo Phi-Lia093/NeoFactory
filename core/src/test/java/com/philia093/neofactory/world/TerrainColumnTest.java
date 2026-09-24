@@ -62,42 +62,35 @@ class TerrainColumnTest {
         }
     }
 
+
     @Test
-    void theWaterOfTheWorldStandsUpToTheLevelOfTheSea() {
+    void theValleyOfARiverOrALakeStaysDry() {
+        // The game has no fluid block: a river and a lake carve their valley into the land and the
+        // ground of it is sand, clay or gravel, but nothing is poured over it. This is what keeps a
+        // world dry everywhere and why water has to be carried as an item or in a tank now.
         WorldGen generator = new WorldGen(SEED);
         World world = new World(SEED);
         int columns = 0;
-        int wet = 0;
+        int valleys = 0;
 
         for (int x = -SAMPLE * 4; x < SAMPLE * 4; x += 5) {
             for (int z = -SAMPLE * 4; z < SAMPLE * 4; z += 5) {
+                if (!generator.isRiverAt(x, z) && !generator.isLakeAt(x, z)) {
+                    continue;
+                }
                 columns++;
                 int ground = generator.groundY(x, z);
-                if (ground >= Constants.SEA_LEVEL) {
-                    Block aboveGround = world.getBlock(x, ground + 1, z);
-                    assertFalse(aboveGround == Fluids.WATER.block(),
-                            "a column that stands above the sea carries no water, only what grows on it: "
-                                    + aboveGround + " at (" + x + ", " + z + ")");
-                    continue;
-                }
-                // A column below the sea is filled with water up to the level the sea stands at, except
-                // where the land is burnt: a pool lies one block above its scorched ground and never in
-                // the water, see the rule in WorldGen#fillColumn.
-                Block liquid = world.getBlock(x, ground + 1, z);
-                if (liquid == Blocks.LAVA) {
-                    continue;
-                }
+                assertTrue(ground < Constants.SEA_LEVEL,
+                        "the valley of a river or a lake lies below the sea at (" + x + ", " + z + ")");
                 for (int y = ground + 1; y <= Constants.SEA_LEVEL; y++) {
-                    assertEquals(Fluids.WATER.block(), world.getBlock(x, y, z),
-                            "water up to the level of the sea at (" + x + ", " + y + ", " + z + ")");
+                    assertEquals(Blocks.AIR, world.getBlock(x, y, z),
+                            "nothing is poured into the valley at (" + x + ", " + y + ", " + z + ")");
                 }
-                wet++;
+                valleys++;
             }
         }
 
-        float share = wet / (float) columns;
-        assertTrue(share > 0.05f, "the world has to hold water of the sea: " + share);
-        assertTrue(share < 0.45f, "most of a world has to be land, not water: " + share);
+        assertTrue(valleys > 0, "the sampled area has to hold a valley at all");
     }
 
     @Test
@@ -128,7 +121,7 @@ class TerrainColumnTest {
         int x = player.blockX();
         int z = player.blockZ();
         Block ground = world.getBlock(x, player.blockY() - 1, z);
-        assertTrue(ground.isSolid() && !ground.isLiquid(),
+        assertTrue(ground.isSolid(),
                 "a new world has to start a player on solid ground: " + ground);
         assertEquals(world.surfaceY(x, z), player.blockY(), "with the feet on top of that ground");
     }

@@ -29,8 +29,14 @@ public final class SaveFormat {
      * tag that still carries the second horizontal axis under the name of a height is refused instead of
      * being read as one. A height is not stored at all: a body of the flat view stands on the surface of
      * its column, which the world reports, see {@code World#surfaceY(int, int)}.
+     * <p>
+     * <b>What version 4 changed.</b> The game has no fluid block any more. Water and lava used to be
+     * blocks a chunk could hold and a fluid ran through the world as a body of its own; a fluid is a
+     * material of the industry now, carried by a tank, a bucket or a cell, and the ground of a world is
+     * dry everywhere. A chunk of version 3 names block ids that no longer exist - the water and the lava
+     * of the landscape - so it is refused instead of loading a world with holes where its sea was.
      */
-    public static final int DATA_VERSION = 3;
+    public static final int DATA_VERSION = 4;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

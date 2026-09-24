@@ -77,8 +77,7 @@ class FlatWorldTest {
                 assertEquals(Biome.PLAINS, generator.biomeAt(x, z), "one biome covers it all" + at);
                 assertEquals(Blocks.GRASS, generator.floorAt(x, z), "the floor is grass" + at);
                 assertFalse(generator.isRiverAt(x, z), "no river cuts through it" + at);
-                assertFalse(generator.isLakeAt(x, z), "no lake lies on it" + at);
-                assertFalse(generator.isLavaPoolAt(x, z), "no pool burns on it" + at);
+                assertFalse(generator.isLakeAt(x, z), "no lake is carved into it" + at);
             }
         }
     }

@@ -69,10 +69,9 @@ public interface BlockAccess {
      * Returns {@code true} when a cell stops a body.
      * <p>
      * A cell holds a body back when it carries a block that fills it as an obstacle - a wall of
-     * planks, a trunk, a machine, bedrock - or when it carries something that is neither air, nor a
-     * surface to walk on, nor a fluid. Everything else is a cell a body may enter: the empty air
-     * everywhere, the ground a body stands on and the substance it wades through, see
-     * {@link Block#isSolid()}, {@link Block#isGround()} and {@link Block#isLiquid()}.
+     * planks, a trunk, a machine, bedrock - or when it carries something that is neither air nor a
+     * surface to walk on. Everything else is a cell a body may enter: the empty air everywhere and the
+     * ground a body stands on, see {@link Block#isSolid()} and {@link Block#isGround()}.
      *
      * @param x block X coordinate
      * @param y block Y coordinate, the height
@@ -81,7 +80,7 @@ public interface BlockAccess {
      */
     default boolean isSolid(int x, int y, int z) {
         Block block = getBlock(x, y, z);
-        if (block.isAir() || block.isLiquid()) {
+        if (block.isAir()) {
             return false;
         }
         return block.isSolid() || !block.isGround();

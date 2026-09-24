@@ -25,7 +25,6 @@ public final class Block {
     private final String texture;
     private final boolean solid;
     private final boolean ground;
-    private final boolean liquid;
     private final boolean transparent;
     private final Color tint;
     private final float hardness;
@@ -40,7 +39,6 @@ public final class Block {
         this.texture = builder.texture;
         this.solid = builder.solid;
         this.ground = builder.ground;
-        this.liquid = builder.liquid;
         this.transparent = builder.transparent;
         this.tint = builder.tint;
         this.hardness = builder.hardness;
@@ -101,10 +99,6 @@ public final class Block {
         return ground;
     }
 
-    /** {@code true} when the block is a fluid such as water. */
-    public boolean isLiquid() {
-        return liquid;
-    }
 
     /** {@code true} when blocks below this one stay visible. */
     public boolean isTransparent() {
@@ -279,7 +273,6 @@ public final class Block {
         private String texture = NO_TEXTURE;
         private boolean solid = true;
         private boolean ground = false;
-        private boolean liquid = false;
         private boolean transparent = false;
         private Color tint = new Color(Color.WHITE);
         private float hardness = 1.0f;
@@ -314,11 +307,6 @@ public final class Block {
          */
         public Builder ground(boolean ground) {
             this.ground = ground;
-            return this;
-        }
-
-        public Builder liquid(boolean liquid) {
-            this.liquid = liquid;
             return this;
         }
 

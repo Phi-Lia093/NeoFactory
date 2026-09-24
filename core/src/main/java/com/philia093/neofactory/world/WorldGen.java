@@ -3,8 +3,6 @@ package com.philia093.neofactory.world;
 import com.badlogic.gdx.math.MathUtils;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
-import com.philia093.neofactory.fluid.FluidState;
-import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.decoration.Decoration;
 import com.philia093.neofactory.world.decoration.GrassDecoration;
@@ -200,25 +198,6 @@ public final class WorldGen implements TerrainSampler {
     /** Above this patch value, but below {@link #BED_GRAVEL_THRESHOLD}, the bed is clay. */
     private static final float BED_CLAY_THRESHOLD = 0.72f;
 
-    // ------------------------------------------------------------------
-    // Pools of lava
-    // ------------------------------------------------------------------
-
-    /** Frequency of the field that drops the pools of lava, about one unit per seventy blocks. */
-    private static final float POOL_FREQUENCY = 1.0f / 70.0f;
-
-    /**
-     * Above this value of the pool field the ground carries lava.
-     * <p>
-     * Picked from the distribution of the field so that roughly one percent of the world is lava:
-     * often enough to run into a pool while exploring, rare enough that a walk through the world
-     * does not turn into a minefield.
-     */
-    private static final float POOL_THRESHOLD = 0.88f;
-
-    /** Share of the ground under a pool that is gravel, the rest of it is stone. */
-    private static final float SCORCHED_GRAVEL_SHARE = 0.25f;
-
     /**
      * Cumulative distribution of {@link #biomeNoiseAt}, sampled at 26 evenly
      * spaced values of the noise range.
@@ -275,11 +254,9 @@ public final class WorldGen implements TerrainSampler {
     private final Noise patchNoise;
     private final Noise riverNoise;
     private final Noise lakeNoise;
-    private final Noise lavaNoise;
     private final Noise warpNoise;
     private final Noise heightNoise;
     private final Noise detailNoise;
-    private final int scorchSeed;
     private final int oreCellSeed;
     private final int oreBlockSeed;
     private final List<Decoration> decorations;
@@ -308,11 +285,9 @@ public final class WorldGen implements TerrainSampler {
         this.patchNoise = new Noise(seed * 37 + 2);
         this.riverNoise = new Noise(seed * 41 + 3);
         this.lakeNoise = new Noise(seed * 43 + 7);
-        this.lavaNoise = new Noise(seed * 47 + 9);
         this.warpNoise = new Noise(seed * 71 + 8);
         this.heightNoise = new Noise(seed * 73 + 13);
         this.detailNoise = new Noise(seed * 79 + 14);
-        this.scorchSeed = seed * 67 + 12;
         this.oreCellSeed = seed * 53 + 4;
         this.oreBlockSeed = seed * 59 + 5;
 
@@ -342,8 +317,8 @@ public final class WorldGen implements TerrainSampler {
      * {@code true} when this generator builds the table of blocks of a flat world.
      * <p>
      * Every question about the land answers with the one column such a world is made of: no field of
-     * noise draws it, no river cuts through it, no lake or pool lies on it and no biome covers it. The
-     * few methods below that do ask are the only places the two lands are told apart.
+     * noise draws it, no river or lake is carved into it and no biome covers it. The few methods below
+     * that do ask are the only places the two lands are told apart.
      */
     private boolean isFlat() {
         return type == WorldType.FLAT;
@@ -434,23 +409,6 @@ public final class WorldGen implements TerrainSampler {
     }
 
     /**
-     * {@code true} when a pool of lava lies on a cell.
-     * <p>
-     * The lava itself is poured while the column is filled, see {@link #fillColumn}, but the field
-     * belongs here for the same reason the fields of the river and the lake do: the ground of a cell
-     * has to answer where it is and what it is made of, see {@link #floorAt(int, int)}. A tree that
-     * asked the ground without knowing about the lava was planted in the middle of a pool.
-     *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @return {@code true} when the cell lies under a pool of lava
-     */
-    @Override
-    public boolean isLavaPoolAt(int x, int y) {
-        return !isFlat() && bodyAt(lavaNoise, POOL_FREQUENCY, x, y) >= POOL_THRESHOLD;
-    }
-
-    /**
      * Reads a body field at a cell, with the sampling position bent by another field.
      * <p>
      * The offset is what makes a river meander and a lake ragged instead of smooth. Without it the
@@ -503,17 +461,11 @@ public final class WorldGen implements TerrainSampler {
         }
         Biome biome = biomeAt(x, y);
         if (biome == Biome.RIVER || biome == Biome.LAKE || isBankOf(x, y)) {
-            // The bed of a body of water and the bank around it are made of the same three materials -
-            // sand, clay and gravel - and the water above the bed is drawn with a colour that lets it
-            // shine through. Handling the bank here and not in a decoration is what keeps the shore
-            // solid without a second pass over the world, see generateCell.
+            // The bed of a valley and the bank around it are made of the same three materials - sand,
+            // clay and gravel - and the game has no fluid block, so what is left of a river is the shape
+            // it carved. Handling the bank here and not in a decoration is what keeps the shore solid
+            // without a second pass over the world, see generateCell.
             return bedAt(x, y);
-        }
-        if (isLavaPoolAt(x, y)) {
-            // The ground a pool lies on is burnt into stone and gravel. It is burnt here and not
-            // left to a decoration that pours the lava, because this method is what everything that
-            // plants on the ground reads: without it a tree grew out of the lava.
-            return scorchedAt(x, y);
         }
         if (patchNoise.fbm2(x, y, PATCH_OCTAVES, PATCH_FREQUENCY, PATCH_PERSISTENCE)
                 >= PATCH_THRESHOLD) {
@@ -555,21 +507,6 @@ public final class WorldGen implements TerrainSampler {
             return Blocks.CLAY;
         }
         return Blocks.SAND;
-    }
-
-    /**
-     * Material of the ground under a pool of lava.
-     * <p>
-     * Stone with patches of gravel in it, drawn from a hash of the cell: the burn has no bed of its
-     * own the way a river has, it simply scorches what was there.
-     *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
-     * @return stone or gravel
-     */
-    private Block scorchedAt(int x, int y) {
-        return Noise.hash(x, y, scorchSeed) < SCORCHED_GRAVEL_SHARE
-                ? Blocks.GRAVEL : Blocks.STONE;
     }
 
     /**
@@ -696,11 +633,10 @@ public final class WorldGen implements TerrainSampler {
     /**
      * Fills one column of the world from the bottom up.
      * <p>
-     * This is where a world of cubes is made: bedrock at the very bottom, stone above it, a layer of soil,
-     * the block of the biome on top, and water - or the lava of a pool - up to the level the liquid stands
-     * at. The liquid is written as a source, because a body of water that the terrain laid out is not a
-     * spill: nothing in the game would tell the two apart from the block alone, see
-     * {@code FluidState#pack()}.
+     * This is where a world of cubes is made: bedrock at the very bottom, stone above it, a layer of soil
+     * and the block of the biome on top. Nothing is poured over it - the game has no fluid block, see
+     * {@link com.philia093.neofactory.fluid.Fluid} - so the valley a river or a lake carves stays dry and
+     * a body of water reaches the game as an item or in a tank.
      *
      * @param chunk chunk owning the column
      * @param localX local X coordinate inside the chunk
@@ -716,9 +652,6 @@ public final class WorldGen implements TerrainSampler {
         int ground = groundY(x, z);
         Block surface = floorAt(x, z);
         Block soil = subsoilOf(surface);
-        boolean pool = isLavaPoolAt(x, z) && !isRiverAt(x, z) && !isLakeAt(x, z)
-                && ground > SEA_LEVEL;
-
         chunk.setRawId(localX, Constants.MIN_Y, localZ, Blocks.BEDROCK.id());
         for (int y = Constants.MIN_Y + 1; y <= ground; y++) {
             int depth = ground - y;
@@ -732,14 +665,6 @@ public final class WorldGen implements TerrainSampler {
                 block = surface;
             }
             chunk.setRawId(localX, y, localZ, block.id());
-        }
-
-        // The lava of a pool stands one block above the scorched ground, the water of the sea fills up to
-        // the level the sea stands at; a column that is higher than that carries no liquid at all.
-        int top = pool ? ground + 1 : SEA_LEVEL;
-        for (int y = ground + 1; y <= top; y++) {
-            chunk.setRawId(localX, y, localZ, (pool ? Fluids.LAVA : Fluids.WATER).block().id());
-            chunk.setState(localX, y, localZ, FluidState.SOURCE.pack());
         }
     }
 

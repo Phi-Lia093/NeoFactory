@@ -77,7 +77,9 @@ class BlockRayTest {
         BlockRay.Hit hit = cast(world, 0.5f, OBJECT_Y + 0.5f, 0.5f, 0.0f, -1.0f, 0.0f);
 
         assertNotNull(hit, "the ground was not met");
-        assertEquals(FLOOR_Y, hit.y(), "the floor of a flat world stands at the ground layer");
+        int ground = world.surfaceY(0, 0) - 1;
+        assertEquals(ground, hit.y(),
+                "a ray looking down meets the highest block of the column it looks at");
         assertEquals(BlockFace.TOP, hit.face(), "a ray looking down enters through the top face");
     }
 
