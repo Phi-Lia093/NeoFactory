@@ -640,7 +640,25 @@ public final class World implements BlockAccess {
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
         // Raw ids instead of setBlock: this is the decoration path, a chunk grown
         // from the seed alone must not count as a player change.
-        chunk.setRawId(Chunk.localOf(x), Chunk.flatY(Chunk.LAYER_OBJECT), Chunk.localOf(y), block.id());
+        chunk.setRawId(Chunk.localOf(x), surfaceY(x, y), Chunk.localOf(y), block.id());
+    }
+
+    /**
+     * Writes a block of the object layer into one cell of the world.
+     * <p>
+     * This is what a decoration that is taller than one block writes with, such as the trunk of a tree.
+     * The cell is named by its height and not by the ground of its column, see
+     * {@link #placeObjectIfAirAt(int, int, int, Block)}.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param block block to store
+     */
+    public void setObjectBlockAt(int x, int y, int z, Block block) {
+        Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(z));
+        // Decoration path, see setObjectBlock: never marks the chunk as modified.
+        chunk.setRawId(Chunk.localOf(x), y, Chunk.localOf(z), block.id());
     }
 
     /**
@@ -658,7 +676,7 @@ public final class World implements BlockAccess {
     public void setObjectBlock(int x, int y, Block block, int meta) {
         setObjectBlock(x, y, block);
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
-        chunk.setState(Chunk.localOf(x), Chunk.flatY(Chunk.LAYER_OBJECT), Chunk.localOf(y), meta);
+        chunk.setState(Chunk.localOf(x), surfaceY(x, y), Chunk.localOf(y), meta);
     }
 
     /**
@@ -678,8 +696,9 @@ public final class World implements BlockAccess {
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
         int localX = Chunk.localOf(x);
         int localY = Chunk.localOf(y);
-        chunk.setRawId(localX, Chunk.flatY(Chunk.LAYER_FLOOR), localY, block.id());
-        chunk.setState(localX, Chunk.flatY(Chunk.LAYER_FLOOR), localY, meta);
+        int ground = surfaceY(x, y) - 1;
+        chunk.setRawId(localX, ground, localY, block.id());
+        chunk.setState(localX, ground, localY, meta);
     }
 
     /**
@@ -691,14 +710,31 @@ public final class World implements BlockAccess {
      * @return {@code true} when the block was stored
      */
     public boolean placeObjectIfAir(int x, int y, Block block) {
-        Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
+        return placeObjectIfAirAt(x, surfaceY(x, y), y, block);
+    }
+
+    /**
+     * Writes into the object layer of one cell only when that cell is still empty.
+     * <p>
+     * This is what a decoration that reaches over more than one block writes with. The rule is the same as
+     * for the ground of a column: whoever fills a cell first owns it, so a canopy never covers a trunk and
+     * a decoration never covers a block the player put down.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param block block to store
+     * @return {@code true} when the block was stored
+     */
+    public boolean placeObjectIfAirAt(int x, int y, int z, Block block) {
+        Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(z));
         int localX = Chunk.localOf(x);
-        int localY = Chunk.localOf(y);
-        if (!chunk.getBlock(localX, Chunk.flatY(Chunk.LAYER_OBJECT), localY).isAir()) {
+        int localZ = Chunk.localOf(z);
+        if (!chunk.getBlock(localX, y, localZ).isAir()) {
             return false;
         }
         // Decoration path, see setObjectBlock: never marks the chunk as modified.
-        chunk.setRawId(localX, Chunk.flatY(Chunk.LAYER_OBJECT), localY, block.id());
+        chunk.setRawId(localX, y, localZ, block.id());
         return true;
     }
 
@@ -722,7 +758,7 @@ public final class World implements BlockAccess {
             return false;
         }
         Chunk chunk = chunkForWrite(Chunk.chunkOf(x), Chunk.chunkOf(y));
-        chunk.setState(Chunk.localOf(x), Chunk.flatY(Chunk.LAYER_OBJECT), Chunk.localOf(y), meta);
+        chunk.setState(Chunk.localOf(x), surfaceY(x, y), Chunk.localOf(y), meta);
         return true;
     }
 

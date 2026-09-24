@@ -2,6 +2,7 @@ package com.philia093.neofactory.world.decoration;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Biome;
 import com.philia093.neofactory.world.Noise;
 import com.philia093.neofactory.world.World;
@@ -9,10 +10,11 @@ import com.philia093.neofactory.world.World;
 import java.util.Random;
 
 /**
- * An oak tree, seen from above.
+ * An oak tree: a trunk with a canopy on top of it.
  * <p>
- * A tree is a cross of five blocks: one trunk in the middle showing its growth
- * rings and four oak leaves above, below, left and right of it.
+ * The trunk is four to six blocks tall and stands on the ground of its column, and the canopy is two wide
+ * layers around its top with a narrow cap above them and the corners cut off - the shape an oak has in the
+ * original game, and the reason a canopy is not simply a cube: a cube reads as a shrub.
  * <p>
  * The position of every tree is a pure function of the seed, so trees stay in
  * place no matter in which order the chunks are generated. Two trees can never
@@ -24,6 +26,15 @@ public class TreeDecoration extends Decoration {
 
     /** Chebyshev radius of the neighbourhood a tree has to win to be planted. */
     private static final int SPACING_RADIUS = 2;
+
+    /** Shortest trunk of an oak, in blocks. */
+    private static final int SHORTEST_TRUNK = 4;
+
+    /** How many heights a trunk may take above the shortest one. */
+    private static final int TRUNK_SPREAD = 3;
+
+    /** Radius of the wide layers of the canopy, in blocks. */
+    private static final int CANOPY_RADIUS = 2;
 
     /** Candidate chance of a plains cell, one in fifty cells tries to grow a tree. */
     private static final float PLAINS_CHANCE = 0.02f;
@@ -51,6 +62,10 @@ public class TreeDecoration extends Decoration {
         if (!isSoil(terrain.floorAt(x, y))) {
             return false;
         }
+        if (terrain.surfaceY(x, y) <= Constants.SEA_LEVEL) {
+            // A tree planted below the water line would stand in the water of a lake, or be buried by it.
+            return false;
+        }
         if (!isCandidate(terrain, x, y)) {
             return false;
         }
@@ -59,15 +74,46 @@ public class TreeDecoration extends Decoration {
 
     @Override
     public void place(World world, TerrainSampler terrain, int x, int y, Random random) {
-        // The trunk takes the center cell only when it is still free. A decorator that came before
-        // owns the cells it filled - the water of a river, the lava of a pool - and a tree has no
-        // business growing out of either of them. Tall grass is planted after the trees, see
-        // WorldGen, so the trunk never has to push a plant aside.
-        world.placeObjectIfAir(x, y, Blocks.LOG_OAK);
-        world.placeObjectIfAir(x + 1, y, Blocks.LEAVES_OAK);
-        world.placeObjectIfAir(x - 1, y, Blocks.LEAVES_OAK);
-        world.placeObjectIfAir(x, y + 1, Blocks.LEAVES_OAK);
-        world.placeObjectIfAir(x, y - 1, Blocks.LEAVES_OAK);
+        int base = terrain.surfaceY(x, y);
+        int trunk = SHORTEST_TRUNK + random.nextInt(TRUNK_SPREAD);
+        int top = base + trunk - 1;
+        // The trunk goes first: a canopy that came first would have taken the cells the trunk needs, and
+        // the two never cover each other because a cell that is filled is owned by whoever filled it.
+        for (int height = base; height <= top; height++) {
+            world.placeObjectIfAirAt(x, height, y, Blocks.LOG_OAK);
+        }
+        placeCanopy(world, x, y, top);
+    }
+
+    /**
+     * Plants the canopy of a tree around the top of its trunk.
+     *
+     * @param world world receiving the leaves
+     * @param x block X coordinate of the trunk
+     * @param z block Z coordinate of the trunk
+     * @param top block Y coordinate of the highest block of the trunk
+     */
+    private static void placeCanopy(World world, int x, int z, int top) {
+        for (int height = top - 1; height <= top; height++) {
+            for (int dx = -CANOPY_RADIUS; dx <= CANOPY_RADIUS; dx++) {
+                for (int dz = -CANOPY_RADIUS; dz <= CANOPY_RADIUS; dz++) {
+                    if (Math.abs(dx) == CANOPY_RADIUS && Math.abs(dz) == CANOPY_RADIUS) {
+                        // The corners stay open, which is what makes the canopy read as a round crown.
+                        continue;
+                    }
+                    world.placeObjectIfAirAt(x + dx, height, z + dz, Blocks.LEAVES_OAK);
+                }
+            }
+        }
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (Math.abs(dx) == 1 && Math.abs(dz) == 1) {
+                    continue;
+                }
+                world.placeObjectIfAirAt(x + dx, top + 1, z + dz, Blocks.LEAVES_OAK);
+            }
+        }
+        world.placeObjectIfAirAt(x, top + 2, z, Blocks.LEAVES_OAK);
     }
 
     /** {@code true} when the block can carry a tree. */

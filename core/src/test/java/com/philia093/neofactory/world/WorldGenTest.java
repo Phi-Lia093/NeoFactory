@@ -249,13 +249,14 @@ class WorldGenTest {
         // A pool lies somewhere in the patch, so the test looks for one instead of hoping that the
         // spawn happens to have it.
         int poolX = 0;
-        int poolY = 0;
+        int poolZ = 0;
         boolean found = false;
-        for (int y = 0; y < SAMPLE && !found; y++) {
+        for (int z = 0; z < SAMPLE && !found; z++) {
             for (int x = 0; x < SAMPLE && !found; x++) {
-                if (generator.isLavaPoolAt(x, y)) {
+                if (generator.isLavaPoolAt(x, z) && !WATER_BIOMES.contains(generator.biomeAt(x, z))
+                        && generator.groundY(x, z) > Constants.SEA_LEVEL) {
                     poolX = x;
-                    poolY = y;
+                    poolZ = z;
                     found = true;
                 }
             }
@@ -264,39 +265,45 @@ class WorldGenTest {
 
         World world = new World(SEED);
         int centerChunkX = Chunk.chunkOf(poolX);
-        int centerChunkY = Chunk.chunkOf(poolY);
+        int centerChunkZ = Chunk.chunkOf(poolZ);
         for (int chunkX = centerChunkX - 1; chunkX <= centerChunkX + 1; chunkX++) {
-            for (int chunkY = centerChunkY - 1; chunkY <= centerChunkY + 1; chunkY++) {
-                world.loadChunk(chunkX, chunkY);
+            for (int chunkZ = centerChunkZ - 1; chunkZ <= centerChunkZ + 1; chunkZ++) {
+                world.loadChunk(chunkX, chunkZ);
             }
         }
 
-        assertEquals(Blocks.LAVA, world.getBlock(poolX, Chunk.flatY(FluidFlow.OBJECT_LAYER), poolY),
-                "the decorator poured lava onto the cell of a pool");
-        Block ground = world.getBlock(poolX, Chunk.flatY(Chunk.LAYER_FLOOR), poolY);
-        assertTrue(ground == Blocks.STONE || ground == Blocks.GRAVEL,
-                "and the ground under it is scorched: " + ground);
+        int ground = generator.groundY(poolX, poolZ);
+        assertEquals(Blocks.LAVA, world.getBlock(poolX, ground + 1, poolZ),
+                "the terrain carried lava into the cell of a pool");
+        Block floor = world.getBlock(poolX, ground, poolZ);
+        assertTrue(floor == Blocks.STONE || floor == Blocks.GRAVEL,
+                "and the ground under it is scorched: " + floor);
 
         // Nothing that plants on the ground may stand on a pool. A tree did exactly that while the
-        // field of the pools lived in the decorator alone: the decorator had burnt the ground, but
+        // field of the pools lived in the decoration alone: the decoration had burnt the ground, but
         // the generator did not know, and a tree reads the ground of the generator.
-        for (int y = -4; y <= 4; y++) {
-            for (int x = -4; x <= 4; x++) {
-                int cellX = poolX + x;
-                int cellY = poolY + y;
-                if (!generator.isLavaPoolAt(cellX, cellY)) {
+        for (int dz = -4; dz <= 4; dz++) {
+            for (int dx = -4; dx <= 4; dx++) {
+                int cellX = poolX + dx;
+                int cellZ = poolZ + dz;
+                if (!generator.isLavaPoolAt(cellX, cellZ)
+                        || WATER_BIOMES.contains(generator.biomeAt(cellX, cellZ))) {
+                    // A cell that lies under a river and under the field of the pools at the same time
+                    // belongs to the water, so water there is right.
                     continue;
                 }
-                if (WATER_BIOMES.contains(generator.biomeAt(cellX, cellY))) {
-                    // A cell that lies under a river and under the field of the pools at the same
-                    // time belongs to the water: the decorator of the burn steps aside for it, see
-                    // LavaLakeDecoration, so water there is right.
+                int cellGround = generator.groundY(cellX, cellZ);
+                if (cellGround <= Constants.SEA_LEVEL) {
+                    // The field of the pools reaches cells below the water line, but a pool is only
+                    // carried where the land stands above the sea: the water of a sea or a lake is right.
                     continue;
                 }
-                Block standing = world.getBlock(cellX, Chunk.flatY(FluidFlow.OBJECT_LAYER), cellY);
-                assertTrue(standing == Blocks.LAVA || standing == Blocks.STONE,
-                        "a pool of lava carries lava and the stone of its ring, nothing else: "
-                                + standing + " at (" + cellX + ", " + cellY + ")");
+                assertEquals(Blocks.LAVA, world.getBlock(cellX, cellGround + 1, cellZ),
+                        "a pool of lava carries lava at (" + cellX + ", " + cellZ + ")");
+                Block above = world.getBlock(cellX, cellGround + 2, cellZ);
+                assertTrue(above.isAir() || above == Blocks.LEAVES_OAK,
+                        "nothing but the crown of a tree beside it may reach over a pool: " + above
+                                + " at (" + cellX + ", " + cellZ + ")");
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.philia093.neofactory.world.decoration;
 
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Biome;
 import com.philia093.neofactory.world.Noise;
 import com.philia093.neofactory.world.World;
@@ -41,6 +42,10 @@ public class GrassDecoration extends Decoration {
     @Override
     public boolean shouldPlaceAt(TerrainSampler terrain, int x, int y) {
         if (terrain.floorAt(x, y) != Blocks.GRASS) {
+            return false;
+        }
+        if (terrain.surfaceY(x, y) <= Constants.SEA_LEVEL) {
+            // Grass under the water line belongs to the bed of a lake, not to a meadow.
             return false;
         }
         float chance = chanceOf(terrain.biomeAt(x, y));

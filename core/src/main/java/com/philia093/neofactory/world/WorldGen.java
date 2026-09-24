@@ -3,12 +3,13 @@ package com.philia093.neofactory.world;
 import com.badlogic.gdx.math.MathUtils;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.fluid.FluidState;
+import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.decoration.Decoration;
 import com.philia093.neofactory.world.decoration.GrassDecoration;
-import com.philia093.neofactory.world.decoration.LavaLakeDecoration;
 import com.philia093.neofactory.world.decoration.TerrainSampler;
 import com.philia093.neofactory.world.decoration.TreeDecoration;
-import com.philia093.neofactory.world.decoration.WaterBodyDecoration;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Random;
 
 import static com.philia093.neofactory.util.Constants.CHUNK_SIZE;
+import static com.philia093.neofactory.util.Constants.SEA_LEVEL;
 
 /**
  * Turns a seed and a pair of block coordinates into terrain.
@@ -48,6 +50,70 @@ public final class WorldGen implements TerrainSampler {
     /** Amount of octaves of the patch field that breaks up uniform ground. */
     private static final int PATCH_OCTAVES = 2;
 
+    // ------------------------------------------------------------------
+    // The height of the ground
+    // ------------------------------------------------------------------
+
+    /** Octaves of the field that draws the shape of the land, three give hills and valleys. */
+    private static final int HEIGHT_OCTAVES = 3;
+
+    /** Frequency of that field, about one unit per hundred and eighty blocks. */
+    private static final float HEIGHT_FREQUENCY = 1.0f / 180.0f;
+
+    /** Amplitude factor between two octaves of the shape of the land. */
+    private static final float HEIGHT_PERSISTENCE = 0.5f;
+
+    /** Amplitude factor between the two octaves of the small detail on top of it. */
+    private static final float DETAIL_PERSISTENCE = 0.5f;
+
+    /**
+     * How far the land rises and falls around the sea, in blocks.
+     * <p>
+     * The field behind it clusters around its middle, so the shape of the land is mostly gentle hills
+     * with a few slopes that reach the extremes - which is what a world wants: it must be worth walking
+     * through, and every step of it must still be walkable.
+     */
+    private static final float HEIGHT_RELIEF = 20.0f;
+
+    /**
+     * How far above the sea the land stands on average, in blocks.
+     * <p>
+     * Without it the middle of the shape of the land lies exactly at the level of the sea, which makes
+     * half of the world an ocean. The land is raised by this much instead, so that a walk through a world
+     * runs into water often enough to be worth exploring and rarely enough to stay a walk.
+     */
+    private static final float LAND_ABOVE_SEA = 11.0f;
+
+    /** Amplitude of the small bumps that make flat ground uneven, in blocks. */
+    private static final float DETAIL_RELIEF = 4.0f;
+
+    /** Octaves of the field that draws those small bumps. */
+    private static final int DETAIL_OCTAVES = 2;
+
+    /** Frequency of the field that draws those small bumps, about one unit per forty blocks. */
+    private static final float DETAIL_FREQUENCY = 1.0f / 40.0f;
+
+    /** Highest a column of the world is ever drawn, in blocks above the sea. */
+    private static final int HIGHEST_GROUND = SEA_LEVEL + 34;
+
+    /** Lowest a column of the world is ever drawn, in blocks above the bottom of the world. */
+    private static final int LOWEST_GROUND = SEA_LEVEL - 30;
+
+    /** Depth of the bed of a river and of a lake below the level their water stands at, in blocks. */
+    private static final int RIVER_DEPTH = 2;
+
+    /** Depth of the soil below the surface block, in blocks; under it the world is stone. */
+    private static final int SOIL_DEPTH = 3;
+
+    /**
+     * Depth below the sea at which the ore turns from coal into iron.
+     * <p>
+     * Both kinds exist everywhere in the stone, but the deeper one is worth mining, so the shallow
+     * layers carry the cheap ore and the deep ones the other: a player who digs down finds what they
+     * were digging for.
+     */
+    private static final int IRON_DEPTH = SEA_LEVEL - 24;
+
     /** Frequency of the patch field, about one unit per eighteen blocks. */
     private static final float PATCH_FREQUENCY = 1.0f / 18.0f;
 
@@ -71,9 +137,6 @@ public final class WorldGen implements TerrainSampler {
 
     /** Chance that a block inside an ore cluster really is ore. */
     private static final float ORE_BLOCK_CHANCE = 0.40f;
-
-    /** Share of the clusters that turn out to be coal, the rest becomes iron. */
-    private static final float ORE_COAL_SHARE = 0.55f;
 
     // ------------------------------------------------------------------
     // Rivers, lakes and the fields that drop them
@@ -184,10 +247,11 @@ public final class WorldGen implements TerrainSampler {
     private final Noise lakeNoise;
     private final Noise lavaNoise;
     private final Noise warpNoise;
+    private final Noise heightNoise;
+    private final Noise detailNoise;
     private final int scorchSeed;
     private final int oreCellSeed;
     private final int oreBlockSeed;
-    private final int oreKindSeed;
     private final List<Decoration> decorations;
 
     /**
@@ -205,16 +269,15 @@ public final class WorldGen implements TerrainSampler {
         this.lakeNoise = new Noise(seed * 43 + 7);
         this.lavaNoise = new Noise(seed * 47 + 9);
         this.warpNoise = new Noise(seed * 71 + 8);
+        this.heightNoise = new Noise(seed * 73 + 13);
+        this.detailNoise = new Noise(seed * 79 + 14);
         this.scorchSeed = seed * 67 + 12;
         this.oreCellSeed = seed * 53 + 4;
         this.oreBlockSeed = seed * 59 + 5;
-        this.oreKindSeed = seed * 61 + 6;
 
         List<Decoration> built = new ArrayList<>();
-        // The water comes first: a river and a lake own their cells, and everything planted later
-        // only adds to what it finds.
-        built.add(new WaterBodyDecoration(seed));
-        built.add(new LavaLakeDecoration());
+        // The ground, the water of a river and the lava of a pool all belong to the terrain itself, see
+        // fillColumn: what is left for a decorator is what grows on the ground.
         built.add(new TreeDecoration(seed));
         built.add(new GrassDecoration(seed));
         this.decorations = Collections.unmodifiableList(built);
@@ -367,30 +430,36 @@ public final class WorldGen implements TerrainSampler {
     @Override
     public Block floorAt(int x, int y) {
         Biome biome = biomeAt(x, y);
-        if (biome == Biome.RIVER || biome == Biome.LAKE) {
-            // The bed of a body of water lies here, in the ground layer, while the water itself
-            // stands above it in the layer the player walks in, see WaterBodyDecoration. Neither
-            // ore nor the accent block of the biome reaches a bed: a patch of gravel in the middle
-            // of a lake would stick out of the water.
+        if (biome == Biome.RIVER || biome == Biome.LAKE || isBankOf(x, y)) {
+            // The bed of a body of water and the bank around it are made of the same three materials -
+            // sand, clay and gravel - and the water above the bed is drawn with a colour that lets it
+            // shine through. Handling the bank here and not in a decoration is what keeps the shore
+            // solid without a second pass over the world, see generateCell.
             return bedAt(x, y);
         }
         if (isLavaPoolAt(x, y)) {
             // The ground a pool lies on is burnt into stone and gravel. It is burnt here and not
-            // left to the decorator that pours the lava, because this method is what everything
-            // that plants on the ground reads: without it a tree grew out of the lava.
+            // left to a decoration that pours the lava, because this method is what everything that
+            // plants on the ground reads: without it a tree grew out of the lava.
             return scorchedAt(x, y);
-        }
-        if (biome == Biome.ROCKY) {
-            Block ore = oreAt(x, y);
-            if (ore != null) {
-                return ore;
-            }
         }
         if (patchNoise.fbm2(x, y, PATCH_OCTAVES, PATCH_FREQUENCY, PATCH_PERSISTENCE)
                 >= PATCH_THRESHOLD) {
             return biome.accentBlock();
         }
         return biome.floorBlock();
+    }
+
+    /** {@code true} when a river or a lake touches the cell, which makes it a bank. */
+    private boolean isBankOf(int x, int y) {
+        return isWaterAt(x + 1, y) || isWaterAt(x - 1, y)
+                || isWaterAt(x, y + 1) || isWaterAt(x, y - 1);
+    }
+
+    /** {@code true} when the water of a river or of a lake covers a cell. */
+    private boolean isWaterAt(int x, int y) {
+        Biome biome = biomeAt(x, y);
+        return biome == Biome.RIVER || biome == Biome.LAKE;
     }
 
     /**
@@ -432,30 +501,29 @@ public final class WorldGen implements TerrainSampler {
     }
 
     /**
-     * Returns the ore of a rocky cell.
+     * Returns the ore of a cell of stone.
      * <p>
-     * Ores are placed with hashes instead of smooth noise. A rare cluster cell
-     * decides whether the area holds ore at all, a second hash decides which of
-     * its blocks are ore and a third one whether the cluster is coal or iron.
-     * That produces small, clearly bounded veins whose density is easy to tune
-     * through {@link #ORE_CLUSTER_CHANCE} and {@link #ORE_BLOCK_CHANCE}.
+     * Ores are placed with hashes instead of smooth noise. A rare cluster cell decides whether the area
+     * holds ore at all, a second hash decides which of its blocks are ore, and the depth decides which
+     * kind it is: the cheap ore lies above {@link #IRON_DEPTH} and the one worth digging for below it.
+     * That produces small, clearly bounded veins whose density is easy to tune through
+     * {@link #ORE_CLUSTER_CHANCE} and {@link #ORE_BLOCK_CHANCE}.
      *
-     * @param x block coordinate along the first horizontal axis
-     * @param y block coordinate along the second horizontal axis
+     * @param x block X coordinate of the cell
+     * @param z block Z coordinate of the cell
+     * @param height block Y coordinate of the cell
      * @return the ore block or {@code null} when the cell is plain rock
      */
-    private Block oreAt(int x, int y) {
+    private Block oreAt(int x, int z, int height) {
         int cellX = Math.floorDiv(x, ORE_CELL_SIZE);
-        int cellY = Math.floorDiv(y, ORE_CELL_SIZE);
-        if (Noise.hash(cellX, cellY, oreCellSeed) >= ORE_CLUSTER_CHANCE) {
+        int cellZ = Math.floorDiv(z, ORE_CELL_SIZE);
+        if (Noise.hash(cellX, cellZ, oreCellSeed) >= ORE_CLUSTER_CHANCE) {
             return null;
         }
-        if (Noise.hash(x, y, oreBlockSeed) >= ORE_BLOCK_CHANCE) {
+        if (Noise.hash(x * 31 + z, height, oreBlockSeed) >= ORE_BLOCK_CHANCE) {
             return null;
         }
-        return Noise.hash(cellX, cellY, oreKindSeed) < ORE_COAL_SHARE
-                ? Blocks.COAL_ORE
-                : Blocks.IRON_ORE;
+        return height <= IRON_DEPTH ? Blocks.IRON_ORE : Blocks.COAL_ORE;
     }
 
     /**
@@ -495,6 +563,40 @@ public final class WorldGen implements TerrainSampler {
     }
 
     /**
+     * Height of the ground of a column, the block a body stands on.
+     * <p>
+     * The shape of the land is one field of noise around the sea; a second, finer field makes the ground
+     * uneven so that a walk through a plain is not a walk over a table. A world is only as high and as low
+     * as {@link #HIGHEST_GROUND} and {@link #LOWEST_GROUND} allow, which keeps every column inside the
+     * world and every step of a slope walkable.
+     * <p>
+     * A river and a lake are carved into the land rather than drawn over it: the ground of their cells is
+     * pulled below the sea, so a river runs through a hill as a valley with water in it instead of being a
+     * band of sand painted over a slope.
+     *
+     * @param x block coordinate along the first horizontal axis
+     * @param y block coordinate along the second horizontal axis
+     * @return the block Y coordinate of the highest block of that column
+     */
+    public int groundY(int x, int y) {
+        float shape = heightNoise.fbm2(x, y, HEIGHT_OCTAVES, HEIGHT_FREQUENCY, HEIGHT_PERSISTENCE);
+        float detail = detailNoise.fbm2(x, y, DETAIL_OCTAVES, DETAIL_FREQUENCY, DETAIL_PERSISTENCE);
+        int height = MathUtils.clamp(Math.round(SEA_LEVEL + LAND_ABOVE_SEA
+                        + (shape - 0.5f) * 2.0f * HEIGHT_RELIEF
+                        + (detail - 0.5f) * 2.0f * DETAIL_RELIEF),
+                LOWEST_GROUND, HIGHEST_GROUND);
+        if (isRiverAt(x, y) || isLakeAt(x, y)) {
+            return Math.min(height, SEA_LEVEL - RIVER_DEPTH);
+        }
+        return height;
+    }
+
+    @Override
+    public int surfaceY(int x, int y) {
+        return groundY(x, y) + 1;
+    }
+
+    /**
      * Fills the floor layer of a single cell.
      * <p>
      * Does nothing when the cell was already generated, which makes the call
@@ -508,10 +610,65 @@ public final class WorldGen implements TerrainSampler {
         if (chunk.isCellGenerated(localX, localY)) {
             return;
         }
-        int x = chunk.originX() + localX;
-        int y = chunk.originZ() + localY;
-        chunk.setRawId(localX, Chunk.flatY(Chunk.LAYER_FLOOR), localY, floorAt(x, y).id());
+        fillColumn(chunk, localX, localY, chunk.originX() + localX, chunk.originZ() + localY);
         chunk.markCellGenerated(localX, localY);
+    }
+
+    /**
+     * Fills one column of the world from the bottom up.
+     * <p>
+     * This is where a world of cubes is made: bedrock at the very bottom, stone above it, a layer of soil,
+     * the block of the biome on top, and water - or the lava of a pool - up to the level the liquid stands
+     * at. The liquid is written as a source, because a body of water that the terrain laid out is not a
+     * spill: nothing in the game would tell the two apart from the block alone, see
+     * {@code FluidState#pack()}.
+     *
+     * @param chunk chunk owning the column
+     * @param localX local X coordinate inside the chunk
+     * @param localZ local Z coordinate inside the chunk
+     * @param x block X coordinate of the column
+     * @param z block Z coordinate of the column
+     */
+    private void fillColumn(Chunk chunk, int localX, int localZ, int x, int z) {
+        int ground = groundY(x, z);
+        Block surface = floorAt(x, z);
+        Block soil = subsoilOf(surface);
+        boolean pool = isLavaPoolAt(x, z) && !isRiverAt(x, z) && !isLakeAt(x, z)
+                && ground > SEA_LEVEL;
+
+        chunk.setRawId(localX, Constants.MIN_Y, localZ, Blocks.BEDROCK.id());
+        for (int y = Constants.MIN_Y + 1; y <= ground; y++) {
+            int depth = ground - y;
+            Block block;
+            if (depth >= SOIL_DEPTH) {
+                Block ore = oreAt(x, z, y);
+                block = ore == null ? Blocks.STONE : ore;
+            } else if (depth > 0) {
+                block = soil;
+            } else {
+                block = surface;
+            }
+            chunk.setRawId(localX, y, localZ, block.id());
+        }
+
+        // The lava of a pool stands one block above the scorched ground, the water of the sea fills up to
+        // the level the sea stands at; a column that is higher than that carries no liquid at all.
+        int top = pool ? ground + 1 : SEA_LEVEL;
+        for (int y = ground + 1; y <= top; y++) {
+            chunk.setRawId(localX, y, localZ, (pool ? Fluids.LAVA : Fluids.WATER).block().id());
+            chunk.setState(localX, y, localZ, FluidState.SOURCE.pack());
+        }
+    }
+
+    /** Material of the soil under the surface block of a column. */
+    private static Block subsoilOf(Block surface) {
+        if (surface == Blocks.STONE || surface == Blocks.SANDSTONE) {
+            return Blocks.STONE;
+        }
+        if (surface == Blocks.SAND || surface == Blocks.GRAVEL || surface == Blocks.CLAY) {
+            return Blocks.SAND;
+        }
+        return Blocks.DIRT;
     }
 
     /**
