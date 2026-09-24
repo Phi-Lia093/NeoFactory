@@ -760,6 +760,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         chatOverlay.render(batch, chat, uiViewport);
         drawCrosshair();
         drawPerformance();
+        // Every pass that draws into a frame of its own - the icon of a block is drawn that way - leaves
+        // the viewport of the window changed behind it, and the geometry above is only sent to the card
+        // when the batch ends. The viewport is applied once more here, so the interface is drawn through
+        // the viewport it was laid out in, whatever ran in the middle.
+        uiViewport.apply();
         batch.end();
         batch.setColor(Color.WHITE);
 

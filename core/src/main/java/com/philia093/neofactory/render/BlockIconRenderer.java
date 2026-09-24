@@ -13,15 +13,17 @@ import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.IntMap;
+import com.badlogic.gdx.utils.IntSet;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.philia093.neofactory.block.Block;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 
 /**
  * Draws the icon a slot shows for a block by drawing the block itself.
@@ -93,6 +95,12 @@ public class BlockIconRenderer implements Disposable {
     /** Icon of every kind of block that was asked for, keyed by block id. */
     private final IntMap<TextureRegion> icons = new IntMap<>();
 
+    /** Blocks whose icon could not be drawn, so they are never asked for again. */
+    private final IntSet failed = new IntSet();
+
+    /** Viewport the window was drawn through before a frame took over, put back after every bake. */
+    private final IntBuffer viewport = BufferUtils.newIntBuffer(4);
+
     /** Textures behind {@link #icons}, released by {@link #dispose()}. */
     private final Array<Texture> textures = new Array<>();
 
@@ -128,6 +136,9 @@ public class BlockIconRenderer implements Disposable {
         if (cached != null) {
             return cached;
         }
+        if (failed.contains(block.id())) {
+            return null;
+        }
         TextureRegion drawn = bake(block);
         if (drawn == null) {
             return null;
@@ -136,8 +147,17 @@ public class BlockIconRenderer implements Disposable {
         return drawn;
     }
 
-    /** Draws the cube of a block off screen and turns the frame into a texture. */
+    /**
+     * Draws the cube of a block off screen and turns the frame into a texture.
+     * <p>
+     * Drawing into a frame leaves the viewport of the window behind - the frame is drawn through its own
+     * and libGDX sets the window back to its whole size afterwards, not to the one the interface asks for.
+     * The interface is drawn through a viewport of its own, so a bake that moved it would take the whole
+     * interface off the screen; that is why the viewport is read before and put back after, whatever
+     * happens in between.
+     */
     private TextureRegion bake(Block block) {
+        Gdx.gl.glGetIntegerv(GL20.GL_VIEWPORT, viewport);
         try {
             frame.begin();
             try {
@@ -149,10 +169,13 @@ public class BlockIconRenderer implements Disposable {
                 frame.end();
             }
         } catch (RuntimeException e) {
-            // A driver that cannot draw off screen costs the folded tile and not the game.
-            LOGGER.error("Unable to draw the icon of block '{}'", block.name(), e);
+            // A driver that cannot draw off screen costs the folded tile and not the game, and the same
+            // block is never drawn again: a failure would otherwise be reported once per slot per frame.
+            failed.add(block.id());
+            LOGGER.warn("Unable to draw the icon of block '{}', it keeps its folded tile", block.name(), e);
             return null;
         } finally {
+            Gdx.gl.glViewport(viewport.get(0), viewport.get(1), viewport.get(2), viewport.get(3));
             // The interface draws with blending and without depth, which is the state it is given back.
             Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
             Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -180,10 +203,17 @@ public class BlockIconRenderer implements Disposable {
      * the reader is asked to turn the rows around; without that every icon would be drawn upside down.
      */
     private TextureRegion read() {
+        // The rows come turned around from the reader, so the picture starts at its upper left corner
+        // where a frame keeps its lower one.
         byte[] pixels = ScreenUtils.getFrameBufferPixels(0, 0, SIZE, SIZE, true);
         Pixmap icon = new Pixmap(SIZE, SIZE, Pixmap.Format.RGBA8888);
         try {
-            icon.setPixels(ByteBuffer.wrap(pixels).order(ByteOrder.nativeOrder()));
+            // A picture is filled through the buffer it owns: the reader of a frame can only write into
+            // a direct buffer, and a copy that lives in the heap is refused.
+            ByteBuffer target = icon.getPixels();
+            target.clear();
+            target.put(pixels);
+            target.position(0);
             Texture texture = new Texture(icon);
             texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
             textures.add(texture);
