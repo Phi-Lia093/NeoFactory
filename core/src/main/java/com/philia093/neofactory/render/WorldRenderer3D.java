@@ -7,8 +7,12 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
+import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.entity.Entity;
+import com.philia093.neofactory.entity.ItemEntity;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.Section;
@@ -44,6 +48,12 @@ public class WorldRenderer3D implements Disposable {
     /** Frame drawn around the cell an action would touch, owned by this renderer. */
     private final ShapeRenderer frame = new ShapeRenderer();
 
+    /** Little cubes the items on the ground are drawn as, one per kind of block. */
+    private final ItemCubeMeshes itemCubes;
+
+    /** Reused matrix placing one item cube, so a frame does not fill the heap with matrices. */
+    private final Matrix4 model = new Matrix4();
+
     private int drawnSections;
     private int drawnMeshes;
 
@@ -58,6 +68,7 @@ public class WorldRenderer3D implements Disposable {
         this.cache = cache;
         this.shader = shader;
         this.pictures = pictures;
+        this.itemCubes = new ItemCubeMeshes(pictures);
     }
 
     /**
@@ -95,7 +106,47 @@ public class WorldRenderer3D implements Disposable {
                 }
             }
         }
+        renderItems(world);
         shader.end();
+    }
+
+    /**
+     * Draws the items lying on the ground as small cubes of their block.
+     * <p>
+     * An item has to be seen to be picked up, and a world of cubes is read by its shapes, so an item is
+     * drawn as the block it stands for rather than as a flat picture. The cube is meshed once per kind of
+     * block and placed by a model matrix, see {@link ItemCubeMeshes}, so a pile of a hundred stones costs
+     * one mesh and one draw per item.
+     * <p>
+     * An item that is not a block - a material, a tool - has no cube to show and is skipped; the game has
+     * no picture for it yet, see the class comment of {@link ItemCubeMeshes}.
+     *
+     * @param world world whose entities are drawn
+     */
+    private void renderItems(World world) {
+        for (Entity entity : world.entities().all()) {
+            if (!(entity instanceof ItemEntity)) {
+                continue;
+            }
+            ItemEntity item = (ItemEntity) entity;
+            if (item.stack().isEmpty()) {
+                continue;
+            }
+            Block block = item.stack().item().block();
+            if (block == null) {
+                continue;
+            }
+            float half = ItemCubeMeshes.SIZE * 0.5f;
+            model.idt()
+                    .translate(entity.position().x - half,
+                            entity.position().y + ItemCubeMeshes.SIZE * 0.25f,
+                            entity.position().z - half)
+                    .scale(ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE);
+            for (Mesh mesh : itemCubes.cubeOf(block)) {
+                shader.render(mesh, model);
+                drawnMeshes++;
+            }
+        }
     }
 
     /** Sections drawn by the most recent frame, which is what the status line reports. */
@@ -170,6 +221,7 @@ public class WorldRenderer3D implements Disposable {
         shader.dispose();
         pictures.dispose();
         frame.dispose();
+        itemCubes.dispose();
     }
 
     @Override

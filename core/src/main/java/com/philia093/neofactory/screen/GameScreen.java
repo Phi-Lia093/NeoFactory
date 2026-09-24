@@ -896,7 +896,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         } else {
             applyWheel(zoomSteps);
             applyZoomDemand(delta);
-            player.setSpeedScale(zoom);
+            player.setSpeedScale(cubeRenderer == null ? zoom : Constants.BLOCK_SIZE);
             if (inputHandler.isJumpDown()) {
                 player.jump();
             }

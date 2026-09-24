@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Disposable;
 
 /**
@@ -45,6 +46,7 @@ public class BlockShader implements Disposable {
             in vec4 a_color;
 
             uniform mat4 u_projViewTrans;
+            uniform mat4 u_modelTrans;
             uniform vec3 u_cameraPosition;
             uniform float u_fogStart;
             uniform float u_fogEnd;
@@ -58,9 +60,12 @@ public class BlockShader implements Disposable {
                 v_texCoords = a_texCoords;
                 v_layer = a_layer;
                 v_color = a_color;
-                float distance = length(a_position - u_cameraPosition);
+                // A mesh of a section already stands where it belongs, so its model matrix is the one
+                // that changes nothing; a mesh of an item or a body is moved and scaled by this one.
+                vec4 world = u_modelTrans * vec4(a_position, 1.0);
+                float distance = length(world.xyz - u_cameraPosition);
                 v_fog = clamp((distance - u_fogStart) / max(u_fogEnd - u_fogStart, 1.0), 0.0, 1.0);
-                gl_Position = u_projViewTrans * vec4(a_position, 1.0);
+                gl_Position = u_projViewTrans * vec4(world.xyz, 1.0);
             }
             """;
 
@@ -87,6 +92,9 @@ public class BlockShader implements Disposable {
 
     private final ShaderProgram program = new ShaderProgram(VERTEX_SHADER, FRAGMENT_SHADER);
 
+    /** Model matrix that moves nothing, the one a mesh of a section is drawn with. */
+    private static final Matrix4 NO_MOVE = new Matrix4();
+
     /** Texture unit the array of pictures is bound to. */
     private static final int TEXTURE_UNIT = 0;
 
@@ -110,6 +118,7 @@ public class BlockShader implements Disposable {
             float fogEnd) {
         program.bind();
         program.setUniformMatrix("u_projViewTrans", camera.combined);
+        program.setUniformMatrix("u_modelTrans", NO_MOVE);
         program.setUniformf("u_cameraPosition", camera.position);
         program.setUniformf("u_fogColor", fogColor.r, fogColor.g, fogColor.b);
         program.setUniformf("u_fogStart", fogStart);
@@ -124,6 +133,21 @@ public class BlockShader implements Disposable {
      * @param mesh mesh to draw
      */
     public void render(Mesh mesh) {
+        render(mesh, NO_MOVE);
+    }
+
+    /**
+     * Draws one mesh at a place and size of its own.
+     * <p>
+     * A mesh of a section already stands where it belongs and is drawn with the matrix that moves
+     * nothing; this is what a mesh of an item or of a body is drawn with, because the same little cube
+     * is used for every item of a kind and only its place in the world differs.
+     *
+     * @param mesh mesh to draw
+     * @param model matrix placing it in the world
+     */
+    public void render(Mesh mesh, Matrix4 model) {
+        program.setUniformMatrix("u_modelTrans", model);
         mesh.render(program, GL20.GL_TRIANGLES);
     }
 

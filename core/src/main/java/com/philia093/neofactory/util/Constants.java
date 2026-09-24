@@ -85,11 +85,13 @@ public final class Constants {
     /**
      * Player walking speed in blocks per second at zoom level one.
      * <p>
-     * The movement code multiplies this value by {@link #TILE_SIZE} to get world
-     * units and by the current camera zoom, so the player keeps feeling equally
-     * fast no matter how far the camera is zoomed out.
+     * The number is the pace of the original game, which is what a body that stands in the world feels
+     * right with: fast enough to cross a field, slow enough to look around while walking. The movement
+     * code multiplies it by {@link #BLOCK_SIZE}, the size of a block of the world, and by the speed scale
+     * the screen sets - which the flat view uses to keep the player feeling equally fast at any zoom and
+     * which a view from inside the body leaves at one.
      */
-    public static final float PLAYER_SPEED = 12.0f;
+    public static final float PLAYER_SPEED = 4.3f;
 
     /**
      * Height of the eyes of the player in blocks.
@@ -123,7 +125,7 @@ public final class Constants {
      * where it is: this factor is what turns that movement into a turn of the view, and it is the one
      * number a player would ask to change if the view felt too fast or too slow.
      */
-    public static final float MOUSE_SENSITIVITY = 0.15f;
+    public static final float MOUSE_SENSITIVITY = 0.08f;
 
     /** Highest angle the view may look up or down, in degrees, just short of straight up. */
     public static final float PITCH_LIMIT = 89.0f;
