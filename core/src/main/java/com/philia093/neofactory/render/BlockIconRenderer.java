@@ -17,12 +17,10 @@ import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.IntMap;
 import com.badlogic.gdx.utils.IntSet;
-import com.badlogic.gdx.utils.ScreenUtils;
 import com.philia093.neofactory.block.Block;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 /**
@@ -83,11 +81,16 @@ public class BlockIconRenderer implements Disposable {
     /** Cube of every kind of block, meshed the way a lying item is, see {@link ItemCubeMeshes}. */
     private final ItemCubeMeshes cubes;
 
-    /** Frame the cube is drawn into, as large as an icon. */
-    private final FrameBuffer frame;
+    /**
+     * Frames the icons were drawn into, one per icon.
+     * <p>
+     * A frame keeps the drawing itself and the icon is the picture of that frame, so every icon owns the
+     * frame it was drawn in: the drawing is never read back to the game.
+     */
+    private final Array<FrameBuffer> frames = new Array<>();
 
     /** Camera of the icon, looking at the middle of the cube from a corner above it. */
-    private final PerspectiveCamera camera = new PerspectiveCamera(FIELD_OF_VIEW, SIZE, SIZE);
+    private final PerspectiveCamera camera;
 
     /** Moves the cube to the middle of the frame, because a cube is meshed from the origin. */
     private final Matrix4 model = new Matrix4();
@@ -101,11 +104,50 @@ public class BlockIconRenderer implements Disposable {
     /** Viewport the window was drawn through before a frame took over, put back after every bake. */
     private final IntBuffer viewport = BufferUtils.newIntBuffer(4);
 
-    /** Textures behind {@link #icons}, released by {@link #dispose()}. */
-    private final Array<Texture> textures = new Array<>();
+    /**
+     * The camera an icon is drawn through.
+     * <p>
+     * It is built apart from the renderer because it is the whole look of an icon: where the cube of a
+     * block lands in its frame and how much of the frame it fills follow from these numbers alone, and
+     * {@link #reportAim()} writes the result down when a renderer is made.
+     *
+     * @return a camera looking at the middle of a cube from a corner above it
+     */
+    static PerspectiveCamera iconCamera() {
+        PerspectiveCamera camera = new PerspectiveCamera(FIELD_OF_VIEW, SIZE, SIZE);
+        camera.position.set(DIRECTION).scl(DISTANCE);
+        camera.lookAt(0f, 0f, 0f);
+        camera.near = DISTANCE - 1f;
+        camera.far = DISTANCE + 1f;
+        camera.update();
+        return camera;
+    }
 
     /**
-     * Creates a renderer and the frame an icon is drawn into.
+     * Writes down where the middle of a cube lands in the frame of an icon.
+     * <p>
+     * Where an icon lands cannot be checked by a test, because the frame it is drawn into needs a graphics
+     * card; it is checked by running the game, and this line is what makes that check possible: the middle
+     * of the cube of every icon is dead ahead of the camera, so it has to land in the middle of the frame -
+     * around {@code (0, 0)}, where {@code (-1, -1)} is the lower left corner of the frame and {@code (1, 1)}
+     * its upper right one. A middle that lands anywhere else says the aim of the camera is wrong; a middle
+     * that lands there says the drawing into the frame is what to look at.
+     */
+    private void reportAim() {
+        float[] combined = camera.combined.val;
+        float depth = combined[15];
+        if (depth == 0f) {
+            LOGGER.warn("The camera of a block icon has no depth, the middle of its cube is nowhere");
+            return;
+        }
+        LOGGER.info("A block icon is seen from {} through a field of view of {} over a distance of {} of a "
+                        + "frame; the middle of the cube lands at ({}, {})",
+                camera.position, camera.fieldOfView, DISTANCE,
+                combined[12] / depth, combined[13] / depth);
+    }
+
+    /**
+     * Creates a renderer and the camera an icon is drawn through.
      *
      * @param shader program the world is drawn with, used for the same look
      * @param pictures pictures of the world the block is drawn from
@@ -114,15 +156,11 @@ public class BlockIconRenderer implements Disposable {
         this.shader = shader;
         this.pictures = pictures;
         this.cubes = new ItemCubeMeshes(pictures);
-        this.frame = new FrameBuffer(Pixmap.Format.RGBA8888, SIZE, SIZE, true);
+        this.camera = iconCamera();
         float half = ItemCubeMeshes.SIZE * 0.5f;
         this.model.idt().translate(-half, -half, -half)
                 .scale(ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE);
-        this.camera.position.set(DIRECTION).scl(DISTANCE);
-        this.camera.lookAt(0f, 0f, 0f);
-        this.camera.near = DISTANCE - 1f;
-        this.camera.far = DISTANCE + 1f;
-        this.camera.update();
+        reportAim();
     }
 
     /**
@@ -139,10 +177,13 @@ public class BlockIconRenderer implements Disposable {
         if (failed.contains(block.id())) {
             return null;
         }
-        TextureRegion drawn = bake(block);
+        FrameBuffer frame = new FrameBuffer(Pixmap.Format.RGBA8888, SIZE, SIZE, true);
+        TextureRegion drawn = bake(block, frame);
         if (drawn == null) {
+            frame.dispose();
             return null;
         }
+        frames.add(frame);
         icons.put(block.id(), drawn);
         return drawn;
     }
@@ -156,15 +197,15 @@ public class BlockIconRenderer implements Disposable {
      * interface off the screen; that is why the viewport is read before and put back after, whatever
      * happens in between.
      */
-    private TextureRegion bake(Block block) {
+    private TextureRegion bake(Block block, FrameBuffer frame) {
         Gdx.gl.glGetIntegerv(GL20.GL_VIEWPORT, viewport);
         try {
             frame.begin();
             try {
                 draw(block);
-                // The frame has to be read while it is still the bound one, because reading reads the
-                // frame that is bound - the screen itself as soon as this one is let go.
-                return read();
+                // What the frame holds is the icon: the drawing stays where it is drawn and is handed to
+                // the interface as the picture of the frame, without a trip over the pixels.
+                return pictureOf(frame);
             } finally {
                 frame.end();
             }
@@ -187,6 +228,7 @@ public class BlockIconRenderer implements Disposable {
         Gdx.gl.glClearColor(NO_COLOUR.r, NO_COLOUR.g, NO_COLOUR.b, NO_COLOUR.a);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
+        Gdx.gl.glDepthMask(true);
         Gdx.gl.glDisable(GL20.GL_BLEND);
         Gdx.gl.glDisable(GL20.GL_CULL_FACE);
         shader.begin(camera, pictures, NO_FOG, FOG_START, FOG_END);
@@ -197,41 +239,31 @@ public class BlockIconRenderer implements Disposable {
     }
 
     /**
-     * Reads the frame and turns it into a texture the size of an icon.
+     * The picture of what was drawn into a frame, ready for the interface.
      * <p>
-     * A frame is read from its lower left corner while a row of a picture starts at its upper left one, so
-     * the reader is asked to turn the rows around; without that every icon would be drawn upside down.
+     * A frame is counted from its lower left corner the way the card counts, while the interface draws a
+     * picture from its upper left corner: the rows of this region are turned around once, so that the top
+     * of the cube is the top of the icon.
+     *
+     * @param frame frame holding the drawing of one icon
+     * @return the picture of that frame
      */
-    private TextureRegion read() {
-        // The rows come turned around from the reader, so the picture starts at its upper left corner
-        // where a frame keeps its lower one.
-        byte[] pixels = ScreenUtils.getFrameBufferPixels(0, 0, SIZE, SIZE, true);
-        Pixmap icon = new Pixmap(SIZE, SIZE, Pixmap.Format.RGBA8888);
-        try {
-            // A picture is filled through the buffer it owns: the reader of a frame can only write into
-            // a direct buffer, and a copy that lives in the heap is refused.
-            ByteBuffer target = icon.getPixels();
-            target.clear();
-            target.put(pixels);
-            target.position(0);
-            Texture texture = new Texture(icon);
-            texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-            textures.add(texture);
-            return new TextureRegion(texture);
-        } finally {
-            icon.dispose();
-        }
+    private static TextureRegion pictureOf(FrameBuffer frame) {
+        Texture texture = frame.getColorBufferTexture();
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        TextureRegion picture = new TextureRegion(texture);
+        picture.flip(false, true);
+        return picture;
     }
 
     @Override
     public void dispose() {
-        for (Texture texture : textures) {
-            texture.dispose();
+        for (FrameBuffer frame : frames) {
+            frame.dispose();
         }
-        textures.clear();
+        frames.clear();
         icons.clear();
         cubes.dispose();
-        frame.dispose();
     }
 
     @Override
