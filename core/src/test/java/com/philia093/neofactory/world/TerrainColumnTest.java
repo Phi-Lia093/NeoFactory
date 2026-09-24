@@ -4,10 +4,14 @@ import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.render.MeshData;
+import com.philia093.neofactory.render.SectionMesher;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Constants;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -127,5 +131,23 @@ class TerrainColumnTest {
         assertTrue(ground.isSolid() && !ground.isLiquid(),
                 "a new world has to start a player on solid ground: " + ground);
         assertEquals(world.surfaceY(x, z), player.blockY(), "with the feet on top of that ground");
+    }
+
+    @Test
+    void theLowestSectionOfAWorldCanBeMeshed() {
+        World world = new World(SEED);
+        Chunk chunk = world.loadChunk(0, 0);
+        Section section = chunk.section(0);
+        int originY = Constants.MIN_Y;
+        SectionMesher.Blocks blocks = (x, y, z) -> world.peekBlock(chunk.originX() + x, originY + y,
+                chunk.originZ() + z);
+
+        List<MeshData> meshes = SectionMesher.build(section, chunk.originX(), originY, chunk.originZ(),
+                blocks, picture -> 0);
+
+        // The bottom section holds the bedrock and the stone of the columns, so it has faces to draw - and
+        // building it reads the cell under its lowest blocks, which lies outside the world. That read used
+        // to stop the game the moment a world was drawn from the bottom up, see World#outsideTheWorld.
+        assertFalse(meshes.isEmpty(), "the lowest section of the world has faces to draw");
     }
 }

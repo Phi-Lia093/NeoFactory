@@ -397,8 +397,27 @@ public final class World implements BlockAccess {
 
     @Override
     public Block getBlock(int x, int y, int z) {
+        if (outsideTheWorld(y)) {
+            // There is nothing outside the world, and a reader that asks anyway - a mesh looking under
+            // the lowest block of a section, a body at the very bottom - is told so instead of stopped.
+            return Blocks.AIR;
+        }
         Chunk chunk = preparedChunk(x, z);
         return chunk.getBlock(Chunk.localOf(x), y, Chunk.localOf(z));
+    }
+
+    /**
+     * {@code true} when a height lies outside the world.
+     * <p>
+     * The world is a column of sections from {@link Constants#MIN_Y} to {@link Constants#MAX_Y}; every
+     * reader of a block asks about a neighbour of one it already has, so one cell beyond either end is a
+     * question that has to be answered rather than refused.
+     *
+     * @param y block Y coordinate, the height
+     * @return {@code true} when nothing can stand at that height
+     */
+    public static boolean outsideTheWorld(int y) {
+        return y < Constants.MIN_Y || y > Constants.MAX_Y;
     }
 
     @Override
@@ -437,6 +456,11 @@ public final class World implements BlockAccess {
      * @return the stored block, {@link Blocks#AIR} when the chunk is not loaded
      */
     public Block peekBlock(int x, int y, int z) {
+        if (outsideTheWorld(y)) {
+            // The mesh of the lowest section looks under its own blocks, see SectionMeshCache: outside the
+            // world there is nothing, which is air and not an error.
+            return Blocks.AIR;
+        }
         Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
         if (chunk == null) {
             return Blocks.AIR;
@@ -446,6 +470,10 @@ public final class World implements BlockAccess {
 
     @Override
     public int getState(int x, int y, int z) {
+        if (outsideTheWorld(y)) {
+            // Nothing stands outside the world, so nothing carries a state there either.
+            return 0;
+        }
         Chunk chunk = preparedChunk(x, z);
         return chunk.state(Chunk.localOf(x), y, Chunk.localOf(z));
     }
@@ -485,6 +513,9 @@ public final class World implements BlockAccess {
      * @return the stored state, {@code 0} when the chunk is not loaded
      */
     public int peekState(int x, int y, int z) {
+        if (outsideTheWorld(y)) {
+            return 0;
+        }
         Chunk chunk = chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
         if (chunk == null) {
             return 0;
