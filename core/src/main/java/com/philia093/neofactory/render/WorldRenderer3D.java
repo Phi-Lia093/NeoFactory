@@ -1,14 +1,19 @@
 package com.philia093.neofactory.render;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.Section;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.BlockTarget;
 
 /**
  * Draws the world as cubes, seen through a camera that stands in it.
@@ -35,6 +40,9 @@ public class WorldRenderer3D implements Disposable {
     private final SectionMeshCache cache;
     private final BlockShader shader;
     private final BlockPictures pictures;
+
+    /** Frame drawn around the cell an action would touch, owned by this renderer. */
+    private final ShapeRenderer frame = new ShapeRenderer();
 
     private int drawnSections;
     private int drawnMeshes;
@@ -95,6 +103,57 @@ public class WorldRenderer3D implements Disposable {
         return drawnSections;
     }
 
+    /**
+     * Draws the frame around the cell an action would touch.
+     * <p>
+     * The frame is the twelve edges of the cell, drawn a hair outside the block so its lines are not
+     * swallowed by the block they surround, and it is drawn after the world with the depth test still on,
+     * so a wall in front of it hides it the way it hides the block itself. It is drawn in black with a
+     * little transparency: a black line reads on a floor of any colour, which is the same reason the flat
+     * view drew a black frame.
+     *
+     * @param camera camera the world is seen through
+     * @param target cell to frame, {@code null} draws nothing
+     */
+    public void renderSelection(Camera camera, BlockTarget target) {
+        if (target == null) {
+            return;
+        }
+        float grow = 0.002f;
+        float minX = target.x() - grow;
+        float minY = target.y() - grow;
+        float minZ = target.z() - grow;
+        float maxX = target.x() + 1.0f + grow;
+        float maxY = target.y() + 1.0f + grow;
+        float maxZ = target.z() + 1.0f + grow;
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        Gdx.gl.glLineWidth(2.0f);
+        frame.setProjectionMatrix(camera.combined);
+        frame.begin(ShapeRenderer.ShapeType.Line);
+        frame.setColor(0.0f, 0.0f, 0.0f, 0.75f);
+
+        frame.line(minX, minY, minZ, maxX, minY, minZ);
+        frame.line(maxX, minY, minZ, maxX, minY, maxZ);
+        frame.line(maxX, minY, maxZ, minX, minY, maxZ);
+        frame.line(minX, minY, maxZ, minX, minY, minZ);
+
+        frame.line(minX, maxY, minZ, maxX, maxY, minZ);
+        frame.line(maxX, maxY, minZ, maxX, maxY, maxZ);
+        frame.line(maxX, maxY, maxZ, minX, maxY, maxZ);
+        frame.line(minX, maxY, maxZ, minX, maxY, minZ);
+
+        frame.line(minX, minY, minZ, minX, maxY, minZ);
+        frame.line(maxX, minY, minZ, maxX, maxY, minZ);
+        frame.line(maxX, minY, maxZ, maxX, maxY, maxZ);
+        frame.line(minX, minY, maxZ, minX, maxY, maxZ);
+
+        frame.end();
+        Gdx.gl.glLineWidth(1.0f);
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
     /** Meshes drawn by the most recent frame. */
     public int drawnMeshCount() {
         return drawnMeshes;
@@ -110,6 +169,7 @@ public class WorldRenderer3D implements Disposable {
         cache.dispose();
         shader.dispose();
         pictures.dispose();
+        frame.dispose();
     }
 
     @Override

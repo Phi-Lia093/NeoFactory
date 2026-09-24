@@ -54,12 +54,19 @@ public class SectionMeshCache implements Disposable {
         if (meshes != null && !section.isDirty()) {
             return meshes;
         }
+        boolean changed = section.isDirty();
         if (meshes != null) {
             dispose(meshes);
         }
         Array<Mesh> fresh = build(world, chunk, sectionY, section);
         built.put(key, fresh);
-        forgetNeighbours(chunk, sectionY);
+        if (changed) {
+            // Only a section whose blocks really changed reaches into its neighbours, see the class
+            // comment. A section that was merely missing has nothing to tell them - and telling them
+            // would make every rebuild drop twenty six more meshes, which is a cascade that remeshes the
+            // whole loaded world again and again.
+            forgetNeighbours(chunk, sectionY);
+        }
         return fresh;
     }
 

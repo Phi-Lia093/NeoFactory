@@ -98,6 +98,22 @@ public final class Constants {
      * world is put this far above the feet - a little under the top of the body, the way a person is
      * built.
      */
+    /**
+     * Pull of the world on a body, in blocks per second squared.
+     * <p>
+     * A body that steps off a ledge falls, and this number tells how fast. It is a little under the one
+     * the original game uses, which keeps a fall feeling the same without a jump that overshoots.
+     */
+    public static final float GRAVITY = 28.0f;
+
+    /**
+     * Speed a jump leaves the ground with, in blocks per second.
+     * <p>
+     * With {@link #GRAVITY} this lifts the body a little over one block, which is exactly what a step of
+     * one block asks for, see {@code Player#jump()}.
+     */
+    public static final float JUMP_SPEED = 8.4f;
+
     public static final float PLAYER_EYE_HEIGHT = 1.62f;
 
     /**

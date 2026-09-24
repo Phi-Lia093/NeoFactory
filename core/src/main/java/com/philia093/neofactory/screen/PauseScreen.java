@@ -3,6 +3,7 @@ package com.philia093.neofactory.screen;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.Gdx;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.gui.MenuLayout;
 import com.philia093.neofactory.gui.widget.ButtonWidget;
@@ -73,6 +74,9 @@ public class PauseScreen extends WidgetScreen {
     public void show() {
         super.show();
         status.setText("");
+        // A captured pointer belongs to the world being played: the menu has buttons to click, so the
+        // pointer is handed back here as well as when the world hands it over, see GameScreen#hide.
+        Gdx.input.setCursorCatched(false);
     }
 
     /** Returns to the running world. */

@@ -359,6 +359,15 @@ public class InputHandler extends InputAdapter {
     }
 
     /**
+     * {@code true} while the key that pushes the body off the ground is held.
+     *
+     * @return {@code true} while the space bar is down
+     */
+    public boolean isJumpDown() {
+        return Gdx.input.isKeyPressed(Input.Keys.SPACE);
+    }
+
+    /**
      * {@code true} while the mouse button that breaks blocks is held.
      * <p>
      * Breaking repeats as long as the button stays down, so the state is read

@@ -53,6 +53,9 @@ public class Player extends Entity {
     /** Pitch of the view in degrees, see {@link #pitch()}. */
     private float pitch;
 
+    /** {@code true} while the feet stand on a block, see {@link #jump()}. */
+    private boolean onGround;
+
     /** Walking direction requested by the keyboard, normalized or zero. */
     private final Vector2 moveInput = new Vector2();
 
@@ -313,20 +316,74 @@ public class Player extends Entity {
     @Override
     public void update(World world, float delta) {
         float speed = Constants.PLAYER_SPEED * Constants.BLOCK_SIZE * speedScale;
-        if (moveInput.isZero()) {
-            velocity.setZero();
-            return;
-        }
         // The keyboard asks for a walk in the frame of the view: forward is where the player looks and
-        // right is the right hand of that view, so turning the mouse turns the walk with it. The
-        // direction of a yaw is (-sin, 0, cos) and its right hand is (-cos, 0, sin), see #yaw().
+        // right is the right hand of that view. The direction of a yaw is (-sin, 0, cos) and its right
+        // hand is up x direction = (cos, 0, sin), see #yaw(), so turning the pointer turns the walk.
         float sin = MathUtils.sinDeg(yaw);
         float cos = MathUtils.cosDeg(yaw);
         float forward = moveInput.y;
         float sideways = moveInput.x;
-        velocity.set((-forward * sin - sideways * cos) * speed, 0.0f,
-                (forward * cos + sideways * sin) * speed);
-        moveWithCollision(world, velocity.x * delta, velocity.z * delta);
+        velocity.x = (sideways * cos - forward * sin) * speed;
+        velocity.z = (forward * cos + sideways * sin) * speed;
+
+        // The world pulls the body towards the ground and a jump pushes it away from it, see #jump().
+        velocity.y -= Constants.GRAVITY * delta;
+        if (moveInput.isZero()) {
+            velocity.x = 0.0f;
+            velocity.z = 0.0f;
+        } else {
+            moveWithCollision(world, velocity.x * delta, velocity.z * delta);
+        }
+        moveVertically(world, velocity.y * delta);
+    }
+
+    /**
+     * Pushes the body off the ground.
+     * <p>
+     * A jump is only possible while the body stands on something: a player who jumps in the air is
+     * asking for a second jump, which the world does not have.
+     */
+    public void jump() {
+        if (!onGround) {
+            return;
+        }
+        velocity.y = Constants.JUMP_SPEED;
+        onGround = false;
+    }
+
+    /** {@code true} while the body stands on a block, see {@link #jump()}. */
+    public boolean isOnGround() {
+        return onGround;
+    }
+
+    /**
+     * Moves the body up or down and lets it land.
+     * <p>
+     * A fall ends where the feet meet the top of a block, and the body is put back on that top instead
+     * of into it: a body that is drawn into a block can never be moved out of it again, because every
+     * step it takes still overlaps the block.
+     *
+     * @param world world used for collision tests
+     * @param stepY requested movement along the height
+     */
+    private void moveVertically(World world, float stepY) {
+        float candidateY = position.y + stepY;
+        if (!collides(world, position.x, candidateY, position.z)) {
+            onGround = false;
+            position.y = candidateY;
+            return;
+        }
+        velocity.y = 0.0f;
+        if (stepY > 0.0f) {
+            return;
+        }
+        // The feet come to rest on the block that stopped the fall.
+        position.y = MathUtils.floor(candidateY) + 1.0f;
+        while (collides(world, position.x, position.y, position.z)
+                && position.y <= Constants.MAX_Y) {
+            position.y += 1.0f;
+        }
+        onGround = true;
     }
 
     /**
@@ -373,14 +430,27 @@ public class Player extends Entity {
      * @return {@code true} when the box overlaps at least one solid cell
      */
     public boolean collides(World world, float centerX, float centerZ) {
+        return collides(world, centerX, position.y, centerZ);
+    }
+
+    /**
+     * Tests the box of the player against the solid cells of the world at a height of its own.
+     *
+     * @param world world to test against
+     * @param centerX candidate world X coordinate of the player center
+     * @param centerY candidate world Y coordinate of the feet of the player
+     * @param centerZ candidate world Z coordinate of the player center
+     * @return {@code true} when the box overlaps at least one solid cell
+     */
+    public boolean collides(World world, float centerX, float centerY, float centerZ) {
         float half = Constants.PLAYER_HITBOX * 0.5f;
         float height = Constants.PLAYER_HEIGHT;
         int minX = MathUtils.floor(centerX - half);
         int maxX = MathUtils.floor(centerX + half - SKIN_WIDTH);
         int minZ = MathUtils.floor(centerZ - half);
         int maxZ = MathUtils.floor(centerZ + half - SKIN_WIDTH);
-        int minY = MathUtils.floor(position.y);
-        int maxY = MathUtils.floor(position.y + height - SKIN_WIDTH);
+        int minY = MathUtils.floor(centerY);
+        int maxY = MathUtils.floor(centerY + height - SKIN_WIDTH);
 
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {

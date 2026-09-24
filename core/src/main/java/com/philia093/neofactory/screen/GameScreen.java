@@ -128,6 +128,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private static final Color SKY =
             new Color(Constants.SKY_RED, Constants.SKY_GREEN, Constants.SKY_BLUE, 1.0f);
 
+    /** Distance of the line that reports how fast the game runs from the upper left corner. */
+    private static final float PERFORMANCE_MARGIN = 3.0f;
+
+    /** Frames counted since the last second was up. */
+    private int framesThisSecond;
+
+    /** Seconds counted since the last time the frame rate was worked out. */
+    private float fpsSeconds;
+
+    /** Frames the last second held, what the status line reports. */
+    private int frameRate;
+
     private final OrthographicCamera camera;
     private final ExtendViewport worldViewport;
     private final SpriteBatch batch;
@@ -618,6 +630,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             batch.end();
         }
 
+        countFrames(delta);
         renderInterface(delta);
 
         logDebugStatistics();
@@ -647,6 +660,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         cubeRenderer.render(world, cubeCamera, SKY);
+        cubeRenderer.renderSelection(cubeCamera, target);
         Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
     }
 
@@ -661,6 +675,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     public void renderFrozen(float delta) {
         clearScreen();
+        countFrames(delta);
 
         // The camera of the flat view follows the player here as well, so the pointer keeps deciding
         // where the player looks while the pause menu is up, see GameScreen#render.
@@ -721,11 +736,59 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
+        drawPerformance();
         batch.end();
         batch.setColor(Color.WHITE);
 
         stage.act(delta);
         stage.draw();
+    }
+
+    /**
+     * Counts a frame and works out how many the last second held.
+     * <p>
+     * A line that changes once a second is readable where a number that jumps every frame is not; the
+     * same counter keeps the line cheap, because the frame rate is worked out once per second and not
+     * once per frame.
+     *
+     * @param delta time since the last frame in seconds
+     */
+    private void countFrames(float delta) {
+        framesThisSecond++;
+        fpsSeconds += delta;
+        if (fpsSeconds >= 1.0f) {
+            frameRate = Math.round(framesThisSecond / fpsSeconds);
+            framesThisSecond = 0;
+            fpsSeconds = 0.0f;
+        }
+    }
+
+    /**
+     * Writes how fast the game runs and how much of the world is being drawn.
+     * <p>
+     * The frame rate alone says that something is slow and not what, so the line carries the number of
+     * chunks in memory, the sections the cube renderer drew, the meshes it sent and the sections whose
+     * meshes it holds: a frame rate that drops while the number of meshes jumps is a mesher that is
+     * running again and again, and one that drops while the sections stay still is the drawing itself.
+     * <p>
+     * The caller has to have begun the batch of the interface.
+     */
+    private void drawPerformance() {
+        PixelFont font = game.font();
+        font.setColor(Color.WHITE);
+        font.drawShadowed(batch, performanceText(), PERFORMANCE_MARGIN,
+                uiViewport.getWorldHeight() - PERFORMANCE_MARGIN);
+    }
+
+    /** The line {@link #drawPerformance()} writes. */
+    private String performanceText() {
+        if (cubeRenderer == null) {
+            return "FPS " + frameRate + " | flat | chunks " + world.chunkCount();
+        }
+        return "FPS " + frameRate + " | chunks " + world.chunkCount()
+                + " | sections " + cubeRenderer.drawnSectionCount()
+                + " | meshes " + cubeRenderer.drawnMeshCount()
+                + " | cached " + cubeRenderer.cachedSectionCount();
     }
 
     @Override
@@ -734,6 +797,27 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         worldViewport.update(width, height, false);
         streamChunks(true);
         centerCameraOnPlayer();
+    }
+
+    /**
+     * Lets the pointer go while the world is not the screen in front.
+     * <p>
+     * A captured pointer never leaves the window and does not name a place on screen, so a menu that
+     * opened on top of the world could not be clicked at all. The world hands the pointer over here and
+     * asks for it again while it is played, see {@code GameScreen#handleInputAndUpdate}.
+     */
+    @Override
+    public void hide() {
+        Gdx.input.setCursorCatched(false);
+        inputHandler.setLookCaptured(false);
+        super.hide();
+    }
+
+    @Override
+    public void pause() {
+        Gdx.input.setCursorCatched(false);
+        inputHandler.setLookCaptured(false);
+        super.pause();
     }
 
     @Override
@@ -813,6 +897,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             applyWheel(zoomSteps);
             applyZoomDemand(delta);
             player.setSpeedScale(zoom);
+            if (inputHandler.isJumpDown()) {
+                player.jump();
+            }
             updateInteraction(delta);
         }
         world.entities().update(world, delta, player.blockX(), player.blockZ());
