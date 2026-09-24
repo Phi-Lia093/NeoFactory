@@ -17,6 +17,7 @@ import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.IntMap;
 import com.badlogic.gdx.utils.IntSet;
+import com.badlogic.gdx.utils.ScreenUtils;
 import com.philia093.neofactory.block.Block;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,8 +33,8 @@ import java.nio.IntBuffer;
  * off screen and keeps the picture of it, and what a player sees in the hand and in a slot is the very
  * block that stands in the world, seen from a corner above.
  * <p>
- * The cube is drawn once per kind of block into a frame of its own and the pixels of that frame become a
- * texture, so a slot costs the drawing of a picture and no work at all after the first time. The camera
+ * The cube is drawn once per kind of block into a frame of its own, and the icon is the picture of that
+ * frame: a slot costs the drawing of a picture and no work at all after the first time. The camera
  * looks at the cube from {@link #DIRECTION} with a narrow field of view, which is the flat look of a
  * block item rather than the wide look of a room.
  * <p>
@@ -74,6 +75,8 @@ public class BlockIconRenderer implements Disposable {
     /** Colour the frame is cleared to before the cube is drawn: nothing at all. */
     private static final Color NO_COLOUR = new Color(0f, 0f, 0f, 0f);
 
+    /** Transparency a pixel of an icon has to reach to count as solid, out of {@code 255}. */
+    private static final int SOLID_ALPHA = 250;
 
     private final BlockShader shader;
     private final BlockPictures pictures;
@@ -203,8 +206,11 @@ public class BlockIconRenderer implements Disposable {
             frame.begin();
             try {
                 draw(block);
+                if (!reachedTheFrame(block)) {
+                    return null;
+                }
                 // What the frame holds is the icon: the drawing stays where it is drawn and is handed to
-                // the interface as the picture of the frame, without a trip over the pixels.
+                // the interface as the picture of the frame.
                 return pictureOf(frame);
             } finally {
                 frame.end();
@@ -236,6 +242,50 @@ public class BlockIconRenderer implements Disposable {
             shader.render(mesh, model);
         }
         shader.end();
+    }
+
+    /**
+     * Checks what the cube of a block put into the frame, and reports it.
+     * <p>
+     * A frame that stays empty, or one that is filled with nothing but see-through pixels, is an icon that
+     * cannot be seen - and where an icon will look is one of the few things of this game that no test can
+     * check, because the frame it is drawn into needs a graphics card. So every icon reports itself once,
+     * when it is drawn, and a block whose drawing did not arrive keeps the tile it used to be folded from
+     * instead of leaving an empty slot behind: a slot with an old icon in it is a look to report, a slot
+     * with nothing in it is a player who cannot tell what they carry.
+     * <p>
+     * The count is taken while the frame is still the bound one, because reading reads the frame that is
+     * bound.
+     *
+     * @param block block that was drawn
+     * @return {@code true} when the frame holds solid pixels, which is what an icon needs
+     */
+    private static boolean reachedTheFrame(Block block) {
+        byte[] pixels = ScreenUtils.getFrameBufferPixels(0, 0, SIZE, SIZE, false);
+        int covered = 0;
+        int solid = 0;
+        for (int at = 3; at < pixels.length; at += 4) {
+            int alpha = pixels[at] & 0xFF;
+            if (alpha > 0) {
+                covered++;
+            }
+            if (alpha >= SOLID_ALPHA) {
+                solid++;
+            }
+        }
+        LOGGER.info("The icon of '{}' covers {} of the {} pixels of its frame, {} of them solid",
+                block.name(), covered, SIZE * SIZE, solid);
+        if (covered == 0) {
+            LOGGER.warn("The cube of '{}' never reached the frame of its icon, so the frame is empty; the "
+                    + "block keeps its folded tile", block.name());
+            return false;
+        }
+        if (solid == 0) {
+            LOGGER.warn("Every pixel the cube of '{}' reached its frame with is see-through, so the icon "
+                    + "would be invisible; the block keeps its folded tile", block.name());
+            return false;
+        }
+        return true;
     }
 
     /**
