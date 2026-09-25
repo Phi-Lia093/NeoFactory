@@ -125,7 +125,11 @@ public class SectionMeshCache implements Disposable {
         int originZ = chunk.originZ();
         SectionMesher.Blocks blocks =
                 (x, y, z) -> world.peekBlock(originX + x, originY + y, originZ + z);
-        List<MeshData> data = SectionMesher.build(section, originX, originY, originZ, blocks,
+        // The state of a cell is what selects the model it is drawn with - the direction a furnace
+        // looks in - so a change of a state has to reach the mesher as well, see World#setState.
+        SectionMesher.States states =
+                (x, y, z) -> world.peekState(originX + x, originY + y, originZ + z);
+        List<MeshData> data = SectionMesher.build(section, originX, originY, originZ, blocks, states,
                 pictures::layer);
         section.clearDirty();
 

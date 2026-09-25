@@ -1,0 +1,5 @@
+{
+  "parent": "template_cube_all",
+  "textures": { "all": "leaves_oak" },
+  "tint": true
+}

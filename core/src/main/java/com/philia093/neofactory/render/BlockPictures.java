@@ -43,7 +43,7 @@ public class BlockPictures implements Disposable {
      * <p>
      * The arm is no block, so it does not live in the folder of the blocks: it is a region of the skin of
      * a body, cut to the shape of a layer like every other picture, see {@link #ARM_REGION} and
-     * {@link FirstPersonHand}.
+     * {@link HumanoidRenderer}.
      */
     public static final String HAND = "entity/hand";
 
@@ -75,22 +75,30 @@ public class BlockPictures implements Disposable {
     public void build() {
         Array<String> names = new Array<>();
         for (Block block : BlockRegistry.all()) {
-            for (BlockFace face : BlockFace.ALL) {
-                collect(block.faces().face(face), names);
-                collect(block.faces().overlay(face), names);
+            // Every face of every box of the model is a picture of its own, overlays included: the
+            // grass keeps the layer of its biome colour in the array beside the side it lies on.
+            for (String picture : block.model().pictures()) {
+                collect(picture, names);
             }
             collect(block.texture(), names);
         }
-        // The pictures of the items travel with them: a tool or a material has no cube, so the hand of a
-        // view holds it as a flat card of its own picture, see FirstPersonHand. Which folder that picture
-        // lives in is decided by the file system - the picture of an item is its own one below items/, and
-        // the picture of a block item is the picture of that block, which is collected above - so both
-        // names are offered and the one without a file is skipped, see collect(String, Array).
+        // The pictures of the items travel with them: a tool or a material has no cube and is not drawn in
+        // the world at all, so its picture is the only art it has, and the array carries it beside the
+        // pictures of the blocks. Which folder that picture lives in is decided by the file system - the
+        // picture of an item is its own one below items/, and the picture of a block item is the picture of
+        // that block, which is collected above - so both names are offered and the one without a file is
+        // skipped, see collect(String, Array).
         for (Item item : ItemRegistry.all()) {
             if (!item.texture().isEmpty()) {
                 collect(item.texture(), names);
                 collect(ITEMS_FOLDER + item.texture(), names);
             }
+        }
+        // The faces of a body are cut out of the skin that draws it, one picture per face of every
+        // bone: the arm of a view and the body of a player are drawn from the very faces the skin
+        // holds, see SkinRegions and HumanoidModel.
+        for (String face : SkinRegions.names()) {
+            collect(face, names);
         }
         // The arm of the player is a picture of its own: a view from inside a body shows the arm of that
         // body, and the body picture travels with the art of the entities.
@@ -101,15 +109,39 @@ public class BlockPictures implements Disposable {
         }
 
         layerCount = names.size;
+        int bodyFaces = 0;
+        int bodyFacesWithPixels = 0;
         handle = Gdx.gl30.glGenTexture();
         Gdx.gl30.glBindTexture(GL30.GL_TEXTURE_2D_ARRAY, handle);
         Gdx.gl30.glTexImage3D(GL30.GL_TEXTURE_2D_ARRAY, 0, GL30.GL_RGBA, TILE, TILE, layerCount, 0,
                 GL30.GL_RGBA, GL30.GL_UNSIGNED_BYTE, null);
         for (int layer = 0; layer < layerCount; layer++) {
-            Pixmap picture = load(names.get(layer));
+            String name = names.get(layer);
+            Pixmap picture = load(name);
+            if (SkinRegions.isSkinFace(name)) {
+                bodyFaces++;
+                int opaque = countOpaque(picture);
+                if (opaque > 0) {
+                    bodyFacesWithPixels++;
+                    if (bodyFaces <= 3) {
+                        LOGGER.info("The face {} lies in layer {} and holds {} of {} pixels", name,
+                                layer, opaque, TILE * TILE);
+                    }
+                } else {
+                    LOGGER.warn("The face {} lies in layer {} and holds no pixel at all, a body "
+                            + "drawn from it is never seen", name, layer);
+                }
+            }
             Gdx.gl30.glTexSubImage3D(GL30.GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, TILE, TILE, 1,
                     GL30.GL_RGBA, GL30.GL_UNSIGNED_BYTE, picture.getPixels());
             picture.dispose();
+        }
+        if (bodyFaces > 0) {
+            LOGGER.info("{} of {} faces of a body carry pixels", bodyFacesWithPixels, bodyFaces);
+            if (bodyFacesWithPixels < bodyFaces) {
+                LOGGER.warn("The skin {} holds fewer pixels than a body needs, see SkinRegions",
+                        SKIN);
+            }
         }
         // Pixel art: one texel of a picture is one pixel of a block, so nothing is interpolated.
         Gdx.gl30.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL30.GL_TEXTURE_MIN_FILTER, GL30.GL_NEAREST);
@@ -186,6 +218,9 @@ public class BlockPictures implements Disposable {
         if (HAND.equals(picture)) {
             return Gdx.files.internal(SKIN).exists();
         }
+        if (SkinRegions.isSkinFace(picture)) {
+            return Gdx.files.internal(SKIN).exists();
+        }
         return Gdx.files.internal(path(picture)).exists();
     }
 
@@ -213,16 +248,39 @@ public class BlockPictures implements Disposable {
         if (HAND.equals(name)) {
             return loadRegion(SKIN, ARM_REGION);
         }
+        if (SkinRegions.isSkinFace(name)) {
+            return loadSkinFace(name);
+        }
         // A picture with a folder of its own is read from there - the items live below items/ - and every
         // other name is a picture of a block, see FOLDER.
         Pixmap sheet = new Pixmap(Gdx.files.internal(path(name)));
         if (sheet.getWidth() == TILE && sheet.getHeight() == TILE) {
             return sheet;
         }
+        Pixmap picture = scaleToTile(sheet);
+        sheet.dispose();
+        return picture;
+    }
+
+    /**
+     * Copies a picture into a layer, scaled to the size of a layer, pixel by pixel.
+     * <p>
+     * A sheet that is more than one tile - a strip of animation frames, a picture of a body - is fitted
+     * into one layer here. The nearest neighbour is taken, which is what a picture of the art pack
+     * wants: it holds whole pixels and no blur.
+     *
+     * @param sheet picture to copy, larger than a layer
+     * @return the layer
+     */
+    private static Pixmap scaleToTile(Pixmap sheet) {
         Pixmap picture = new Pixmap(TILE, TILE, Pixmap.Format.RGBA8888);
         picture.setBlending(Pixmap.Blending.None);
-        picture.drawPixmap(sheet, 0, 0, 0, 0, TILE, TILE);
-        sheet.dispose();
+        for (int y = 0; y < TILE; y++) {
+            for (int x = 0; x < TILE; x++) {
+                picture.drawPixel(x, y, sheet.getPixel(x * sheet.getWidth() / TILE,
+                        y * sheet.getHeight() / TILE));
+            }
+        }
         return picture;
     }
 
@@ -235,11 +293,86 @@ public class BlockPictures implements Disposable {
      */
     private static Pixmap loadRegion(String file, int[] region) {
         Pixmap sheet = new Pixmap(Gdx.files.internal(file));
-        Pixmap picture = new Pixmap(TILE, TILE, Pixmap.Format.RGBA8888);
-        picture.setBlending(Pixmap.Blending.None);
-        picture.drawPixmap(sheet, region[0], region[1], 0, 0, region[2], region[3]);
+        Pixmap picture = cutRegion(sheet, region);
         sheet.dispose();
         return picture;
+    }
+
+    /**
+     * Copies one region of a sheet into a layer, pixel by pixel.
+     * <p>
+     * The pixels are read and written by their coordinates instead of through {@code drawPixmap}: that
+     * call of libGDX takes four numbers of a source and of a destination rectangle, and a rectangle
+     * asked for in the wrong order is a region of no size at all - a layer of nothing, and a face that
+     * is drawn and never seen. A loop of sixteen by sixteen pixels cannot be read the wrong way.
+     *
+     * @param sheet picture to cut from
+     * @param region X, Y, width and height of the part to cut out, in pixels
+     * @return the layer, the region in its upper left corner and the rest empty
+     */
+    private static Pixmap cutRegion(Pixmap sheet, int[] region) {
+        Pixmap picture = new Pixmap(TILE, TILE, Pixmap.Format.RGBA8888);
+        picture.setBlending(Pixmap.Blending.None);
+        for (int y = 0; y < region[3]; y++) {
+            for (int x = 0; x < region[2]; x++) {
+                picture.drawPixel(x, y, sheet.getPixel(region[0] + x, region[1] + y));
+            }
+        }
+        return picture;
+    }
+
+    /** Amount of pixels of a picture that are not fully transparent. */
+    private static int countOpaque(Pixmap picture) {
+        int opaque = 0;
+        for (int y = 0; y < picture.getHeight(); y++) {
+            for (int x = 0; x < picture.getWidth(); x++) {
+                if (((picture.getPixel(x, y) >>> 24) & 0xFF) >= MIN_VISIBLE_ALPHA) {
+                    opaque++;
+                }
+            }
+        }
+        return opaque;
+    }
+
+    /** Alpha below which a texel is thrown away by the shader, see {@code BlockShader}. */
+    private static final int MIN_VISIBLE_ALPHA = 26;
+
+    /**
+     * Cuts one face of a body out of its skin.
+     * <p>
+     * The face is copied into its layer pixel by pixel and is <b>not</b> stretched: one pixel of the
+     * skin is one pixel of a block, which is the density the original game draws a body at. A face of
+     * four pixels across therefore covers four of the sixteen pixels along the arm it belongs to, and
+     * the model of the body names the window inside the layer that does it, see
+     * {@link HumanoidModel}. The rest of the layer stays empty, which costs nothing and keeps every
+     * picture of the array the same size.
+     *
+     * @param name name of a face of a body, see {@link SkinRegions#name(String, BlockFace)}
+     * @return the pixels of one layer of the array
+     */
+    private static Pixmap loadSkinFace(String name) {
+        String rest = name.substring(SkinRegions.PREFIX.length() + 1);
+        for (SkinRegions.Bone bone : SkinRegions.bones()) {
+            BlockFace face = faceOf(rest, bone);
+            if (face == null) {
+                continue;
+            }
+            return loadRegion(SKIN, SkinRegions.rect(bone.name(), face));
+        }
+        throw new IllegalArgumentException("The skin holds no face called '" + name + "'");
+    }
+
+    /** The face a name behind the name of a bone stands for, {@code null} when it belongs elsewhere. */
+    private static BlockFace faceOf(String rest, SkinRegions.Bone bone) {
+        String prefix = bone.name() + "_";
+        if (!rest.startsWith(prefix)) {
+            return null;
+        }
+        BlockFace face = BlockFace.byName(rest.substring(prefix.length()));
+        if (face == null) {
+            throw new IllegalArgumentException("'" + rest + "' is no face of the bone " + bone.name());
+        }
+        return face;
     }
 
     @Override

@@ -136,6 +136,9 @@ public class InputHandler extends InputAdapter {
     /** Key that raises the amount of chunks kept around the player. */
     private static final int KEY_VIEW_DISTANCE_UP = Input.Keys.RIGHT_BRACKET;
 
+    /** Key that switches between the view from inside the body and the view of it from behind. */
+    private static final int KEY_VIEW = Input.Keys.F5;
+
     /** Reused vector holding the unprojected mouse position. */
     private final Vector3 cursor = new Vector3();
 
@@ -162,6 +165,9 @@ public class InputHandler extends InputAdapter {
 
     /** View distance step requested by a key, cleared by the consumer. */
     private int viewDistanceStep;
+
+    /** Set when the view key was pressed, cleared by the consumer. */
+    private boolean viewToggle;
 
     /**
      * Reads the current input state and applies it to the player.
@@ -227,6 +233,10 @@ public class InputHandler extends InputAdapter {
         }
         if (keycode == KEY_VIEW_DISTANCE_UP) {
             viewDistanceStep = 1;
+            return true;
+        }
+        if (keycode == KEY_VIEW) {
+            viewToggle = true;
             return true;
         }
         return false;
@@ -328,6 +338,21 @@ public class InputHandler extends InputAdapter {
     public boolean consumePauseToggle() {
         boolean requested = pauseToggle;
         pauseToggle = false;
+        return requested;
+    }
+
+    /**
+     * Returns and clears the view request, if the key was pressed.
+     * <p>
+     * The view of a world is either the one from inside the body - the arm in the lower right of the
+     * picture and the world seen through the eyes - or the one of the body from behind, which is what
+     * lets a player see themselves, see {@code GameScreen#renderEntities()}.
+     *
+     * @return {@code true} when the view should be switched
+     */
+    public boolean consumeViewToggle() {
+        boolean requested = viewToggle;
+        viewToggle = false;
         return requested;
     }
 

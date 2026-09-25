@@ -1,0 +1,9 @@
+{
+  "parent": "template_cube_bottom_top_overlay",
+  "textures": {
+    "top": "grass_top",
+    "bottom": "dirt",
+    "side": "grass_side",
+    "side_overlay": "grass_side_overlay"
+  }
+}

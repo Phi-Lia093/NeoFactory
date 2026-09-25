@@ -50,6 +50,20 @@ stored on disk so that a session can be continued later.
   will be built from, and a test builds a reactor of that shape out of the same pieces.
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
+- **Shapes and states** - a block is not one picture but a shape, and the skin of its faces lives in
+  `assets/models/block`: a model names the picture of every face of every box, a template is written
+  once and inherited, and a second layer is drawn over a face where the colour of a biome belongs
+  (the side of the grass is its own picture with the layer of the green above it). What a state of a
+  block shows is a file of `assets/blockstates` as well: a furnace looks in one of four directions
+  and its model is turned by a quarter turn per direction, a plant is two crossed planes, and both
+  the shapes and the states are read once while the game starts. A block without a model file is the
+  whole cube of its picture, so an older world still draws every block it holds, and a file that
+  cannot be read is reported and skipped like a recipe.
+- **The player is a body of boxes** - the head, the body, two arms and two legs the skin of
+  `assets/entity/steve.png` draws, cut per face and hung on joints: an arm swings from the shoulder,
+  a leg from the hip, a hit throws the right arm forward and the head follows the view. A view from
+  inside the body shows the arm of that very body with the item it holds in its hand; `F5` steps back
+  and shows the whole figure, which is where the walk of the limbs is visible.
 - **Chat and commands** - one input line at the lower left for messages and for
   commands: a line behind a slash is a command (`/help`, `/give`, `/tp`, `/seed`,
   `/gamemode`), anything else is a chat message. The recent conversation stays visible
@@ -105,6 +119,7 @@ stored on disk so that a session can be continued later.
 | left mouse button | break the block the eyes meet while held; a click on the hotbar selects that slot |
 | `1` to `9` | select a hotbar slot |
 | `[` / `]` | keep fewer / more chunks around the player |
+| `F5` | switch between the view from inside the body and the view of it from behind |
 | mouse outside the panel | throw the carried stack into the world while a container is open; a stack put into the creative grid disappears instead |
 | `E` | open and close the inventory; while the world is played in creative mode it opens the creative inventory instead |
 | typing in the search box | filter the creative inventory by name, `BACKSPACE` deletes a character; while the box has the keyboard a letter belongs into it, so `E` and `T` type instead of opening a screen, and only `ESCAPE` and the function keys still reach the game |
@@ -124,7 +139,7 @@ stored on disk so that a session can be continued later.
 | Package | Contents |
 | --- | --- |
 | `fluid` | what a fluid is: the kinds, the colour a tank and a cell paint it in, and the containers that carry it |
-| `block` | block types, the six faces of a cube and the picture each face is drawn from, and the id/name lookup table, ids are stable across save games |
+| `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
@@ -204,29 +219,33 @@ writes a picture of itself into `core/build/reports`.
 
 ## Art
 
-The camera looks straight down so far, so a block was drawn as a single tile and only its
-top face was kept: `gradlew :core:test` writes the list of spare pictures - art nothing
-references yet, kept for later systems - to `core/build/reports/texture-audit.txt`. The
-same test fails when a block or an item points at a picture that is not there, and since
-the world grew its third axis it fails the other way round as well: every face of a block
-that is more than one picture has to be present, see the paragraph below.
+The world is seen from every side, so a block is drawn from a model: `assets/models/block` names the
+picture of every face of every box of a block, `assets/blockstates` says which model a state shows and
+how it is turned, and `gradlew :core:test` writes the shape every block is drawn with to
+`core/build/reports/model-audit.txt`. The same test fails when a block names a picture that is not
+there, and the audit of the art - `core/build/reports/texture-audit.txt` - fails when a block or an
+item points at a file nobody has, and lists the spare pictures: the art nothing references yet and
+that is kept for the systems to come.
 
-In a slot a block item does not show that tile as a flat square: the game folds it
-into a small cube at run time, see `BlockIconFactory`. The two side faces the view
-meets are derived from the tile itself - its edge pulled into the depth and darkened
-with every step - so no side picture is needed and none is kept. The cube is folded at
-four times the cell that shows it and drawn with a smooth filter, so the steps along
-its slanted edges are four pixels wide instead of sixteen and the graphics card turns
-them into soft edges; `BlockIconFactory#downscale` is the same arithmetic for a preview
-that cannot lean on the graphics card. Tall grass and
-leaves keep their flat picture, they do not fill a cell. `gradlew :core:test` writes
-a sheet that shows the result to `core/build/reports/block-icons-preview.png`, with a
-few blocks enlarged in `block-icons-detail.png`.
+In a slot a block item does not show a tile as a flat square: the game folds it into a small cube at
+run time, see `BlockIconFactory`. The two side faces the view meets are derived from the tile itself
+- its edge pulled into the depth and darkened with every step - so no side picture is needed and none
+is kept. The cube is folded at four times the cell that shows it and drawn with a smooth filter, so
+the steps along its slanted edges are four pixels wide instead of sixteen and the graphics card turns
+them into soft edges; `BlockIconFactory#downscale` is the same arithmetic for a preview that cannot
+lean on the graphics card. Tall grass and leaves keep their flat picture, they do not fill a cell.
+`gradlew :core:test` writes a sheet that shows the result to
+`core/build/reports/block-icons-preview.png`, with a few blocks enlarged in `block-icons-detail.png`.
 
-The arm of the first-person view is cut out of the body picture `assets/entity/steve.png`: the region of
-the skin that carries the arm becomes one layer of the texture array, see `BlockPictures`, and
-`HandMeshes` meshes the box of four by four by twelve pixels that shows it while `HandPose` says where it
-hangs. A skin that is packed differently fails the test that reads that region back out of the file.
+The body of a player is cut out of the skin `assets/entity/steve.png`: `SkinRegions` holds the region
+of the skin each face of each bone is drawn from - the arithmetic is the one the original game
+unwraps a box with, so a face cannot end up on the wrong side of a head - and `HumanoidModel` hangs
+the boxes on their joints. `Bone` meshes a box with the window of its own face, `HumanoidPose` turns
+the bones for a step, a hit and a look, and `HumanoidRenderer` draws the whole figure where the body
+stands or, in the frame of the eye, the block the hand holds. **A view draws neither a bare arm nor a
+tool**: a block is held as its cube, and a hand that holds anything else shows nothing, because a thing of
+one picture belongs to the interface, which draws it as its icon. A skin that is packed differently fails
+the test that reads those regions back out of the file, see `HumanoidModelTest`.
 
 Water and lava are the fluids of the game, and neither has a picture of its own any more: a fluid is
 a name and a colour, see `Fluids`. The colour is what a tank of a machine and the window of a cell

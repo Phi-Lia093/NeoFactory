@@ -2,6 +2,10 @@ package com.philia093.neofactory.support;
 
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.block.model.ModelLoader;
+import com.philia093.neofactory.block.model.ModelRegistry;
+import com.philia093.neofactory.block.state.BlockStateLoader;
+import com.philia093.neofactory.block.state.BlockStateRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.entity.EntityRegistry;
@@ -10,6 +14,8 @@ import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
 
+import java.nio.file.Path;
+
 /**
  * Registers the game data the tests work with.
  * <p>
@@ -17,8 +23,15 @@ import com.philia093.neofactory.item.Items;
  * exactly like the game does, because chunks only store ids and the readers resolve
  * them through the registries. Registering happens once per JVM: both registries
  * refuse a second entry and freeze themselves afterwards.
+ * <p>
+ * The models and the states of the blocks are read from the assets, which is what a test of the
+ * mesher or of the pictures of the world needs; the files are read with plain file access, because a
+ * test runs without a window and without the libGDX file system.
  */
 public final class TestRegistries {
+
+    /** Root of the assets, the tests run inside the core module. */
+    public static final Path ASSETS = Path.of("..", "assets");
 
     private static boolean ready;
 
@@ -44,6 +57,13 @@ public final class TestRegistries {
         ItemRegistry.freeze();
         EntityRegistry.freeze();
         BlockEntityRegistry.freeze();
+        // The shape of a block and the states it may take live in the assets, so a test that meshes a
+        // section or looks at a picture of the world reads them the way the game does.
+        ModelLoader.loadAllFrom(ASSETS);
+        ModelRegistry.freeze();
+        BlockStateLoader.loadAllFrom(ASSETS);
+        BlockStateRegistry.freeze();
         ready = true;
     }
 }
+

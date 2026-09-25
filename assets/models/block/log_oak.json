@@ -1,0 +1,4 @@
+{
+  "parent": "template_cube_column",
+  "textures": { "side": "log_oak", "end": "log_oak_top" }
+}

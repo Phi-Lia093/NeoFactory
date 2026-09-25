@@ -163,13 +163,10 @@ public final class Blocks {
 
         // grass_top.png is a grey scale sheet in the style of Minecraft, the biome
         // colour is applied at draw time through the tint.
+        // The picture of the top is what a slot and a hand show; the six faces of the block are
+        // written down in models/block/grass.json, the layer of the biome colour included.
         GRASS = Block.builder(GRASS_ID, "grass")
                 .texture("grass_top")
-                .faces(FaceSet.builder()
-                        .all("grass_side")
-                        .top("grass_top")
-                        .bottom("dirt")
-                        .build())
                 .ground(true)
                 .tint(new Color(0.60f, 0.80f, 0.36f, 1.0f))
                 .hardness(0.6f)
@@ -199,13 +196,11 @@ public final class Blocks {
 
         // Seen from above an oak trunk shows its growth rings, which makes the
         // center of a tree clearly distinguishable from its leaves.
+        // The bark name is what a slot shows; the rings of the ends live in
+        // models/block/log_oak.json, which keeps the top of a trunk clearly distinguishable
+        // from its leaves.
         LOG_OAK = Block.builder(LOG_OAK_ID, "log_oak")
                 .texture("log_oak_top")
-                .faces(FaceSet.builder()
-                        .all("log_oak")
-                        .top("log_oak_top")
-                        .bottom("log_oak_top")
-                        .build())
                 .solid(true)
                 .hardness(2.0f)
                 .build();

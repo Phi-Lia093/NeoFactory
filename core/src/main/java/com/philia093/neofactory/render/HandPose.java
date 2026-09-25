@@ -8,7 +8,7 @@ import com.badlogic.gdx.math.MathUtils;
  * The hand is part of the view, not of the world: it hangs in front of the eye to the lower right, it
  * sways with every step and it is thrown into the picture when the player hits something. All of that
  * is one small record of a place and an angle, which the renderer turns into a matrix - see
- * {@link FirstPersonHand} - and which a test reads back without a window.
+ * {@link HumanoidRenderer} - and which a test reads back without a window.
  * <p>
  * <b>The swing curve.</b> A swing runs from {@code 0} to {@code 1}; the hand is at its rest at both
  * ends and reaches furthest into the picture in the middle, which is the one stroke the original game

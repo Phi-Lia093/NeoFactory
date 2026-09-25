@@ -1,0 +1,4 @@
+{
+  "parent": "template_cube_all",
+  "textures": { "all": "bedrock" }
+}

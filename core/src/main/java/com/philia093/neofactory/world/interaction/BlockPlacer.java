@@ -1,7 +1,10 @@
 package com.philia093.neofactory.world.interaction;
 
+import com.badlogic.gdx.math.Vector2;
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.block.state.BlockStateTable;
 import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityType;
@@ -12,6 +15,9 @@ import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Builds the held block into the world.
@@ -35,6 +41,15 @@ import org.apache.logging.log4j.Logger;
  * longer fits.
  */
 public final class BlockPlacer {
+
+    /**
+     * Name of the property that carries the direction a block looks in.
+     * <p>
+     * It is the one property the game reads while a block is built; the model a state selects and the
+     * way it is turned are written down in {@code assets/blockstates}, see
+     * {@link BlockStateTable}.
+     */
+    public static final String FACING = "facing";
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -104,10 +119,52 @@ public final class BlockPlacer {
             world.setBlock(cell.x(), cell.y(), cell.z(), Blocks.AIR);
             return false;
         }
+        world.setState(cell.x(), cell.y(), cell.z(), placedState(block, player));
 
         placeBlockEntity(world, cell, block);
         useOneItem(inventory, held);
         return true;
+    }
+
+    /**
+     * The state a block is built with.
+     * <p>
+     * A block that carries no state of its own is built with zero, which is the state every property
+     * at its first value. A block that does carry one is asked what it wants: the only property the
+     * game understands today is {@code facing}, the direction a block looks in, and it is turned
+     * towards the player who builds it - a furnace shows its mouth to the one who places it, the way
+     * a sign is turned when it is put up.
+     *
+     * @param block block that was built
+     * @param player player that built it
+     * @return the number of the state to store
+     */
+    private static int placedState(Block block, Player player) {
+        BlockStateTable table = block.states();
+        if (table == BlockStateTable.NONE || !table.hasProperty(FACING)) {
+            return table.defaultState();
+        }
+        BlockFace towards = towardsPlayer(player);
+        Map<String, String> state = new LinkedHashMap<>();
+        state.put(FACING, towards.toString());
+        return table.stateOf(state);
+    }
+
+    /**
+     * The direction a block looks in when a player builds it, which is the direction towards the
+     * player: a furnace shows its mouth to the one who places it, the way a sign is turned when it is
+     * put up.
+     *
+     * @param player player that built the block
+     * @return the horizontal direction from the block back to the player
+     */
+    private static BlockFace towardsPlayer(Player player) {
+        Vector2 look = player.facing();
+        if (Math.abs(look.x) >= Math.abs(look.y)) {
+            // A player who looks east stands west of the block, so the block looks west.
+            return look.x > 0.0f ? BlockFace.WEST : BlockFace.EAST;
+        }
+        return look.y > 0.0f ? BlockFace.NORTH : BlockFace.SOUTH;
     }
 
     /**

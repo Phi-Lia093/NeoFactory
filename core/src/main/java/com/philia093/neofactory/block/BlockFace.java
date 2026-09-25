@@ -202,8 +202,12 @@ public enum BlockFace {
 
     /**
      * The face a name stands for.
+     * <p>
+     * A model file names the faces the way the original game does, so {@code down} and {@code up} are
+     * accepted for the two faces that look along the vertical axis beside the names of the constant
+     * itself, see {@link #BOTTOM} and {@link #TOP}.
      *
-     * @param name name such as {@code "top"}, in any case
+     * @param name name such as {@code "top"} or {@code "down"}, in any case
      * @return the face, or {@code null} when no face is called that
      */
     public static BlockFace byName(String name) {
@@ -211,6 +215,12 @@ public enum BlockFace {
             return null;
         }
         String wanted = name.trim().toLowerCase(Locale.ROOT);
+        if ("down".equals(wanted)) {
+            return BOTTOM;
+        }
+        if ("up".equals(wanted)) {
+            return TOP;
+        }
         for (BlockFace face : ALL) {
             if (face.toString().equals(wanted)) {
                 return face;

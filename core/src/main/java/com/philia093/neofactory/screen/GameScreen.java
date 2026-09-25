@@ -22,6 +22,7 @@ import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.chat.ChatController;
 import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.chat.command.CommandContext;
+import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.chat.command.CommandRegistry;
 import com.philia093.neofactory.gui.ChatOverlay;
 import com.philia093.neofactory.gui.CreativeInventoryGui;
@@ -36,15 +37,12 @@ import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.render.BlockIconRenderer;
-import com.philia093.neofactory.render.FirstPersonHand;
+import com.philia093.neofactory.render.HumanoidRenderer;
 import com.philia093.neofactory.render.BlockPictures;
 import com.philia093.neofactory.render.BlockShader;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.EntityRendererRegistry;
-import com.philia093.neofactory.render.ItemEntityRenderer;
 import com.philia093.neofactory.render.PixelFont;
-import com.philia093.neofactory.render.PlayerRenderer;
-import com.philia093.neofactory.render.SelectionRenderer;
 import com.philia093.neofactory.render.SectionMeshCache;
 import com.philia093.neofactory.render.WorldRenderer3D;
 import com.philia093.neofactory.util.Constants;
@@ -88,8 +86,9 @@ import org.apache.logging.log4j.Logger;
  * <p>
  * An action never skips a layer: the ground below the feet can only be dug or filled
  * while the layer the player stands in is empty, and a block can only be built into
- * that layer while it has ground below. The colour of the frame tells which kind of
- * column the player aims at, see {@link SelectionRenderer}.
+ * that layer while it has ground below. The frame the renderer draws around the cell
+ * the view meets tells which kind of column the player aims at, see
+ * {@link com.philia093.neofactory.render.WorldRenderer3D#renderSelection}.
  * <p>
  * While the inventory is open the world keeps running, but the keyboard only drives
  * the interface and the player stands still.
@@ -118,6 +117,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
     /** Distance that camera sees, in blocks, which is also where the fog ends. */
     private static final float CUBE_VIEW_DISTANCE = 192.0f;
+
+    /** Share of the view distance the fog starts at, the same share the world renderer uses. */
+    private static final float FOG_START_SHARE = 0.55f;
+
+    /** Distance the view of the body from behind stands behind the eye of the body, in blocks. */
+    private static final float THIRD_PERSON_BACK = 4.5f;
+
+    /** Height the view of the body from behind stands above the eye of the body, in blocks. */
+    private static final float THIRD_PERSON_UP = 1.1f;
+
+    /** Distance the view from behind keeps from the eye, in blocks, when the terrain is in the way. */
+    private static final float THIRD_PERSON_CLOSEST = 1.2f;
 
     /** Distance behind the player that camera stands, in blocks. */
     private static final float CUBE_CAMERA_BACK = 6.0f;
@@ -177,8 +188,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final Player player;
     private final InputHandler inputHandler;
 
-    private final PlayerRenderer playerRenderer;
-
     /**
      * The world drawn as cubes.
      * <p>
@@ -196,20 +205,30 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final BlockIconRenderer blockIconRenderer;
 
     /**
-     * The arm of the player and the block it holds, {@code null} while the world cannot be drawn.
+     * The body of the player, drawn from the skin of the assets, {@code null} while the world cannot
+     * be drawn as cubes.
      * <p>
-     * A view from inside a body shows the hand of that body, see {@link FirstPersonHand}: it hangs in the
-     * lower right of the picture, it sways with every step and it is thrown forward when the player breaks
-     * or builds something.
+     * A view from inside a body shows what the hand of that body holds, see
+     * {@link HumanoidRenderer#renderHand}: a block sits in the lower right of the picture as its cube,
+     * swaying with every step and thrown into the picture when a block is broken or built. <b>A tool is not
+     * drawn in a hand</b>, and neither is the bare arm - an arm of boxes across the picture reads worse than
+     * no arm - so a hand that holds no block shows nothing. A view of the body from behind draws the whole
+     * figure, see {@link #renderEntities()}.
      */
-    private final FirstPersonHand hand;
+    private final HumanoidRenderer humanoid;
+
+    /**
+     * {@code true} while the world is seen from behind the player instead of through its eyes.
+     * <p>
+     * The key {@code F5} switches between the two, see {@link InputHandler#consumeViewToggle()}. A view
+     * from inside a body draws its arm and leaves the body out, so a player never looks at the inside
+     * of their own head; the view from behind draws the whole body and no arm.
+     */
+    private boolean thirdPerson;
 
 
     /** Reused direction of the view, so a frame does not fill the heap with vectors. */
     private final Vector3 lookDirection = new Vector3();
-
-    /** Draws an item that lies on the ground. */
-    private final ItemEntityRenderer itemEntityRenderer;
 
     /** Every renderer of the world, one per entity type. */
     private final EntityRendererRegistry entityRenderers = new EntityRendererRegistry();
@@ -251,9 +270,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * one place to read.
      */
     private final ChatLog chatLog = new ChatLog();
-
-    /** Frame drawn around the block the player aims at. */
-    private final SelectionRenderer selectionRenderer;
 
     /** Sink that receives the items of a broken block, see {@link ItemDrops}. */
     private final ItemDrops drops;
@@ -433,9 +449,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         this.player = preparePlayer(world, data, fresh);
         this.inputHandler = new InputHandler();
 
-        this.playerRenderer = new PlayerRenderer(batch, textures);
-        this.itemEntityRenderer = new ItemEntityRenderer(batch, textures);
-
         // The world is drawn as cubes wherever the driver holds a texture array, which is what the
         // launcher asks for: the pictures of every block become one array, the mesher turns a section
         // into the faces that are seen and the shader draws them through a camera that stands in the
@@ -455,7 +468,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.blockIconRenderer = new BlockIconRenderer(blockShader, pictures);
             blockIconRenderer.prime();
             textures.setBlockIconRenderer(blockIconRenderer);
-            this.hand = new FirstPersonHand(pictures, cubeRenderer.itemCubes());
+            this.humanoid = new HumanoidRenderer(pictures, cubeRenderer.itemCubes());
             LOGGER.info("The world is drawn as cubes, {} pictures in the array", pictures.layerCount());
         } else {
             this.pictures = null;
@@ -464,19 +477,28 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.cubeRenderer = null;
             this.cubeCamera = null;
             this.blockIconRenderer = null;
-            this.hand = null;
+            this.humanoid = null;
             LOGGER.warn("This driver holds no texture array, the world of cubes cannot be drawn");
         }
-        // The player is an entity like any other, so it is drawn by the same pass
-        // over the entity list; the marker renderer stays the thing that knows how.
-        entityRenderers.register(EntityTypes.PLAYER, entity -> playerRenderer.render((Player) entity));
-        entityRenderers.register(EntityTypes.ITEM, itemEntityRenderer);
+        // The player is an entity like any other, so it is drawn by the same pass over the entity
+        // list; the body of the player itself is left out while the view is the one from inside it,
+        // because a player must not look at the inside of their own head, see renderEntities().
+        entityRenderers.register(EntityTypes.PLAYER, entity -> {
+            Player body = (Player) entity;
+            if (body == player && !thirdPerson) {
+                return;
+            }
+            humanoid.renderBody(blockShader, body.position().x, body.position().y,
+                    body.position().z, body.yaw(),
+                    // The body of this screen carries the step and the hit of this screen; a world of
+                    // several players would give every one of them a pose of its own.
+                    humanoid.currentPose(0.0f, body.pitch()));
+        });
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
         this.creativeGui = new CreativeInventoryGui(textures, font, player.inventory(), uiViewport);
         // The screen of a machine is opened by using a machine, see #openMachine().
         this.machineGui = new MachineGui(textures, font, uiViewport);
-        this.selectionRenderer = new SelectionRenderer(batch, textures);
         // The chat is the only place a player types, and its commands work on this very
         // screen: it is its own command context. Handing "this" out while the
         // constructor still runs is safe here, because the chat only stores it and
@@ -679,9 +701,23 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         cubeCamera.viewportWidth = Gdx.graphics.getWidth();
         cubeCamera.viewportHeight = Gdx.graphics.getHeight();
         player.lookDirection(lookDirection);
-        cubeCamera.position.set(player.position().x,
-                player.position().y + Constants.PLAYER_EYE_HEIGHT, player.position().z);
-        cubeCamera.direction.set(lookDirection);
+        float eyeX = player.position().x;
+        float eyeY = player.position().y + Constants.PLAYER_EYE_HEIGHT;
+        float eyeZ = player.position().z;
+        if (thirdPerson) {
+            // The view from behind stands where the eye looks from, only further back and a little
+            // higher, and it looks at the eye of the body, which is what puts the figure in front of
+            // the camera instead of in it.
+            float back = thirdPersonDistance(eyeX, eyeY, eyeZ);
+            cubeCamera.position.set(eyeX, eyeY, eyeZ)
+                    .mulAdd(lookDirection, -back)
+                    .add(0.0f, THIRD_PERSON_UP, 0.0f);
+            cubeCamera.direction.set(eyeX - cubeCamera.position.x,
+                    eyeY - cubeCamera.position.y, eyeZ - cubeCamera.position.z).nor();
+        } else {
+            cubeCamera.position.set(eyeX, eyeY, eyeZ);
+            cubeCamera.direction.set(lookDirection);
+        }
         cubeCamera.up.set(0.0f, 1.0f, 0.0f);
         // The zoom of the view is the field of view of the camera: rolling the wheel in narrows what the
         // eye sees, which is what moving closer to the world looks like from inside a body.
@@ -693,25 +729,71 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         cubeRenderer.render(world, cubeCamera, SKY);
         cubeRenderer.renderSelection(cubeCamera, target);
+        renderEntities();
         renderHand();
         Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
     }
 
     /**
-     * Draws the arm of the player and the block it holds in front of the world.
+     * How far the view of the body from behind stands behind the eye.
      * <p>
-     * The hand is part of the view and not of the world: it is drawn with the field of view of a pair of
-     * eyes, so zooming the world in does not push the arm out of the picture, and the depth buffer is
-     * cleared before it is drawn, so nothing the world holds can cut into it.
+     * The distance is walked back from the eye and stops in front of the first block that hides what is
+     * behind it: a camera that stands inside the terrain shows the inside of a block instead of the
+     * player, which is what a fixed distance does in a valley, in a cave or under a tree.
+     *
+     * @param eyeX world X coordinate of the eye of the body
+     * @param eyeY world Y coordinate of the eye of the body
+     * @param eyeZ world Z coordinate of the eye of the body
+     * @return the distance to use, at least {@link #THIRD_PERSON_CLOSEST}
+     */
+    private float thirdPersonDistance(float eyeX, float eyeY, float eyeZ) {
+        for (float step = THIRD_PERSON_CLOSEST; step <= THIRD_PERSON_BACK; step += 0.5f) {
+            int x = MathUtils.floor(eyeX - lookDirection.x * step);
+            int y = MathUtils.floor(eyeY + THIRD_PERSON_UP - lookDirection.y * step);
+            int z = MathUtils.floor(eyeZ - lookDirection.z * step);
+            Block block = world.peekBlock(x, y, z);
+            if (!block.isAir() && !block.isTransparent()) {
+                return Math.max(THIRD_PERSON_CLOSEST, step - 0.5f);
+            }
+        }
+        return THIRD_PERSON_BACK;
+    }
+
+    /**
+     * Draws the bodies of the world: the player and, one day, every other living thing.
+     * <p>
+     * A body is drawn with the very shader and the very pictures the terrain is drawn with, so it fades
+     * into the sky like a block does and needs no pass of its own; the renderer of a body is registered
+     * per entity type, see {@link #entityRenderers}. The body the camera stands in is left out while the
+     * view is the one from inside it, see {@link #humanoid}.
+     */
+    private void renderEntities() {
+        if (cubeRenderer == null || humanoid == null || !humanoid.isReady()) {
+            return;
+        }
+        blockShader.begin(cubeCamera, pictures, SKY, cubeCamera.far * FOG_START_SHARE,
+                cubeCamera.far);
+        Gdx.gl.glEnable(GL20.GL_CULL_FACE);
+        entityRenderers.render(world.entities().all());
+        blockShader.end();
+    }
+
+    /**
+     * Draws what the hand of the player holds, in front of the world.
+     * <p>
+     * The item is part of the view and not of the world: it is drawn with the field of view of a pair of
+     * eyes, so zooming the world in does not push it out of the picture, and the depth buffer is cleared
+     * before it is drawn, so nothing the world holds can cut into it. A view of the body from behind draws
+     * no hand, because there the body itself carries the arm, see {@link #renderEntities()}.
      */
     private void renderHand() {
-        if (hand == null) {
+        if (humanoid == null || thirdPerson) {
             return;
         }
         Gdx.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
         cubeCamera.fieldOfView = CUBE_FIELD_OF_VIEW;
         cubeCamera.update();
-        hand.render(cubeCamera, blockShader, player.inventory().heldStack());
+        humanoid.renderHand(cubeCamera, blockShader, player.inventory().heldStack());
     }
 
     /**
@@ -763,6 +845,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     private void renderInterface(float delta) {
         uiViewport.apply();
+        // The interface is drawn with blending and without the depth test or the culling of the world's
+        // boxes, and the passes of the world leave those the way a block wants them. The state is <b>set up
+        // here</b> and never inherited: a pass before it that draws nothing - a hand that is empty draws no
+        // item at all - used to skip the one call that switched the culling back off, and the whole
+        // interface of the game, hotbar and panels alike, was culled away with it.
+        Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
+        Gdx.gl.glDisable(GL20.GL_CULL_FACE);
         updateInterfaceMouse();
         creativeGui.update(delta);
 
@@ -912,8 +1001,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             LOGGER.error("Unable to save the world while closing it", e);
         }
         batch.dispose();
-        if (hand != null) {
-            hand.dispose();
+        if (humanoid != null) {
+            humanoid.dispose();
         }
         if (blockIconRenderer != null) {
             // The icons are textures of this screen, and the cache that hands them out - which outlives
@@ -1078,17 +1167,17 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // BlockTargeting#selectInSight.
         target = BlockTargeting.selectInSight(world, player, player.lookDirection(lookDirection));
 
-        if (hand != null) {
+        if (humanoid != null) {
             // The hand sways with the steps of the body, which is what the speed over the ground says.
             boolean walking = Math.abs(player.velocity().x) + Math.abs(player.velocity().z) > 0.05f;
-            hand.update(delta, walking);
+            humanoid.update(delta, walking);
         }
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 inputHandler.isBreakingDown());
         if (broken) {
             LOGGER.info("Broke block ({}, {}, {})", target.x(), target.y(), target.z());
-            if (hand != null) {
-                hand.swing();
+            if (humanoid != null) {
+                humanoid.swing();
             }
         }
     }
@@ -1116,8 +1205,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (!BlockPlacer.place(world, player, target, player.inventory())) {
             return false;
         }
-        if (hand != null) {
-            hand.swing();
+        if (humanoid != null) {
+            humanoid.swing();
         }
         LOGGER.info("Built {} into block ({}, {}, {})", itemName, x, y, z);
         return true;
@@ -1147,6 +1236,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
     /** Applies the keys that belong to the interface instead of the world. */
     private void handleInterfaceKeys() {
+        if (inputHandler.consumeViewToggle()) {
+            // The view of a world is either the one from inside the body or the one of it from behind,
+            // see renderEntities: only the second shows a player themselves.
+            thirdPerson = !thirdPerson;
+            LOGGER.info("The view is now the one {}", thirdPerson
+                    ? "of the body from behind" : "from inside the body");
+        }
         if (inputHandler.consumeInventoryToggle()) {
             if (gameMode() == GameMode.CREATIVE) {
                 // In creative mode the inventory key opens the list of every item, see

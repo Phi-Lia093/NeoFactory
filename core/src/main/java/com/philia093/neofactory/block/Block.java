@@ -1,6 +1,10 @@
 package com.philia093.neofactory.block;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.block.model.BlockModel;
+import com.philia093.neofactory.block.model.ModelRegistry;
+import com.philia093.neofactory.block.state.BlockStateRegistry;
+import com.philia093.neofactory.block.state.BlockStateTable;
 
 import java.util.Objects;
 
@@ -31,7 +35,6 @@ public final class Block {
     private final int harvestLevel;
     private final String blockEntityTypeName;
     private final Animation animation;
-    private final FaceSet faces;
 
     private Block(Builder builder) {
         this.id = builder.id;
@@ -45,10 +48,6 @@ public final class Block {
         this.harvestLevel = builder.harvestLevel;
         this.blockEntityTypeName = builder.blockEntityTypeName;
         this.animation = builder.animation;
-        // A block that named no set of its own is one picture on every face, which is what most of the
-        // art pack is; a block the world never draws keeps an empty set, see FaceSet.NONE.
-        this.faces = builder.faces != null ? builder.faces
-                : (builder.texture.isEmpty() ? FaceSet.NONE : FaceSet.of(builder.texture));
     }
 
     /** Unique numeric id, also used as the palette index inside chunks. */
@@ -178,17 +177,46 @@ public final class Block {
     }
 
     /**
-     * The picture of every face of this block.
+     * The model of this block, which is the shape it is drawn with.
      * <p>
      * The flat engine drew a block as one picture seen from above, which is what {@link #texture()}
-     * still names. A world of cubes shows six faces, so the mesher asks this set instead: a block that
-     * named no set of its own shows one picture on every face, and a block that did - the grass, the
-     * log, the machine - keeps its top, its sides and its front apart, see {@link FaceSet}.
+     * still names. A world of cubes shows a shape: the grass its bright top over a side the colour of
+     * its biome is painted through, the log its bark around rings, the furnace the mouth of its
+     * front. The shape is read from {@code assets/models/block/<name>.json}, named after this block,
+     * and a block without such a file is the whole cube of its picture, see
+     * {@link com.philia093.neofactory.block.model.ModelRegistry#of(Block)}.
      *
-     * @return the set of pictures, never {@code null}, empty for a block that is never drawn
+     * @return the model, never {@code null}, the empty model for a block that is never drawn
      */
-    public FaceSet faces() {
-        return faces;
+    public BlockModel model() {
+        return ModelRegistry.of(this);
+    }
+
+    /**
+     * The states this block may take.
+     * <p>
+     * A state is a number a cell carries beside the id of its block, see
+     * {@link com.philia093.neofactory.world.Section#state(int, int, int)}: the direction a furnace
+     * looks in, the shape a pipe is drawn with. The table is read from
+     * {@code assets/blockstates/<name>.json} and knows what each number means; a block without such
+     * a file carries {@link BlockStateTable#NONE}, which answers with the state every property at
+     * its first value.
+     *
+     * @return the table, never {@code null}
+     */
+    public BlockStateTable states() {
+        return BlockStateRegistry.of(this);
+    }
+
+    /**
+     * What one state of this block shows.
+     *
+     * @param state number of the state, {@code 0} for a block that carries none
+     * @return the model and the quarter turns it is drawn with, see
+     *         {@link BlockStateRegistry#shown(Block, int)}
+     */
+    public BlockStateRegistry.Shown shown(int state) {
+        return BlockStateRegistry.shown(this, state);
     }
 
     /** {@code true} when this block has a texture that can be drawn. */
@@ -279,14 +307,22 @@ public final class Block {
         private int harvestLevel;
         private String blockEntityTypeName = "";
         private Animation animation;
-        private FaceSet faces;
 
         private Builder(int id, String name) {
             this.id = id;
             this.name = Objects.requireNonNull(name, "name");
         }
 
-        /** Sets the single texture used for this block. */
+        /**
+         * Sets the picture of this block.
+         * <p>
+         * The picture is drawn on every face of a block that names no model of its own, and it is
+         * the picture a slot and a hand show, see
+         * {@link com.philia093.neofactory.block.model.ModelRegistry#of(Block)}. The shape of a block
+         * that is more than one picture is written down in {@code assets/models/block}, not here.
+         *
+         * @param texture name relative to {@code blocks/} without extension
+         */
         public Builder texture(String texture) {
             this.texture = Objects.requireNonNull(texture, "texture");
             return this;
@@ -371,18 +407,6 @@ public final class Block {
          */
         public Builder animation(int frames, int frameTicks) {
             return animation(new Animation(frames, frameTicks));
-        }
-
-        /**
-         * Sets the picture of every face of this block.
-         * <p>
-         * A block that does not call this shows its one {@link #texture(String)} on all six faces.
-         *
-         * @param faces set of pictures, one per face
-         */
-        public Builder faces(FaceSet faces) {
-            this.faces = Objects.requireNonNull(faces, "faces");
-            return this;
         }
 
         public Block build() {

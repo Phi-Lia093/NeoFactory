@@ -6,6 +6,10 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.block.model.ModelLoader;
+import com.philia093.neofactory.block.model.ModelRegistry;
+import com.philia093.neofactory.block.state.BlockStateLoader;
+import com.philia093.neofactory.block.state.BlockStateRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.entity.EntityRegistry;
@@ -54,6 +58,15 @@ public class NeoFactoryGame extends Game {
         Blocks.registerAll();
         LOGGER.info("Registered {} block types, next free id is {}",
                 BlockRegistry.count(), Blocks.NEXT_FREE_ID);
+
+        // The shape of a block and the states it may take live in the assets: a model names the
+        // picture of every face of every box, and a blockstate names which of them a state shows,
+        // see ModelLoader and BlockStateLoader. Both are read once the blocks exist, because the
+        // table falls back to the picture of a block that names no file of its own.
+        ModelLoader.loadAll();
+        ModelRegistry.freeze();
+        BlockStateLoader.loadAll();
+        BlockStateRegistry.freeze();
 
         // A fluid owns the block it stands in the world with, so the table of the fluids is
         // written right after the blocks and hands them back to Blocks, see Fluids.

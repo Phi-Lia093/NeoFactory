@@ -155,7 +155,7 @@ public class WorldRenderer3D implements Disposable {
         return drawnSections;
     }
 
-    /** Cubes of the items, so the hand of a view can hold one, see {@link FirstPersonHand}. */
+    /** Cubes of the items, so the hand of a view can hold one, see {@link HumanoidRenderer}. */
     public ItemCubeMeshes itemCubes() {
         return itemCubes;
     }
