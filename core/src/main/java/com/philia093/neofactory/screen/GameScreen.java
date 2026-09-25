@@ -23,6 +23,7 @@ import com.philia093.neofactory.chat.ChatController;
 import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.chat.command.CommandContext;
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.chat.command.CommandRegistry;
 import com.philia093.neofactory.gui.ChatOverlay;
 import com.philia093.neofactory.gui.CreativeInventoryGui;
@@ -30,6 +31,7 @@ import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.gui.MachineGui;
 import com.philia093.neofactory.input.InputHandler;
+import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
@@ -54,6 +56,8 @@ import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
 import com.philia093.neofactory.world.interaction.BlockTargeting;
+import com.philia093.neofactory.world.interaction.FaceGrid;
+import com.philia093.neofactory.world.interaction.FaceOperable;
 import com.philia093.neofactory.world.interaction.GameModeMining;
 import com.philia093.neofactory.world.interaction.HardnessMining;
 import com.philia093.neofactory.world.interaction.MiningController;
@@ -280,6 +284,17 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
     /** Cell a break or a build would touch, {@code null} while nothing is aimed at. */
     private BlockTarget target;
+
+    /** Tool the player addresses the faces of a block with, {@link FaceTool#NONE} for none. */
+    private FaceTool faceTool = FaceTool.NONE;
+
+    /** Cell of the grid of faces under the mouse, {@code -1} while no grid is open. */
+    private int faceCell = NO_FACE_CELL;
+
+    /**
+     * Cell the mouse is not over, the value of {@link #faceCell} while no grid is open.
+     */
+    private static final int NO_FACE_CELL = -1;
 
     /**
      * Turns frames into ticks of the simulation.
@@ -746,6 +761,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glEnable(GL20.GL_CULL_FACE);
         cubeRenderer.render(world, cubeCamera, SKY);
         cubeRenderer.renderBreaking(cubeCamera, target, mining.progress(), SKY);
+        if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL) {
+            // The grid of faces stands between the cracks of a break and the frame of the cell, so the
+            // frame stays the outermost mark of what an action would touch.
+            cubeRenderer.renderFaceGrid(cubeCamera, target, viewerFacing(), faceCell);
+        }
         cubeRenderer.renderSelection(cubeCamera, target);
         renderEntities();
         renderHand();
@@ -1090,6 +1110,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             // and neither aims nor mines, so the interface stays in charge of the input.
             player.halt();
             target = null;
+            // Without a target there is no face to work on, so the grid closes with the interface.
+            world.clearFaceGrid();
+            faceCell = NO_FACE_CELL;
         } else {
             applyWheel(zoomSteps);
             applyZoomDemand(delta);
@@ -1184,6 +1207,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // inside the reach, and the face it entered through is what a block is built against, see
         // BlockTargeting#selectInSight.
         target = BlockTargeting.selectInSight(world, player, player.lookDirection(lookDirection));
+        updateFaceGrid();
 
         if (humanoid != null) {
             // The hand sways with the steps of the body, which is what the speed over the ground says.
@@ -1201,6 +1225,80 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     }
 
     /**
+     * Opens or closes the grid of faces of the block the player works on.
+     * <p>
+     * The grid appears while a tool is held - the wrench and its neighbours, or the empty hand of a
+     * crouching player - and the block the eyes meet answers to {@link FaceOperable}, see
+     * {@link FaceTool}. Everything else closes it again: no target, a tool that addresses no face, or a
+     * block that knows none. Which cell of the grid the mouse is over follows from the place the ray met
+     * the face, see {@link FaceGrid#cellOf(BlockFace, BlockFace, float, float, float)}.
+     */
+    private void updateFaceGrid() {
+        faceTool = FaceTool.of(player.inventory().heldStack(), InputHandler.isShiftHeld());
+        if (target == null || target.face() == null || !faceTool.addressesAFace()) {
+            world.clearFaceGrid();
+            faceCell = NO_FACE_CELL;
+            return;
+        }
+        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
+        if (!(entity instanceof FaceOperable operable)
+                || !operable.showsFaceGrid(world, target.x(), target.y(), target.z())) {
+            world.clearFaceGrid();
+            faceCell = NO_FACE_CELL;
+            return;
+        }
+        world.setFaceGrid(entity);
+        faceCell = FaceGrid.cellOf(target.face(), viewerFacing(), target.hitX(), target.hitY(),
+                target.hitZ());
+    }
+
+    /**
+     * Works on the face one cell of the grid of faces stands for.
+     * <p>
+     * A click belongs to the grid while one is open, so it never builds a block into the cell and never
+     * opens the screen of a machine: a player who holds a wrench at a machine wants to work on the machine
+     * and not on the wall behind it. The cell under the mouse names the face of the block the operation
+     * reaches, which is the face the player looks at for the middle cell and another one for every cell
+     * beside it, see {@link FaceGrid#faceOf(BlockFace, BlockFace, int)}.
+     *
+     * @return {@code true} when the grid was open, so the click was spent on it
+     */
+    private boolean workOnFace() {
+        if (!world.isFaceGridOpen() || target == null || target.face() == null
+                || faceCell == NO_FACE_CELL) {
+            return false;
+        }
+        BlockEntity entity = world.faceGrid();
+        if (!(entity instanceof FaceOperable operable)) {
+            return false;
+        }
+        BlockFace face = FaceGrid.faceOf(target.face(), viewerFacing(), faceCell);
+        boolean done = operable.operateFace(world, target.x(), target.y(), target.z(), face, faceTool,
+                player, player.inventory().heldStack());
+        LOGGER.info("The grid of faces of ({}, {}, {}) reached the {} face with the {}, {}",
+                target.x(), target.y(), target.z(), face, faceTool,
+                done ? "and it worked" : "which did nothing");
+        return true;
+    }
+
+    /**
+     * Side the player faces, which is what turns the grid of faces on a floor and on a ceiling.
+     * <p>
+     * A grid on a wall stands still, because the sky is up for every player; a grid that lies flat has no
+     * sky in it, so its top is the direction the player looks in and the whole grid turns with them. The
+     * dominant horizontal direction of the view is what that is, so a player who looks north gets a grid
+     * whose top row is the north face of the block.
+     *
+     * @return the side of a block the player faces
+     */
+    private BlockFace viewerFacing() {
+        if (Math.abs(lookDirection.x) >= Math.abs(lookDirection.z)) {
+            return lookDirection.x >= 0.0f ? BlockFace.EAST : BlockFace.WEST;
+        }
+        return lookDirection.z >= 0.0f ? BlockFace.SOUTH : BlockFace.NORTH;
+    }
+
+    /**
      * Builds the held block into the targeted cell.
      * <p>
      * Called from the mouse event while the inventory screen is closed, so a click
@@ -1212,6 +1310,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private boolean buildBlock() {
         if (target == null) {
             return false;
+        }
+        if (workOnFace()) {
+            return true;
         }
         if (openMachine()) {
             return true;

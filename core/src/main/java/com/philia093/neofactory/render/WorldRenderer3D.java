@@ -11,6 +11,7 @@ import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.entity.Entity;
 import com.philia093.neofactory.entity.ItemEntity;
 import com.philia093.neofactory.item.ItemStack;
@@ -57,6 +58,12 @@ public class WorldRenderer3D implements Disposable {
 
     /** Reused matrix placing one item cube, so a frame does not fill the heap with matrices. */
     private final Matrix4 model = new Matrix4();
+
+    /** Lines of the grid of faces, written every frame a grid is drawn. */
+    private final float[] gridLines = new float[FaceOverlay.LINES_FLOATS];
+
+    /** Corners of the cell of the grid under the mouse, written with the lines. */
+    private final float[] gridCell = new float[FaceOverlay.CELL_FLOATS];
 
     private int drawnSections;
     private int drawnMeshes;
@@ -229,6 +236,56 @@ public class WorldRenderer3D implements Disposable {
     /** Meshes drawn by the most recent frame. */
     public int drawnMeshCount() {
         return drawnMeshes;
+    }
+
+    /**
+     * Draws the grid of faces on the block a player is working on.
+     * <p>
+     * The lines cut the face the eyes met into nine and the cell the mouse points at is filled, so a
+     * player sees both the faces they may reach and which one a click would take. Both are worked out by
+     * {@link FaceOverlay} and drawn a hair outside the block with the depth test still on, so a wall in
+     * front of the block hides the grid the way it hides the block itself.
+     * <p>
+     * The grid is drawn after the world and before the frame of the targeted cell, so the frame stays the
+     * outermost mark of what an action would touch.
+     *
+     * @param camera camera the world is seen through
+     * @param target cell the grid is drawn on, {@code null} draws nothing
+     * @param viewerFacing side the player faces, only read for a face that lies flat
+     * @param cell cell of the grid under the mouse, {@code 0} to
+     *        {@link com.philia093.neofactory.world.interaction.FaceGrid#CELLS} minus one
+     */
+    public void renderFaceGrid(Camera camera, BlockTarget target, BlockFace viewerFacing, int cell) {
+        if (target == null || target.face() == null) {
+            return;
+        }
+        FaceOverlay.lines(target.x(), target.y(), target.z(), target.face(), gridLines);
+        FaceOverlay.cellCorners(target.x(), target.y(), target.z(), target.face(), viewerFacing, cell,
+                gridCell);
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        frame.setProjectionMatrix(camera.combined);
+
+        Gdx.gl.glLineWidth(2.0f);
+        frame.begin(ShapeRenderer.ShapeType.Line);
+        frame.setColor(0.0f, 0.0f, 0.0f, 0.65f);
+        for (int line = 0; line < FaceOverlay.LINES; line++) {
+            int at = line * 2 * FaceOverlay.POINT_FLOATS;
+            frame.line(gridLines[at], gridLines[at + 1], gridLines[at + 2],
+                    gridLines[at + 3], gridLines[at + 4], gridLines[at + 5]);
+        }
+        // The cell under the mouse is traced in white, so a player sees which face a click would take.
+        frame.setColor(1.0f, 1.0f, 1.0f, 0.9f);
+        for (int corner = 0; corner < FaceOverlay.CELL_CORNERS; corner++) {
+            int at = corner * FaceOverlay.POINT_FLOATS;
+            int next = (corner + 1) % FaceOverlay.CELL_CORNERS * FaceOverlay.POINT_FLOATS;
+            frame.line(gridCell[at], gridCell[at + 1], gridCell[at + 2],
+                    gridCell[next], gridCell[next + 1], gridCell[next + 2]);
+        }
+        frame.end();
+        Gdx.gl.glLineWidth(1.0f);
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /**

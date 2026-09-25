@@ -47,6 +47,10 @@ public final class BlockTargeting {
      * <p>
      * The ray starts a little in front of the eyes, because the cell the player stands in holds the
      * ground below their feet and would otherwise be what the ray meets first.
+     * <p>
+     * Where the ray met the face travels with the target as well, in the coordinates of the cell, because
+     * that place is what tells one cell of the grid of faces from another, see
+     * {@link com.philia093.neofactory.world.interaction.FaceGrid#cellOf}.
      *
      * @param world world holding the blocks
      * @param player player the ray starts at and the reach belongs to
@@ -55,11 +59,20 @@ public final class BlockTargeting {
      */
     public static BlockTarget selectInSight(World world, Player player, Vector3 direction) {
         float eyeY = player.position().y + Constants.PLAYER_EYE_HEIGHT;
-        BlockRay.Hit hit = BlockRay.cast(world,
-                player.position().x + direction.x * START_AHEAD, eyeY + direction.y * START_AHEAD,
-                player.position().z + direction.z * START_AHEAD,
+        float startX = player.position().x + direction.x * START_AHEAD;
+        float startY = eyeY + direction.y * START_AHEAD;
+        float startZ = player.position().z + direction.z * START_AHEAD;
+        BlockRay.Hit hit = BlockRay.cast(world, startX, startY, startZ,
                 direction.x, direction.y, direction.z, Constants.PLAYER_REACH,
                 (access, x, y, z) -> !access.getBlock(x, y, z).isAir());
-        return hit == null ? null : BlockTarget.of(hit);
+        if (hit == null) {
+            return null;
+        }
+        // Where the ray met the face, read in the coordinates of the cell: the grid of faces of a block
+        // asks for that place to tell one of its nine cells from another, see FaceGrid#cellOf.
+        float pointX = startX + direction.x * hit.distance();
+        float pointY = startY + direction.y * hit.distance();
+        float pointZ = startZ + direction.z * hit.distance();
+        return BlockTarget.of(hit, pointX - hit.x(), pointY - hit.y(), pointZ - hit.z());
     }
 }

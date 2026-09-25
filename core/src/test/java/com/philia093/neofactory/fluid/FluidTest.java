@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Checks the table of the fluids and what a fluid promises about itself.
  * <p>
- * A fluid is data, so everything it claims can be read back: the name a save file stores, the colour a
- * tank and a cell are painted in and whether a bucket may carry it. The tests need no window, which is
+ * A fluid is data, so everything it claims can be read back: the name a save file stores and the colour
+ * a tank and a cell are painted in. The tests need no window, which is
  * the point of keeping a fluid apart from the picture it uses.
  * <p>
  * Nothing here asks for a block: the game has no fluid block, so a fluid is a material of the industry
@@ -29,12 +29,13 @@ class FluidTest {
     }
 
     @Test
-    void theTableKnowsWaterAndLava() {
+    void theTableKnowsTheFluidsOfTheGame() {
         assertEquals(Fluids.WATER, Fluids.byName("water"));
         assertEquals(Fluids.LAVA, Fluids.byName("lava"));
+        assertEquals(Fluids.STEAM, Fluids.byName("steam"));
         assertNull(Fluids.byName("oil"), "an unknown name finds nothing");
         assertNull(Fluids.byName(null), "and so does no name at all");
-        assertEquals(2, Fluids.all().size(), "the game starts with the two basic fluids");
+        assertEquals(3, Fluids.all().size(), "two fluids of the world and the steam of the industry");
     }
 
     @Test
@@ -47,25 +48,19 @@ class FluidTest {
     }
 
     @Test
-    void waterAndLavaGoIntoABucket() {
-        assertTrue(Fluids.WATER.bucketable(), "water is carried in a bucket");
-        assertTrue(Fluids.LAVA.bucketable(), "and lava as well");
-    }
-
-    @Test
     void aBrokenFluidIsRefused() {
         Color color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
 
-        assertThrows(NullPointerException.class, () -> new Fluid(null, color, true));
-        assertThrows(NullPointerException.class, () -> new Fluid("oil", null, true));
-        assertThrows(IllegalArgumentException.class, () -> new Fluid(" ", color, true));
-        assertThrows(IllegalArgumentException.class, () -> new Fluid("", color, true));
+        assertThrows(NullPointerException.class, () -> new Fluid(null, color));
+        assertThrows(NullPointerException.class, () -> new Fluid("oil", null));
+        assertThrows(IllegalArgumentException.class, () -> new Fluid(" ", color));
+        assertThrows(IllegalArgumentException.class, () -> new Fluid("", color));
     }
 
     @Test
     void theColourOfAFluidIsACopy() {
         Color given = new Color(0.1f, 0.2f, 0.3f, 1.0f);
-        Fluid fluid = new Fluid("oil", given, false);
+        Fluid fluid = new Fluid("oil", given);
 
         given.set(0.9f, 0.9f, 0.9f, 1.0f);
 

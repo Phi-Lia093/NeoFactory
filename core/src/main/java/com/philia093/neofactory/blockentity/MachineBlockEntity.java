@@ -1,10 +1,13 @@
 package com.philia093.neofactory.blockentity;
 
+import com.philia093.neofactory.block.state.BlockStateTable;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.World;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -20,6 +23,15 @@ import java.util.Objects;
  * and keeps the world it was given.
  */
 public class MachineBlockEntity extends BlockEntity {
+
+    /**
+     * Property a block of a machine uses to say that the machine works.
+     * <p>
+     * A block that carries it draws another picture while the machine runs - the mouth of a boiler glows
+     * when it burns - which is what the state of a cell is for, see {@link BlockStateTable}. A block
+     * without it is simply never relit.
+     */
+    public static final String LIT = "lit";
 
     private final Machine machine;
 
@@ -42,6 +54,30 @@ public class MachineBlockEntity extends BlockEntity {
     @Override
     protected void update(World world, float delta) {
         machine.tick(delta);
+        updateLitState(world);
+    }
+
+    /**
+     * Says in the state of the cell whether the machine works.
+     * <p>
+     * A machine that runs is drawn with the glowing picture of its front, see {@link #LIT}: the state
+     * travels with the chunk like the block itself, so a world that is opened again shows a boiler that
+     * still burns. The lookup only runs for a block that carries the property at all, so the cost is one
+     * map lookup per tick for every machine of the game.
+     */
+    private void updateLitState(World world) {
+        BlockStateTable states = world.getBlock(x(), y(), z()).states();
+        if (!states.hasProperty(LIT)) {
+            return;
+        }
+        int state = world.getState(x(), y(), z());
+        Map<String, String> values = new LinkedHashMap<>(states.decode(state));
+        String wanted = machine.isRunning() ? "true" : "false";
+        if (wanted.equals(values.get(LIT))) {
+            return;
+        }
+        values.put(LIT, wanted);
+        world.setState(x(), y(), z(), states.stateOf(values));
     }
 
     @Override

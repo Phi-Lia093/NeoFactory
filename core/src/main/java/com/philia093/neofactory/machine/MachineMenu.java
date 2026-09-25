@@ -174,10 +174,17 @@ public final class MachineMenu {
         this.container = new ContainerMenu(layout, player);
     }
 
-    /** The slots a machine takes input from, in the order it declared them. */
+    /**
+     * The slots a machine takes input from, in the order it declared them.
+     * <p>
+     * The cells come last, after the inputs and the fuel, because the machine collects the slots of a
+     * role one after the other; the kinds of {@link MachineScreen#inputs()} have to be listed in the
+     * very same order.
+     */
     private static List<Integer> inputSlots(MachineInventory inventory) {
         List<Integer> found = new ArrayList<>(inventory.slotsOf(MachineInventory.Role.INPUT));
         found.addAll(inventory.slotsOf(MachineInventory.Role.FUEL));
+        found.addAll(inventory.slotsOf(MachineInventory.Role.CELL));
         return found;
     }
 
@@ -215,6 +222,11 @@ public final class MachineMenu {
      */
     private static void addBlock(ContainerLayout layout, MachineInventory inventory,
             List<Integer> slots, List<SlotKind> kinds, boolean input) {
+        if (slots.isEmpty()) {
+            // A machine may hold no slot of a side: a boiler has no product and a tank of fluid has no
+            // item at all, so there is nothing to arrange, see MachineScreen#columns(int).
+            return;
+        }
         int columns = MachineScreen.columns(slots.size());
         int rows = MachineScreen.rows(slots.size());
         int left = input ? INPUT_RIGHT - (columns - 1) * ContainerLayout.SLOT_PITCH : OUTPUT_LEFT;

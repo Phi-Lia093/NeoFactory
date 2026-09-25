@@ -20,7 +20,9 @@ import java.util.Objects;
  * the side it is looked at from, see {@link #of(int, int, int)}.
  * <p>
  * Instances are immutable and compared by their content, which is what lets the
- * {@link MiningController} notice that the player aimed somewhere else.
+ * {@link MiningController} notice that the player aimed somewhere else. The content is the cell, the
+ * face and the way the cell was found - and not the place the ray met the face, because a hand that
+ * shakes within one face must not start a break over again.
  */
 public final class BlockTarget {
 
@@ -30,12 +32,38 @@ public final class BlockTarget {
     private final BlockFace face;
     private final boolean fromRay;
 
+    /**
+     * Place the ray met the face, in the coordinates of one cell.
+     * <p>
+     * Every coordinate runs from {@code 0} at one corner of the cell to {@code 1} at the other, the way
+     * the model of a block is written, and a target that measured nothing lands in the middle of its
+     * cell. The grid of faces of a block reads that place, see
+     * {@link com.philia093.neofactory.world.interaction.FaceGrid#cellOf(BlockFace, BlockFace, float,
+     * float, float)}: a cell of that grid is a third of a face, so which one a player points at is a
+     * question of this place alone.
+     * <p>
+     * <b>The place is not part of the content of a target.</b> Two targets of the same cell that were met
+     * on different spots are the same target, because a break that is held down must not start over
+     * again whenever the hand shakes, see {@link #equals(Object)}.
+     */
+    private final float hitX;
+    private final float hitY;
+    private final float hitZ;
+
     private BlockTarget(int x, int y, int z, BlockFace face, boolean fromRay) {
+        this(x, y, z, face, fromRay, 0.5f, 0.5f, 0.5f);
+    }
+
+    private BlockTarget(int x, int y, int z, BlockFace face, boolean fromRay, float hitX, float hitY,
+            float hitZ) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.face = face;
         this.fromRay = fromRay;
+        this.hitX = hitX;
+        this.hitY = hitY;
+        this.hitZ = hitZ;
     }
 
     /**
@@ -87,6 +115,19 @@ public final class BlockTarget {
         return new BlockTarget(hit.x(), hit.y(), hit.z(), hit.face(), true);
     }
 
+    /**
+     * Creates a target from a ray that stopped at a cell, with the place it met the face.
+     *
+     * @param hit cell the ray met, with the face it entered through
+     * @param hitX X coordinate of the place within the cell, {@code 0} to {@code 1}
+     * @param hitY Y coordinate of the place within the cell, {@code 0} to {@code 1}
+     * @param hitZ Z coordinate of the place within the cell, {@code 0} to {@code 1}
+     * @return the target, which remembers the place without comparing it, see {@link #equals(Object)}
+     */
+    public static BlockTarget of(BlockRay.Hit hit, float hitX, float hitY, float hitZ) {
+        return new BlockTarget(hit.x(), hit.y(), hit.z(), hit.face(), true, hitX, hitY, hitZ);
+    }
+
     /** Block X coordinate of the targeted cell. */
     public int x() {
         return x;
@@ -114,6 +155,21 @@ public final class BlockTarget {
     /** {@code true} when the line of sight picked this cell instead of the mouse. */
     public boolean fromRay() {
         return fromRay;
+    }
+
+    /** X coordinate of the place the ray met the face, {@code 0} to {@code 1} within the cell. */
+    public float hitX() {
+        return hitX;
+    }
+
+    /** Y coordinate of the place the ray met the face, {@code 0} to {@code 1} within the cell. */
+    public float hitY() {
+        return hitY;
+    }
+
+    /** Z coordinate of the place the ray met the face, {@code 0} to {@code 1} within the cell. */
+    public float hitZ() {
+        return hitZ;
     }
 
     /**

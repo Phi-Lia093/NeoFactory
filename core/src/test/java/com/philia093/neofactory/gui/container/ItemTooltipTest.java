@@ -52,7 +52,7 @@ class ItemTooltipTest {
     void anItemWithoutAFormulaDrawsASingleLine() {
         assertEquals(List.of("Stone"), ItemTooltip.linesOf(Items.STONE));
         assertEquals(List.of("Diamond"), ItemTooltip.linesOf(Items.DIAMOND));
-        assertEquals(List.of("Water Bucket"), ItemTooltip.linesOf(Items.WATER_BUCKET));
+        assertEquals(List.of("Water Cell"), ItemTooltip.linesOf(Items.WATER_CELL));
     }
 
     @Test

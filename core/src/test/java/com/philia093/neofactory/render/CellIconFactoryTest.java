@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>
  * A cell is one grey scale picture and only its window belongs to the fluid, so the whole point of
  * the split is that the steel around the window stays the grey the art pack drew: a cell of water
- * has to look like a cell and not like a blue bucket. The arithmetic is plain pixels, so the rim
+ * has to look like a cell and not like a sheet of blue. The arithmetic is plain pixels, so the rim
  * of the window can be walked over without a window.
  */
 class CellIconFactoryTest {

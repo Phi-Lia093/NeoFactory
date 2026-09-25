@@ -62,8 +62,33 @@ stored on disk so that a session can be continued later.
   that writes how much fuel is left. The contract behind it - slots and tanks with a
   role, energy, fluids and the recipe types a machine reads - is what the larger machines
   will be built from, and a test builds a reactor of that shape out of the same pieces.
+  A machine that declares a slot of the role `CELL` is fed by hand: while it ticks it trades the
+  cell that lies there with its tanks, so a full cell is poured into the tank it takes fluid from
+  and an empty one is filled from the tank it made fluid in, see `CellExchange`. The trade never
+  loses anything - a cell is only emptied when a single tank takes the whole amount it holds - and
+  the slot is offered to no recipe, which never eats a cell.
+- **The bronze boiler** - the second machine and the first one of the industry: a fire under a tank of
+  water. It holds one slot and two tanks - fuel, the water it boils and the steam it makes - and its screen
+  shows the two tanks at the foot of the panel with the fuel line above them, which is what a machine
+  without a product looks like. One unit of water becomes sixteen units of steam and a second of burning
+  boils twenty of them, so a piece of coal keeps a boiler going for eighty seconds and makes more steam than
+  its tank holds. A boiler does not waste fuel: it takes a piece only when it has water to boil and room for
+  the steam, and a flame already burning waits while the tank of water is empty or the tank of steam is full,
+  so a boiler that ran dry sits quiet instead of chewing through a stack of coal. Its mouth glows while it
+  burns, which is the state of the cell and therefore part of the saved world. It has no slot for a cell:
+  water arrives through the pipe of the next step, and the fluid it makes leaves the same way.
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
+- **Faces and tools** - a block is worked on from the face it is looked at, and the faces a player
+  cannot reach from there are reached through a grid of nine cells drawn on that face: the middle cell
+  is the face itself, the four beside it are the faces around it, and all four corners lead behind the
+  block - which is how a pipe is told to let go of the line that runs behind a block, see `FaceGrid`.
+  The grid appears while a tool is held - a wrench, a wire cutter, a crowbar or a screwdriver - or while
+  a crouching player holds nothing at all, and a click on a cell does what the tool is good for on the
+  face that cell stands for, see `FaceOperable`. While a grid is open every block that shows one fills
+  its cell, so a player stands on a thin pipe instead of inside it. No block answers to it yet - the
+  pipe of the coming fluid system is the first that will - and the tools are items the art pack of the
+  machine mod brings.
 - **Shapes and states** - a block is not one picture but a shape, and the skin of its faces lives in
   `assets/models/block`: a model names the picture of every face of every box, a template is written
   once and inherited, and a second layer is drawn over a face where the colour of a biome belongs
@@ -105,14 +130,18 @@ stored on disk so that a session can be continued later.
   stack dragged out of it lands on the ground. `/gamemode survival` goes back, and the mode
   is stored with the world.
 
-- **Fluids** - a fluid is a material of the industry and no longer a block of the world: water and
-  lava are held in the tank of a machine and carried by a bucket or a cell, and a recipe asks for
-  them by amount. Neither is ever met in the terrain, so nothing spreads, nothing floods and no
-  picture of a fluid is drawn into the world. A bucket carries water and lava and nothing else, a
-  cell carries any fluid the industry will bring, and a filled cell shows its fluid in the window
-  while the steel around it stays grey. An empty container stacks like any other material, a full
-  one does not: filling a bucket out of a stack of empty ones leaves the rest of the stack in the
-  hand and puts the full bucket into the inventory, where it takes a slot of its own.
+- **Fluids** - a fluid is a material of the industry and no longer a block of the world: water, lava and
+  the steam of the first machines are held in the tank of a machine and carried by a cell, and a recipe
+  asks for them by amount. None of them is ever met in the terrain, so nothing spreads, nothing floods
+  and no picture of a fluid is drawn into the world. The game has one container: a cell carries any fluid
+  the industry brings, and a filled cell shows its fluid in the window
+  while the steel around it stays grey. The buckets are gone with the fluids that used to stand in the
+  world as a block, so the item ids 67, 68 and 69 name nothing and the cells kept theirs - 70, 71 and
+  72 are the cell, the water cell and the lava cell, and the steam of the industry took the first free
+  number above them, which is why a save game of an older version is refused, see `SaveFormat`. An empty
+  cell stacks like any other material, a full one does not: filling one out of a stack of empty cells
+  leaves the rest of the stack in the hand and puts the full cell into the inventory, where it takes a
+  slot of its own.
 
 - **Materials** - a factory holds hundreds of them, and a metal is not one item but nineteen: a
   dust, a small and a tiny pile of it, an ingot, a nugget, a plate, a foil, a rod, a long rod, a
@@ -285,8 +314,8 @@ fluid is one grey scale picture instead, and
 only its window takes the colour of the fluid: `CellIconFactory` paints the two pixels wide and
 ten pixels tall window in the middle of the cell and leaves the steel of the container grey, so a
 cell of water and a cell of oil are the same object with something else inside. A new fluid needs
-a colour, a line in `Fluids` and an entry in `Buckets` and nothing else. (`gradlew :core:test` drew
-the frames of both fluids next to the buckets and the cells into `core/build/reports/fluid-preview.png`
+a colour, a line in `Fluids` and an entry in `FluidCells` and nothing else. (`gradlew :core:test` drew
+the frames of both fluids next to the cells into `core/build/reports/fluid-preview.png`
 while the sheet existed; the preview of the fluids is gone with it.)
 
 Every shape a material comes in is drawn from one grey scale picture as well, and the colour of the

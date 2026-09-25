@@ -162,6 +162,14 @@ public final class SaveTags {
     /** Seconds a whole piece of fuel burns. */
     public static final String BURN_TOTAL = "BurnTotal";
 
+    /**
+     * Water a boiler earned but has not turned into steam yet.
+     * <p>
+     * The amount is below one unit, so it is the part of the work of a frame that the arithmetic did not
+     * reach and that the frames after it carry on with.
+     */
+    public static final String WATER_DEBT = "WaterDebt";
+
     /** List of the block entities of a chunk. */
     public static final String BLOCK_ENTITIES = "BlockEntities";
 

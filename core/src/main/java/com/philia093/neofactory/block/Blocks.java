@@ -67,8 +67,16 @@ public final class Blocks {
     public static final int TORCH_ID = 26;
     public static final int LADDER_ID = 27;
 
+    // ------------------------------------------------------------------
+    // The machines of the industry. They are appended like every other block, so a cell of a stored world
+    // keeps the meaning it had.
+    // ------------------------------------------------------------------
+
+    /** The bronze boiler, the machine that turns water into steam. */
+    public static final int BRONZE_BOILER_ID = 28;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 28;
+    public static final int NEXT_FREE_ID = 29;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -163,6 +171,9 @@ public final class Blocks {
      * entity behind it holds the slots, the fire and the progress.
      */
     public static Block FURNACE;
+
+    /** The bronze boiler block, the machine that turns water into steam. */
+    public static Block BRONZE_BOILER;
 
     private Blocks() {
         // Utility class: never instantiated.
@@ -462,6 +473,21 @@ public final class Blocks {
                 .toolType(ToolType.AXE)
                 .build();
         BlockRegistry.register(LADDER);
+
+        // ------------------------------------------------------------------
+        // The machines of the industry. A machine is a whole cube that carries a block entity: the cell
+        // says which machine stands there and which way it looks, and the entity holds what the cell
+        // cannot - the slots, the fuel, the tanks and the work, see MachineBlockEntity.
+        // ------------------------------------------------------------------
+        BRONZE_BOILER = Block.builder(BRONZE_BOILER_ID, "bronze_boiler")
+                .texture("bronze_boiler/bronze_boiler_front")
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
+                .blockEntity("bronze_boiler")
+                .build();
+        BlockRegistry.register(BRONZE_BOILER);
 
         BlockRegistry.freeze();
     }

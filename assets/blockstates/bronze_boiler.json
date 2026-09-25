@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"],
+    "lit": ["false", "true"]
+  },
+  "variants": {
+    "facing=north,lit=false": { "model": "bronze_boiler", "y": 0 },
+    "facing=east,lit=false": { "model": "bronze_boiler", "y": 270 },
+    "facing=south,lit=false": { "model": "bronze_boiler", "y": 180 },
+    "facing=west,lit=false": { "model": "bronze_boiler", "y": 90 },
+    "facing=north,lit=true": { "model": "bronze_boiler_active", "y": 0 },
+    "facing=east,lit=true": { "model": "bronze_boiler_active", "y": 270 },
+    "facing=south,lit=true": { "model": "bronze_boiler_active", "y": 180 },
+    "facing=west,lit=true": { "model": "bronze_boiler_active", "y": 90 }
+  }
+}

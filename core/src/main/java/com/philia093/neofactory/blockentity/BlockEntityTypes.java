@@ -1,6 +1,7 @@
 package com.philia093.neofactory.blockentity;
 
 import com.philia093.neofactory.machine.SmeltingMachine;
+import com.philia093.neofactory.machine.SteamBoilerMachine;
 
 /**
  * Every block entity type the game knows.
@@ -20,6 +21,10 @@ public final class BlockEntityTypes {
     public static final BlockEntityType FURNACE = new BlockEntityType("furnace",
             type -> new MachineBlockEntity(type, new SmeltingMachine()));
 
+    /** The bronze boiler, the machine that turns water into steam. */
+    public static final BlockEntityType BRONZE_BOILER = new BlockEntityType("bronze_boiler",
+            type -> new MachineBlockEntity(type, new SteamBoilerMachine()));
+
     private static boolean registered;
 
     private BlockEntityTypes() {
@@ -32,6 +37,7 @@ public final class BlockEntityTypes {
             return;
         }
         BlockEntityRegistry.register(FURNACE);
+        BlockEntityRegistry.register(BRONZE_BOILER);
         registered = true;
     }
 }

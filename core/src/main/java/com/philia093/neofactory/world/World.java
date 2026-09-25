@@ -5,7 +5,9 @@ import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.entity.EntityManager;
 import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.util.Aabb;
 import com.philia093.neofactory.util.Constants;
+import com.philia093.neofactory.world.interaction.FaceOperable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -86,6 +88,16 @@ public final class World implements BlockAccess {
 
     /** Ticks this world has run, the clock of everything that works on a schedule. */
     private long tickCount;
+
+    /**
+     * Block whose grid of faces is open right now, {@code null} while none is.
+     * <p>
+     * The grid is what a player works on the faces of a block with, see
+     * {@link com.philia093.neofactory.world.interaction.FaceGrid}, and a block that shows it counts as a
+     * whole cube while it is open. The field therefore belongs to the world and not to the screen that
+     * draws the grid: the collision code asks the world, and it is not written into a save game.
+     */
+    private BlockEntity faceGrid;
 
     /**
      * Creates a world and prepares the chunks around the spawn point.
@@ -558,6 +570,58 @@ public final class World implements BlockAccess {
             return null;
         }
         return chunk.blockEntity(Chunk.localOf(x), y, Chunk.localOf(z));
+    }
+
+    /**
+     * Opens the grid of faces of a block.
+     * <p>
+     * Called by the interaction while a player holds a tool and looks at a block that answers to
+     * {@link FaceOperable}. While a grid is open every block that shows one is a whole cube, see
+     * {@link #shape(int, int, int, Aabb)}, so a player stands on a thin pipe instead of inside it.
+     *
+     * @param entity block entity the grid belongs to, {@code null} closes the grid
+     */
+    public void setFaceGrid(BlockEntity entity) {
+        this.faceGrid = entity;
+    }
+
+    /** Closes the grid of faces, which is what a frame without a tool or without a target does. */
+    public void clearFaceGrid() {
+        this.faceGrid = null;
+    }
+
+    /** Block entity whose grid of faces is open, {@code null} while none is. */
+    public BlockEntity faceGrid() {
+        return faceGrid;
+    }
+
+    /** {@code true} while the grid of faces of a block is open. */
+    public boolean isFaceGridOpen() {
+        return faceGrid != null;
+    }
+
+    /**
+     * The part of a cell a body cannot enter, at the place the cell stands in the world.
+     * <p>
+     * A world of cubes asks this for every cell a body reaches, see
+     * {@link BlockAccess#overlaps(Aabb, Aabb)} and {@link BlockAccess#landingHeight(Aabb, int, float,
+     * Aabb)}, so the rule of the grid of faces lives here: <b>while a grid is open, every block that
+     * shows one fills its cell.</b> A pipe is drawn thin and a player would otherwise stand inside what
+     * they are working on, and a machine that is a whole cube anyway does not change at all. Everything
+     * else keeps the shape of its own model, see {@link BlockAccess#shape(int, int, int, Aabb)}.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param into box to write the shape into, in the units of the world
+     * @return the box, empty when a body walks through the cell
+     */
+    @Override
+    public Aabb shape(int x, int y, int z, Aabb into) {
+        if (faceGrid != null && blockEntity(x, y, z) instanceof FaceOperable) {
+            return into.setBlock(x, y, z);
+        }
+        return BlockAccess.super.shape(x, y, z, into);
     }
 
     /**

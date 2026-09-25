@@ -13,7 +13,23 @@ public enum MachineError {
     NONE(-1, -1),
 
     /** The machine has work to do but no energy to do it with. */
-    NO_POWER(3, 0);
+    NO_POWER(3, 0),
+
+    /**
+     * The machine has work to do but no steam to do it with.
+     * <p>
+     * The picture is the second cell of the column of errors of the sheet, see
+     * {@link com.philia093.neofactory.gui.panel.MachineTextures#icon(int, int)}.
+     */
+    NO_STEAM(3, 1),
+
+    /**
+     * The machine has fuel to burn but no water to heat.
+     * <p>
+     * The picture is the third cell of the column of errors of the sheet, the one that reads as a flask -
+     * which is what a boiler that ran dry has to say.
+     */
+    NO_WATER(3, 2);
 
     private final int column;
     private final int row;

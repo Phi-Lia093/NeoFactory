@@ -181,17 +181,35 @@ public final class Items {
     public static final int FURNACE_ID = 66;
 
     /**
-     * Ids of the containers of fluid.
+     * Ids of the cells, the containers of fluid.
      * <p>
-     * The three buckets stand together and so do the cells, and every one of them keeps its value
-     * forever: a stored inventory names them, see {@link Buckets}.
+     * Every one of them keeps its value forever: a stored inventory names them, see {@link FluidCells}.
+     * <p>
+     * <b>The numbers 67, 68 and 69 stay free.</b> They held the empty bucket, the bucket of water and
+     * the bucket of lava, which left the game together with the fluids that used to stand in the world
+     * as a block. Their place is not handed out again, so no stored inventory changes its meaning, the
+     * same way the ids of the armour are kept free below.
      */
-    public static final int BUCKET_ID = 67;
-    public static final int WATER_BUCKET_ID = 68;
-    public static final int LAVA_BUCKET_ID = 69;
     public static final int FLUID_CELL_ID = 70;
     public static final int WATER_CELL_ID = 71;
     public static final int LAVA_CELL_ID = 72;
+
+    /**
+     * Id of the cell of steam, the first item of the industry.
+     * <p>
+     * It takes the first number no item held, see {@link #NEXT_FREE_ID}: the cells of the two fluids of
+     * the world are the only items above the tools, and a fluid the industry brings is a fluid like any
+     * other - it travels in a cell as well, see {@link FluidCells}.
+     */
+    public static final int STEAM_CELL_ID = 86;
+
+    /**
+     * Id of the bronze boiler, the block that a player builds to make steam.
+     * <p>
+     * It comes right behind the cell of steam, and the machines that follow take the numbers after it -
+     * see {@link #NEXT_FREE_ID} for why they are counted together with the materials behind them.
+     */
+    public static final int BRONZE_BOILER_ID = 87;
 
     // ------------------------------------------------------------------
     // The block items of the blocks that came with the third axis. They are appended above every
@@ -220,24 +238,33 @@ public final class Items {
      * {@link Materials#registerAll()}: a hand written item that is appended above it takes the
      * number itself and bumps this one, while the run of the materials follows behind. A number
      * from the middle may never be taken, or the items of the materials would move.
+     * <p>
+     * <b>The industry writes its items down before the materials.</b> The cell of steam took 86 and the
+     * bronze boiler 87, and the machines, pipes and tools of the coming steps take the numbers behind them;
+     * this number is therefore set past that run, so the materials keep their place while the industry
+     * grows. One of those items costs a line here and moves nothing at all.
+     * <p>
+     * <b>What version 8 of the save game changed.</b> The items of the industry took the numbers 86 to 99,
+     * so every item of every material stands fourteen numbers higher than it did - which is why a world of
+     * an older version is refused instead of being read with the wrong items in it, see
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
      */
-    public static final int NEXT_FREE_ID = 86;
+    public static final int NEXT_FREE_ID = 100;
 
     /**
      * Amount an empty container stacks to.
      * <p>
-     * An empty bucket and an empty cell are tools the player carries around, so they stack like
-     * every other material of the game.
+     * An empty cell is a tool the player carries around, so it stacks like every other material of the
+     * game.
      */
     private static final int EMPTY_CONTAINER_STACK = Item.DEFAULT_MAX_STACK;
 
     /**
      * Amount a container with a fluid in it stacks to.
      * <p>
-     * A full bucket is a bucket and one fluid, so the fluids of the game do not stack - a stack of
-     * them would hold several kinds at once. {@code FluidInteraction} therefore takes one empty
-     * container out of the hand and hands the full one back, see
-     * {@link com.philia093.neofactory.world.interaction.FluidInteraction}.
+     * A full cell is one cell and one fluid, so the fluids of the game do not stack - a stack of them
+     * would hold several kinds at once. A machine therefore takes one full cell out of a slot and hands
+     * an empty one back, see {@link FluidContainer}.
      */
     private static final int FULL_CONTAINER_STACK = Item.SINGLE_ITEM_STACK;
 
@@ -390,15 +417,6 @@ public final class Items {
     /** Diamond sword. */
     public static Item DIAMOND_SWORD;
 
-    /** The empty bucket, the tool for water and lava. */
-    public static Item BUCKET;
-
-    /** A bucket of water. */
-    public static Item WATER_BUCKET;
-
-    /** A bucket of lava. */
-    public static Item LAVA_BUCKET;
-
     /** The empty cell, the container of the industry that takes any fluid. */
     public static Item FLUID_CELL;
 
@@ -407,6 +425,12 @@ public final class Items {
 
     /** A cell of lava. */
     public static Item LAVA_CELL;
+
+    /** A cell of steam, the fluid the first machines of the industry run on. */
+    public static Item STEAM_CELL;
+
+    /** The bronze boiler, the block a player builds to make steam. */
+    public static Item BRONZE_BOILER;
 
     /**
      * Creates and registers every item.
@@ -668,21 +692,10 @@ public final class Items {
         // The armour is gone for now: eight icons that no slot held and that no defence stood behind.
         // Its numbers stay free, see ARMOUR_ID_FROM above.
 
-        // The fluids of the game travel in buckets and in cells, see FluidContainer. A bucket is
-        // hard wired to water and lava, because those are the two fluids that stand in the world
-        // as a block; a cell takes any fluid the industry comes up with. Every cell draws the same
-        // grey scale picture and receives the colour of its fluid as its tint, so a new fluid
-        // needs a sheet, a cell here and nothing else.
-        BUCKET = register(Item.builder(BUCKET_ID, "bucket")
-                .displayName("Bucket")
-                .texture(Item.ITEM_FOLDER + "bucket_empty")
-                .maxStackSize(EMPTY_CONTAINER_STACK)
-                .container(FluidContainer.bucket())
-                .build());
-        WATER_BUCKET = register(fluidBucket(WATER_BUCKET_ID, "bucket_water", "Water Bucket",
-                Fluids.WATER));
-        LAVA_BUCKET = register(fluidBucket(LAVA_BUCKET_ID, "bucket_lava", "Lava Bucket",
-                Fluids.LAVA));
+        // The fluids of the game travel in cells, see FluidContainer: one body of steel for every fluid,
+        // drawn from the one grey scale picture of the game and painted in the colour of whatever is
+        // inside, so a new fluid needs a line here and no art. The game has no bucket any more - the
+        // buckets belonged to the fluids that stood in the world as a block.
         FLUID_CELL = register(Item.builder(FLUID_CELL_ID, "fluid_cell")
                 .displayName("Fluid Cell")
                 .texture(Item.ITEM_FOLDER + "fluid_cell")
@@ -691,6 +704,13 @@ public final class Items {
                 .build());
         WATER_CELL = register(fluidCell(WATER_CELL_ID, "water_cell", "Water Cell", Fluids.WATER));
         LAVA_CELL = register(fluidCell(LAVA_CELL_ID, "lava_cell", "Lava Cell", Fluids.LAVA));
+        STEAM_CELL = register(fluidCell(STEAM_CELL_ID, "steam_cell", "Steam Cell", Fluids.STEAM));
+
+        // The machines of the industry. A machine is a block item like every other one: it borrows the
+        // picture of its block, and the block names the entity that holds its slots and tanks.
+        BRONZE_BOILER = register(Item.builder(BRONZE_BOILER_ID, "bronze_boiler")
+                .displayName("Bronze Boiler")
+                .buildBlock(Blocks.BRONZE_BOILER));
 
         // The materials bring their own items, one per shape they come in. They are registered
         // here, right before the table closes, so that they append behind every item written above
@@ -698,24 +718,6 @@ public final class Items {
         Materials.registerAll();
 
         ItemRegistry.freeze();
-    }
-
-    /**
-     * Builds a bucket that carries one of the two fluids that pour into the world.
-     *
-     * @param id numeric item id
-     * @param name technical name, also the name of the icon
-     * @param displayName name shown to the player
-     * @param fluid fluid the bucket carries
-     * @return the item definition
-     */
-    private static Item fluidBucket(int id, String name, String displayName, Fluid fluid) {
-        return Item.builder(id, name)
-                .displayName(displayName)
-                .texture(Item.ITEM_FOLDER + name)
-                .maxStackSize(FULL_CONTAINER_STACK)
-                .container(FluidContainer.bucket(fluid))
-                .build();
     }
 
     /**

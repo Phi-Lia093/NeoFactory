@@ -32,7 +32,7 @@ public final class CreativeRegistry {
     private static final List<CreativeTab> TABS = List.of(
             CreativeTab.items("blocks", "Blocks", Items.STONE, CreativeRegistry::isBlock),
             CreativeTab.items("machines", "Machines", Items.FURNACE, CreativeRegistry::isMachine),
-            CreativeTab.items("fluids", "Fluids", Items.WATER_BUCKET, CreativeRegistry::isFluid),
+            CreativeTab.items("fluids", "Fluids", Items.WATER_CELL, CreativeRegistry::isFluid),
             CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
             CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
             CreativeTab.items("tools", "Tools", Items.IRON_PICKAXE, CreativeRegistry::isTool),
@@ -83,11 +83,12 @@ public final class CreativeRegistry {
     }
 
     /**
-     * {@code true} when an item carries a fluid, a bucket or a cell.
+     * {@code true} when an item carries a fluid, which is a cell.
      * <p>
      * The containers have a tab of their own because they belong to the fluids and not to the
-     * materials: a bucket of water is the water of a lake the player carries around, and the cell
-     * is the shape every fluid of the industry travels in.
+     * materials: a cell of water is the water of a lake the player carries around, and the cell is
+     * the shape every fluid of the industry travels in. The game has one container and no bucket, see
+     * {@link com.philia093.neofactory.item.FluidCells}.
      */
     private static boolean isFluid(Item item) {
         return item.isFluidContainer();

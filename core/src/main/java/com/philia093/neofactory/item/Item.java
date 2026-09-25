@@ -56,6 +56,7 @@ public class Item {
     private final FluidContainer container;
     private final String chemicalFormula;
     private final String overlayTexture;
+    private final FaceTool faceTool;
 
     /**
      * Creates an item that is not linked to a block.
@@ -77,6 +78,7 @@ public class Item {
         this.container = builder.container;
         this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
+        this.faceTool = builder.faceTool != null ? builder.faceTool : FaceTool.NONE;
     }
 
     /**
@@ -105,6 +107,7 @@ public class Item {
         this.container = builder.container;
         this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
+        this.faceTool = builder.faceTool != null ? builder.faceTool : FaceTool.NONE;
     }
 
     /** Unique numeric id of this item type. */
@@ -212,9 +215,9 @@ public class Item {
     /**
      * What this item does with a fluid, {@code null} for an item that carries none.
      * <p>
-     * A bucket and a cell are the items that carry fluid, and both are ordinary items with a
+     * A cell is the item that carries fluid, and it is an ordinary item with a
      * container, see {@link FluidContainer}: that keeps the world, the inventory and the save
-     * format free of a second kind of stack, and it is why a full bucket is its own item.
+     * format free of a second kind of stack, and it is why a full cell is its own item.
      *
      * @return the container, or {@code null} when this item never carries a fluid
      */
@@ -270,6 +273,20 @@ public class Item {
     /** {@code true} when this item is drawn from two layers, see {@link #overlayTexture()}. */
     public boolean hasOverlay() {
         return !overlayTexture.isEmpty();
+    }
+
+    /**
+     * The tool this item is for a face of a block, {@link FaceTool#NONE} for everything else.
+     * <p>
+     * A wrench and a screwdriver do nothing while they are swung at a block; they are held at a face of
+     * one, where the grid of nine cells appears and a cell of it carries out what the tool is good for,
+     * see {@link com.philia093.neofactory.world.interaction.FaceOperable}. What a tool is good for is
+     * part of the definition of the item, so the interaction never has to compare names or pictures.
+     *
+     * @return the tool, never {@code null}
+     */
+    public FaceTool faceTool() {
+        return faceTool;
     }
 
     /**
@@ -372,6 +389,7 @@ public class Item {
         private FluidContainer container;
         private String chemicalFormula;
         private String overlayTexture;
+        private FaceTool faceTool;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -483,11 +501,11 @@ public class Item {
         }
 
         /**
-         * Makes this item a container of fluid, a bucket or a cell.
+         * Makes this item a container of fluid, a cell.
          * <p>
          * The container is part of the definition of the item and not of a stack: the empty
-         * bucket and the water bucket are two items, each with its own picture, which is what
-         * lets a full bucket be an icon of its own.
+         * cell and the water cell are two items, each with its own picture, which is what
+         * lets a full cell be an icon of its own.
          *
          * @param container what the item carries and what it may take
          */
@@ -518,6 +536,17 @@ public class Item {
          */
         public Builder overlayTexture(String overlayTexture) {
             this.overlayTexture = Objects.requireNonNull(overlayTexture, "overlayTexture");
+            return this;
+        }
+
+        /**
+         * Names the tool this item is at a face of a block.
+         *
+         * @param faceTool tool the item stands for, never {@code null}
+         * @return this builder
+         */
+        public Builder faceTool(FaceTool faceTool) {
+            this.faceTool = Objects.requireNonNull(faceTool, "faceTool");
             return this;
         }
 

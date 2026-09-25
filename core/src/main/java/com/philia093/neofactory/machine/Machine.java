@@ -3,6 +3,7 @@ package com.philia093.neofactory.machine;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.item.CellExchange;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.recipe.RecipeType;
@@ -164,12 +165,45 @@ public abstract class Machine {
 
     /**
      * Advances the machine by one frame.
+     * <p>
+     * The cells of the machine trade with its tanks before the work of the frame is done, so a machine
+     * that is fed by hand sees the fluid it was given in the very frame the cell was put in, see
+     * {@link #exchangeCells()}.
      *
      * @param delta time since the last frame in seconds, ignored when not positive
      */
     public final void tick(float delta) {
         if (delta > 0.0f) {
+            exchangeCells();
             update(delta);
+        }
+    }
+
+    /**
+     * Lets every cell of the machine trade with the tanks of the machine.
+     * <p>
+     * A machine declares the slots a cell may lie in with
+     * {@link MachineInventory.Role#CELL}, so this runs for every machine without it knowing anything
+     * about it: a full cell is poured into the tanks the machine takes fluid from and an empty one is
+     * filled from the tanks it makes fluid in, see {@link CellExchange}. A machine without such a slot
+     * and a machine without a tank skip the work.
+     */
+    private void exchangeCells() {
+        List<Integer> slots = inventory.slotsOf(MachineInventory.Role.CELL);
+        if (slots.isEmpty()) {
+            return;
+        }
+        List<FluidStorage> received = List.of(storages(MachineTank.Role.INPUT));
+        List<FluidStorage> made = List.of(storages(MachineTank.Role.OUTPUT));
+        if (received.isEmpty() && made.isEmpty()) {
+            return;
+        }
+        for (int slot : slots) {
+            ItemStack carried = inventory.get(slot);
+            ItemStack afterwards = CellExchange.exchange(carried, received, made);
+            if (afterwards != carried) {
+                inventory.set(slot, afterwards);
+            }
         }
     }
 

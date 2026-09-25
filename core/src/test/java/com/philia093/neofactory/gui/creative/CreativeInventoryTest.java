@@ -88,20 +88,22 @@ class CreativeInventoryTest {
         assertEquals(Items.STONE, creative.stackAt(0).item(), "the first block");
         assertEquals(1, creative.stackAt(0).count(),
                 "the shelf shows one piece, see CreativeInventory#shownAt");
-        // The furnace is the block that was added most recently, but it holds a machine
-        // and is therefore listed by the tab of the machines, see CreativeRegistry.
+        // The furnace and the boiler are the two blocks that were added most recently, but they hold a
+        // machine and are therefore listed by the tab of the machines, see CreativeRegistry.
         assertTrue(creative.stackAt(blockCount() - 1).isEmpty(),
                 "the free room behind the group of the blocks");
     }
 
     @Test
-    void theTabOfTheMachinesListsTheFurnace() {
+    void theTabOfTheMachinesListsTheMachinesOfTheGame() {
         CreativeInventory creative = new CreativeInventory();
         creative.select(indexOfTab("machines"));
 
-        assertEquals(Items.FURNACE, creative.stackAt(0).item(), "the only machine of the game");
-        assertTrue(creative.stackAt(1).isEmpty(), "and nothing behind it so far");
-        assertEquals(1, creative.matches().size(), "the list holds the furnace alone");
+        assertEquals(Items.FURNACE, creative.stackAt(0).item(), "the furnace comes first");
+        assertEquals(Items.BRONZE_BOILER, creative.stackAt(1).item(),
+                "then the boiler of the industry");
+        assertTrue(creative.stackAt(2).isEmpty(), "and nothing behind them so far");
+        assertEquals(2, creative.matches().size(), "the list holds the two machines of the game");
     }
 
     @Test

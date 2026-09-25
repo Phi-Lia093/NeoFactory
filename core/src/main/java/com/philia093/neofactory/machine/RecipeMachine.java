@@ -95,7 +95,7 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
             return;
         }
         craftTotal = recipe.seconds();
-        if (!payEnergy(recipe, delta)) {
+        if (!payForWork(recipe, delta)) {
             coolDown(delta);
             return;
         }
@@ -135,13 +135,23 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
     }
 
     /**
-     * Pays the share of the energy of a craft that one frame is worth.
+     * Pays for the share of a craft that one frame is worth.
+     * <p>
+     * The machine of this class pays with the energy of its buffer, see {@link EnergyStorage}. What one
+     * frame costs is the share of the whole craft it is worth: a recipe that costs 200 units over ten
+     * seconds takes 20 units a second, and the fraction that does not make a whole unit is kept for the
+     * frames after it. A machine without enough energy waits - so the work already done is kept, the same
+     * way a furnace keeps its fire - and it never pays more than the recipe asked for.
+     * <p>
+     * <b>A machine that runs on something else overrides this and not the loop around it.</b> A steam
+     * machine pays with the steam of one of its tanks, see {@link MachineTank}, while the search for a
+     * recipe, the check that the products fit and the counting of the time stay in one place.
      *
      * @param recipe recipe that runs
      * @param delta time since the last frame in seconds
      * @return {@code true} when the frame was paid for
      */
-    private boolean payEnergy(MachineRecipe recipe, float delta) {
+    protected boolean payForWork(MachineRecipe recipe, float delta) {
         int cost = recipe.energy();
         if (cost <= 0) {
             return true;

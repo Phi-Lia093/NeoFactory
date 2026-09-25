@@ -24,7 +24,17 @@ public enum SlotKind {
     FLUID_INPUT(4, 0),
 
     /** A tank a machine pours the fluid it made into. */
-    FLUID_OUTPUT(4, 1);
+    FLUID_OUTPUT(4, 1),
+
+    /**
+     * A slot that holds a cell the machine trades with its tanks.
+     * <p>
+     * The slot is drawn with the plain bevel of {@link #GENERIC}, because what lies in it is a cell
+     * like any other item: the picture of the cell already shows which fluid it carries. A kind of its
+     * own keeps the slot out of the hands of a recipe, which never eats a cell, see
+     * {@link com.philia093.neofactory.item.CellExchange}.
+     */
+    CELL(0, 0);
 
     private final int column;
     private final int row;

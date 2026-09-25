@@ -49,7 +49,14 @@ public final class MultiFaceTextures {
             // The grass, whose side carries its own shade, the bark of the oak trunk, whose rings live
             // in a picture of their own, the rim and the top of a slab, and the sandstone, whose bottom
             // is a plate of its own below the smooth top.
-            "grass_side", "log_oak", "sandstone_bottom", "stone_slab_side", "stone_slab_top");
+            "grass_side", "log_oak", "sandstone_bottom", "stone_slab_side", "stone_slab_top",
+
+            // The casing of the machines of the industry, which the mod draws as one picture per side of
+            // a block, and the mouth of a boiler, which is drawn over the front of the casing like the
+            // second layer of the grass: it is the door of the boiler and it glows while the boiler burns.
+            "bronze_casing/bronze_casing_bottom", "bronze_casing/bronze_casing_side",
+            "bronze_casing/bronze_casing_top", "bronze_boiler/bronze_boiler_front",
+            "bronze_boiler/bronze_boiler_front_active");
 
     /**
      * Sheets whose animation is described by a metadata file next to them.

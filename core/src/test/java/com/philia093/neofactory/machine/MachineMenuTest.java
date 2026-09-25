@@ -304,6 +304,24 @@ class MachineMenuTest {
     }
 
     @Test
+    void aMachineWithoutAnOutputSlotShowsItsTanksAndThePlayer() {
+        // The shape of a boiler: one slot it takes something in, no product and a tank on every side.
+        MachineMenu menu = menu(1, 0, 1, 1, false);
+
+        assertEquals(1 + PlayerInventory.SLOT_COUNT, menu.container().layout().slots().size(),
+                "the one slot of the machine and the inventory of the player");
+        assertEquals(2, menu.fluidSlots().size(), "and the two tanks at the foot of the panel");
+
+        Slot first = menu.container().layout().slots().get(0);
+        assertEquals(MachineMenu.INPUT_RIGHT, first.x(), "the slot of the machine stands alone");
+        assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH / 2, first.y());
+
+        Slot player = menu.container().layout().slots().get(1);
+        assertEquals(MachineMenu.PLAYER_LEFT, player.x(), "and the inventory follows below it");
+        assertEquals(MachineMenu.PLAYER_STORAGE_TOP, player.y());
+    }
+
+    @Test
     void aMachineWithEverythingItCanHoldHasNoOverlap() {
         MachineMenu menu = menu(6, 6, MachineMenu.MAX_UPGRADES, 2, 2, true);
         List<int[]> boxes = new ArrayList<>();

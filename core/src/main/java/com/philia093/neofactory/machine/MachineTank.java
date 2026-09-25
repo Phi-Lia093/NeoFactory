@@ -21,7 +21,7 @@ public final class MachineTank {
         /** Fluid a recipe takes out, the raw material of the machine. */
         INPUT,
 
-        /** Fluid the machine made, for a pipe or a bucket to take out. */
+        /** Fluid the machine made, for a pipe or a cell to take out. */
         OUTPUT
     }
 

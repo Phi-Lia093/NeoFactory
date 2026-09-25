@@ -115,8 +115,9 @@ class MachineStorageTest {
     void theFluidsOfTheGameHaveNames() {
         assertEquals(Fluids.WATER, Fluids.byName("water"));
         assertEquals(Fluids.LAVA, Fluids.byName("lava"));
+        assertEquals(Fluids.STEAM, Fluids.byName("steam"));
         assertEquals(null, Fluids.byName("oil"));
         assertEquals(null, Fluids.byName(null));
-        assertEquals(2, Fluids.all().size());
+        assertEquals(3, Fluids.all().size());
     }
 }

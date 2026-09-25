@@ -33,7 +33,12 @@ import java.util.Objects;
 public record MachineScreen(String title, ProgressKind progress, List<SlotKind> inputs,
         List<SlotKind> outputs, int fluidInputs, int fluidOutputs, boolean configureSlot) {
 
-    /** Amount of item slots a block of slots may hold, one of the shapes of the game. */
+    /**
+     * Amounts of slots a block of slots may hold, one of the shapes of the game.
+     * <p>
+     * A machine may have no slot of a side at all: a boiler holds no product, only a tank, and a tank of
+     * fluid holds no item. Such a side is left out of the panel, see {@link #columns(int)}.
+     */
     private static final List<Integer> SHAPES = List.of(1, 2, 4, 6);
 
     /** Largest amount of tanks at the foot of a panel. */
@@ -48,13 +53,13 @@ public record MachineScreen(String title, ProgressKind progress, List<SlotKind> 
         if (title.isBlank()) {
             throw new IllegalArgumentException("The title of a machine must not be blank");
         }
-        if (!SHAPES.contains(inputs.size())) {
+        if (!hasAShape(inputs.size())) {
             throw new IllegalArgumentException("A machine takes " + inputs.size()
-                    + " input slots, but only " + SHAPES + " are arranged by the layout");
+                    + " input slots, but only 0, 1, 2, 4 or 6 are arranged by the layout");
         }
-        if (!SHAPES.contains(outputs.size())) {
+        if (!hasAShape(outputs.size())) {
             throw new IllegalArgumentException("A machine makes " + outputs.size()
-                    + " output slots, but only " + SHAPES + " are arranged by the layout");
+                    + " output slots, but only 0, 1, 2, 4 or 6 are arranged by the layout");
         }
         for (SlotKind kind : inputs) {
             if (kind.isFluid()) {
@@ -87,13 +92,24 @@ public record MachineScreen(String title, ProgressKind progress, List<SlotKind> 
     }
 
     /**
+     * {@code true} when a block of that many slots has a shape the layout arranges.
+     *
+     * @param slots amount of slots of a side of a machine
+     * @return {@code true} when the side may be laid out
+     */
+    private static boolean hasAShape(int slots) {
+        return slots == 0 || SHAPES.contains(slots);
+    }
+
+    /**
      * Columns a block of slots of this size takes.
      *
-     * @param slots amount of slots, one of {@code 1}, {@code 2}, {@code 4} or {@code 6}
-     * @return the amount of columns
+     * @param slots amount of slots, {@code 0}, {@code 1}, {@code 2}, {@code 4} or {@code 6}
+     * @return the amount of columns, {@code 0} for a machine that holds no slot of that side
      */
     public static int columns(int slots) {
         return switch (slots) {
+            case 0 -> 0;
             case 1, 2 -> 1;
             case 4 -> 2;
             case 6 -> 3;
@@ -104,11 +120,12 @@ public record MachineScreen(String title, ProgressKind progress, List<SlotKind> 
     /**
      * Rows a block of slots of this size takes.
      *
-     * @param slots amount of slots, one of {@code 1}, {@code 2}, {@code 4} or {@code 6}
-     * @return the amount of rows
+     * @param slots amount of slots, {@code 0}, {@code 1}, {@code 2}, {@code 4} or {@code 6}
+     * @return the amount of rows, {@code 0} for a machine that holds no slot of that side
      */
     public static int rows(int slots) {
         return switch (slots) {
+            case 0 -> 0;
             case 1 -> 1;
             case 2, 4, 6 -> 2;
             default -> throw new IllegalArgumentException("No shape for " + slots + " slots");

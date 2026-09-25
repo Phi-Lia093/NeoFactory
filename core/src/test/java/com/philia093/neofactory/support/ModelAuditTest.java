@@ -110,6 +110,8 @@ class ModelAuditTest {
                 "a slab fills the lower or the upper half of its cell");
         assertTrue(BlockRegistry.byName("anvil").states().stateCount() == 4,
                 "the anvil is turned towards the one who builds it");
+        assertTrue(BlockRegistry.byName("bronze_boiler").states().stateCount() == 8,
+                "a boiler looks in four directions and its mouth is lit or not");
     }
 
     @Test

@@ -295,7 +295,7 @@ public final class MachineGui {
     }
 
     /**
-     * Fills the lower part of a tank with the fluid it holds, the way a bucket would show it.
+     * Fills the lower part of a tank with the fluid it holds, the way a full cell shows it.
      *
      * @param batch batch switched to the projection of the interface viewport
      * @param x left edge of the cell of the tank

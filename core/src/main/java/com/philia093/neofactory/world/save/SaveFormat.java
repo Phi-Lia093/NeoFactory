@@ -32,7 +32,7 @@ public final class SaveFormat {
      * <p>
      * <b>What version 4 changed.</b> The game has no fluid block any more. Water and lava used to be
      * blocks a chunk could hold and a fluid ran through the world as a body of its own; a fluid is a
-     * material of the industry now, carried by a tank, a bucket or a cell, and the ground of a world is
+     * material of the industry now, carried by a tank or a cell, and the ground of a world is
      * dry everywhere. A chunk of version 3 names block ids that no longer exist - the water and the lava
      * of the landscape - so it is refused instead of loading a world with holes where its sea was.
      * <p>
@@ -40,8 +40,25 @@ public final class SaveFormat {
      * over a save game as well, see {@code SaveTags#DAMAGE}. At the same time the eight pieces of armour
      * left the game: the numbers they held are free now, and a stored inventory that names one of them is
      * read as an empty slot, see {@code Items#ARMOUR_ID_FROM}.
+     * <p>
+     * <b>What version 6 changed.</b> The game has one container and no bucket. The empty bucket, the
+     * bucket of water and the bucket of lava left the game, so the item ids 67, 68 and 69 name nothing
+     * any more and a stored inventory that holds one of them is read as an empty slot, see
+     * {@code Items#FLUID_CELL_ID}. Every fluid travels in a cell now, and the cells kept their numbers:
+     * 70, 71 and 72 are still the cell, the water cell and the lava cell.
+     * <p>
+     * <b>What version 7 changed.</b> The industry arrived: steam is a fluid of the game and travels in a
+     * cell like water and lava, see {@code Fluids#STEAM}. Its cell is the first item written down after
+     * the cells of the two fluids of the world, so it takes the first free number, see
+     * {@code Items#NEXT_FREE_ID}.
+     * <p>
+     * <b>What version 8 changed.</b> The items of the industry take the numbers 86 to 99 - the cell of
+     * steam, the bronze boiler and the machines, pipes and tools that follow - and the materials of the
+     * game stand behind that run, so every item of every material moved fourteen numbers up. A stored
+     * inventory of an older version therefore names the wrong items and is refused instead of being read,
+     * see {@code Items#BRONZE_BOILER_ID}.
      */
-    public static final int DATA_VERSION = 5;
+    public static final int DATA_VERSION = 8;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

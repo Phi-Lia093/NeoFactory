@@ -1,0 +1,5 @@
+{
+  "pattern": ["III", "C C", "CCC"],
+  "key": { "I": "iron_ingot", "C": "cobblestone" },
+  "result": { "item": "bronze_boiler" }
+}
