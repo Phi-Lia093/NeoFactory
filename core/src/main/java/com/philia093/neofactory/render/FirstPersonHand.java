@@ -7,13 +7,18 @@ import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.world.Section;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.List;
 
 /**
  * The hand of the player, as a view from inside a body sees it.
@@ -60,7 +65,7 @@ public class FirstPersonHand implements Disposable {
     private final ItemCubeMeshes cubes;
 
     /** The arm, meshed while the picture of the hand was found, {@code null} before that. */
-    private Mesh arm;
+    private Array<Mesh> arms;
 
     /** Layer the picture of the hand lives in, {@code -1} while there is none. */
     private int armLayer = -1;
@@ -78,6 +83,9 @@ public class FirstPersonHand implements Disposable {
     private final Matrix4 model = new Matrix4();
     private final Matrix4 held = new Matrix4();
     private final Matrix4 placed = new Matrix4();
+
+    /** Squeezes the unit cube of a block into the shape of an arm, see {@link HandMeshes}. */
+    private final Matrix4 armBox = new Matrix4();
 
     /** The card of every kind of item that was held once, keyed by its name. */
     private final ObjectMap<String, Mesh> cards = new ObjectMap<>();
@@ -97,6 +105,12 @@ public class FirstPersonHand implements Disposable {
     public FirstPersonHand(BlockPictures pictures, ItemCubeMeshes cubes) {
         this.pictures = pictures;
         this.cubes = cubes;
+        // The mesh of the arm is the unit cube of a block, so the shape of an arm is this matrix: the box
+        // spans the width and the thickness of an arm around the middle of it and reaches its length into
+        // the view, which is the negative Z axis.
+        armBox.idt()
+                .translate(-HandMeshes.WIDTH * 0.5f, -HandMeshes.THICKNESS * 0.5f, -HandMeshes.LENGTH)
+                .scale(HandMeshes.WIDTH, HandMeshes.THICKNESS, HandMeshes.LENGTH);
     }
 
     /**
@@ -134,7 +148,7 @@ public class FirstPersonHand implements Disposable {
 
     /** {@code true} while the arm was meshed, which needs the picture of the hand in the array. */
     public boolean isReady() {
-        return arm != null;
+        return arms != null;
     }
 
     /**
@@ -145,7 +159,7 @@ public class FirstPersonHand implements Disposable {
      * @param heldStack stack the player holds, empty for a bare hand
      */
     public void render(PerspectiveCamera camera, BlockShader shader, ItemStack heldStack) {
-        if (arm == null && !build()) {
+        if (arms == null && !build()) {
             return;
         }
         if (!reportedPlacement) {
@@ -165,7 +179,10 @@ public class FirstPersonHand implements Disposable {
         // pass may run with culling left on by the pass before it: an arm that is culled is an arm that is
         // drawn and never seen, see BlockIconRenderer, which turns culling off for the same reason.
         Gdx.gl.glDisable(GL20.GL_CULL_FACE);
-        shader.render(arm, model);
+        for (Mesh mesh : arms) {
+            placed.set(model).mul(armBox);
+            shader.render(mesh, placed);
+        }
         renderHeld(heldStack, shader);
         shader.end();
     }
@@ -231,12 +248,26 @@ public class FirstPersonHand implements Disposable {
             }
             return false;
         }
-        MeshData data = HandMeshes.arm(armLayer);
-        arm = new Mesh(true, data.vertexCount(), data.indexCount(), BlockShader.ATTRIBUTES);
-        arm.setVertices(data.vertexFloats(), 0, data.vertexCount() * MeshData.FLOATS_PER_VERTEX);
-        arm.setIndices(data.indexShorts(), 0, data.indexCount());
+        // The arm is meshed the way the cube of an item is meshed: one block of the world, alone in an
+        // empty section, with every face of it asking for the picture of the hand, see SectionMesher. What
+        // the mesh holds is therefore the unit cube of a block and the model matrix squeezes it into the
+        // shape of an arm - the very triangles the world is drawn from, which is why an arm cannot be
+        // drawn differently from a block.
+        Section section = new Section(0);
+        section.setRawId(0, 0, 0, Blocks.STONE.id());
+        SectionMesher.Blocks blocks = (x, y, z) -> x == 0 && y == 0 && z == 0
+                ? Blocks.STONE
+                : Blocks.AIR;
+        List<MeshData> data = SectionMesher.build(section, 0, 0, 0, blocks, name -> armLayer);
+        arms = new Array<>();
+        for (MeshData mesh : data) {
+            Mesh uploaded = new Mesh(true, mesh.vertexCount(), mesh.indexCount(), BlockShader.ATTRIBUTES);
+            uploaded.setVertices(mesh.vertexFloats(), 0, mesh.vertexCount() * MeshData.FLOATS_PER_VERTEX);
+            uploaded.setIndices(mesh.indexShorts(), 0, mesh.indexCount());
+            arms.add(uploaded);
+        }
         LOGGER.info("Meshed the arm of the player from layer {}: {} corners, {} triangles",
-                armLayer, data.vertexCount(), data.indexCount() / 3);
+                armLayer, data.get(0).vertexCount(), data.get(0).indexCount() / 3);
         return true;
     }
 
@@ -270,9 +301,11 @@ public class FirstPersonHand implements Disposable {
 
     @Override
     public void dispose() {
-        if (arm != null) {
-            arm.dispose();
-            arm = null;
+        if (arms != null) {
+            for (Mesh mesh : arms) {
+                mesh.dispose();
+            }
+            arms = null;
         }
         for (Mesh card : cards.values()) {
             card.dispose();
