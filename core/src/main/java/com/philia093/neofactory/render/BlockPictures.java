@@ -176,12 +176,13 @@ public class BlockPictures implements Disposable {
      * drawn there, and a slot whose icon is baked from a block that draws nothing, which the interface bakes
      * again on every frame.
      * <p>
-     * The pictures of the items travel with them: a tool or a material has no cube and is not drawn in
-     * the world at all, so its picture is the only art it has, and the array carries it beside the
-     * pictures of the blocks. Which folder that picture lives in is decided by the file system - the
-     * picture of an item is its own one below {@code items/}, and the picture of a block item is the
-     * picture of that block, which is collected above - so both names are offered and the one without a
-     * file is skipped, see {@link #collect(String, List, ObjectMap, Predicate)}.
+     * The pictures of the items travel with them: a tool or a material has no cube to stand for it, so its
+     * picture is the only art it has and the drop of it is drawn as a board of that picture, one pixel thick,
+     * see {@code ItemCubeMeshes}. The array carries it beside the pictures of the blocks. Which folder that
+     * picture lives in is decided by the file system - the picture of an item is its own one below
+     * {@code items/}, and the picture of a block item is the picture of that block, which is collected above
+     * - so both names are offered and the one without a file is skipped, see
+     * {@link #collect(String, List, ObjectMap, Predicate)}.
      * <p>
      * The faces of a body are cut out of the skin that draws it, one picture per face of every bone, and
      * the arm of a view is a piece of that skin of its own, see {@link SkinRegions} and

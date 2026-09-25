@@ -8,11 +8,12 @@ import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.entity.Entity;
 import com.philia093.neofactory.entity.ItemEntity;
+import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.Section;
@@ -48,7 +49,7 @@ public class WorldRenderer3D implements Disposable {
     /** Frame drawn around the cell an action would touch, owned by this renderer. */
     private final ShapeRenderer frame = new ShapeRenderer();
 
-    /** Little cubes the items on the ground are drawn as, one per kind of block. */
+    /** Little bodies the items on the ground are drawn as, one per kind of item. */
     private final ItemCubeMeshes itemCubes;
 
     /** Reused matrix placing one item cube, so a frame does not fill the heap with matrices. */
@@ -112,15 +113,13 @@ public class WorldRenderer3D implements Disposable {
     }
 
     /**
-     * Draws the items lying on the ground as small cubes of their block.
+     * Draws the items that lie on the ground.
      * <p>
-     * An item has to be seen to be picked up, and a world of cubes is read by its shapes, so an item is
-     * drawn as the block it stands for rather than as a flat picture. The cube is meshed once per kind of
-     * block and placed by a model matrix, see {@link ItemCubeMeshes}, so a pile of a hundred stones costs
-     * one mesh and one draw per item.
-     * <p>
-     * An item that is not a block - a material, a tool - has no cube to show and is skipped; the game has
-     * no picture for it yet, see the class comment of {@link ItemCubeMeshes}.
+     * Every item is one little body of its own, see {@link ItemCubeMeshes}: the cube of the block it stands
+     * for, or - when it places no block, a tool or a material - one upright board of its picture, one pixel
+     * thick and turning with the item. The body is placed by a model matrix - the very same cube is used for
+     * every stone on the ground - and it fills the box the item is stopped by, see {@code ItemEntity#boxOf}:
+     * an item that rests on the ground stands on it and one that leans against a wall touches it.
      *
      * @param world world whose entities are drawn
      */
@@ -130,20 +129,23 @@ public class WorldRenderer3D implements Disposable {
                 continue;
             }
             ItemEntity item = (ItemEntity) entity;
-            if (item.stack().isEmpty()) {
-                continue;
-            }
-            Block block = item.stack().item().block();
-            if (block == null) {
+            ItemStack stack = item.stack();
+            if (stack.isEmpty()) {
                 continue;
             }
             float half = ItemCubeMeshes.SIZE * 0.5f;
+            // An item on the ground turns around its own axis, which is what makes it read as something lying
+            // there and not as a block: the turn is taken from the age of the item, so a frame that is drawn
+            // again shows the very same item at the very same angle.
+            float turn = item.age() * ITEM_TURN_DEGREES_PER_SECOND;
+            // The body stands on the middle of its box and turns around that middle, so what is drawn and
+            // what stops the item are the same box.
             model.idt()
-                    .translate(entity.position().x - half,
-                            entity.position().y + ItemCubeMeshes.SIZE * 0.25f,
-                            entity.position().z - half)
+                    .translate(entity.position().x, entity.position().y, entity.position().z)
+                    .rotate(Vector3.Y, turn)
+                    .translate(-half, 0.0f, -half)
                     .scale(ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE, ItemCubeMeshes.SIZE);
-            for (Mesh mesh : itemCubes.cubeOf(block)) {
+            for (Mesh mesh : itemCubes.meshOf(stack.item())) {
                 shader.render(mesh, model);
                 drawnMeshes++;
             }
@@ -154,6 +156,15 @@ public class WorldRenderer3D implements Disposable {
     public int drawnSectionCount() {
         return drawnSections;
     }
+
+    /**
+     * Degrees one second adds to the turn of a lying item.
+     * <p>
+     * A dropped item turns around its own vertical axis, which is what tells a player at a glance that this
+     * little cube is something to pick up and not a block of the world. A quarter turn per second is slow
+     * enough to read the picture on its faces and fast enough to be seen from across a room.
+     */
+    private static final float ITEM_TURN_DEGREES_PER_SECOND = 90.0f;
 
     /** Cubes of the items, so the hand of a view can hold one, see {@link HumanoidRenderer}. */
     public ItemCubeMeshes itemCubes() {

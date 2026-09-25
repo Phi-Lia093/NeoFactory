@@ -30,7 +30,6 @@ import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.gui.MachineGui;
 import com.philia093.neofactory.input.InputHandler;
-import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
@@ -271,8 +270,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     private final ChatLog chatLog = new ChatLog();
 
-    /** Sink that receives the items of a broken block, see {@link ItemDrops}. */
-    private final ItemDrops drops;
+    /** Sink that receives the items of a broken block and of a throw, see {@link WorldDrops}. */
+    private final WorldDrops drops;
 
     /** Breaks the targeted block while the left button is held. */
     private final MiningController mining;
@@ -513,10 +512,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // The crafting field of the inventory is a work field: when the screen closes, what
         // is left in it is dropped where the player stands instead of being hidden, see
         // ContainerMenu and Slot.Rule.WORK.
-        inventoryGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().z));
-        // A stack that a creative player drags out of the grid lands on the ground instead
-        // of going back into an inventory that refills itself anyway.
-        creativeGui.setDropper(stack -> drops.drop(stack, player.position().x, player.position().z));
+        inventoryGui.setDropper(stack -> drops.throwFrom(player, stack));
+        // A stack that a creative player drags out of the grid is thrown away instead of going back into an
+        // inventory that refills itself anyway.
+        creativeGui.setDropper(stack -> drops.throwFrom(player, stack));
 
         if (fresh) {
             // A new world starts at its spawn point and gets a starter kit, because
@@ -1428,7 +1427,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * <p>
      * While the inventory screen is open the slot under the mouse is dropped, which lets
      * the key work on whatever the player points at. During play the selected hotbar slot
-     * is dropped in front of the player, a single item or the whole stack.
+     * is thrown in front of the player, along the line of sight, a single item or the whole
+     * stack.
      *
      * @param wholeStack {@code true} to drop the whole stack, {@code false} for one item
      */
@@ -1448,7 +1448,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (held.isEmpty()) {
             inventory.set(inventory.selectedSlot(), ItemStack.EMPTY);
         }
-        drops.drop(dropped, player.position().x, player.position().z);
+        drops.throwFrom(player, dropped);
     }
 
     /** Short description of the targeted cell, used by the status log. */

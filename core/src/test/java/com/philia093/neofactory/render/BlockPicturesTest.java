@@ -4,6 +4,8 @@ import com.badlogic.gdx.utils.ObjectMap;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.Section;
 import org.junit.jupiter.api.BeforeAll;
@@ -68,6 +70,32 @@ class BlockPicturesTest {
         assertTrue(world.contains("stone_slab_side"), "and the rim of its upper half");
         assertTrue(world.contains("anvil/anvil_top"), "the plate of an anvil");
         assertTrue(world.contains("anvil/anvil_base"), "and the body of its base");
+    }
+
+    /**
+     * A drop of an item that is no block is drawn as two crossed cards of its picture, see
+     * {@code ItemCubeMeshes}: a picture the array of the world does not hold is an item that lies on the
+     * ground as nothing at all, which is a drop a player walks past without ever seeing it. The pictures of
+     * a body are cut out of a file instead of living in one, so they are skipped: only the items are asked,
+     * and only the ones that place no block, because a block item is drawn as the cube of its block.
+     */
+    @Test
+    void everyItemThatIsNoBlockHasAPictureInTheWorld() {
+        List<String> world = worldPictures();
+        List<String> missing = new ArrayList<>();
+        int checked = 0;
+        for (Item item : ItemRegistry.all()) {
+            if (item.block() != null || item.texture().isEmpty()) {
+                continue;
+            }
+            checked++;
+            if (!world.contains(BlockPictures.itemPicture(item)) && !world.contains(item.texture())) {
+                missing.add(item.name());
+            }
+        }
+        assertTrue(missing.isEmpty(),
+                "a drop of these items would lie on the ground as nothing at all: " + missing);
+        assertTrue(checked > 0, "no item that is no block was checked at all");
     }
 
     /**

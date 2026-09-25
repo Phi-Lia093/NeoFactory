@@ -99,6 +99,14 @@ public final class Constants {
     public static final float JUMP_SPEED = 8.4f;
 
     /**
+     * Side of a dropped item in blocks, also the size of the cube it is drawn as.
+     * <p>
+     * It is what a body of the world measures its box with, the way a player measures with
+     * {@link #PLAYER_HITBOX} and {@link #PLAYER_HEIGHT}, see {@code ItemEntity}.
+     */
+    public static final float ITEM_SIZE = 0.4f;
+
+    /**
      * Speed a body climbs a ladder with, in blocks per second.
      * <p>
      * Slower than {@link #JUMP_SPEED}: the jump key climbs a ladder, but as a steady climb up the rungs

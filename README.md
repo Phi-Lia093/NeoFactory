@@ -24,7 +24,9 @@ stored on disk so that a session can be continued later.
   hangs on whatever it is built against, so a wall is built against and a bridge
   grows sideways.
 - **Inventory and hotbar** - nine hotbar slots, a full inventory screen, and
-  dropped items that fall on the ground and are picked up by walking over them.
+  dropped items that are thrown where the player looks, fall on the ground and are
+  picked up by walking over them; any kind of item is drawn, a block as the cube of
+  its block and a tool as a board of its picture one pixel thick.
 - **Save games** - one folder per world, a level file plus one file per chunk the
   player changed, written while playing and when leaving.
 - **Chunk streaming** - the terrain around the player is kept in memory and the
@@ -125,6 +127,7 @@ stored on disk so that a session can be continued later.
 | `-` / `=` | zoom out / in while held (numpad `-` and `+` do the same) |
 | left mouse button | break the block the eyes meet while held; a click on the hotbar selects that slot |
 | `1` to `9` | select a hotbar slot |
+| `Q` | throw the held item where the view points, `SHIFT` with it throws the whole stack |
 | `[` / `]` | keep fewer / more chunks around the player |
 | `F5` | switch between the view from inside the body and the view of it from behind |
 | mouse outside the panel | throw the carried stack into the world while a container is open; a stack put into the creative grid disappears instead |
@@ -241,6 +244,14 @@ is kept. The cube is folded at four times the cell that shows it and drawn with 
 the steps along its slanted edges are four pixels wide instead of sixteen and the graphics card turns
 them into soft edges; `BlockIconFactory#downscale` is the same arithmetic for a preview that cannot
 lean on the graphics card. Tall grass and leaves keep their flat picture, they do not fill a cell.
+
+A dropped item is a small body of its own: the cube of the block it stands for, or - when it places no
+block, a tool or a material - one upright board of its own picture, see `ItemCubeMeshes`. The board is one
+pixel of that picture thick, which is what keeps it from turning into a line seen from the side and into
+nothing at all seen from behind, and the four rims that thickness brings with it show the row or the column
+of the picture that meets them. The picture stands upright on both large faces, and the face behind shows it
+mirrored, the way it comes through the board: that is what makes a full turn of a turning item read as a
+full turn instead of a quarter of one that keeps looking the same.
 `gradlew :core:test` writes a sheet that shows the result to
 `core/build/reports/block-icons-preview.png`, with a few blocks enlarged in `block-icons-detail.png`.
 

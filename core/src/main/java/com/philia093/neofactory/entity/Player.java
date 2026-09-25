@@ -52,9 +52,6 @@ public class Player extends Entity {
     /** Box of one cell, written while a collision is tested, see {@link #collides}. */
     private final Aabb cellShape = new Aabb();
 
-    /** Box of one cell, written while a landing height is searched, see {@link #landingHeight}. */
-    private final Aabb landingShape = new Aabb();
-
     /**
      * Longest step the height of a body may take at once, in blocks.
      * <p>
@@ -488,47 +485,9 @@ public class Player extends Entity {
         if (stepY > 0.0f) {
             return false;
         }
-        position.y = landingHeight(world, MathUtils.floor(candidateY), position.y);
+        position.y = world.landingHeight(body, MathUtils.floor(candidateY), position.y, cellShape);
         onGround = true;
         return false;
-    }
-
-    /**
-     * Height the feet come to rest at, on top of the shape that stopped a fall.
-     * <p>
-     * The shape of a cell is not always a whole cube: a slab ends halfway up its own cell and an anvil at
-     * the height of its plate. The top of the highest shape the body can rest on is what the feet are put
-     * on - a shape that lies above the height the body still stood at does not carry it, it is what the
-     * body fell past. The height is read from the shapes themselves, so a body comes to rest on the very
-     * top of what stopped it and stands there without moving again.
-     *
-     * @param world world to ask for the shapes
-     * @param cell cell the fall reached, the one the shape that stopped it stands in
-     * @param above height the body still stood at before this step
-     * @return the height the feet are put on, at least the floor of that cell
-     */
-    private float landingHeight(World world, int cell, float above) {
-        // The world has a bottom and it is a floor: a body that reached it stands on it instead of asking
-        // about cells below the world, which are not there, see {@link #collides}.
-        if (cell < Constants.MIN_Y) {
-            return Constants.MIN_Y;
-        }
-        float half = Constants.PLAYER_HITBOX * 0.5f;
-        int minX = MathUtils.floor(position.x - half);
-        int maxX = MathUtils.floor(position.x + half);
-        int minZ = MathUtils.floor(position.z - half);
-        int maxZ = MathUtils.floor(position.z + half);
-        float highest = cell;
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                Aabb shape = world.shape(x, cell, z, landingShape);
-                if (shape.isEmpty() || shape.maxY() > above) {
-                    continue;
-                }
-                highest = Math.max(highest, shape.maxY());
-            }
-        }
-        return highest;
     }
 
     /**
@@ -606,27 +565,9 @@ public class Player extends Entity {
             return true;
         }
         float half = Constants.PLAYER_HITBOX * 0.5f;
-        float height = Constants.PLAYER_HEIGHT;
-        body.set(centerX - half, centerY, centerZ - half, centerX + half, centerY + height,
-                centerZ + half);
-        int minX = MathUtils.floor(body.minX());
-        int maxX = MathUtils.floor(body.maxX());
-        int minZ = MathUtils.floor(body.minZ());
-        int maxZ = MathUtils.floor(body.maxZ());
-        int minY = MathUtils.floor(body.minY());
-        int maxY = Math.min(Constants.MAX_Y, MathUtils.floor(body.maxY()));
-
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                for (int y = minY; y <= maxY; y++) {
-                    Aabb shape = world.shape(x, y, z, cellShape);
-                    if (!shape.isEmpty() && body.intersects(shape)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        body.set(centerX - half, centerY, centerZ - half, centerX + half,
+                centerY + Constants.PLAYER_HEIGHT, centerZ + half);
+        return world.overlaps(body, cellShape);
     }
 
     @Override

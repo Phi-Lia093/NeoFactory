@@ -1,8 +1,10 @@
 package com.philia093.neofactory.world;
 
+import com.badlogic.gdx.math.MathUtils;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.util.Aabb;
+import com.philia093.neofactory.util.Constants;
 
 /**
  * Read and write access to the blocks of a world.
@@ -105,6 +107,81 @@ public interface BlockAccess {
             return into.clear();
         }
         return block.shape(getState(x, y, z), into).offset(x, y, z);
+    }
+
+    /**
+     * {@code true} when a box reaches into the shape of a cell.
+     * <p>
+     * A body of the world is a box - the box of the player, the little box of a dropped item - and what it
+     * runs into is the shape of every cell it reaches, see {@link #shape(int, int, int, Aabb)}: a block fills
+     * its cell, a slab the lower or the upper half of it and a ladder nothing at all. The box a caller hands
+     * in for the shapes is written to and never kept, so a frame that walks a body through the world
+     * allocates nothing. A box that only touches a shape is not inside it, which is what lets a body rest on
+     * the very top of what carries it, see {@link Aabb#intersects(Aabb)}.
+     *
+     * @param box box of the body, in the units of the world
+     * @param into box the shape of one cell is read into
+     * @return {@code true} when the box overlaps the shape of at least one cell
+     */
+    default boolean overlaps(Aabb box, Aabb into) {
+        if (box.isEmpty()) {
+            return false;
+        }
+        int minX = MathUtils.floor(box.minX());
+        int maxX = MathUtils.floor(box.maxX());
+        int minZ = MathUtils.floor(box.minZ());
+        int maxZ = MathUtils.floor(box.maxZ());
+        int minY = Math.max(Constants.MIN_Y, MathUtils.floor(box.minY()));
+        int maxY = Math.min(Constants.MAX_Y, MathUtils.floor(box.maxY()));
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                for (int y = minY; y <= maxY; y++) {
+                    Aabb shape = shape(x, y, z, into);
+                    if (!shape.isEmpty() && box.intersects(shape)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Height a box comes to rest at on top of the shapes of one cell.
+     * <p>
+     * The shape of a cell is not always a whole cube: a slab ends halfway up its own cell and an anvil at the
+     * height of its plate. The top of the highest shape a body can rest on is what its feet are put on - a
+     * shape that lies above the height the body still stood at does not carry it, it is what the body fell
+     * past. A height that is read this way is exact, so a body comes to rest on the very top of what stopped
+     * it and stands there without moving again, see {@code Player#stepVertically}.
+     *
+     * @param box box of the body, in the units of the world
+     * @param cell cell the fall reached, the one the shape that stopped it stands in
+     * @param above height the body still stood at before the step
+     * @param into box the shape of one cell is read into
+     * @return the height the body is put on, at least the floor of that cell
+     */
+    default float landingHeight(Aabb box, int cell, float above, Aabb into) {
+        // The world has a bottom and it is a floor: a body that reached it stands on it instead of asking
+        // about cells below the world, which are not there.
+        if (cell < Constants.MIN_Y) {
+            return Constants.MIN_Y;
+        }
+        float highest = cell;
+        int minX = MathUtils.floor(box.minX());
+        int maxX = MathUtils.floor(box.maxX());
+        int minZ = MathUtils.floor(box.minZ());
+        int maxZ = MathUtils.floor(box.maxZ());
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                Aabb shape = shape(x, cell, z, into);
+                if (shape.isEmpty() || shape.maxY() > above) {
+                    continue;
+                }
+                highest = Math.max(highest, shape.maxY());
+            }
+        }
+        return highest;
     }
 
     /**

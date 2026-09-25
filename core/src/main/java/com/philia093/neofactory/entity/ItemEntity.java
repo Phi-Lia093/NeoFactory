@@ -1,8 +1,10 @@
 package com.philia093.neofactory.entity;
 
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.util.Aabb;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.Chunk;
@@ -53,8 +55,25 @@ public class ItemEntity extends Entity {
     /** Seconds an item stays in the world before it is removed. */
     private static final float DESPAWN_SECONDS = 300.0f;
 
+    /**
+     * Longest piece a movement of an item is walked in, in blocks.
+     * <p>
+     * A frame that took long enough - the first ones of a world, a stall - would move an item further than the
+     * terrain is thick in one go. A step that long goes right through the ground, because the box of the item
+     * never overlaps a block on its way: nothing stops it and the item ends up under the world. Every movement
+     * is therefore walked in pieces of at most this length, the way a player walks a fall in pieces, see
+     * {@code Player#moveVertically}.
+     */
+    private static final float LONGEST_STEP = 0.5f;
+
     /** Reused vector pointing from the item to the player. */
     private final Vector3 towards = new Vector3();
+
+    /** Box of this item, written while it is moved through the world. */
+    private final Aabb box = new Aabb();
+
+    /** Box of one cell, written while the world is asked for the shapes of its blocks. */
+    private final Aabb shapeBox = new Aabb();
 
     /** Items this entity stands for, empty only for a broken save game. */
     private ItemStack stack = ItemStack.EMPTY;
@@ -98,7 +117,7 @@ public class ItemEntity extends Entity {
 
     @Override
     public float hitboxHalfExtent() {
-        return Constants.ITEM_ICON_SIZE * 0.25f;
+        return Constants.ITEM_SIZE * 0.5f;
     }
 
     @Override
@@ -117,7 +136,7 @@ public class ItemEntity extends Entity {
             return;
         }
 
-        slide(delta);
+        move(world, delta);
 
         Player player = world.entities().player();
         if (player == null || pickupDelay > 0.0f) {
@@ -147,24 +166,161 @@ public class ItemEntity extends Entity {
     }
 
     /**
-     * Moves the item by its velocity and lets it come to rest.
+     * Moves the item by its velocity through the world, which changes both of them.
      * <p>
-     * The speed a drop is thrown with comes from whoever spawned it, see
-     * {@code WorldDrops}. It fades away within a fraction of a second, which is what makes
-     * the item stop after the short slide the original game shows.
+     * An item is a body like a player is one: the world pulls it down, a block stops it and it comes to rest
+     * on top of the shape it lands on - the half of a slab is where a stone stops and not the top of the cell.
+     * The two horizontal axes are resolved apart, so an item that is thrown against a wall slides along it
+     * instead of sticking to it, and a block that is built into the cell an item lies in pushes the item on
+     * top of itself, see {@link #squeezeOut(World)}.
+     *
+     * @param world world the item lies in
+     * @param delta time since the last frame in seconds
+     */
+    private void move(World world, float delta) {
+        velocity.y -= Constants.GRAVITY * delta;
+        walk(world, velocity.x * delta, velocity.y * delta, velocity.z * delta);
+        friction(delta);
+        squeezeOut(world);
+    }
+
+    /**
+     * Walks one movement of an item in pieces, so a long step cannot pass through the ground.
+     *
+     * @param world world the item lies in
+     * @param stepX movement along the X axis
+     * @param stepY movement along the Y axis, the height
+     * @param stepZ movement along the Z axis
+     */
+    private void walk(World world, float stepX, float stepY, float stepZ) {
+        float longest = Math.max(Math.abs(stepX), Math.max(Math.abs(stepY), Math.abs(stepZ)));
+        int pieces = Math.max(1, (int) Math.ceil(longest / LONGEST_STEP));
+        for (int piece = 0; piece < pieces; piece++) {
+            step(world, stepX / pieces, stepY / pieces, stepZ / pieces);
+        }
+    }
+
+    /**
+     * Moves the item one piece of its movement through the world, which changes both of them.
+     * <p>
+     * The two horizontal axes are resolved apart, so an item that is thrown against a wall slides along it
+     * instead of sticking to it, and the height is resolved last: the item comes to rest on top of the shape
+     * that stopped it, which is the half of a slab and not always the top of the cell. A block that is built
+     * into the cell an item lies in pushes the item on top of itself, see {@link #squeezeOut(World)}.
+     *
+     * @param world world the item lies in
+     * @param stepX movement of this piece along the X axis
+     * @param stepY movement of this piece along the Y axis, the height
+     * @param stepZ movement of this piece along the Z axis
+     */
+    private void step(World world, float stepX, float stepY, float stepZ) {
+        if (stepX != 0.0f) {
+            if (hits(world, stepX, 0.0f, 0.0f)) {
+                velocity.x = 0.0f;
+            } else {
+                position.x += stepX;
+            }
+        }
+        if (stepZ != 0.0f) {
+            if (hits(world, 0.0f, 0.0f, stepZ)) {
+                velocity.z = 0.0f;
+            } else {
+                position.z += stepZ;
+            }
+        }
+        if (stepY == 0.0f) {
+            return;
+        }
+        if (hits(world, 0.0f, stepY, 0.0f)) {
+            if (stepY > 0.0f) {
+                // A ceiling carries nothing: an item that was thrown up against one stops moving up and is
+                // left where it is, and the world pulls it down again on the next frame.
+                velocity.y = 0.0f;
+            } else {
+                // The item comes to rest on top of the shape that stopped it, and a fall does not bounce.
+                position.y = world.landingHeight(box, MathUtils.floor(position.y + stepY), position.y,
+                        shapeBox);
+                velocity.y = 0.0f;
+            }
+        } else {
+            position.y += stepY;
+        }
+        if (position.y < Constants.MIN_Y) {
+            // The bottom of the world is a floor, see BlockAccess#landingHeight.
+            position.y = Constants.MIN_Y;
+            velocity.y = 0.0f;
+        }
+    }
+
+    /**
+     * Slows an item that lies on the ground down.
+     * <p>
+     * The speed a drop is thrown with comes from whoever spawned it, see {@code WorldDrops}, and it fades
+     * away within a fraction of a second, which is what makes the item stop after the short slide the
+     * original game shows. An item in the air keeps its speed: only what touches the ground is held back.
      *
      * @param delta time since the last frame in seconds
      */
-    private void slide(float delta) {
-        if (velocity.isZero()) {
+    private void friction(float delta) {
+        if (velocity.y != 0.0f) {
             return;
         }
-        position.x += velocity.x * delta;
-        position.z += velocity.z * delta;
-        velocity.scl((float) Math.pow(SLIDE_PER_SECOND, delta));
-        if (velocity.len2() < 1.0f) {
-            velocity.setZero();
+        float keep = (float) Math.pow(SLIDE_PER_SECOND, delta);
+        velocity.x *= keep;
+        velocity.z *= keep;
+        if (velocity.x * velocity.x + velocity.z * velocity.z < 1.0f) {
+            velocity.x = 0.0f;
+            velocity.z = 0.0f;
         }
+    }
+
+    /**
+     * {@code true} when the box of this item would reach into a block at a moved place.
+     *
+     * @param world world the item lies in
+     * @param dx distance along the X axis the item would move
+     * @param dy distance along the Y axis the item would move
+     * @param dz distance along the Z axis the item would move
+     * @return {@code true} when the item cannot be there
+     */
+    private boolean hits(World world, float dx, float dy, float dz) {
+        boxOf(position.x + dx, position.y + dy, position.z + dz);
+        return world.overlaps(box, shapeBox);
+    }
+
+    /**
+     * Writes the box of this item at a place.
+     * <p>
+     * The position of an item is the bottom of its box, the way the position of a player is the height of
+     * their feet, so an item that comes to rest stands on the shape it landed on.
+     *
+     * @param x world X coordinate of the item
+     * @param y world Y coordinate of the bottom of the item
+     * @param z world Z coordinate of the item
+     */
+    private void boxOf(float x, float y, float z) {
+        float half = Constants.ITEM_SIZE * 0.5f;
+        box.set(x - half, y, z - half, x + half, y + Constants.ITEM_SIZE, z + half);
+    }
+
+    /**
+     * Pushes the item on top of a block it is inside of.
+     * <p>
+     * A block that is built into the cell an item lies in would have the item inside of it, and a body that is
+     * inside a block can never be moved out of it again, because every step of it still overlaps the block.
+     * The item is therefore put on top of the shape it is stuck in, which is what a block laid over an item
+     * does in the original game as well.
+     *
+     * @param world world the item lies in
+     */
+    private void squeezeOut(World world) {
+        boxOf(position.x, position.y, position.z);
+        if (!world.overlaps(box, shapeBox)) {
+            return;
+        }
+        position.y = world.landingHeight(box, MathUtils.floor(position.y), Float.POSITIVE_INFINITY,
+                shapeBox);
+        velocity.y = 0.0f;
     }
 
     /**
