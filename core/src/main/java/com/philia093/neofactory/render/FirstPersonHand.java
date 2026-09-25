@@ -1,6 +1,8 @@
 package com.philia093.neofactory.render;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.math.Matrix4;
@@ -159,6 +161,10 @@ public class FirstPersonHand implements Disposable {
         model.set(camera.view).inv().mul(pose);
 
         shader.begin(camera, pictures, NO_FOG_COLOR, NO_FOG_START, NO_FOG_END);
+        // A hand is a box a player looks at from outside, but the card of a tool is one surface and the
+        // pass may run with culling left on by the pass before it: an arm that is culled is an arm that is
+        // drawn and never seen, see BlockIconRenderer, which turns culling off for the same reason.
+        Gdx.gl.glDisable(GL20.GL_CULL_FACE);
         shader.render(arm, model);
         renderHeld(heldStack, shader);
         shader.end();
