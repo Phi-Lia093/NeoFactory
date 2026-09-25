@@ -11,7 +11,7 @@ stored on disk so that a session can be continued later.
 ## What is in the game today
 
 - **Terrain** - noise based biomes (plains, forest, desert, snow and a rocky one)
-  with grass, trees, ore clusters and decorative plants, all generated from the
+  with grass, trees and ore clusters, all generated from the
   world seed.
 - **View from inside the body** - the world is seen through the eyes of the player: the pointer turns the
   view, `W`, `A`, `S`, `D` walk and `SPACE` jumps. The arm of the body is drawn in the lower right of the
@@ -55,10 +55,17 @@ stored on disk so that a session can be continued later.
   once and inherited, and a second layer is drawn over a face where the colour of a biome belongs
   (the side of the grass is its own picture with the layer of the green above it). What a state of a
   block shows is a file of `assets/blockstates` as well: a furnace looks in one of four directions
-  and its model is turned by a quarter turn per direction, a plant is two crossed planes, and both
+  and its model is turned by a quarter turn per direction, a slab fills the lower or the upper half
+  of its cell, a ladder hangs on a side of a block and is climbed, a plant is two crossed planes, and both
   the shapes and the states are read once while the game starts. A block without a model file is the
   whole cube of its picture, so an older world still draws every block it holds, and a file that
   cannot be read is reported and skipped like a recipe.
+- **The shape of a block is what a body runs into** - the boxes of the model of a state are the
+  collision of its cell, so a slab is half a block high for the player as well: a body walks into the
+  half a slab fills, steps onto its top, and is stopped by the upper half of one that hangs on a
+  ceiling. A block that is not solid - a plant, a torch, a ladder - holds nothing back whatever shape
+  it is drawn with. Two boxes that only touch do not overlap, which is what lets a body rest on the
+  very top of what it stands on.
 - **The player is a body of boxes** - the head, the body, two arms and two legs the skin of
   `assets/entity/steve.png` draws, cut per face and hung on joints: an arm swings from the shoulder,
   a leg from the hip, a hit throws the right arm forward and the head follows the view. A view from
@@ -273,14 +280,22 @@ shape, which is how the colours of ten metals are reviewed without starting the 
 The flat engine only ever needed the view from above, so the side, the bottom and the front of every
 block had been deleted: `assets/blocks` held 271 pictures of the art pack instead of 356, and a test
 even failed the build when one of them came back. A world of cubes shows six faces, so
-`build/verify/extract_3d_assets.ps1` fetches the missing ones home - the 78 faces of the 43 blocks
-that are more than one picture, and the metadata of the seven sheets whose animation is written
-outside of them - together with the three sets a rounder world needs: `colormap` holds the two
-pictures the grass and the leaves are painted through, `environment` the sun, the moon and its
-phases, the clouds, the rain and the snow, and `misc` the underwater filter, the vignette and the
-shadow an entity drops. The list of faces lives in `MultiFaceTextures` and is watched by the audit,
-so a face that is renamed, lost while the pack is replaced or mistyped in the script is a failed
-build and never a hole in the world. `BlockFace` names the six faces of a cube - with the way each
+`build/verify/extract_3d_assets.ps1` fetches the missing ones home - the faces of the blocks that are
+more than one picture, and the metadata of the sheets whose animation is written outside of them -
+together with the three sets a rounder world needs: `colormap` holds the two pictures the grass and
+the leaves are painted through, `environment` the sun, the moon and its phases, the clouds, the rain
+and the snow, and `misc` the underwater filter, the vignette and the shadow an entity drops. The list
+of faces lives in `MultiFaceTextures` and is watched by the audit, so a face that is renamed, lost
+while the pack is replaced or mistyped in the script is a failed build and never a hole in the world.
+**The art of what this game does not use is not shipped**: the pack brought 356 pictures of blocks and
+233 of items, the game holds about twenty blocks and a few dozen items, and everything else was let go
+- `assets/blocks` keeps the 103 pictures of the blocks the game knows and the faces they are drawn
+from. Every picture that was let go is one call of git away, and the script above fetches it from the
+pack again. An editor that empties a file of the art - which happens, the resource root of an
+IntelliJ project is not a safe place for a picture - is repaired by
+`build/verify/restore_assets.ps1`, which reads the list of what was removed on purpose from
+`build/verify/removed_assets.txt` and fetches everything else back out of the last commit.
+`BlockFace` names the six faces of a cube - with the way each
 one lies in space and the light it catches - and `FaceSet` gives every one of them a picture, one
 fallback at a time, so a block of six pictures stays three lines.
 

@@ -119,11 +119,11 @@ class InventoryPreviewTest {
         player.set(10, ItemStack.of(Items.SANDSTONE, 7));
         player.set(11, ItemStack.of(Items.COAL_ORE, 5));
         player.set(12, ItemStack.of(Items.IRON_ORE, 5));
-        player.set(13, ItemStack.of(Items.SNOW, 9));
+        player.set(13, ItemStack.of(Items.COBBLESTONE, 9));
         player.set(14, ItemStack.of(Items.CLAY, 13));
         player.set(15, ItemStack.of(Items.GRAVEL, 64));
         player.set(16, ItemStack.of(Items.LEAVES_OAK, 8));
-        player.set(17, ItemStack.of(Items.TALL_GRASS, 16));
+        player.set(17, ItemStack.of(Items.GLASS, 16));
     }
 
     /** Stretches the nine cells of the panel picture into a target size. */

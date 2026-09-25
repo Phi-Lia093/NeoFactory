@@ -48,11 +48,12 @@ public final class Items {
     public static final int SANDSTONE_ID = 7;
     public static final int COAL_ORE_ID = 8;
     public static final int IRON_ORE_ID = 9;
-    public static final int SNOW_ID = 10;
+    // The numbers 10 (snow) and 14 (tall grass) are free: those two blocks lost their art with the
+    // flat engine, so they left the game, see Blocks. A new item still takes a number from
+    // {@link #NEXT_FREE_ID} and never one of these.
     public static final int LOG_OAK_ID = 11;
     public static final int LEAVES_OAK_ID = 12;
     public static final int PLANKS_OAK_ID = 13;
-    public static final int TALL_GRASS_ID = 14;
     public static final int BEDROCK_ID = 15;
 
     // ------------------------------------------------------------------
@@ -166,6 +167,26 @@ public final class Items {
     public static final int WATER_CELL_ID = 71;
     public static final int LAVA_CELL_ID = 72;
 
+    // ------------------------------------------------------------------
+    // The block items of the blocks that came with the third axis. They are appended above every
+    // number that was written down before them, so no id that a world already holds changes its
+    // meaning, see the class comment.
+    // ------------------------------------------------------------------
+
+    public static final int COBBLESTONE_ID = 73;
+    public static final int STONE_BRICK_ID = 74;
+    public static final int STONE_SLAB_ID = 75;
+    public static final int BRICK_ID = 76;
+    public static final int GLASS_ID = 77;
+    public static final int GLOWSTONE_ID = 78;
+    public static final int OBSIDIAN_ID = 79;
+    public static final int SAPLING_OAK_ID = 80;
+    public static final int CRAFTING_TABLE_ID = 81;
+    public static final int ANVIL_ID = 82;
+    public static final int CAULDRON_ID = 83;
+    public static final int TORCH_ID = 84;
+    public static final int LADDER_ID = 85;
+
     /**
      * Next unused item id, used to verify that a new item got a fresh id.
      * <p>
@@ -174,7 +195,7 @@ public final class Items {
      * number itself and bumps this one, while the run of the materials follows behind. A number
      * from the middle may never be taken, or the items of the materials would move.
      */
-    public static final int NEXT_FREE_ID = 73;
+    public static final int NEXT_FREE_ID = 86;
 
     /**
      * Amount an empty container stacks to.
@@ -219,21 +240,44 @@ public final class Items {
     public static Item COAL_ORE;
     /** Iron ore block item. */
     public static Item IRON_ORE;
-    /** Snow block item. */
-    public static Item SNOW;
     /** Oak log block item. */
     public static Item LOG_OAK;
     /** Oak leaves block item. */
     public static Item LEAVES_OAK;
     /** Oak planks block item. */
     public static Item PLANKS_OAK;
-    /** Tall grass block item. */
-    public static Item TALL_GRASS;
 
     /** The furnace, the block a player builds to smelt with. */
     public static Item FURNACE;
     /** Bedrock block item, unbreakable in the world. */
     public static Item BEDROCK;
+
+    /** Cobblestone block item. */
+    public static Item COBBLESTONE;
+    /** Stone brick block item. */
+    public static Item STONE_BRICK;
+    /** Stone slab block item, half a block high. */
+    public static Item STONE_SLAB;
+    /** Brick block item. */
+    public static Item BRICK;
+    /** Glass block item. */
+    public static Item GLASS;
+    /** Glowstone block item. */
+    public static Item GLOWSTONE;
+    /** Obsidian block item. */
+    public static Item OBSIDIAN;
+    /** Oak sapling block item. */
+    public static Item SAPLING_OAK;
+    /** Crafting table block item. */
+    public static Item CRAFTING_TABLE;
+    /** Anvil block item. */
+    public static Item ANVIL;
+    /** Cauldron block item. */
+    public static Item CAULDRON;
+    /** Torch block item. */
+    public static Item TORCH;
+    /** Ladder block item. */
+    public static Item LADDER;
 
     /** Stick, the simplest building material. */
     public static Item STICK;
@@ -397,9 +441,6 @@ public final class Items {
         IRON_ORE = register(Item.builder(IRON_ORE_ID, "iron_ore")
                 .displayName("Iron Ore")
                 .buildBlock(Blocks.IRON_ORE));
-        SNOW = register(Item.builder(SNOW_ID, "snow")
-                .displayName("Snow")
-                .buildBlock(Blocks.SNOW));
         LOG_OAK = register(Item.builder(LOG_OAK_ID, "log_oak")
                 .displayName("Oak Log")
                 .buildBlock(Blocks.LOG_OAK));
@@ -409,15 +450,57 @@ public final class Items {
         PLANKS_OAK = register(Item.builder(PLANKS_OAK_ID, "planks_oak")
                 .displayName("Oak Planks")
                 .buildBlock(Blocks.PLANKS_OAK));
-        TALL_GRASS = register(Item.builder(TALL_GRASS_ID, "tall_grass")
-                .displayName("Tall Grass")
-                .buildBlock(Blocks.TALL_GRASS));
+        // Tall grass lost its picture with the flat engine and left the game together with its
+        // block, see Blocks. The place its item held stays empty, which is what keeps every id
+        // below the materials where it was.
         FURNACE = register(Item.builder(FURNACE_ID, "furnace")
                 .displayName("Furnace")
                 .buildBlock(Blocks.FURNACE));
         BEDROCK = register(Item.builder(BEDROCK_ID, "bedrock")
                 .displayName("Bedrock")
                 .buildBlock(Blocks.BEDROCK));
+
+        // The block items of the third axis: cobblestone, the shop of a builder and the plants of a
+        // meadow. They borrow their picture from the block they place, like every block item above.
+        COBBLESTONE = register(Item.builder(COBBLESTONE_ID, "cobblestone")
+                .displayName("Cobblestone")
+                .buildBlock(Blocks.COBBLESTONE));
+        STONE_BRICK = register(Item.builder(STONE_BRICK_ID, "stonebrick")
+                .displayName("Stone Bricks")
+                .buildBlock(Blocks.STONE_BRICK));
+        STONE_SLAB = register(Item.builder(STONE_SLAB_ID, "stone_slab")
+                .displayName("Stone Slab")
+                .buildBlock(Blocks.STONE_SLAB));
+        BRICK = register(Item.builder(BRICK_ID, "brick")
+                .displayName("Bricks")
+                .buildBlock(Blocks.BRICK));
+        GLASS = register(Item.builder(GLASS_ID, "glass")
+                .displayName("Glass")
+                .buildBlock(Blocks.GLASS));
+        GLOWSTONE = register(Item.builder(GLOWSTONE_ID, "glowstone")
+                .displayName("Glowstone")
+                .buildBlock(Blocks.GLOWSTONE));
+        OBSIDIAN = register(Item.builder(OBSIDIAN_ID, "obsidian")
+                .displayName("Obsidian")
+                .buildBlock(Blocks.OBSIDIAN));
+        SAPLING_OAK = register(Item.builder(SAPLING_OAK_ID, "sapling_oak")
+                .displayName("Oak Sapling")
+                .buildBlock(Blocks.SAPLING_OAK));
+        CRAFTING_TABLE = register(Item.builder(CRAFTING_TABLE_ID, "crafting_table")
+                .displayName("Crafting Table")
+                .buildBlock(Blocks.CRAFTING_TABLE));
+        ANVIL = register(Item.builder(ANVIL_ID, "anvil")
+                .displayName("Anvil")
+                .buildBlock(Blocks.ANVIL));
+        CAULDRON = register(Item.builder(CAULDRON_ID, "cauldron")
+                .displayName("Cauldron")
+                .buildBlock(Blocks.CAULDRON));
+        TORCH = register(Item.builder(TORCH_ID, "torch")
+                .displayName("Torch")
+                .buildBlock(Blocks.TORCH));
+        LADDER = register(Item.builder(LADDER_ID, "ladder")
+                .displayName("Ladder")
+                .buildBlock(Blocks.LADDER));
 
         // Materials. The icon of a plain item names its folder, because a bare
         // texture name is resolved inside the block folder.

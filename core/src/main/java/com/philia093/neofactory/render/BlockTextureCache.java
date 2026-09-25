@@ -34,9 +34,6 @@ public class BlockTextureCache implements Disposable {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    /** Folder holding every block texture, relative to the asset root. */
-    private static final String BLOCK_FOLDER = "blocks/";
-
     /** Folder holding the map icons used for the player marker. */
     private static final String MAP_FOLDER = "map/";
 
@@ -198,8 +195,10 @@ public class BlockTextureCache implements Disposable {
     /**
      * Resolves the asset path of a texture name.
      * <p>
-     * Names may be given either as {@code "grass_top"} or as a path such as
-     * {@code "map/map_icons"}.
+     * Names may be given either as {@code "grass_top"} or as a path such as {@code "map/map_icons"},
+     * and the rule is the one of {@link BlockPictures#path(String)}: a name without a folder lives
+     * below {@code blocks/}, a name that starts with a folder of the asset root is a path of its own,
+     * and a folder inside the blocks - {@code furnace/furnace_top} - stays below the blocks.
      *
      * @param name texture name or relative path
      * @return the path of the image, or {@code null} when the name is empty
@@ -208,10 +207,7 @@ public class BlockTextureCache implements Disposable {
         if (name == null || name.isEmpty()) {
             return null;
         }
-        if (name.contains("/")) {
-            return name + ".png";
-        }
-        return BLOCK_FOLDER + name + ".png";
+        return BlockPictures.path(name);
     }
 
     /**

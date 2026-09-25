@@ -18,9 +18,12 @@ import java.util.Objects;
  * <pre>
  * blockstates/furnace.json    { "properties": { "facing": ["north", "east", "south", "west"] },
  *                               "variants": { "facing=north": { "model": "furnace", "y": 0 },
- *                                             "facing=east":  { "model": "furnace", "y": 90 },
+ *                                             "facing=east":  { "model": "furnace", "y": 270 },
  *                                             "facing=south": { "model": "furnace", "y": 180 },
- *                                             "facing=west":  { "model": "furnace", "y": 270 } } }
+ *                                             "facing=west":  { "model": "furnace", "y": 90 } } }
+ * blockstates/stone_slab.json { "properties": { "type": ["bottom", "top"] },
+ *                               "variants": { "type=bottom": { "model": "stone_slab" },
+ *                                             "type=top":    { "model": "stone_slab_top" } } }
  * </pre>
  *
  * <b>The number of a state is the order of its values.</b> The properties are written down in an
@@ -32,6 +35,10 @@ import java.util.Objects;
  * <b>A variant may turn the model.</b> {@link Variant#rotateY()} is a quarter turn around the
  * vertical axis of the block, which is how one model of a furnace serves all four directions it may
  * look in.
+ * <p>
+ * <b>The model of a state is also the shape of the cell.</b> What a body runs into is the boxes of the
+ * model that state is drawn with, so a slab is half a block high for the player as well, see
+ * {@link com.philia093.neofactory.block.Block#shape(int, com.philia093.neofactory.util.Aabb)}.
  */
 public final class BlockStateTable {
 

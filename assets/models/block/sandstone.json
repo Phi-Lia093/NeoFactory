@@ -1,4 +1,8 @@
 {
   "parent": "template_cube_bottom_top",
-  "textures": { "top": "sandstone_top", "bottom": "sandstone_bottom", "side": "sandstone_normal" }
+  "textures": {
+    "top": "sandstone_top",
+    "bottom": "sandstone_bottom",
+    "side": "sandstone_top"
+  }
 }

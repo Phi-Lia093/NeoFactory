@@ -49,7 +49,7 @@ class ChunkModificationTest {
         // The decoration path writes into the object layer of a chunk that may not
         // be generated yet, but it is still the seed talking.
         world.setObjectBlock(3, 3, Blocks.LEAVES_OAK);
-        world.placeObjectIfAir(4, 4, Blocks.TALL_GRASS);
+        world.placeObjectIfAir(4, 4, Blocks.SAPLING_OAK);
 
         assertEquals(0, world.modifiedChunkCount());
     }

@@ -1,0 +1,62 @@
+{
+  "textures": {
+    "top": "cauldron/cauldron_top",
+    "bottom": "cauldron/cauldron_bottom",
+    "side": "cauldron/cauldron_side",
+    "inside": "cauldron/cauldron_inner"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 4, 16],
+      "faces": {
+        "down": { "texture": "#bottom" },
+        "up": { "texture": "#inside" },
+        "north": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "east": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [0, 4, 0],
+      "to": [16, 16, 2],
+      "faces": {
+        "up": { "texture": "#top" },
+        "north": { "texture": "#side" },
+        "south": { "texture": "#inside" },
+        "west": { "texture": "#side" },
+        "east": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [0, 4, 14],
+      "to": [16, 16, 16],
+      "faces": {
+        "up": { "texture": "#top" },
+        "north": { "texture": "#inside" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "east": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [0, 4, 2],
+      "to": [2, 16, 14],
+      "faces": {
+        "up": { "texture": "#top" },
+        "west": { "texture": "#side" },
+        "east": { "texture": "#inside" }
+      }
+    },
+    {
+      "from": [14, 4, 2],
+      "to": [16, 16, 14],
+      "faces": {
+        "up": { "texture": "#top" },
+        "west": { "texture": "#inside" },
+        "east": { "texture": "#side" }
+      }
+    }
+  ]
+}

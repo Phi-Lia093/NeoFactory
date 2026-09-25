@@ -45,11 +45,25 @@ public final class BlockPlacer {
     /**
      * Name of the property that carries the direction a block looks in.
      * <p>
-     * It is the one property the game reads while a block is built; the model a state selects and the
-     * way it is turned are written down in {@code assets/blockstates}, see
-     * {@link BlockStateTable}.
+     * The model a state selects and the way it is turned are written down in
+     * {@code assets/blockstates}, see {@link BlockStateTable}.
      */
     public static final String FACING = "facing";
+
+    /**
+     * Name of the property that carries the half of a cell a block fills.
+     * <p>
+     * A block that is thinner than a cube - the slab of stone - takes it in two halves, so the state of
+     * a cell says which half it is: {@value #LOWER_HALF} or {@value #UPPER_HALF}. The game picks the half
+     * while the block is built, see {@link #builtHalf}.
+     */
+    public static final String TYPE = "type";
+
+    /** Value of {@link #TYPE} for the block that fills the lower half of its cell. */
+    public static final String LOWER_HALF = "bottom";
+
+    /** Value of {@link #TYPE} for the block that fills the upper half of its cell. */
+    public static final String UPPER_HALF = "top";
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -97,7 +111,8 @@ public final class BlockPlacer {
      * A block needs something to stand on: a cell without a block below it is a hole in the air, and
      * the block would float. A build that would end up inside the player is refused as well - the
      * block is written first and taken back when the body no longer fits, which is the only way to ask
-     * whether the body fits at all.
+     * whether the body fits at all. A block the player does not fit into is a slab that was aimed at the
+     * cell a body stands in, which is refused the same way.
      *
      * @param world world to change
      * @param player player that must stay able to move
@@ -109,8 +124,7 @@ public final class BlockPlacer {
      */
     private static boolean buildInto(World world, Player player, BlockTarget cell, Block block,
             PlayerInventory inventory, ItemStack held) {
-        if (!world.getBlock(cell.x(), cell.y(), cell.z()).isAir()
-                || !world.hasSupport(cell.x(), cell.y(), cell.z(), cell.face())) {
+        if (!holds(world, cell, block)) {
             return false;
         }
 
@@ -119,7 +133,7 @@ public final class BlockPlacer {
             world.setBlock(cell.x(), cell.y(), cell.z(), Blocks.AIR);
             return false;
         }
-        world.setState(cell.x(), cell.y(), cell.z(), placedState(block, player));
+        world.setState(cell.x(), cell.y(), cell.z(), placedState(block, player, cell));
 
         placeBlockEntity(world, cell, block);
         useOneItem(inventory, held);
@@ -127,27 +141,109 @@ public final class BlockPlacer {
     }
 
     /**
+     * {@code true} when a cell is empty and carried by what the build holds on to.
+     * <p>
+     * A block that hangs on a side, see {@link Block#hangsOnASide()}, is only carried by a side: the floor
+     * below a cell carries every other block, but a ladder that found nothing but a floor would hang in the
+     * air where its rungs are, so such a build is refused. The side it hangs on is the one the aim came in
+     * through, which is the same face it is turned away from.
+     *
+     * @param world world to look at
+     * @param cell cell to test
+     * @param block block that is about to be built there
+     * @return {@code true} when the block may be written there
+     */
+    private static boolean holds(World world, BlockTarget cell, Block block) {
+        if (!world.getBlock(cell.x(), cell.y(), cell.z()).isAir()) {
+            return false;
+        }
+        BlockFace face = cell.face();
+        if (block.hangsOnASide()) {
+            return face != null && face.y() == 0
+                    && world.hasSupport(cell.x(), cell.y(), cell.z(), face);
+        }
+        return world.hasSupport(cell.x(), cell.y(), cell.z(), face);
+    }
+
+    /**
      * The state a block is built with.
      * <p>
      * A block that carries no state of its own is built with zero, which is the state every property
-     * at its first value. A block that does carry one is asked what it wants: the only property the
-     * game understands today is {@code facing}, the direction a block looks in, and it is turned
-     * towards the player who builds it - a furnace shows its mouth to the one who places it, the way
-     * a sign is turned when it is put up.
+     * at its first value. A block that does carry one answers for every property the game understands
+     * while it is built:
+     * <ul>
+     *     <li>{@link #FACING}, the direction a block looks in, see {@link #towardsPlayer}</li>
+     *     <li>{@link #TYPE}, the half of its cell a slab fills, see {@link #builtHalf}</li>
+     * </ul>
+     * A property a block does not carry is left out of the state, so a slab only has to say which half it
+     * is and a furnace only which way it looks.
      *
      * @param block block that was built
      * @param player player that built it
+     * @param cell cell the block was built into
      * @return the number of the state to store
      */
-    private static int placedState(Block block, Player player) {
+    private static int placedState(Block block, Player player, BlockTarget cell) {
         BlockStateTable table = block.states();
-        if (table == BlockStateTable.NONE || !table.hasProperty(FACING)) {
-            return table.defaultState();
-        }
-        BlockFace towards = towardsPlayer(player);
         Map<String, String> state = new LinkedHashMap<>();
-        state.put(FACING, towards.toString());
+        if (table.hasProperty(FACING)) {
+            state.put(FACING, builtFacing(cell, player).toString());
+        }
+        if (table.hasProperty(TYPE)) {
+            state.put(TYPE, builtHalf(player, cell));
+        }
         return table.stateOf(state);
+    }
+
+    /**
+     * The half of its cell a block of two halves is built in.
+     * <p>
+     * A slab fills the lower half of its cell by itself; two of them fill one cell. Which half a build
+     * takes is decided by the aim, the way the original game decides it:
+     * <ul>
+     *     <li>an aim that went <b>up</b> into the cell - the cell a ceiling carries - is filled from the
+     *         top, because that is the half a ceiling is built against</li>
+     *     <li>an aim that came <b>down</b> into the cell is filled from the bottom, because that is the
+     *         half the floor carries</li>
+     *     <li>the side of a block carries no half of its own, so the view answers: a player who looks up
+     *         builds the upper half, one who looks level or down the lower one</li>
+     * </ul>
+     *
+     * @param player player that builds the block
+     * @param cell cell the block is built into
+     * @return {@link #LOWER_HALF} or {@link #UPPER_HALF}
+     */
+    private static String builtHalf(Player player, BlockTarget cell) {
+        BlockFace face = cell.face();
+        if (face == BlockFace.BOTTOM) {
+            return UPPER_HALF;
+        }
+        if (face == BlockFace.TOP) {
+            return LOWER_HALF;
+        }
+        return player.pitch() > 0.0f ? UPPER_HALF : LOWER_HALF;
+    }
+
+    /**
+     * The direction a block is built with.
+     * <p>
+     * A block that hangs on the side of another one - a ladder - is turned away from that side: the face the
+     * aim came in through is the side it hangs on, so that face is the direction it is built with. Every
+     * other block that looks somewhere - a furnace, a workbench, an anvil - is turned towards the one who
+     * built it, so the direction is the one from the block back to the player. The aim of a cell the mouse
+     * named carries no face at all, and there both of them fall back to the view, see {@link #towardsPlayer}.
+     *
+     * @param cell cell the block was built into
+     * @param player player that built it
+     * @return the direction the block is built with
+     */
+    private static BlockFace builtFacing(BlockTarget cell, Player player) {
+        BlockFace side = cell.face();
+        if (side != null && side.y() == 0) {
+            // The aim came in through a side of the block that carries this one: the block hangs on it.
+            return side;
+        }
+        return towardsPlayer(player);
     }
 
     /**

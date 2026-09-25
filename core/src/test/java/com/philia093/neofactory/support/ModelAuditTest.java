@@ -106,6 +106,10 @@ class ModelAuditTest {
         assertTrue(missing.isEmpty(), String.join("\n", missing));
         assertTrue(BlockRegistry.byName("furnace").states().stateCount() == 4,
                 "the furnace looks in four directions");
+        assertTrue(BlockRegistry.byName("stone_slab").states().stateCount() == 2,
+                "a slab fills the lower or the upper half of its cell");
+        assertTrue(BlockRegistry.byName("anvil").states().stateCount() == 4,
+                "the anvil is turned towards the one who builds it");
     }
 
     @Test

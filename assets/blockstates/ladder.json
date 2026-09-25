@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"]
+  },
+  "variants": {
+    "facing=north": { "model": "ladder", "y": 0 },
+    "facing=east": { "model": "ladder", "y": 270 },
+    "facing=south": { "model": "ladder", "y": 180 },
+    "facing=west": { "model": "ladder", "y": 90 }
+  }
+}

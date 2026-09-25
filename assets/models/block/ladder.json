@@ -1,0 +1,12 @@
+{
+  "textures": { "ladder": "ladder" },
+  "elements": [
+    {
+      "from": [0, 0, 15],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": { "texture": "#ladder" }
+      }
+    }
+  ]
+}

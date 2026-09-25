@@ -3,12 +3,18 @@ package com.philia093.neofactory.entity;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
+import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.util.Aabb;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.save.SaveTags;
+
+import java.util.Map;
 
 /**
  * The controllable player.
@@ -34,12 +40,20 @@ import com.philia093.neofactory.world.save.SaveTags;
 public class Player extends Entity {
 
     /**
-     * Distance the player box stops short of a solid cell.
+     * Box of the body of the player, written while a collision is tested.
      * <p>
-     * Without it a box that touches a cell border exactly would already count as
-     * overlapping and the player would stop a whole hitbox away from every wall.
+     * The box is kept and written into: a frame tests every cell the body reaches and the walking of a
+     * world must not fill the heap with garbage, see {@link Aabb}. The fudge factor the flat engine used
+     * is gone with it - a box that shares a face with a block touches it, and touching is not
+     * overlapping, see {@link Aabb#intersects(Aabb)}.
      */
-    private static final float SKIN_WIDTH = 1.0e-3f;
+    private final Aabb body = new Aabb();
+
+    /** Box of one cell, written while a collision is tested, see {@link #collides}. */
+    private final Aabb cellShape = new Aabb();
+
+    /** Box of one cell, written while a landing height is searched, see {@link #landingHeight}. */
+    private final Aabb landingShape = new Aabb();
 
     /**
      * Longest step the height of a body may take at once, in blocks.
@@ -66,6 +80,15 @@ public class Player extends Entity {
 
     /** Walking direction requested by the keyboard, normalized or zero. */
     private final Vector2 moveInput = new Vector2();
+
+    /** Walking direction of the last frame along the X axis of the world, normalized or zero. */
+    private float walkX;
+
+    /** Walking direction of the last frame along the Z axis of the world, normalized or zero. */
+    private float walkZ;
+
+    /** {@code true} while a ladder carries the body, see {@link #holdsALadder(World)}. */
+    private boolean onLadder;
 
     /** Items the player carries, see {@link PlayerInventory}. */
     private final PlayerInventory inventory = new PlayerInventory();
@@ -296,11 +319,23 @@ public class Player extends Entity {
         float cos = MathUtils.cosDeg(yaw);
         float forward = moveInput.y;
         float sideways = moveInput.x;
-        velocity.x = (-sideways * cos - forward * sin) * speed;
-        velocity.z = (forward * cos - sideways * sin) * speed;
+        walkX = -sideways * cos - forward * sin;
+        walkZ = forward * cos - sideways * sin;
+        velocity.x = walkX * speed;
+        velocity.z = walkZ * speed;
 
         // The world pulls the body towards the ground and a jump pushes it away from it, see #jump().
         velocity.y -= Constants.GRAVITY * delta;
+        onLadder = holdsALadder(world);
+        if (onLadder) {
+            // A ladder carries the body: it sinks slowly instead of falling and it climbs while the player
+            // pushes towards the wall the ladder hangs on or holds the jump key, see #climbingTheLadder
+            // and #jump.
+            velocity.y = Math.max(velocity.y, -Constants.LADDER_SINK_SPEED);
+            if (climbingTheLadder(world)) {
+                velocity.y = Constants.LADDER_CLIMB_SPEED;
+            }
+        }
         if (moveInput.isZero()) {
             velocity.x = 0.0f;
             velocity.z = 0.0f;
@@ -317,16 +352,91 @@ public class Player extends Entity {
      * asking for a second jump, which the world does not have.
      */
     public void jump() {
-        if (!onGround) {
+        if (!onGround && !onLadder) {
             return;
         }
-        velocity.y = Constants.JUMP_SPEED;
+        // The jump key climbs a ladder as well, but a climb up the rungs is slower than the jump of the open
+        // air, see Constants#LADDER_CLIMB_SPEED.
+        velocity.y = onGround ? Constants.JUMP_SPEED : Constants.LADDER_CLIMB_SPEED;
         onGround = false;
     }
 
     /** {@code true} while the body stands on a block, see {@link #jump()}. */
     public boolean isOnGround() {
         return onGround;
+    }
+
+    /**
+     * {@code true} while a ladder of the world carries the body.
+     * <p>
+     * The cell of the feet and the one the chest is in are asked, because a body holds on to a ladder with
+     * its hands as well: a ladder whose rungs end right over the head still carries a body that is climbing
+     * out of it.
+     *
+     * @param world world the body stands in
+     * @return {@code true} when the body holds on to a ladder
+     */
+    private boolean holdsALadder(World world) {
+        int x = blockX();
+        int z = blockZ();
+        int feet = feetCell();
+        return isLadder(world, x, feet, z) || isLadder(world, x, feet + 1, z);
+    }
+
+    /** {@code true} when a cell of the world holds a block a body climbs on. */
+    private static boolean isLadder(World world, int x, int y, int z) {
+        return y <= Constants.MAX_Y && world.getBlock(x, y, z).isClimbable();
+    }
+
+    /**
+     * {@code true} while the player asks a ladder to carry them up.
+     * <p>
+     * A ladder is climbed by walking into the wall it hangs on, which is how the original game does it: the
+     * rungs of a ladder face away from that wall, so the direction the ladder names runs towards the player
+     * and the wall lies behind it. Walking towards the rungs is walking into the wall and carries the body
+     * up the ladder.
+     *
+     * @param world world the body stands in
+     * @return {@code true} when the walk of this frame pushes against the ladder
+     */
+    private boolean climbingTheLadder(World world) {
+        BlockFace facing = ladderFacing(world);
+        if (facing == null) {
+            return false;
+        }
+        return walkX * -facing.x() + walkZ * -facing.z() > 0.0f;
+    }
+
+    /**
+     * Direction the rungs of the ladder the body holds on to face, {@code null} without a ladder.
+     *
+     * @param world world the body stands in
+     * @return the direction the ladder was built with, or {@code null}
+     */
+    private BlockFace ladderFacing(World world) {
+        int x = blockX();
+        int z = blockZ();
+        int feet = feetCell();
+        for (int y = feet; y <= feet + 1; y++) {
+            if (y > Constants.MAX_Y) {
+                continue;
+            }
+            Block ladder = world.getBlock(x, y, z);
+            if (!ladder.isClimbable()) {
+                continue;
+            }
+            Map<String, String> state = ladder.states().decode(world.getState(x, y, z));
+            BlockFace facing = BlockFace.byName(state.get(BlockPlacer.FACING));
+            if (facing != null) {
+                return facing;
+            }
+        }
+        return null;
+    }
+
+    /** Cell of the height the feet are at. */
+    private int feetCell() {
+        return MathUtils.floor(position.y);
     }
 
     /**
@@ -357,6 +467,11 @@ public class Player extends Entity {
 
     /**
      * One piece of a vertical movement.
+     * <p>
+     * A fall ends on top of the shape that stopped it, which is not always the top of the cell: a slab
+     * ends halfway up its own cell. A body that was left floating above a slab would be pulled down again
+     * and one that was put into it would be pushed out, and the two together are a body that shakes on the
+     * spot and never comes to rest, see {@link #landingHeight}.
      *
      * @param world world used for collision tests
      * @param stepY movement of this piece, never longer than {@link #LONGEST_STEP} blocks
@@ -373,14 +488,47 @@ public class Player extends Entity {
         if (stepY > 0.0f) {
             return false;
         }
-        // The feet come to rest on the block that stopped the fall.
-        position.y = MathUtils.floor(candidateY) + 1.0f;
-        while (collides(world, position.x, position.y, position.z)
-                && position.y <= Constants.MAX_Y) {
-            position.y += 1.0f;
-        }
+        position.y = landingHeight(world, MathUtils.floor(candidateY), position.y);
         onGround = true;
         return false;
+    }
+
+    /**
+     * Height the feet come to rest at, on top of the shape that stopped a fall.
+     * <p>
+     * The shape of a cell is not always a whole cube: a slab ends halfway up its own cell and an anvil at
+     * the height of its plate. The top of the highest shape the body can rest on is what the feet are put
+     * on - a shape that lies above the height the body still stood at does not carry it, it is what the
+     * body fell past. The height is read from the shapes themselves, so a body comes to rest on the very
+     * top of what stopped it and stands there without moving again.
+     *
+     * @param world world to ask for the shapes
+     * @param cell cell the fall reached, the one the shape that stopped it stands in
+     * @param above height the body still stood at before this step
+     * @return the height the feet are put on, at least the floor of that cell
+     */
+    private float landingHeight(World world, int cell, float above) {
+        // The world has a bottom and it is a floor: a body that reached it stands on it instead of asking
+        // about cells below the world, which are not there, see {@link #collides}.
+        if (cell < Constants.MIN_Y) {
+            return Constants.MIN_Y;
+        }
+        float half = Constants.PLAYER_HITBOX * 0.5f;
+        int minX = MathUtils.floor(position.x - half);
+        int maxX = MathUtils.floor(position.x + half);
+        int minZ = MathUtils.floor(position.z - half);
+        int maxZ = MathUtils.floor(position.z + half);
+        float highest = cell;
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                Aabb shape = world.shape(x, cell, z, landingShape);
+                if (shape.isEmpty() || shape.maxY() > above) {
+                    continue;
+                }
+                highest = Math.max(highest, shape.maxY());
+            }
+        }
+        return highest;
     }
 
     /**
@@ -431,13 +579,25 @@ public class Player extends Entity {
     }
 
     /**
-     * Tests the box of the player against the solid cells of the world at a height of its own.
+     * Tests the box of the player against the shapes of the cells around it.
+     * <p>
+     * The body of the flat view was a square that slid over the ground; a world of cubes gives it a
+     * height, so the box is {@link Constants#PLAYER_HITBOX} wide and {@link Constants#PLAYER_HEIGHT}
+     * tall, and every cell it reaches answers with the part of itself that is an obstacle. What that part
+     * is depends on the block and on its state: a whole cube fills its cell, a slab the lower or the
+     * upper half of it, an anvil a body of its own, see
+     * {@link com.philia093.neofactory.world.BlockAccess#shape(int, int, int, Aabb)}. A cell a body walks
+     * through answers with an empty box and is skipped.
+     * <p>
+     * A body that touches a block is not inside it: the feet that rest on the ground of a cell are at the
+     * very height that ground ends at, which is what keeps a body from being pushed out of the floor it
+     * stands on.
      *
      * @param world world to test against
      * @param centerX candidate world X coordinate of the player center
      * @param centerY candidate world Y coordinate of the feet of the player
      * @param centerZ candidate world Z coordinate of the player center
-     * @return {@code true} when the box overlaps at least one solid cell
+     * @return {@code true} when the box overlaps the shape of at least one cell
      */
     public boolean collides(World world, float centerX, float centerY, float centerZ) {
         // The world has a bottom, and it is a floor: a body that reaches it stands on it instead of falling
@@ -447,17 +607,20 @@ public class Player extends Entity {
         }
         float half = Constants.PLAYER_HITBOX * 0.5f;
         float height = Constants.PLAYER_HEIGHT;
-        int minX = MathUtils.floor(centerX - half);
-        int maxX = MathUtils.floor(centerX + half - SKIN_WIDTH);
-        int minZ = MathUtils.floor(centerZ - half);
-        int maxZ = MathUtils.floor(centerZ + half - SKIN_WIDTH);
-        int minY = MathUtils.floor(centerY);
-        int maxY = Math.min(Constants.MAX_Y, MathUtils.floor(centerY + height - SKIN_WIDTH));
+        body.set(centerX - half, centerY, centerZ - half, centerX + half, centerY + height,
+                centerZ + half);
+        int minX = MathUtils.floor(body.minX());
+        int maxX = MathUtils.floor(body.maxX());
+        int minZ = MathUtils.floor(body.minZ());
+        int maxZ = MathUtils.floor(body.maxZ());
+        int minY = MathUtils.floor(body.minY());
+        int maxY = Math.min(Constants.MAX_Y, MathUtils.floor(body.maxY()));
 
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 for (int y = minY; y <= maxY; y++) {
-                    if (world.isSolid(x, y, z)) {
+                    Aabb shape = world.shape(x, y, z, cellShape);
+                    if (!shape.isEmpty() && body.intersects(shape)) {
                         return true;
                     }
                 }

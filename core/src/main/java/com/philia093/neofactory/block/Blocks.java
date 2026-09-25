@@ -44,12 +44,30 @@ public final class Blocks {
     public static final int SANDSTONE_ID = 11;
     public static final int COAL_ORE_ID = 12;
     public static final int IRON_ORE_ID = 13;
-    public static final int SNOW_ID = 14;
-    public static final int TALL_GRASS_ID = 15;
-    public static final int FURNACE_ID = 16;
+    public static final int FURNACE_ID = 14;
+
+    // ------------------------------------------------------------------
+    // The blocks that came with the third axis: the stone family, the plants and the workshop.
+    // The art folder decides which blocks exist - a picture the pack holds and no block names is
+    // art nothing draws, which is what the texture audit reports, see TextureAuditTest.
+    // ------------------------------------------------------------------
+
+    public static final int COBBLESTONE_ID = 15;
+    public static final int STONE_BRICK_ID = 16;
+    public static final int STONE_SLAB_ID = 17;
+    public static final int BRICK_ID = 18;
+    public static final int GLASS_ID = 19;
+    public static final int GLOWSTONE_ID = 20;
+    public static final int OBSIDIAN_ID = 21;
+    public static final int SAPLING_OAK_ID = 22;
+    public static final int CRAFTING_TABLE_ID = 23;
+    public static final int ANVIL_ID = 24;
+    public static final int CAULDRON_ID = 25;
+    public static final int TORCH_ID = 26;
+    public static final int LADDER_ID = 27;
 
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 17;
+    public static final int NEXT_FREE_ID = 28;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -97,11 +115,44 @@ public final class Blocks {
     /** Iron ore, embedded in stone. */
     public static Block IRON_ORE;
 
-    /** Snow, the ground of cold biomes. */
-    public static Block SNOW;
+    /** Cobblestone, the stone a player cuts out of a hill. */
+    public static Block COBBLESTONE;
 
-    /** Tall grass, a decorative block of the object layer. */
-    public static Block TALL_GRASS;
+    /** Stone bricks, cut and laid out. */
+    public static Block STONE_BRICK;
+
+    /** A slab of stone: the first block that is half a cube, and the first that a body steps onto. */
+    public static Block STONE_SLAB;
+
+    /** Bricks, fired out of clay. */
+    public static Block BRICK;
+
+    /** Glass, the first block the eye looks through. */
+    public static Block GLASS;
+
+    /** Glowstone, the glowing rock of the nether. */
+    public static Block GLOWSTONE;
+
+    /** Obsidian, the hardest block of the pack. */
+    public static Block OBSIDIAN;
+
+    /** An oak sapling, a plant of the object layer. */
+    public static Block SAPLING_OAK;
+
+    /** The crafting table, the front of a workshop. */
+    public static Block CRAFTING_TABLE;
+
+    /** The anvil, whose top wears out with every use. */
+    public static Block ANVIL;
+
+    /** The cauldron, the first block with an inside. */
+    public static Block CAULDRON;
+
+    /** A torch, a small block that burns in a cell the player walks through. */
+    public static Block TORCH;
+
+    /** The ladder, a thin block that hangs on a wall. */
+    public static Block LADDER;
 
     /**
      * The furnace, the first machine of the game.
@@ -250,37 +301,144 @@ public final class Blocks {
                 .build();
         BlockRegistry.register(IRON_ORE);
 
-        SNOW = Block.builder(SNOW_ID, "snow")
-                .texture("snow")
-                .ground(true)
-                .hardness(0.4f)
-                .build();
-        BlockRegistry.register(SNOW);
-
-        // Like the ground the blades are grey scale and receive their colour from
-        // the tint. A player may place them into the ground as well, so they are
-        // ground: a tuft of grass is never a wall.
-        TALL_GRASS = Block.builder(TALL_GRASS_ID, "tall_grass")
-                .texture("tallgrass")
-                .tint(new Color(0.75f, 0.95f, 0.45f, 1.0f))
-                .solid(false)
-                .ground(true)
-                .transparent(true)
-                .hardness(0.1f)
-                .build();
-        BlockRegistry.register(TALL_GRASS);
-
         // The first machine of the game. Its block stands in the object layer like a wall
         // does, and it names the block entity that holds what the cell cannot: the slots,
         // the fuel and the work that is done, see BlockEntities.FURNACE.
         FURNACE = Block.builder(FURNACE_ID, "furnace")
-                .texture("furnace_top")
+                .texture("furnace/furnace_top")
                 .solid(true)
                 .hardness(3.5f)
                 .harvestLevel(1)
                 .blockEntity("furnace")
                 .build();
         BlockRegistry.register(FURNACE);
+
+        // ------------------------------------------------------------------
+        // The stone family. Cobblestone, stone bricks and bricks are whole cubes of one picture;
+        // the slab is the first block that is half a cube, so its shape lives in
+        // models/block/stone_slab.json. All of them are ground: a player walks over them.
+        // ------------------------------------------------------------------
+        COBBLESTONE = Block.builder(COBBLESTONE_ID, "cobblestone")
+                .texture("cobblestone")
+                .ground(true)
+                .hardness(2.0f)
+                .harvestLevel(1)
+                .build();
+        BlockRegistry.register(COBBLESTONE);
+
+        STONE_BRICK = Block.builder(STONE_BRICK_ID, "stonebrick")
+                .texture("stonebrick")
+                .ground(true)
+                .hardness(1.5f)
+                .harvestLevel(1)
+                .build();
+        BlockRegistry.register(STONE_BRICK);
+
+        // A slab is half a block high, so the player steps onto it instead of walking into it: the shape
+        // of models/block/stone_slab.json is both what is drawn and what a body runs into, and the state
+        // of a cell says which half it fills - a slab aimed at a ceiling fills the upper one.
+        STONE_SLAB = Block.builder(STONE_SLAB_ID, "stone_slab")
+                .texture("stone_slab_top")
+                .ground(true)
+                .hardness(1.5f)
+                .harvestLevel(1)
+                .build();
+        BlockRegistry.register(STONE_SLAB);
+
+        BRICK = Block.builder(BRICK_ID, "brick")
+                .texture("brick")
+                .ground(true)
+                .hardness(2.0f)
+                .harvestLevel(1)
+                .build();
+        BlockRegistry.register(BRICK);
+
+        // Glass is a block the eye sees through: it is transparent like the leaves and culls
+        // nothing, which is why a window never hides the world behind it.
+        GLASS = Block.builder(GLASS_ID, "glass")
+                .texture("glass")
+                .ground(true)
+                .transparent(true)
+                .hardness(0.3f)
+                .build();
+        BlockRegistry.register(GLASS);
+
+        GLOWSTONE = Block.builder(GLOWSTONE_ID, "glowstone")
+                .texture("glowstone")
+                .ground(true)
+                .hardness(0.3f)
+                .build();
+        BlockRegistry.register(GLOWSTONE);
+
+        OBSIDIAN = Block.builder(OBSIDIAN_ID, "obsidian")
+                .texture("obsidian")
+                .ground(true)
+                .hardness(50.0f)
+                .harvestLevel(3)
+                .build();
+        BlockRegistry.register(OBSIDIAN);
+
+        // ------------------------------------------------------------------
+        // The plants of the object layer. A sapling is not solid and not a wall: the player walks
+        // through it, which is what keeps a meadow passable. Its shape is the cross of
+        // models/block/sapling_oak.json.
+        // ------------------------------------------------------------------
+        SAPLING_OAK = Block.builder(SAPLING_OAK_ID, "sapling_oak")
+                .texture("sapling_oak")
+                .solid(false)
+                .ground(true)
+                .transparent(true)
+                .hardness(0.0f)
+                .build();
+        BlockRegistry.register(SAPLING_OAK);
+
+        // ------------------------------------------------------------------
+        // The workshop: the table where things are built, the anvil that wears out and the cauldron
+        // with an inside. Their shapes are the files of models/block; the table is turned by the states
+        // of assets/blockstates/crafting_table.json, like the furnace.
+        // ------------------------------------------------------------------
+        CRAFTING_TABLE = Block.builder(CRAFTING_TABLE_ID, "crafting_table")
+                .texture("crafting_table/crafting_table_top")
+                .ground(true)
+                .hardness(2.5f)
+                .build();
+        BlockRegistry.register(CRAFTING_TABLE);
+
+        ANVIL = Block.builder(ANVIL_ID, "anvil")
+                .texture("anvil/anvil_top")
+                .ground(true)
+                .hardness(5.0f)
+                .harvestLevel(1)
+                .build();
+        BlockRegistry.register(ANVIL);
+
+        CAULDRON = Block.builder(CAULDRON_ID, "cauldron")
+                .texture("cauldron/cauldron_top")
+                .ground(true)
+                .hardness(2.0f)
+                .harvestLevel(1)
+                .build();
+        BlockRegistry.register(CAULDRON);
+
+        TORCH = Block.builder(TORCH_ID, "torch")
+                .texture("torch_on")
+                .solid(false)
+                .ground(true)
+                .transparent(true)
+                .hardness(0.0f)
+                .build();
+        BlockRegistry.register(TORCH);
+
+        LADDER = Block.builder(LADDER_ID, "ladder")
+                .texture("ladder")
+                .solid(false)
+                .ground(true)
+                .transparent(true)
+                .climbable(true)
+                .hangsOnASide(true)
+                .hardness(0.4f)
+                .build();
+        BlockRegistry.register(LADDER);
 
         BlockRegistry.freeze();
     }

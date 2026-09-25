@@ -26,7 +26,7 @@ public enum Biome {
     /** Bare rock: stone floor with patches of gravel. */
     ROCKY("rocky", 3),
 
-    /** Cold highland: snow floor with sparse trees. */
+    /** Cold highland: gravel floor with sparse trees. */
     SNOWY("snowy", 4),
 
     /**
@@ -87,7 +87,9 @@ public enum Biome {
             case ROCKY:
                 return Blocks.STONE;
             case SNOWY:
-                return Blocks.SNOW;
+                // Snow lost its picture, so the cold highland is a gravelly one: gravel is pale and
+                // hard, which is what a cold slope of the pack looks like without snow.
+                return Blocks.GRAVEL;
             case FOREST:
             case PLAINS:
             default:

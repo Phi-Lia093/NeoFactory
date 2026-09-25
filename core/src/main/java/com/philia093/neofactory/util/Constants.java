@@ -98,6 +98,22 @@ public final class Constants {
      */
     public static final float JUMP_SPEED = 8.4f;
 
+    /**
+     * Speed a body climbs a ladder with, in blocks per second.
+     * <p>
+     * Slower than {@link #JUMP_SPEED}: the jump key climbs a ladder, but as a steady climb up the rungs
+     * and not as a jump of the open air, see {@code Player#jump()}.
+     */
+    public static final float LADDER_CLIMB_SPEED = 3.0f;
+
+    /**
+     * Speed a body sinks on a ladder while it holds on, in blocks per second.
+     * <p>
+     * A ladder carries a body instead of letting it fall: letting go of the rungs is a slow slide down and
+     * not the fall of the open air, see {@code Player#update}.
+     */
+    public static final float LADDER_SINK_SPEED = 2.0f;
+
     public static final float PLAYER_EYE_HEIGHT = 1.62f;
 
     /**

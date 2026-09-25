@@ -1,0 +1,4 @@
+{
+  "parent": "template_cross",
+  "textures": { "cross": "sapling_oak" }
+}

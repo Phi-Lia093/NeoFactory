@@ -131,7 +131,7 @@ class CreativeInventoryTest {
 
         creative.scroll(1);
         assertEquals(1, creative.firstRow(), "one row down");
-        assertEquals(Items.SNOW, creative.stackAt(0).item(), "the tenth item starts the row");
+        assertEquals(Items.LOG_OAK, creative.stackAt(0).item(), "the tenth item starts the row");
 
         creative.scroll(99);
         assertEquals(creative.maxRow(), creative.firstRow(), "the scroll stops at the end");

@@ -1,6 +1,7 @@
 package com.philia093.neofactory.block.model;
 
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.util.Aabb;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -27,6 +28,7 @@ public final class BlockModel {
 
     private final String name;
     private final List<ModelBox> boxes;
+    private final Aabb shape;
 
     /**
      * Creates a model.
@@ -37,6 +39,49 @@ public final class BlockModel {
     public BlockModel(String name, List<ModelBox> boxes) {
         this.name = Objects.requireNonNull(name, "name");
         this.boxes = List.copyOf(Objects.requireNonNull(boxes, "boxes"));
+        this.shape = union(this.boxes);
+    }
+
+    /**
+     * The part of its cell this model fills, in the coordinates of one block.
+     * <p>
+     * The union of the boxes of the model, as {@code (0, 0, 0)} to {@code (1, 1, 1)} is one whole cell.
+     * It is what a body runs into: a slab fills the lower or the upper half of its cell and an anvil a body
+     * of its own, see
+     * {@link com.philia093.neofactory.block.Block#shape(int, com.philia093.neofactory.util.Aabb)}.
+     * <p>
+     * <b>The turn of a box is left out.</b> Only the crossed planes of a plant carry one, and a plant is
+     * entered by a body whatever shape it is drawn with - the box itself already reaches from edge to
+     * edge of the cell, so turning it changes nothing a body would feel.
+     *
+     * @return the box, empty for a model that draws nothing
+     */
+    public Aabb shape() {
+        return shape;
+    }
+
+    /** The union of the boxes of a model, in the coordinates of one block. */
+    private static Aabb union(List<ModelBox> boxes) {
+        if (boxes.isEmpty()) {
+            return new Aabb();
+        }
+        float minX = Float.POSITIVE_INFINITY;
+        float minY = Float.POSITIVE_INFINITY;
+        float minZ = Float.POSITIVE_INFINITY;
+        float maxX = Float.NEGATIVE_INFINITY;
+        float maxY = Float.NEGATIVE_INFINITY;
+        float maxZ = Float.NEGATIVE_INFINITY;
+        for (ModelBox box : boxes) {
+            minX = Math.min(minX, box.fromX());
+            minY = Math.min(minY, box.fromY());
+            minZ = Math.min(minZ, box.fromZ());
+            maxX = Math.max(maxX, box.toX());
+            maxY = Math.max(maxY, box.toY());
+            maxZ = Math.max(maxZ, box.toZ());
+        }
+        float units = ModelBox.UNITS;
+        return Aabb.of(minX / units, minY / units, minZ / units, maxX / units, maxY / units,
+                maxZ / units);
     }
 
     /** Name of this model, the name of its file without the extension. */

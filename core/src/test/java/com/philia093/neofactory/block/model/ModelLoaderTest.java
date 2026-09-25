@@ -1,6 +1,7 @@
 package com.philia093.neofactory.block.model;
 
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.util.Aabb;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -45,6 +46,35 @@ class ModelLoaderTest {
                 "and the picture of the child reaches the faces of the parent");
         assertNull(stone.boxes().get(0).face(BlockFace.NORTH),
                 "a face the parent does not name stays out");
+    }
+
+    @Test
+    void theShapeOfAModelIsTheUnionOfItsBoxes() {
+        Map<String, BlockModel> models = ModelLoader.read(Map.of(
+                "stone_slab", """
+                        { "textures": { "all": "stone_slab_top" },
+                          "elements": [ { "from": [0, 0, 0], "to": [16, 8, 16],
+                            "faces": { "up": { "texture": "#all" } } } ] }
+                        """,
+                "anvil", """
+                        { "textures": { "all": "anvil/anvil_base" },
+                          "elements": [ { "from": [0, 3, 0], "to": [16, 9, 16],
+                                          "faces": { "up": { "texture": "#all" } } },
+                                        { "from": [0, 0, 0], "to": [3, 3, 3],
+                                          "faces": { "up": { "texture": "#all" } } } ] }
+                        """));
+
+        Aabb slab = models.get("stone_slab").shape();
+        assertEquals(0.0f, slab.minY(), 1.0e-6f);
+        assertEquals(0.5f, slab.maxY(), 1.0e-6f, "a slab fills the lower half of its cell");
+        assertEquals(0.0f, slab.minX(), 1.0e-6f, "and it fills the cell from edge to edge");
+        assertEquals(1.0f, slab.maxX(), 1.0e-6f);
+
+        Aabb anvil = models.get("anvil").shape();
+        assertEquals(0.0f, anvil.minY(), 1.0e-6f, "the box at the floor of the cell is the lowest one");
+        assertEquals(9.0f / 16.0f, anvil.maxY(), 1.0e-6f, "and the box over it the highest one");
+
+        assertTrue(BlockModel.EMPTY.shape().isEmpty(), "a model that draws nothing fills nothing");
     }
 
     @Test

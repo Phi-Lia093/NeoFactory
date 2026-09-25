@@ -134,9 +134,6 @@ class WorldGenPreviewTest {
         if (block == Blocks.CLAY) {
             return 0xFF9FA8B8;
         }
-        if (block == Blocks.SNOW) {
-            return 0xFFF2F7FA;
-        }
         if (block == Blocks.COAL_ORE) {
             return 0xFF3A3A3A;
         }

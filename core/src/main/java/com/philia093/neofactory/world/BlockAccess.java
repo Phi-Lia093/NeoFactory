@@ -2,6 +2,7 @@ package com.philia093.neofactory.world;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.util.Aabb;
 
 /**
  * Read and write access to the blocks of a world.
@@ -76,6 +77,34 @@ public interface BlockAccess {
             return false;
         }
         return block.isSolid() || !block.isGround();
+    }
+
+    /**
+     * The part of a cell a body cannot enter, at the place the cell stands in the world.
+     * <p>
+     * A block is not always a whole cube. A slab fills the lower or the upper half of its cell, an anvil a
+     * body of its own, so what a body runs into is the shape of
+     * the model the state of the block is drawn with, see
+     * {@link Block#shape(int, com.philia093.neofactory.util.Aabb)}, turned the way that state turns it
+     * and moved to the place of the cell.
+     * <p>
+     * <b>A cell nothing holds is empty.</b> Air, a plant, a torch and a ladder are entered by a body
+     * whatever shape they are drawn with, which is what {@link Block#isSolid()} decides: only a solid
+     * block answers with a shape. The box a caller hands in is written to and never kept, so a frame
+     * that walks the cells around a body allocates nothing.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param into box to write the shape into, in the units of the world
+     * @return the box, empty when a body walks through the cell, see {@link Aabb#isEmpty()}
+     */
+    default Aabb shape(int x, int y, int z, Aabb into) {
+        Block block = getBlock(x, y, z);
+        if (!block.isSolid()) {
+            return into.clear();
+        }
+        return block.shape(getState(x, y, z), into).offset(x, y, z);
     }
 
     /**

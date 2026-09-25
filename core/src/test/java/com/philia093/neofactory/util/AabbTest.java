@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The one rule that carries the whole collision code is the half open one: two boxes that share a
  * face do not overlap. A body that rests on the ground touches the block below it, and if touching
  * counted as overlapping, every player would be pushed out of the floor they stand on. The flat
- * engine needed a small fudge factor to stand in for that rule, see {@code Player#SKIN_WIDTH};
- * this box does not.
+ * engine needed a small fudge factor to stand in for that rule; this box does not, and the same rule
+ * is what lets a body rest on the top of the half a slab fills, see {@code Player#collides}.
  */
 class AabbTest {
 
@@ -43,6 +43,18 @@ class AabbTest {
         assertTrue(new Aabb().isEmpty());
         assertTrue(Aabb.of(1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f).isEmpty());
         assertTrue(Aabb.of(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f).isEmpty());
+    }
+
+    @Test
+    void anEmptiedBoxCoversNothingAndSharesNothing() {
+        Aabb box = Aabb.block(2, 3, 4);
+
+        box.clear();
+
+        assertTrue(box.isEmpty(), "a box that was emptied covers nothing");
+        assertFalse(box.intersects(Aabb.block(0, 0, 0)), "and it shares space with nothing");
+        assertFalse(Aabb.block(0, 0, 0).intersects(box));
+        assertFalse(Aabb.block(-1, -1, -1).intersects(box), "not even at the origin of the world");
     }
 
     @Test

@@ -1,4 +1,8 @@
 {
   "parent": "template_orientable",
-  "textures": { "top": "furnace_top", "side": "furnace_side", "front": "furnace_front_off" }
+  "textures": {
+    "top": "furnace/furnace_top",
+    "side": "furnace/furnace_side",
+    "front": "furnace/furnace_front_off"
+  }
 }

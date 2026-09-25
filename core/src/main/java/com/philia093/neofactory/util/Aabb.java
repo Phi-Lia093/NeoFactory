@@ -128,6 +128,18 @@ public final class Aabb {
         return minX;
     }
 
+    /**
+     * Empties this box.
+     * <p>
+     * An empty box covers nothing, see {@link #isEmpty()}, and shares no space with anything: it is what
+     * a cell answers with that a body walks through.
+     *
+     * @return this box, for chaining
+     */
+    public Aabb clear() {
+        return set(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
     /** Smallest Y of this box. */
     public float minY() {
         return minY;

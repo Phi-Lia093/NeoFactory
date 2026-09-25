@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"]
+  },
+  "variants": {
+    "facing=north": { "model": "crafting_table", "y": 0 },
+    "facing=east": { "model": "crafting_table", "y": 270 },
+    "facing=south": { "model": "crafting_table", "y": 180 },
+    "facing=west": { "model": "crafting_table", "y": 90 }
+  }
+}

@@ -44,6 +44,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * of cubes shows six faces, so they were fetched home again by
  * {@code build/verify/extract_3d_assets.ps1} and the rule turned around: every face of a block that
  * is more than one picture has to be there, see {@link #everyFaceOfAMultiFaceBlockExists()}.
+ * <p>
+ * <b>The art of the blocks and the items this project does not use is not shipped.</b> The pack
+ * brought 356 pictures of blocks and 233 of items while the game draws about twenty of them and
+ * holds a few dozen, so the rest - the ores of no material, the glass, the wool, the rails, the
+ * plants but the oak - was let go. What is left is the art of what the game holds, and
+ * {@link MultiFaceTextures} names the faces of it that are kept beside the one picture a block is
+ * named by. Every picture that was let go is one call of git away, and
+ * {@code build/verify/extract_3d_assets.ps1} fetches it from the original pack again.
  */
 class TextureAuditTest {
 
@@ -123,8 +131,8 @@ class TextureAuditTest {
     /**
      * Every face of a block that is more than one picture is really there.
      * <p>
-     * The list lives in {@link MultiFaceTextures} and holds the 78 pictures the flat engine deleted,
-     * plus the metadata of the seven sheets whose animation is described outside of them. The check
+     * The list lives in {@link MultiFaceTextures} and holds the faces of the blocks this project
+     * keeps, plus the metadata of the sheets whose animation is described outside of them. The check
      * is the net under that art: a face that was renamed, lost while the pack was replaced or
      * mistyped in the script that fetched it fails the build here, instead of showing up as a hole
      * in the world that a player finds before anybody else does.
@@ -199,14 +207,29 @@ class TextureAuditTest {
         assertFalse(usedBlocks.isEmpty() && usedItems.isEmpty(), "no texture is referenced");
     }
 
-    /** Pictures of a folder that the given set of names does not use. */
+    /**
+     * Pictures of a folder and of every folder inside it that the given set of names does not use.
+     * <p>
+     * The art of a block that comes in several parts lives in a folder of its own - the anvil, the
+     * the cauldron, the crafting table, the furnace - so the walk goes down into them, and the
+     * name of a picture is its path below {@code blocks}, which is what a block names, see
+     * {@code BlockPictures#path(String)}.
+     */
     private static List<String> spare(Path folder, Set<String> used) throws IOException {
         List<String> spare = new ArrayList<>();
-        try (Stream<Path> files = Files.list(folder)) {
+        try (Stream<Path> files = Files.walk(folder)) {
             for (Path file : files.toList()) {
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
                 String name = file.getFileName().toString();
-                if (name.endsWith(".png") && !used.contains(name.substring(0, name.length() - 4))) {
-                    spare.add(name);
+                if (!name.endsWith(".png")) {
+                    continue;
+                }
+                String picture = folder.relativize(file).toString().replace('\\', '/');
+                picture = picture.substring(0, picture.length() - 4);
+                if (!used.contains(picture)) {
+                    spare.add(picture + ".png");
                 }
             }
         }

@@ -261,6 +261,11 @@ public class BlockIconRenderer implements Disposable {
         FrameBuffer frame = new FrameBuffer(Pixmap.Format.RGBA8888, SIZE, SIZE, true);
         TextureRegion drawn = bake(block, frame);
         if (drawn == null) {
+            // A frame that stayed too empty is a drawing that cannot be shown, and the block is remembered
+            // as one that cannot be drawn: a bake that is tried again would build a frame, ask the card
+            // for its pixels and report the failure once per slot and frame, which is a screen no player
+            // can use. The block keeps the folded tile instead, see BlockTextureCache.
+            failed.add(block.id());
             frame.dispose();
             return null;
         }

@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -85,5 +87,74 @@ class BlockPlacerTest {
         assertFalse(BlockPlacer.place(world, player, BlockTarget.of(2, air + 2, 2), inventory),
                 "two blocks higher there is nothing to stand on");
         assertEquals(Blocks.AIR, world.getBlock(2, air + 2, 2), "and nothing was written");
+    }
+
+    @Test
+    void aSlabIsBuiltIntoTheHalfTheAimEnteredThrough() {
+        // A floor of its own under the target, so the case does not depend on the shape of the terrain.
+        world.setBlock(5, air - 1, 5, Blocks.STONE);
+        inventory.set(inventory.selectedSlot(), ItemStack.of(Items.STONE_SLAB, 8));
+
+        // An aim that came down onto the floor: the lower half is the half the floor carries.
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(5, air, 5, BlockFace.TOP), inventory),
+                "the floor carries the slab");
+
+        assertEquals(halfState(BlockPlacer.LOWER_HALF), world.getState(5, air, 5),
+                "the aim came down, so the lower half is filled");
+
+        // An aim that went up into the cell under a ceiling: the upper half is the one it hangs on.
+        world.setBlock(6, air - 1, 6, Blocks.STONE);
+        world.setBlock(6, air + 1, 6, Blocks.STONE);
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(6, air, 6, BlockFace.BOTTOM), inventory),
+                "the ceiling carries the slab");
+
+        assertEquals(halfState(BlockPlacer.UPPER_HALF), world.getState(6, air, 6),
+                "the aim went up, so the upper half is filled");
+    }
+
+    @Test
+    void aSlabTakesTheHalfTheViewLooksAt() {
+        // The side of a block carries no half of its own, so the view answers for it.
+        world.setBlock(7, air - 1, 7, Blocks.STONE);
+        world.setBlock(8, air, 7, Blocks.STONE);
+        inventory.set(inventory.selectedSlot(), ItemStack.of(Items.STONE_SLAB, 8));
+        player.setView(0.0f, 30.0f);
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(7, air, 7, BlockFace.WEST), inventory),
+                "the wall beside it carries the slab");
+
+        assertEquals(halfState(BlockPlacer.UPPER_HALF), world.getState(7, air, 7),
+                "a player who looks up builds the upper half");
+    }
+
+    @Test
+    void aLadderIsBuiltAgainstTheWallItHangsOn() {
+        // A ladder goes into the cell behind the face the aim entered, and it faces the player who built it:
+        // the rungs look away from the wall, which is what a body climbing it walks into.
+        world.setBlock(1, air, 1, Blocks.STONE);
+        inventory.set(inventory.selectedSlot(), ItemStack.of(Items.LADDER, 8));
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory),
+                "the face of the wall carries the ladder");
+
+        assertEquals(Blocks.LADDER, world.getBlock(0, air, 1), "the ladder hangs on the wall");
+        assertEquals(Blocks.LADDER.states().stateOf(Map.of(BlockPlacer.FACING, BlockFace.WEST.toString())),
+                world.getState(0, air, 1), "and its rungs face away from the wall, towards the builder");
+    }
+
+    @Test
+    void aLadderIsRefusedWhereNoWallHoldsIt() {
+        inventory.set(inventory.selectedSlot(), ItemStack.of(Items.LADDER, 8));
+
+        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(3, air, 3), inventory),
+                "a ladder without a wall behind it would hang in the air");
+
+        assertEquals(Blocks.AIR, world.getBlock(3, air, 3));
+    }
+
+    /** The state of a slab of the given half. */
+    private static int halfState(String half) {
+        return Blocks.STONE_SLAB.states().stateOf(Map.of(BlockPlacer.TYPE, half));
     }
 }

@@ -5,7 +5,6 @@ import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.decoration.Decoration;
-import com.philia093.neofactory.world.decoration.GrassDecoration;
 import com.philia093.neofactory.world.decoration.TerrainSampler;
 import com.philia093.neofactory.world.decoration.TreeDecoration;
 
@@ -298,7 +297,6 @@ public final class WorldGen implements TerrainSampler {
             // The ground, the water of a river and the lava of a pool all belong to the terrain itself, see
             // fillColumn: what is left for a decorator is what grows on the ground.
             built.add(new TreeDecoration(seed));
-            built.add(new GrassDecoration(seed));
         }
         this.decorations = Collections.unmodifiableList(built);
     }

@@ -726,7 +726,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         Gdx.gl.glClearColor(SKY.r, SKY.g, SKY.b, 1.0f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        // The state the world is drawn with is set up here and never inherited, the way the interface does
+        // it for its own sprites, see #renderInterface. The batch of the interface switches the depth mask
+        // off while it draws, and the passes of the world leave the culling the way the last of them wanted
+        // it: a world drawn without a depth mask keeps no depth at all and its back faces are drawn as well,
+        // so the face that was drawn last wins wherever two of them overlap. What the pause menu then shows
+        // behind its dark layer is the bedrock at the bottom of the terrain instead of the grass the player
+        // stands on, because the sections of the bottom are drawn last.
+        Gdx.gl.glDepthMask(true);
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
+        Gdx.gl.glEnable(GL20.GL_CULL_FACE);
         cubeRenderer.render(world, cubeCamera, SKY);
         cubeRenderer.renderSelection(cubeCamera, target);
         renderEntities();
@@ -1469,13 +1478,24 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         inventory.add(ItemStack.of(Items.DIRT, 64));
         inventory.add(ItemStack.of(Items.STONE, 64));
         inventory.add(ItemStack.of(Items.SAND, 21));
-        inventory.add(ItemStack.of(Items.SNOW, 9));
+        inventory.add(ItemStack.of(Items.COBBLESTONE, 64));
         inventory.add(ItemStack.of(Items.BEDROCK, 1));
 
         inventory.add(ItemStack.of(Items.LOG_OAK, 12));
         inventory.add(ItemStack.of(Items.PLANKS_OAK, 40));
         inventory.add(ItemStack.of(Items.LEAVES_OAK, 8));
-        inventory.add(ItemStack.of(Items.TALL_GRASS, 16));
+        inventory.add(ItemStack.of(Items.SAPLING_OAK, 16));
+        inventory.add(ItemStack.of(Items.GLASS, 32));
+        inventory.add(ItemStack.of(Items.STONE_BRICK, 32));
+        inventory.add(ItemStack.of(Items.STONE_SLAB, 32));
+        inventory.add(ItemStack.of(Items.BRICK, 32));
+        inventory.add(ItemStack.of(Items.GLOWSTONE, 16));
+        inventory.add(ItemStack.of(Items.OBSIDIAN, 8));
+        inventory.add(ItemStack.of(Items.CRAFTING_TABLE, 1));
+        inventory.add(ItemStack.of(Items.ANVIL, 1));
+        inventory.add(ItemStack.of(Items.CAULDRON, 1));
+        inventory.add(ItemStack.of(Items.TORCH, 16));
+        inventory.add(ItemStack.of(Items.LADDER, 8));
         inventory.add(ItemStack.of(Items.COAL_ORE, 5));
         inventory.add(ItemStack.of(Items.IRON_ORE, 5));
         inventory.add(ItemStack.of(Items.SANDSTONE, 7));

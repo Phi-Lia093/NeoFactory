@@ -1,5 +1,0 @@
-{
-  "parent": "template_cross",
-  "textures": { "cross": "tallgrass" },
-  "tint": true
-}

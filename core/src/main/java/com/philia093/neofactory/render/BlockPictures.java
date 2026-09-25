@@ -3,7 +3,6 @@ package com.philia093.neofactory.render;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.philia093.neofactory.block.Block;
@@ -14,6 +13,10 @@ import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Every picture of the world, stacked into one texture array.
@@ -73,42 +76,13 @@ public class BlockPictures implements Disposable {
 
     /** Collects every picture of the game and uploads it as one layer, called once during startup. */
     public void build() {
-        Array<String> names = new Array<>();
-        for (Block block : BlockRegistry.all()) {
-            // Every face of every box of the model is a picture of its own, overlays included: the
-            // grass keeps the layer of its biome colour in the array beside the side it lies on.
-            for (String picture : block.model().pictures()) {
-                collect(picture, names);
-            }
-            collect(block.texture(), names);
-        }
-        // The pictures of the items travel with them: a tool or a material has no cube and is not drawn in
-        // the world at all, so its picture is the only art it has, and the array carries it beside the
-        // pictures of the blocks. Which folder that picture lives in is decided by the file system - the
-        // picture of an item is its own one below items/, and the picture of a block item is the picture of
-        // that block, which is collected above - so both names are offered and the one without a file is
-        // skipped, see collect(String, Array).
-        for (Item item : ItemRegistry.all()) {
-            if (!item.texture().isEmpty()) {
-                collect(item.texture(), names);
-                collect(ITEMS_FOLDER + item.texture(), names);
-            }
-        }
-        // The faces of a body are cut out of the skin that draws it, one picture per face of every
-        // bone: the arm of a view and the body of a player are drawn from the very faces the skin
-        // holds, see SkinRegions and HumanoidModel.
-        for (String face : SkinRegions.names()) {
-            collect(face, names);
-        }
-        // The arm of the player is a picture of its own: a view from inside a body shows the arm of that
-        // body, and the body picture travels with the art of the entities.
-        collect(HAND, names);
-        if (names.size == 0) {
+        List<String> names = pictureNames(layers, BlockPictures::exists);
+        if (names.isEmpty()) {
             LOGGER.warn("No picture of any block was found, the world cannot be drawn as cubes");
             return;
         }
 
-        layerCount = names.size;
+        layerCount = names.size();
         int bodyFaces = 0;
         int bodyFacesWithPixels = 0;
         handle = Gdx.gl30.glGenTexture();
@@ -191,12 +165,67 @@ public class BlockPictures implements Disposable {
         Gdx.gl30.glBindTexture(GL30.GL_TEXTURE_2D_ARRAY, handle);
     }
 
+    /**
+     * Names of every picture the world may draw, in the order the array stacks them.
+     * <p>
+     * <b>The model of a state is what a cell is drawn from</b>, so every state of every block is walked
+     * here and not only the model named after the block itself: the lower and the upper half of a slab
+     * are models of their own, named by a file of
+     * {@code assets/blockstates}. A picture the array does not hold is a face the mesher finds no layer
+     * for, which is a block the world does not draw at all - a cell that stops a body while nothing is
+     * drawn there, and a slot whose icon is baked from a block that draws nothing, which the interface bakes
+     * again on every frame.
+     * <p>
+     * The pictures of the items travel with them: a tool or a material has no cube and is not drawn in
+     * the world at all, so its picture is the only art it has, and the array carries it beside the
+     * pictures of the blocks. Which folder that picture lives in is decided by the file system - the
+     * picture of an item is its own one below {@code items/}, and the picture of a block item is the
+     * picture of that block, which is collected above - so both names are offered and the one without a
+     * file is skipped, see {@link #collect(String, List, ObjectMap, Predicate)}.
+     * <p>
+     * The faces of a body are cut out of the skin that draws it, one picture per face of every bone, and
+     * the arm of a view is a piece of that skin of its own, see {@link SkinRegions} and
+     * {@link HumanoidRenderer}.
+     *
+     * @param layers map the names are written into, empty for a caller that only reads the list
+     * @param exists decides which name of the game has a file behind it, so the list can be read without
+     *               a graphics card
+     * @return the names, in the order the layers are numbered
+     */
+    static List<String> pictureNames(ObjectMap<String, Integer> layers, Predicate<String> exists) {
+        List<String> names = new ArrayList<>();
+        for (Block block : BlockRegistry.all()) {
+            // Every face of every box of every model the block may be drawn with is a picture of its own,
+            // overlays included: the grass keeps the layer of its biome colour in the array beside the
+            // side it lies on.
+            for (int state = 0; state < block.states().stateCount(); state++) {
+                for (String picture : block.shown(state).model().pictures()) {
+                    collect(picture, names, layers, exists);
+                }
+            }
+            collect(block.texture(), names, layers, exists);
+        }
+        for (Item item : ItemRegistry.all()) {
+            if (!item.texture().isEmpty()) {
+                collect(item.texture(), names, layers, exists);
+                collect(ITEMS_FOLDER + item.texture(), names, layers, exists);
+            }
+        }
+        for (String face : SkinRegions.names()) {
+            collect(face, names, layers, exists);
+        }
+        collect(HAND, names, layers, exists);
+        return names;
+    }
+
     /** Adds a picture to the list, once, in the order the layers are numbered. */
-    private void collect(String picture, Array<String> names) {
-        if (picture.isEmpty() || layers.containsKey(picture) || !exists(picture)) {
+    private static void collect(String picture, List<String> names, ObjectMap<String, Integer> layers,
+            Predicate<String> exists) {
+        if (picture == null || picture.isEmpty() || layers.containsKey(picture)
+                || !exists.test(picture)) {
             return;
         }
-        layers.put(picture, names.size);
+        layers.put(picture, names.size());
         names.add(picture);
     }
 
@@ -228,14 +257,31 @@ public class BlockPictures implements Disposable {
      * Path of a picture below the asset root.
      * <p>
      * The rule is the one the whole game follows: a name without a folder is a picture of a block and
-     * lives below {@link #FOLDER}, and a name that names its folder is read from there - the pictures of
-     * the items live below {@code items/} and the skin of a body below {@code entity/}.
+     * lives below {@link #FOLDER}, and a name that starts with a folder of the asset root itself - the
+     * pictures of the items below {@code items/}, the skin of a body below {@code entity/} - is read
+     * from there. A folder that is <i>not</i> a folder of the asset root is a folder inside the
+     * blocks: the art a block of several parts keeps together is named that way, so
+     * {@code furnace/furnace_top} is read from {@code blocks/furnace/furnace_top.png}.
      *
      * @param name name of the picture, either without a folder or with the one it lives in
      * @return the path of the file, relative to the asset root
      */
     public static String path(String name) {
-        return name.indexOf('/') >= 0 ? name + ".png" : FOLDER + name + ".png";
+        return nameOfAFolderOfTheAssetRoot(name) ? name + ".png" : FOLDER + name + ".png";
+    }
+
+    /** Folders of the asset root a picture may name to place itself, see {@link #path(String)}. */
+    private static final String[] ROOT_FOLDERS = {FOLDER, ITEMS_FOLDER, "entity/", "gui/", "map/",
+            "font/", "misc/", "colormap/", "environment/"};
+
+    /** {@code true} when a name starts with a folder of the asset root and is a path of its own. */
+    private static boolean nameOfAFolderOfTheAssetRoot(String name) {
+        for (String folder : ROOT_FOLDERS) {
+            if (name.startsWith(folder)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

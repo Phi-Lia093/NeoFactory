@@ -1,0 +1,9 @@
+{
+  "properties": {
+    "type": ["bottom", "top"]
+  },
+  "variants": {
+    "type=bottom": { "model": "stone_slab", "y": 0 },
+    "type=top": { "model": "stone_slab_top", "y": 0 }
+  }
+}

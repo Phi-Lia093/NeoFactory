@@ -33,9 +33,10 @@ class SectionMesherTest {
     private static final Map<String, Integer> LAYERS = Map.ofEntries(
             Map.entry("stone", 0), Map.entry("grass_top", 1), Map.entry("grass_side", 2),
             Map.entry("dirt", 3), Map.entry("log_oak", 4), Map.entry("log_oak_top", 5),
-            Map.entry("grass_side_overlay", 6), Map.entry("tallgrass", 7),
-            Map.entry("furnace_side", 8), Map.entry("furnace_top", 9),
-            Map.entry("furnace_front_off", 10));
+            Map.entry("sapling_oak", 6),
+            Map.entry("stone_slab_top", 7), Map.entry("stone_slab_side", 8),
+            Map.entry("furnace/furnace_side", 9), Map.entry("furnace/furnace_top", 10),
+            Map.entry("furnace/furnace_front_off", 11));
 
     /** Section the tests mesh. */
     private final Section section = new Section(0);
@@ -117,20 +118,18 @@ class SectionMesherTest {
     }
 
     @Test
-    void theSideOfGrassCarriesTheLayerOfItsBiomeColour() {
+    void theSideOfGrassCarriesTheTintOfItsBlock() {
         put(4, 4, 4, Blocks.GRASS);
 
         List<MeshData> meshes = mesh();
 
-        // Four sides, each written twice: the side itself and the layer of the colour of the biome
-        // above it, which is what the model names as the overlay of that face.
-        assertEquals(4 + 4 + 4 * 2 * 4, corners(meshes),
-                "every side of the grass is drawn twice and the top and the bottom once");
-        assertTrue(holdsLayer(meshes, LAYERS.get("grass_side")), "the side is drawn");
-        assertTrue(holdsLayer(meshes, LAYERS.get("grass_side_overlay")),
-                "and the layer of the biome colour above it");
-        assertEquals(122, brightest(meshes, LAYERS.get("grass_side_overlay")), 2,
-                "which is painted in the red of the tint of the grass, 0.6, over the light of the"
+        // The four sides and the top are painted in the colour of the biome, because their sheets hold
+        // brightness only; the dirt of the bottom keeps the colour it is drawn in, see
+        // models/block/grass.json.
+        assertEquals((4 + 1 + 1) * 4, corners(meshes),
+                "every side of the grass is drawn once, and the top and the bottom once");
+        assertEquals(122, brightest(meshes, LAYERS.get("grass_side")), 2,
+                "the side is painted in the red of the tint of the grass, 0.6, over the light of the"
                         + " brightest side of a block, 0.8");
     }
 
@@ -159,9 +158,9 @@ class SectionMesherTest {
 
         List<MeshData> meshes = mesh();
 
-        assertCorner(meshes, LAYERS.get("furnace_front_off"), 4.0f, 4.0f, 4.0f, 1.0f, 1.0f,
+        assertCorner(meshes, LAYERS.get("furnace/furnace_front_off"), 4.0f, 4.0f, 4.0f, 1.0f, 1.0f,
                 "the mouth of a furnace that was never set");
-        assertEquals(4, cornersOfLayer(meshes, LAYERS.get("furnace_front_off")),
+        assertEquals(4, cornersOfLayer(meshes, LAYERS.get("furnace/furnace_front_off")),
                 "and it is drawn on one face only, the one the model writes its front on");
     }
 
@@ -175,21 +174,21 @@ class SectionMesherTest {
 
         // The model faces north, so a turn of ninety degrees about the vertical axis of the block
         // carries the mouth to the east face: the plane X = 5 is where the front is drawn now.
-        assertCorner(meshes, LAYERS.get("furnace_front_off"), 5.0f, 5.0f, 4.0f, 1.0f, 0.0f,
+        assertCorner(meshes, LAYERS.get("furnace/furnace_front_off"), 5.0f, 5.0f, 4.0f, 1.0f, 0.0f,
                 "the mouth of a furnace that faces east");
-        assertTrue(holdsLayer(meshes, LAYERS.get("furnace_side")), "the other faces are its sides");
+        assertTrue(holdsLayer(meshes, LAYERS.get("furnace/furnace_side")), "the other faces are its sides");
     }
 
     @Test
     void aPlantIsDrawnWithoutCullingOrShadow() {
-        put(4, 4, 4, Blocks.TALL_GRASS);
+        put(4, 4, 4, Blocks.SAPLING_OAK);
 
         List<MeshData> meshes = mesh();
 
         // Two crossed planes, each showing its two sides: four faces of four corners, and none of
         // them is hidden by the air around it, because a plane is not the border of a block.
         assertEquals(4 * 4, corners(meshes), "both planes of the plant are drawn from both sides");
-        assertTrue(holdsLayer(meshes, LAYERS.get("tallgrass")), "with the picture of the plant");
+        assertTrue(holdsLayer(meshes, LAYERS.get("sapling_oak")), "with the picture of the plant");
     }
 
     @Test
@@ -238,6 +237,19 @@ class SectionMesherTest {
         List<MeshData> meshes = SectionMesher.build(section, 0, 0, 0, this::blockAt, picture -> -1);
 
         assertTrue(meshes.isEmpty(), "a face whose picture is unknown is not drawn");
+    }
+
+    @Test
+    void theGroundUnderAHalfBlockKeepsItsTopFace() {
+        // A slab is thinner than a cube, so its cell does not hide the face behind it: the piece of ground
+        // the slab does not cover is still seen, see SectionMesher#hides.
+        put(4, 4, 4, Blocks.STONE);
+        put(4, 5, 4, Blocks.STONE_SLAB);
+
+        List<MeshData> meshes = mesh();
+
+        assertEquals(6 * 4, cornersOfLayer(meshes, LAYERS.get("stone")),
+                "the ground keeps all six of its faces, the slab above hides none of them");
     }
 
     /** Puts a block into the section. */

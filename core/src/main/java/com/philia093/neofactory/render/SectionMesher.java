@@ -469,11 +469,16 @@ public final class SectionMesher {
      * <p>
      * A cell that holds nothing or a picture one can see through hides nothing: the face behind it is
      * drawn, which is what lets a canopy of leaves or a wall of glass show what stands behind it.
+     * <p>
+     * <b>Only a block that fills its cell hides a face.</b> A block that is thinner than a cube - a slab,
+     * an anvil, the hollow pot of a cauldron - leaves a piece of the cell open, so the face of the ground
+     * under it is still seen through that gap and has to be drawn: a cell that hid it would make the
+     * ground under a slab look like a hole.
      *
      * @param block block standing in the cell next to a face
      * @return {@code true} when the face behind it is not drawn
      */
     private static boolean hides(Block block) {
-        return !block.isAir() && !block.isTransparent();
+        return !block.isAir() && !block.isTransparent() && block.model().isWholeCube();
     }
 }

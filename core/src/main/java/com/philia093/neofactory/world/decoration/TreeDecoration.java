@@ -118,7 +118,9 @@ public class TreeDecoration extends Decoration {
 
     /** {@code true} when the block can carry a tree. */
     private static boolean isSoil(Block floor) {
-        return floor == Blocks.GRASS || floor == Blocks.SNOW;
+        // Gravel carries the trees of a cold highland: snow lost its picture, so the snowy biome is
+        // built on gravel, see Biome.
+        return floor == Blocks.GRASS || floor == Blocks.GRAVEL;
     }
 
     /**

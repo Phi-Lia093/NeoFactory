@@ -5,6 +5,7 @@ import com.philia093.neofactory.block.model.BlockModel;
 import com.philia093.neofactory.block.model.ModelRegistry;
 import com.philia093.neofactory.block.state.BlockStateRegistry;
 import com.philia093.neofactory.block.state.BlockStateTable;
+import com.philia093.neofactory.util.Aabb;
 
 import java.util.Objects;
 
@@ -30,6 +31,8 @@ public final class Block {
     private final boolean solid;
     private final boolean ground;
     private final boolean transparent;
+    private final boolean climbable;
+    private final boolean hangsOnASide;
     private final Color tint;
     private final float hardness;
     private final int harvestLevel;
@@ -43,6 +46,8 @@ public final class Block {
         this.solid = builder.solid;
         this.ground = builder.ground;
         this.transparent = builder.transparent;
+        this.climbable = builder.climbable;
+        this.hangsOnASide = builder.hangsOnASide;
         this.tint = builder.tint;
         this.hardness = builder.hardness;
         this.harvestLevel = builder.harvestLevel;
@@ -85,7 +90,7 @@ public final class Block {
     /**
      * {@code true} when the block can be the ground of a cell.
      * <p>
-     * A ground surface fills the floor layer - grass, sand, stone, the ores, snow -
+     * A ground surface fills the floor layer - grass, sand, stone, the ores -
      * and the player walks over it, so it never stops movement no matter how hard
      * the material is. Air counts as ground as well, which is what keeps a dug out
      * hole passable.
@@ -102,6 +107,30 @@ public final class Block {
     /** {@code true} when blocks below this one stay visible. */
     public boolean isTransparent() {
         return transparent;
+    }
+
+    /**
+     * {@code true} when a body climbs on this block.
+     * <p>
+     * A ladder is the block of the game that is climbed: a body that stands in one of its cells holds on to
+     * it, sinks slowly instead of falling and climbs while the player asks for it, see
+     * {@link com.philia093.neofactory.entity.Player#update(com.philia093.neofactory.world.World, float)}.
+     * Everything else is walked through and fallen through as usual.
+     */
+    public boolean isClimbable() {
+        return climbable;
+    }
+
+    /**
+     * {@code true} when this block hangs on the side of another one.
+     * <p>
+     * A ladder is built against a side and never onto the ground: the cell below a ladder carries it just as
+     * little as it carries the ladder of a wall that is not there, so a build that only found a floor is
+     * refused, see {@link com.philia093.neofactory.world.interaction.BlockPlacer}. The direction such a
+     * block is turned is the side it hangs on as well, so its rungs look away from it.
+     */
+    public boolean hangsOnASide() {
+        return hangsOnASide;
     }
 
     /** {@code true} when the block has no texture and is never drawn. */
@@ -219,6 +248,60 @@ public final class Block {
         return BlockStateRegistry.shown(this, state);
     }
 
+    /**
+     * The part of its cell a state of this block fills as an obstacle.
+     * <p>
+     * A block is not always a whole cube. A slab fills the lower or the upper half of its cell, an anvil a
+     * body of its own, so what a body runs into is the shape of the model the state is
+     * drawn with, see {@link BlockModel#shape()}, turned the way the state turns that model. The box is
+     * written in the coordinates of one cell - {@code (0, 0, 0)} is one corner of the block and
+     * {@code (1, 1, 1)} the other one; a caller that asks about a place in the world moves it there, see
+     * {@link com.philia093.neofactory.world.BlockAccess#shape(int, int, int,
+     * com.philia093.neofactory.util.Aabb)}.
+     * <p>
+     * <b>Whether the cell is walked through at all is a separate question.</b> Only a
+     * {@link #isSolid() solid} block holds anything back; a plant, a torch, a ladder and the air are
+     * entered by a body whatever shape they are drawn with.
+     *
+     * @param state number of the state, {@code 0} for a block that carries none
+     * @param into box to write the shape into, because the box of a model is shared by every cell that
+     *             shows it and must not be written to
+     * @return the box, empty when the model of that state draws nothing
+     */
+    public Aabb shape(int state, Aabb into) {
+        BlockStateRegistry.Shown shown = shown(state);
+        into.set(shown.model().shape());
+        return turn(shown.rotateY(), into);
+    }
+
+    /**
+     * Turns a box the way a state turns the model it belongs to.
+     * <p>
+     * The same quarter turn the mesher applies to the corners it draws: around the middle of the cell,
+     * so a model that faces north faces east at ninety degrees, see
+     * {@link com.philia093.neofactory.render.SectionMesher}. A turn of a quarter is what maps one
+     * axis-aligned box onto another one, which is why turning the shape of a model is exact.
+     *
+     * @param rotateY quarter turns, a multiple of ninety degrees
+     * @param box box to write the turned shape into, in the coordinates of one cell
+     * @return the box
+     */
+    private static Aabb turn(int rotateY, Aabb box) {
+        switch (rotateY) {
+            case 90:
+                return box.set(box.minZ(), box.minY(), 1.0f - box.maxX(), box.maxZ(), box.maxY(),
+                        1.0f - box.minX());
+            case 180:
+                return box.set(1.0f - box.maxX(), box.minY(), 1.0f - box.maxZ(), 1.0f - box.minX(),
+                        box.maxY(), 1.0f - box.minZ());
+            case 270:
+                return box.set(1.0f - box.maxZ(), box.minY(), box.minX(), 1.0f - box.minZ(),
+                        box.maxY(), box.maxX());
+            default:
+                return box;
+        }
+    }
+
     /** {@code true} when this block has a texture that can be drawn. */
     public boolean isDrawable() {
         return !texture.isEmpty() && !isAir();
@@ -302,6 +385,8 @@ public final class Block {
         private boolean solid = true;
         private boolean ground = false;
         private boolean transparent = false;
+        private boolean climbable = false;
+        private boolean hangsOnASide = false;
         private Color tint = new Color(Color.WHITE);
         private float hardness = 1.0f;
         private int harvestLevel;
@@ -348,6 +433,26 @@ public final class Block {
 
         public Builder transparent(boolean transparent) {
             this.transparent = transparent;
+            return this;
+        }
+
+        /**
+         * Marks the block as one a body climbs on.
+         *
+         * @param climbable {@code true} for a ladder
+         */
+        public Builder climbable(boolean climbable) {
+            this.climbable = climbable;
+            return this;
+        }
+
+        /**
+         * Declares that this block hangs on the side of another one.
+         *
+         * @param hangsOnASide {@code true} for a ladder
+         */
+        public Builder hangsOnASide(boolean hangsOnASide) {
+            this.hangsOnASide = hangsOnASide;
             return this;
         }
 

@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"]
+  },
+  "variants": {
+    "facing=north": { "model": "anvil", "y": 0 },
+    "facing=east": { "model": "anvil", "y": 270 },
+    "facing=south": { "model": "anvil", "y": 180 },
+    "facing=west": { "model": "anvil", "y": 90 }
+  }
+}
