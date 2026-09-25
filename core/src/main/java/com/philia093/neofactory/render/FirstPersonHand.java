@@ -226,7 +226,8 @@ public class FirstPersonHand implements Disposable {
         if (armLayer < 0) {
             if (!reportedMissingPicture) {
                 reportedMissingPicture = true;
-                LOGGER.warn("The array holds no picture of the hand, the arm is not drawn");
+                LOGGER.warn("The array holds no picture of the hand, it was cut from {}: the arm is not drawn",
+                        BlockPictures.SKIN);
             }
             return false;
         }

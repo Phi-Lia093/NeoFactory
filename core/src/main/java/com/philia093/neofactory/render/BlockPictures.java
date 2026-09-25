@@ -175,11 +175,17 @@ public class BlockPictures implements Disposable {
      * block, and a shape of a material may share the picture of another one. The array holds the pictures
      * that are there and says nothing about the rest - a name that has no file is skipped here instead of
      * stopping the game while it opens a world.
+     * <p>
+     * The hand is the one picture that is cut out of another file rather than living in one of its own,
+     * see {@link #ARM_REGION}: its name has no file, so it is asked for the skin it is cut from.
      *
      * @param picture name of the picture, see {@link #path(String)}
      * @return {@code true} when that file is there
      */
     private static boolean exists(String picture) {
+        if (HAND.equals(picture)) {
+            return Gdx.files.internal(SKIN).exists();
+        }
         return Gdx.files.internal(path(picture)).exists();
     }
 

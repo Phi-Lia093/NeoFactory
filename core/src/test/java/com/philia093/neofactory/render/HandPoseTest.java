@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -200,6 +201,16 @@ class HandPoseTest {
             }
         }
         assertTrue(missing.isEmpty(), "no hand can show these items, their picture is nowhere: " + missing);
+    }
+
+    @Test
+    void theHandIsARegionOfTheSkinAndNotAFileOfItsOwn() {
+        Path assets = Path.of("..", "assets");
+        assertTrue(Files.isRegularFile(assets.resolve(BlockPictures.SKIN)),
+                "the skin of a body is missing: " + BlockPictures.SKIN);
+        assertFalse(Files.exists(assets.resolve(BlockPictures.path(BlockPictures.HAND))),
+                "the hand has no file of its own - it is a region of the skin - so a check that only "
+                        + "looks for a file of its own name drops the arm out of the array");
     }
 
     /** The ten floats of one corner of a mesh. */
