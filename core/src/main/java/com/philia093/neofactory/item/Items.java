@@ -9,7 +9,7 @@ import com.philia093.neofactory.material.Materials;
  * Declaration of every item type used by the game.
  * <p>
  * The list is split into four groups: the items that place a block, the raw
- * materials, the food and the unique items such as tools and armour. Ids are
+ * materials, the food and the unique items such as tools. Ids are
  * stable, so new items must always be appended at the end and the value of
  * {@link #NEXT_FREE_ID} has to be bumped accordingly.
  * <p>
@@ -27,8 +27,14 @@ import com.philia093.neofactory.material.Materials;
  * declared here moved there as well and kept their ids, see {@link #IRON_INGOT_ID}.
  * <p>
  * <b>Stack sizes:</b> materials, food and block items stack to
- * {@link Item#DEFAULT_MAX_STACK}, while tools and armour are unique and stack to
+ * {@link Item#DEFAULT_MAX_STACK}, while tools are unique and stack to
  * {@link Item#SINGLE_ITEM_STACK}.
+ * <p>
+ * <b>Tools:</b> a tool names the kind of work it is good for - a pickaxe, an axe, a shovel, a hoe, a
+ * sword - and the level of its material, see {@link ToolType}. Both are read by the mining rule:
+ * the kind decides the speed and what a block hands over, the level decides whether it hands
+ * anything over at all, see {@code HardnessMining}. A tool also names the amount of use it takes
+ * before it is used up, which is not a property of a tool alone, see {@link Item#maxDamage()}.
  */
 public final class Items {
 
@@ -123,11 +129,30 @@ public final class Items {
     /** Mining level of the diamond tools. */
     public static final int DIAMOND_TOOL_LEVEL = 3;
 
+    /**
+     * Mining level of a bare hand, also the level of a tool that opens no block.
+     * <p>
+     * A hoe and a sword carry it: they are tools of the hand and not of the stone, so they mine
+     * every block a hand may mine and no block that asks for a level.
+     */
+    public static final int HAND_TOOL_LEVEL = 0;
+
     /** Speed iron tools break blocks with, a bare hand reaches {@code 1}. */
     public static final float IRON_TOOL_SPEED = 6.0f;
 
     /** Speed diamond tools break blocks with. */
     public static final float DIAMOND_TOOL_SPEED = 8.0f;
+
+    /**
+     * Amount of use a tool of iron takes before it is used up.
+     * <p>
+     * Beaten out of the original game: iron lasts {@code 250} blocks and diamond {@code 1561}, see
+     * {@link Item#maxDamage()} and {@link com.philia093.neofactory.item.Damageable}.
+     */
+    public static final int IRON_TOOL_DURABILITY = 250;
+
+    /** Amount of use a tool of diamond takes before it is used up. */
+    public static final int DIAMOND_TOOL_DURABILITY = 1561;
 
     public static final int IRON_PICKAXE_ID = 48;
     public static final int IRON_AXE_ID = 49;
@@ -140,18 +165,19 @@ public final class Items {
     public static final int DIAMOND_HOE_ID = 56;
     public static final int DIAMOND_SWORD_ID = 57;
 
-    // ------------------------------------------------------------------
-    // Armour.
-    // ------------------------------------------------------------------
+    /**
+     * Ids the armour of the game used to hold.
+     * <p>
+     * The eight pieces left the game for now: they were icons without slots and without a defence
+     * behind them, so nothing spells these numbers any more. They are kept here as the history of
+     * the id space - a stored inventory may still carry one and is read as an empty slot - and a new
+     * item still takes a number from {@link #NEXT_FREE_ID}, never one of these.
+     */
+    public static final int ARMOUR_ID_FROM = 58;
 
-    public static final int IRON_HELMET_ID = 58;
-    public static final int IRON_CHESTPLATE_ID = 59;
-    public static final int IRON_LEGGINGS_ID = 60;
-    public static final int IRON_BOOTS_ID = 61;
-    public static final int DIAMOND_HELMET_ID = 62;
-    public static final int DIAMOND_CHESTPLATE_ID = 63;
-    public static final int DIAMOND_LEGGINGS_ID = 64;
-    public static final int DIAMOND_BOOTS_ID = 65;
+    /** Last id the armour of the game used to hold, see {@link #ARMOUR_ID_FROM}. */
+    public static final int ARMOUR_ID_TO = 65;
+
     public static final int FURNACE_ID = 66;
 
     /**
@@ -363,23 +389,6 @@ public final class Items {
     public static Item DIAMOND_HOE;
     /** Diamond sword. */
     public static Item DIAMOND_SWORD;
-
-    /** Iron helmet. */
-    public static Item IRON_HELMET;
-    /** Iron chestplate. */
-    public static Item IRON_CHESTPLATE;
-    /** Iron leggings. */
-    public static Item IRON_LEGGINGS;
-    /** Iron boots. */
-    public static Item IRON_BOOTS;
-    /** Diamond helmet. */
-    public static Item DIAMOND_HELMET;
-    /** Diamond chestplate. */
-    public static Item DIAMOND_CHESTPLATE;
-    /** Diamond leggings. */
-    public static Item DIAMOND_LEGGINGS;
-    /** Diamond boots. */
-    public static Item DIAMOND_BOOTS;
 
     /** The empty bucket, the tool for water and lava. */
     public static Item BUCKET;
@@ -630,37 +639,34 @@ public final class Items {
                 .texture(Item.ITEM_FOLDER + "melon")
                 .build());
 
-        // Tools. They are unique, so a full stack holds a single piece. The mining
-        // tools know their level and their speed, which a rule with break times
-        // reads, see HardnessMining. Swords and hoes carry neither, because the tool
-        // type that decides whether a tool fits a block is not modelled yet.
+        // Tools. They are unique, so a full stack holds a single piece. Every tool names the kind of
+        // work it is good for and the level of its material, which the mining rule reads, see ToolType
+        // and HardnessMining; what it wears is the life of its own, see Item#maxDamage. A hoe and a
+        // sword carry the level of a hand and the speed of one: they open no block of the game, and a
+        // sword cuts what stands instead of what lies.
         IRON_PICKAXE = register(toolItem(IRON_PICKAXE_ID, "iron_pickaxe", "Iron Pickaxe",
-                IRON_TOOL_LEVEL, IRON_TOOL_SPEED));
+                ToolType.PICKAXE, IRON_TOOL_LEVEL, IRON_TOOL_SPEED, IRON_TOOL_DURABILITY));
         IRON_AXE = register(toolItem(IRON_AXE_ID, "iron_axe", "Iron Axe",
-                IRON_TOOL_LEVEL, IRON_TOOL_SPEED));
+                ToolType.AXE, IRON_TOOL_LEVEL, IRON_TOOL_SPEED, IRON_TOOL_DURABILITY));
         IRON_SHOVEL = register(toolItem(IRON_SHOVEL_ID, "iron_shovel", "Iron Shovel",
-                IRON_TOOL_LEVEL, IRON_TOOL_SPEED));
-        IRON_HOE = register(uniqueItem(IRON_HOE_ID, "iron_hoe", "Iron Hoe"));
-        IRON_SWORD = register(uniqueItem(IRON_SWORD_ID, "iron_sword", "Iron Sword"));
+                ToolType.SHOVEL, IRON_TOOL_LEVEL, IRON_TOOL_SPEED, IRON_TOOL_DURABILITY));
+        IRON_HOE = register(toolItem(IRON_HOE_ID, "iron_hoe", "Iron Hoe",
+                ToolType.HOE, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, IRON_TOOL_DURABILITY));
+        IRON_SWORD = register(toolItem(IRON_SWORD_ID, "iron_sword", "Iron Sword",
+                ToolType.SWORD, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, IRON_TOOL_DURABILITY));
         DIAMOND_PICKAXE = register(toolItem(DIAMOND_PICKAXE_ID, "diamond_pickaxe", "Diamond Pickaxe",
-                DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED));
+                ToolType.PICKAXE, DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED, DIAMOND_TOOL_DURABILITY));
         DIAMOND_AXE = register(toolItem(DIAMOND_AXE_ID, "diamond_axe", "Diamond Axe",
-                DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED));
+                ToolType.AXE, DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED, DIAMOND_TOOL_DURABILITY));
         DIAMOND_SHOVEL = register(toolItem(DIAMOND_SHOVEL_ID, "diamond_shovel", "Diamond Shovel",
-                DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED));
-        DIAMOND_HOE = register(uniqueItem(DIAMOND_HOE_ID, "diamond_hoe", "Diamond Hoe"));
-        DIAMOND_SWORD = register(uniqueItem(DIAMOND_SWORD_ID, "diamond_sword", "Diamond Sword"));
+                ToolType.SHOVEL, DIAMOND_TOOL_LEVEL, DIAMOND_TOOL_SPEED, DIAMOND_TOOL_DURABILITY));
+        DIAMOND_HOE = register(toolItem(DIAMOND_HOE_ID, "diamond_hoe", "Diamond Hoe",
+                ToolType.HOE, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, DIAMOND_TOOL_DURABILITY));
+        DIAMOND_SWORD = register(toolItem(DIAMOND_SWORD_ID, "diamond_sword", "Diamond Sword",
+                ToolType.SWORD, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, DIAMOND_TOOL_DURABILITY));
 
-        // Armour. Only the icons exist so far: the slots of the inventory screen
-        // are drawn but store nothing yet.
-        IRON_HELMET = register(uniqueItem(IRON_HELMET_ID, "iron_helmet", "Iron Helmet"));
-        IRON_CHESTPLATE = register(uniqueItem(IRON_CHESTPLATE_ID, "iron_chestplate", "Iron Chestplate"));
-        IRON_LEGGINGS = register(uniqueItem(IRON_LEGGINGS_ID, "iron_leggings", "Iron Leggings"));
-        IRON_BOOTS = register(uniqueItem(IRON_BOOTS_ID, "iron_boots", "Iron Boots"));
-        DIAMOND_HELMET = register(uniqueItem(DIAMOND_HELMET_ID, "diamond_helmet", "Diamond Helmet"));
-        DIAMOND_CHESTPLATE = register(uniqueItem(DIAMOND_CHESTPLATE_ID, "diamond_chestplate", "Diamond Chestplate"));
-        DIAMOND_LEGGINGS = register(uniqueItem(DIAMOND_LEGGINGS_ID, "diamond_leggings", "Diamond Leggings"));
-        DIAMOND_BOOTS = register(uniqueItem(DIAMOND_BOOTS_ID, "diamond_boots", "Diamond Boots"));
+        // The armour is gone for now: eight icons that no slot held and that no defence stood behind.
+        // Its numbers stay free, see ARMOUR_ID_FROM above.
 
         // The fluids of the game travel in buckets and in cells, see FluidContainer. A bucket is
         // hard wired to water and lava, because those are the two fluids that stand in the world
@@ -750,43 +756,32 @@ public final class Items {
     }
 
     /**
-     * Builds an item the player only owns once, such as a tool or a piece of
-     * armour.
-     *
-     * @param id numeric item id
-     * @param name technical name, also the name of the icon
-     * @param displayName name shown to the player
-     * @return the item definition, stacking to a single piece
-     */
-    private static Item uniqueItem(int id, String name, String displayName) {
-        return Item.builder(id, name)
-                .displayName(displayName)
-                .texture(Item.ITEM_FOLDER + name)
-                .maxStackSize(Item.SINGLE_ITEM_STACK)
-                .build();
-    }
-
-    /**
      * Builds a tool that breaks blocks.
      * <p>
-     * A tool is unique like every other one, it only carries the mining level and
-     * the speed a rule with break times reads.
+     * A tool is unique like every other one. It carries three things the mining rule reads: the kind
+     * of work it is good for, the mining level of its material and the speed it breaks a block of
+     * that kind with, see {@link ToolType} and {@code HardnessMining}. The life it takes is what
+     * makes it wear with every block it harvests, see {@link Item#maxDamage()}.
      *
      * @param id numeric item id
      * @param name technical name, also the name of the icon
      * @param displayName name shown to the player
+     * @param toolType kind of work this tool is good for
      * @param toolLevel mining level of the tool
      * @param miningSpeed speed the tool breaks blocks with
+     * @param maxDamage amount of use the tool takes before it is used up
      * @return the item definition, stacking to a single piece
      */
-    private static Item toolItem(int id, String name, String displayName, int toolLevel,
-            float miningSpeed) {
+    private static Item toolItem(int id, String name, String displayName, ToolType toolType,
+            int toolLevel, float miningSpeed, int maxDamage) {
         return Item.builder(id, name)
                 .displayName(displayName)
                 .texture(Item.ITEM_FOLDER + name)
                 .maxStackSize(Item.SINGLE_ITEM_STACK)
+                .toolType(toolType)
                 .toolLevel(toolLevel)
                 .miningSpeed(miningSpeed)
+                .maxDamage(maxDamage)
                 .build();
     }
 }

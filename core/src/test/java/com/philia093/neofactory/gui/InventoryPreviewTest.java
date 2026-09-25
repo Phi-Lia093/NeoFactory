@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui;
 
+import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.gui.panel.NineSlice;
@@ -93,6 +94,7 @@ class InventoryPreviewTest {
         for (var slot : layout.slots()) {
             drawSlot(sheet, picture, MARGIN + slot.x(), MARGIN + slot.y());
             drawItem(picture, MARGIN + slot.x(), MARGIN + slot.y(), slot.stack());
+            drawDurabilityBar(picture, MARGIN + slot.x(), MARGIN + slot.y(), slot.stack());
         }
 
         Files.createDirectories(PREVIEW.getParent());
@@ -106,7 +108,10 @@ class InventoryPreviewTest {
 
     /** Puts a small kit into the player inventory, so the picture shows something. */
     private static void fillTestInventory(PlayerInventory player) {
-        player.set(0, ItemStack.of(Items.DIAMOND_PICKAXE, 1));
+        // The pickaxe has already dug, which is what makes the preview show the bar of a worn piece.
+        ItemStack pickaxe = ItemStack.of(Items.DIAMOND_PICKAXE, 1);
+        pickaxe.setDamage(Items.DIAMOND_TOOL_DURABILITY / 3);
+        player.set(0, pickaxe);
         player.set(1, ItemStack.of(Items.GRASS, 64));
         player.set(2, ItemStack.of(Items.DIRT, 64));
         player.set(3, ItemStack.of(Items.STONE, 64));
@@ -184,6 +189,50 @@ class InventoryPreviewTest {
                 }
             }
         }
+    }
+
+    /**
+     * Draws the bar of a piece that wears out, with the geometry and the colours of the game.
+     * <p>
+     * The picture counts downwards, the way the art of the project is stored, so the row of the bar is
+     * mirrored: what the interface reaches upwards from the lower edge of an icon is a row above the
+     * lower edge of that icon here, see {@link DurabilityBar}.
+     */
+    private static void drawDurabilityBar(BufferedImage target, int x, int y, ItemStack stack) {
+        if (!stack.isDamageable() || stack.damage() <= 0) {
+            return;
+        }
+        int barX = x + DurabilityBar.OFFSET_X;
+        int barY = y + Constants.ITEM_ICON_SIZE - DurabilityBar.OFFSET_Y - DurabilityBar.HEIGHT;
+        fillRectangle(target, barX, barY, DurabilityBar.WIDTH, DurabilityBar.BACKGROUND_HEIGHT,
+                toArgb(DurabilityBar.BACKGROUND));
+        fillRectangle(target, barX, barY, DurabilityBar.widthOf(stack), DurabilityBar.HEIGHT,
+                toArgb(DurabilityBar.colorOf(stack)));
+    }
+
+    /** Fills a rectangle of a picture with one colour, ignoring what reaches beyond it. */
+    private static void fillRectangle(BufferedImage target, int x, int y, int width, int height,
+            int argb) {
+        for (int row = 0; row < height; row++) {
+            for (int column = 0; column < width; column++) {
+                int targetX = x + column;
+                int targetY = y + row;
+                if (targetX < 0 || targetY < 0 || targetX >= target.getWidth()
+                        || targetY >= target.getHeight()) {
+                    continue;
+                }
+                target.setRGB(targetX, targetY, argb);
+            }
+        }
+    }
+
+    /** ARGB of a colour of the game, rounded into the eight bit channels a picture uses. */
+    private static int toArgb(Color colour) {
+        int alpha = Math.round(colour.a * 255.0f);
+        int red = Math.round(colour.r * 255.0f);
+        int green = Math.round(colour.g * 255.0f);
+        int blue = Math.round(colour.b * 255.0f);
+        return (alpha << 24) | (red << 16) | (green << 8) | blue;
     }
 
     /** Fills a whole picture with one colour. */

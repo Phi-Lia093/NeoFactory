@@ -11,11 +11,15 @@ import com.philia093.neofactory.util.Constants;
 
 /**
  * Draws an item stack the way a slot of the interface shows it: the icon of the
- * item and, when the stack holds more than one, the amount in the lower right
- * corner.
+ * item, the bar of the life that is left in it and, when the stack holds more than
+ * one, the amount in the lower right corner.
  * <p>
  * A block item carries the colour of its block, so a grey scale sheet such as
  * {@code grass_top.png} appears green inside a slot as well.
+ * <p>
+ * The bar is drawn for everything that wears out and not only for a tool, which is what
+ * {@link DurabilityBar} asks a stack; a piece that is untouched and an item that never wears
+ * show nothing at all.
  */
 public class GuiItemRenderer {
 
@@ -68,6 +72,11 @@ public class GuiItemRenderer {
                 batch.draw(overlay, x, y, Constants.ITEM_ICON_SIZE, Constants.ITEM_ICON_SIZE);
             }
         }
+
+        // A piece that wears out shows how much of it is left, which is what the bar under the icon
+        // of a tool does, see DurabilityBar. It goes under the amount of the stack, the same order
+        // the original interface draws its decorations in.
+        DurabilityBar.draw(batch, textures.whitePixel(), stack, x, y);
 
         if (stack.count() > 1) {
             String amount = Integer.toString(stack.count());

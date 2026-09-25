@@ -5,6 +5,7 @@ import com.philia093.neofactory.block.model.BlockModel;
 import com.philia093.neofactory.block.model.ModelRegistry;
 import com.philia093.neofactory.block.state.BlockStateRegistry;
 import com.philia093.neofactory.block.state.BlockStateTable;
+import com.philia093.neofactory.item.ToolType;
 import com.philia093.neofactory.util.Aabb;
 
 import java.util.Objects;
@@ -36,6 +37,7 @@ public final class Block {
     private final Color tint;
     private final float hardness;
     private final int harvestLevel;
+    private final ToolType toolType;
     private final String blockEntityTypeName;
     private final Animation animation;
 
@@ -51,6 +53,7 @@ public final class Block {
         this.tint = builder.tint;
         this.hardness = builder.hardness;
         this.harvestLevel = builder.harvestLevel;
+        this.toolType = builder.toolType;
         this.blockEntityTypeName = builder.blockEntityTypeName;
         this.animation = builder.animation;
     }
@@ -160,10 +163,29 @@ public final class Block {
      * <p>
      * Level {@code 0} is a bare hand or any tool. The value is compared with
      * {@link com.philia093.neofactory.item.Item#toolLevel()} of the held item by
-     * {@link com.philia093.neofactory.world.interaction.HardnessMining}.
+     * {@link com.philia093.neofactory.world.interaction.HardnessMining}, which also asks for the
+     * kind of tool the block names, see {@link #toolType()}.
      */
     public int harvestLevel() {
         return harvestLevel;
+    }
+
+    /**
+     * Kind of tool this block is worked with, {@code null} for a block every tool mines alike.
+     * <p>
+     * The kind decides two things, both asked by
+     * {@link com.philia093.neofactory.world.interaction.HardnessMining}. A tool of that kind mines
+     * this block with its own speed, every other one only as fast as a bare hand; and a block that
+     * asks for a mining level at all hands its item over only to the kind it names here, so a stone
+     * of level {@code 1} wants a pickaxe and stays behind an axe.
+     * <p>
+     * A block that names no kind - soil, a sapling, a torch - is mined by hand and by every tool at
+     * the same speed and hands its item to all of them.
+     *
+     * @return the kind of tool that fits this block, or {@code null} for a block every tool fits
+     */
+    public ToolType toolType() {
+        return toolType;
     }
 
     /**
@@ -390,6 +412,7 @@ public final class Block {
         private Color tint = new Color(Color.WHITE);
         private float hardness = 1.0f;
         private int harvestLevel;
+        private ToolType toolType;
         private String blockEntityTypeName = "";
         private Animation animation;
 
@@ -476,6 +499,22 @@ public final class Block {
                 throw new IllegalArgumentException("Harvest level must not be negative: " + harvestLevel);
             }
             this.harvestLevel = harvestLevel;
+            return this;
+        }
+
+        /**
+         * Sets the kind of tool this block is worked with.
+         * <p>
+         * A block that names a kind is mined with the speed of that tool and with the speed of a
+         * bare hand by every other one; a block that asks for a mining level hands its item over
+         * only to the kind it names, see {@link Block#toolType()} and
+         * {@link com.philia093.neofactory.world.interaction.HardnessMining}. A block that names no
+         * kind - soil, a sapling - is worked by hand and by every tool alike.
+         *
+         * @param toolType kind of tool that fits this block, for example {@link ToolType#PICKAXE}
+         */
+        public Builder toolType(ToolType toolType) {
+            this.toolType = Objects.requireNonNull(toolType, "toolType");
             return this;
         }
 

@@ -52,6 +52,9 @@ public class WorldRenderer3D implements Disposable {
     /** Little bodies the items on the ground are drawn as, one per kind of item. */
     private final ItemCubeMeshes itemCubes;
 
+    /** Pictures of a block coming apart, drawn over the cell that is being broken. */
+    private final BreakOverlay breaking;
+
     /** Reused matrix placing one item cube, so a frame does not fill the heap with matrices. */
     private final Matrix4 model = new Matrix4();
 
@@ -70,6 +73,7 @@ public class WorldRenderer3D implements Disposable {
         this.shader = shader;
         this.pictures = pictures;
         this.itemCubes = new ItemCubeMeshes(pictures);
+        this.breaking = new BreakOverlay(pictures);
     }
 
     /**
@@ -227,6 +231,45 @@ public class WorldRenderer3D implements Disposable {
         return drawnMeshes;
     }
 
+    /**
+     * Draws the cracks of the cell that is being broken.
+     * <p>
+     * The picture of the stage the break has reached is laid over every face of the cell, a hair outside it,
+     * so the block shows through the cracks and a player sees what they are working on and how far they are,
+     * see {@link BreakOverlay}. It is drawn after the world with the depth test still on, so a wall in front
+     * of the cell hides the cracks the way it hides the block itself, and it is blended instead of written
+     * over the picture: the cracks are a dark drawing on a transparent ground.
+     * <p>
+     * The pass runs under the shader of the world with the fog of the frame, so the cracks fade into the sky
+     * with the block they sit on and nothing here has to know about the distance.
+     *
+     * @param camera camera the world is seen through
+     * @param target cell that is being broken, {@code null} draws nothing
+     * @param progress progress of that break, {@code 0} to {@code 1}, {@code 0} draws nothing
+     * @param sky colour of the sky, also the colour the distance fades into
+     */
+    public void renderBreaking(Camera camera, BlockTarget target, float progress, Color sky) {
+        if (target == null) {
+            return;
+        }
+        Mesh mesh = breaking.meshFor(progress);
+        if (mesh == null) {
+            return;
+        }
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        shader.begin(camera, pictures, sky, camera.far * FOG_START_SHARE, camera.far);
+        model.idt().translate(target.x(), target.y(), target.z());
+        shader.render(mesh, model);
+        shader.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /** Stages of a break whose cracks are meshed right now, which is what the status line may report. */
+    public int cachedBreakStageCount() {
+        return breaking.stageCount();
+    }
+
     /** Sections whose meshes are held right now. */
     public int cachedSectionCount() {
         return cache.sectionCount();
@@ -239,6 +282,7 @@ public class WorldRenderer3D implements Disposable {
         pictures.dispose();
         frame.dispose();
         itemCubes.dispose();
+        breaking.dispose();
     }
 
     @Override

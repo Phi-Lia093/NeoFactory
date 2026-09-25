@@ -1,6 +1,7 @@
 package com.philia093.neofactory.block;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.item.ToolType;
 
 /**
  * Declaration of every block type used by the game.
@@ -202,6 +203,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(1.5f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(STONE);
 
@@ -209,6 +211,7 @@ public final class Blocks {
                 .texture("dirt")
                 .ground(true)
                 .hardness(0.5f)
+                .toolType(ToolType.SHOVEL)
                 .build();
         BlockRegistry.register(DIRT);
 
@@ -221,6 +224,7 @@ public final class Blocks {
                 .ground(true)
                 .tint(new Color(0.60f, 0.80f, 0.36f, 1.0f))
                 .hardness(0.6f)
+                .toolType(ToolType.SHOVEL)
                 .build();
         BlockRegistry.register(GRASS);
 
@@ -228,6 +232,7 @@ public final class Blocks {
                 .texture("sand")
                 .ground(true)
                 .hardness(0.5f)
+                .toolType(ToolType.SHOVEL)
                 .build();
         BlockRegistry.register(SAND);
 
@@ -235,6 +240,7 @@ public final class Blocks {
                 .texture("gravel")
                 .ground(true)
                 .hardness(0.6f)
+                .toolType(ToolType.SHOVEL)
                 .build();
         BlockRegistry.register(GRAVEL);
 
@@ -242,6 +248,7 @@ public final class Blocks {
                 .texture("clay")
                 .ground(true)
                 .hardness(0.6f)
+                .toolType(ToolType.SHOVEL)
                 .build();
         BlockRegistry.register(CLAY);
 
@@ -254,6 +261,7 @@ public final class Blocks {
                 .texture("log_oak_top")
                 .solid(true)
                 .hardness(2.0f)
+                .toolType(ToolType.AXE)
                 .build();
         BlockRegistry.register(LOG_OAK);
 
@@ -265,6 +273,7 @@ public final class Blocks {
                 .tint(new Color(0.62f, 1.0f, 0.42f, 1.0f))
                 .transparent(true)
                 .hardness(0.2f)
+                .toolType(ToolType.HOE)
                 .build();
         BlockRegistry.register(LEAVES_OAK);
 
@@ -272,6 +281,7 @@ public final class Blocks {
                 .texture("planks_oak")
                 .solid(true)
                 .hardness(2.0f)
+                .toolType(ToolType.AXE)
                 .build();
         BlockRegistry.register(PLANKS_OAK);
 
@@ -280,6 +290,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(0.8f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(SANDSTONE);
 
@@ -290,6 +301,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(3.0f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(COAL_ORE);
 
@@ -298,6 +310,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(3.0f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(IRON_ORE);
 
@@ -309,6 +322,7 @@ public final class Blocks {
                 .solid(true)
                 .hardness(3.5f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .blockEntity("furnace")
                 .build();
         BlockRegistry.register(FURNACE);
@@ -323,6 +337,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(2.0f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(COBBLESTONE);
 
@@ -331,6 +346,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(1.5f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(STONE_BRICK);
 
@@ -342,6 +358,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(1.5f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(STONE_SLAB);
 
@@ -350,6 +367,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(2.0f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(BRICK);
 
@@ -375,6 +393,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(50.0f)
                 .harvestLevel(3)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(OBSIDIAN);
 
@@ -401,6 +420,7 @@ public final class Blocks {
                 .texture("crafting_table/crafting_table_top")
                 .ground(true)
                 .hardness(2.5f)
+                .toolType(ToolType.AXE)
                 .build();
         BlockRegistry.register(CRAFTING_TABLE);
 
@@ -409,6 +429,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(5.0f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(ANVIL);
 
@@ -417,6 +438,7 @@ public final class Blocks {
                 .ground(true)
                 .hardness(2.0f)
                 .harvestLevel(1)
+                .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(CAULDRON);
 
@@ -437,6 +459,7 @@ public final class Blocks {
                 .climbable(true)
                 .hangsOnASide(true)
                 .hardness(0.4f)
+                .toolType(ToolType.AXE)
                 .build();
         BlockRegistry.register(LADDER);
 

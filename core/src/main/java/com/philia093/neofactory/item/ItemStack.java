@@ -12,14 +12,24 @@ import java.util.Objects;
  * {@link #EMPTY} stands for an empty slot and is shared by the whole game. That
  * instance is read only: growing it or writing a positive amount to it is
  * refused, because every empty slot would change at once otherwise.
+ * <p>
+ * <b>Wear:</b> a stack is what a tool of the game is worn in, see {@link Damageable}: the amount of
+ * damage belongs to the stack and not to the type of the item, so the pickaxe in the hand and the
+ * one in a chest are worn differently. Every stack starts new, and the damage is written to a
+ * stored inventory as well, see {@code SaveTags}. Because the damage belongs to the stack, two
+ * stacks only merge while they are worn the same: a used axe and a new one are two pieces, not one
+ * pile.
  */
-public final class ItemStack {
+public final class ItemStack implements Damageable {
 
     /** The empty stack, shared by every empty inventory slot. */
     public static final ItemStack EMPTY = new ItemStack(null, 0);
 
     private Item item;
     private int count;
+
+    /** Damage taken from the life of the item, {@code 0} for a fresh piece. */
+    private int damage;
 
     private ItemStack(Item item, int count) {
         this.item = item;
@@ -78,7 +88,7 @@ public final class ItemStack {
 
     /** {@code true} when the other stack may be merged into this one. */
     public boolean isStackableWith(ItemStack other) {
-        return sameItem(other) && item.isStackable();
+        return sameItem(other) && item.isStackable() && damage == other.damage;
     }
 
     /**
@@ -98,6 +108,9 @@ public final class ItemStack {
 
     /**
      * Moves items of this stack into a new stack.
+     * <p>
+     * The new stack is worn the same way this one is: the damage belongs to the stack, so every
+     * piece a stack holds is as worn as the stack itself.
      *
      * @param amount requested amount
      * @return a new stack holding the taken items, {@link #EMPTY} when this stack
@@ -109,7 +122,9 @@ public final class ItemStack {
         }
         int taken = Math.min(amount, count);
         count -= taken;
-        return new ItemStack(item, taken);
+        ItemStack split = new ItemStack(item, taken);
+        split.damage = damage;
+        return split;
     }
 
     /**
@@ -130,17 +145,65 @@ public final class ItemStack {
         count = Math.max(0, Math.min(newCount, item.maxStackSize()));
     }
 
+    @Override
+    public int maxDamage() {
+        return item == null ? 0 : item.maxDamage();
+    }
+
+    @Override
+    public int damage() {
+        return damage;
+    }
+
+    @Override
+    public int applyDamage(int amount) {
+        if (item == null || amount <= 0) {
+            return 0;
+        }
+        int taken = Math.min(amount, remainingDamage());
+        damage += taken;
+        return taken;
+    }
+
+    /**
+     * Writes a new amount of damage into this stack.
+     * <p>
+     * The value is clamped to the life of the item, which is what keeps a piece that is used up at
+     * the end of its life instead of counting past it, see {@link Damageable#isBroken()}.
+     *
+     * @param newDamage requested damage, clamped between {@code 0} and the life of the item
+     * @throws IllegalArgumentException when the shared {@link #EMPTY} instance is asked to wear
+     */
+    public void setDamage(int newDamage) {
+        if (item == null) {
+            if (newDamage > 0) {
+                throw new IllegalArgumentException("The shared empty stack cannot wear, use ItemStack.of");
+            }
+            return;
+        }
+        if (newDamage < 0) {
+            throw new IllegalArgumentException("Damage must not be negative: " + newDamage);
+        }
+        damage = Math.min(newDamage, item.maxDamage());
+    }
+
     /** Returns a detached copy of this stack, see {@link #EMPTY}. */
     public ItemStack copy() {
         if (isEmpty()) {
             return EMPTY;
         }
-        return new ItemStack(item, count);
+        ItemStack copy = new ItemStack(item, count);
+        copy.damage = damage;
+        return copy;
     }
 
     @Override
     public String toString() {
-        return isEmpty() ? "ItemStack(empty)" : "ItemStack(" + count + " x " + item.name() + ")";
+        if (isEmpty()) {
+            return "ItemStack(empty)";
+        }
+        String wear = isDamageable() ? ", " + remainingDamage() + "/" + maxDamage() + " left" : "";
+        return "ItemStack(" + count + " x " + item.name() + wear + ")";
     }
 
     @Override
@@ -152,11 +215,11 @@ public final class ItemStack {
             return false;
         }
         ItemStack other = (ItemStack) o;
-        return item == other.item && count == other.count;
+        return item == other.item && count == other.count && damage == other.damage;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(item, count);
+        return Objects.hash(item, count, damage);
     }
 }

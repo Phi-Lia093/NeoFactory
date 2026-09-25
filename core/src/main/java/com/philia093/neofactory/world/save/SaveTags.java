@@ -84,6 +84,16 @@ public final class SaveTags {
     public static final String COUNT = "Count";
 
     /**
+     * Damage a stack has taken.
+     * <p>
+     * Written for a piece that wears out and that has really been used, so a stack of stone or a new
+     * pickaxe carries no tag at all and an inventory of an older world stays as short as it was. A
+     * missing tag is read as a fresh piece, see {@code ItemStack#setDamage(int)} and
+     * {@code Damageable}.
+     */
+    public static final String DAMAGE = "Damage";
+
+    /**
      * Group of the stored entities.
      * <p>
      * Every entry holds the shared fields of an entity plus one nested group with
@@ -201,7 +211,8 @@ public final class SaveTags {
      * <p>
      * An empty slot is written with a count of zero instead of being skipped, which
      * keeps the slot number of a stack implicit: the index inside the list is the
-     * slot, so a stack always lands where it was.
+     * slot, so a stack always lands where it was. A piece that wears out carries how much damage it
+     * has taken, see {@link #DAMAGE}.
      *
      * @param inventory inventory to write
      * @return the list tag
@@ -214,6 +225,9 @@ public final class SaveTags {
             entry.putInt(SLOT, slot);
             entry.putString(ITEM_ID, stack.isEmpty() ? "" : stack.item().name());
             entry.putInt(COUNT, stack.count());
+            if (stack.damage() > 0) {
+                entry.putInt(DAMAGE, stack.damage());
+            }
             list.add(entry);
         }
         return list;
@@ -239,7 +253,17 @@ public final class SaveTags {
             com.philia093.neofactory.item.Item item =
                     itemByName(entry.getString(ITEM_ID, ""));
             int count = entry.getInt(COUNT, 0);
-            inventory.set(slot, item == null ? ItemStack.EMPTY : ItemStack.of(item, count));
+            if (item == null) {
+                inventory.set(slot, ItemStack.EMPTY);
+                continue;
+            }
+            ItemStack stack = ItemStack.of(item, count);
+            // A piece that an older world knew as new - or one that never wears out - carries no tag,
+            // which reads as a fresh piece.
+            if (!stack.isEmpty()) {
+                stack.setDamage(entry.getInt(DAMAGE, 0));
+            }
+            inventory.set(slot, stack);
         }
     }
 }

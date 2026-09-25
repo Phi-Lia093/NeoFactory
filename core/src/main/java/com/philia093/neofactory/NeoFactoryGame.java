@@ -17,6 +17,8 @@ import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.loot.LootTableLoader;
+import com.philia093.neofactory.loot.LootTableRegistry;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.recipe.RecipeLoader;
@@ -83,6 +85,11 @@ public class NeoFactoryGame extends Game {
         // be read is logged and skipped, see RecipeLoader.
         RecipeLoader.loadAll();
         RecipeRegistry.logStatistics();
+
+        // A loot table says what a broken block leaves behind, and a block that names none hands over
+        // itself, see LootTableLoader: the tables are read once the items exist, like the recipes.
+        LootTableLoader.loadAll();
+        LootTableRegistry.logStatistics();
 
         // Entities are stored by name, so every type has to exist before a world is
         // read; the registry is frozen right after registration for the same reason

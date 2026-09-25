@@ -12,16 +12,15 @@ import java.util.Set;
  * <p>
  * The original game groups its items into a dozen tabs; this game holds a single
  * group of every item it owns, so the tabs follow the groups {@link Items} is written
- * in: the blocks, the machines, the materials, the food, the tools and the armour. Two
+ * in: the blocks, the machines, the materials, the food and the tools. Two
  * more tabs follow: the search, which lists what the player typed into the box, and the
  * inventory, which shows the very screen the player inventory shows.
  * <p>
  * A category is recognised by what an item <i>is</i> and not by its id, so a new item
- * lands in its group by itself: an item that places a block is a block, an item with
- * a mining level is a tool, a piece of armour carries one of the four name endings and
- * the food is listed by name, because the game has no marker for it yet. Everything
- * that is none of those is a material, which is also why the categories together hold
- * every item of the game exactly once.
+ * lands in its group by itself: an item that places a block is a block, an item that
+ * carries a tool kind is a tool and the food is listed by name, because the game has no
+ * marker for it yet. Everything that is none of those is a material, which is also why
+ * the categories together hold every item of the game exactly once.
  */
 public final class CreativeRegistry {
 
@@ -30,10 +29,6 @@ public final class CreativeRegistry {
             "potato", "baked_potato", "cooked_beef", "cooked_porkchop", "cooked_chicken",
             "melon");
 
-    /** Endings a piece of armour carries at the end of its name. */
-    private static final List<String> ARMOUR_ENDINGS = List.of("_helmet", "_chestplate",
-            "_leggings", "_boots");
-
     private static final List<CreativeTab> TABS = List.of(
             CreativeTab.items("blocks", "Blocks", Items.STONE, CreativeRegistry::isBlock),
             CreativeTab.items("machines", "Machines", Items.FURNACE, CreativeRegistry::isMachine),
@@ -41,7 +36,6 @@ public final class CreativeRegistry {
             CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
             CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
             CreativeTab.items("tools", "Tools", Items.IRON_PICKAXE, CreativeRegistry::isTool),
-            CreativeTab.items("armour", "Armour", Items.IRON_HELMET, CreativeRegistry::isArmour),
             CreativeTab.search("search", "Search", Items.DIAMOND),
             CreativeTab.inventory("inventory", "Inventory", Items.PAPER));
 
@@ -84,8 +78,8 @@ public final class CreativeRegistry {
 
     /** {@code true} when an item is a raw material the game has no other group for. */
     private static boolean isMaterial(Item item) {
-        return item != Items.AIR && !item.isBlockItem() && !isTool(item) && !isArmour(item)
-                && !isFood(item) && !isFluid(item);
+        return item != Items.AIR && !item.isBlockItem() && !isTool(item) && !isFood(item)
+                && !isFluid(item);
     }
 
     /**
@@ -99,20 +93,15 @@ public final class CreativeRegistry {
         return item.isFluidContainer();
     }
 
-    /** {@code true} when an item breaks blocks, which is what a tool of the game does. */
+    /**
+     * {@code true} when an item is a tool the player works with.
+     * <p>
+     * The kind of a tool is what marks it, see {@link com.philia093.neofactory.item.ToolType}: a
+     * pickaxe, an axe, a shovel, a hoe and a sword are tools, while a material that happens to cause
+     * damage one day is not.
+     */
     private static boolean isTool(Item item) {
-        return item.toolLevel() > 0;
-    }
-
-    /** {@code true} when an item is a piece of armour, recognised by its name. */
-    private static boolean isArmour(Item item) {
-        String name = item.name();
-        for (String ending : ARMOUR_ENDINGS) {
-            if (name.endsWith(ending)) {
-                return true;
-            }
-        }
-        return false;
+        return item.isTool();
     }
 
     /** {@code true} when an item is food, which the game lists by name. */

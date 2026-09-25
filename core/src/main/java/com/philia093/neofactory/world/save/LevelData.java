@@ -156,7 +156,17 @@ public final class LevelData {
             com.philia093.neofactory.item.Item item =
                     SaveTags.itemByName(entry.getString(SaveTags.ITEM_ID, ""));
             int count = entry.getInt(SaveTags.COUNT, 0);
-            storedInventory[slot] = item == null ? ItemStack.EMPTY : ItemStack.of(item, count);
+            if (item == null) {
+                storedInventory[slot] = ItemStack.EMPTY;
+                continue;
+            }
+            ItemStack stack = ItemStack.of(item, count);
+            // A tool carries what it has dug, so it is as worn after a save game as it was before it,
+            // see SaveTags#DAMAGE and Damageable.
+            if (!stack.isEmpty()) {
+                stack.setDamage(entry.getInt(SaveTags.DAMAGE, 0));
+            }
+            storedInventory[slot] = stack;
         }
     }
 

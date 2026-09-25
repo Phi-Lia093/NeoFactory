@@ -42,6 +42,17 @@ public class BlockPictures implements Disposable {
     public static final String ITEMS_FOLDER = "items/";
 
     /**
+     * Folder holding the pictures of a break in progress, below {@link #FOLDER}.
+     * <p>
+     * The stages a block is shown coming apart in are no face of any model, so no blockstate names them:
+     * they are collected here for {@code BreakOverlay}, one picture per stage.
+     */
+    public static final String DESTROY_STAGE_FOLDER = "destroy_stage/";
+
+    /** Amount of pictures a break is shown with, one per stage, from {@code 0} to {@code 9}. */
+    public static final int DESTROY_STAGES = 10;
+
+    /**
      * Name of the picture the arm of the player is drawn from.
      * <p>
      * The arm is no block, so it does not live in the folder of the blocks: it is a region of the skin of
@@ -145,6 +156,16 @@ public class BlockPictures implements Disposable {
         return ITEMS_FOLDER + item.texture();
     }
 
+    /**
+     * Name of the picture of one stage of a break in progress.
+     *
+     * @param stage stage of the break, {@code 0} to {@link #DESTROY_STAGES} minus one
+     * @return the name to hand to {@link #layer(String)}
+     */
+    public static String destroyStagePicture(int stage) {
+        return DESTROY_STAGE_FOLDER + "destroy_stage_" + stage;
+    }
+
     /** Handle of the texture array, {@code 0} before it was built. */
     public int textureHandle() {
         return handle;
@@ -216,6 +237,11 @@ public class BlockPictures implements Disposable {
             collect(face, names, layers, exists);
         }
         collect(HAND, names, layers, exists);
+        // The stages a block is shown coming apart in are drawn over the cell that is being broken and are
+        // no face of any model, so they are collected here, see BreakOverlay.
+        for (int stage = 0; stage < DESTROY_STAGES; stage++) {
+            collect(destroyStagePicture(stage), names, layers, exists);
+        }
         return names;
     }
 

@@ -62,6 +62,26 @@ class ItemTooltipTest {
     }
 
     @Test
+    void aToolNamesWhatIsLeftOfItsLife() {
+        assertEquals(List.of("Iron Pickaxe", ItemTooltip.LIFE_LABEL + "250 / 250"),
+                ItemTooltip.linesOf(ItemStack.of(Items.IRON_PICKAXE, 1)));
+
+        ItemStack used = ItemStack.of(Items.DIAMOND_PICKAXE, 1);
+        used.setDamage(61);
+
+        assertEquals(List.of("Diamond Pickaxe", ItemTooltip.LIFE_LABEL + "1500 / 1561"),
+                ItemTooltip.linesOf(used), "what is left of a piece is named under its name");
+    }
+
+    @Test
+    void theItemItselfCarriesNoLifeOfItsOwn() {
+        // The damage belongs to the stack and not to the definition, so the type of a tool is one line
+        // and a block that never wears out keeps its single line as well, see Damageable.
+        assertEquals(List.of("Iron Pickaxe"), ItemTooltip.linesOf(Items.IRON_PICKAXE));
+        assertEquals(List.of("Stone"), ItemTooltip.linesOf(ItemStack.of(Items.STONE, 4)));
+    }
+
+    @Test
     void nothingUnderTheMouseDrawsNothing() {
         assertTrue(ItemTooltip.linesOf((Item) null).isEmpty());
         assertTrue(ItemTooltip.linesOf((ItemStack) null).isEmpty());

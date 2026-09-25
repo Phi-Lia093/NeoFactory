@@ -8,6 +8,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.render.PixelFont;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,8 +24,15 @@ import java.util.List;
  * of the player and the creative inventory, see {@code ContainerView} and {@code
  * CreativeInventoryGui}. The arithmetic is plain integers, so the size of a box can be checked
  * without a window, see {@code ItemTooltipTest}.
+ * <p>
+ * A stack that wears out names what is left of it under the formula: a pickaxe reads its name, the
+ * formula of its material and how much life is still in it, which is the same number the bar of its
+ * slot shows, see {@link com.philia093.neofactory.item.Damageable}.
  */
 public final class ItemTooltip {
+
+    /** Word the line about the life of a piece starts with. */
+    public static final String LIFE_LABEL = "Durability: ";
 
     /** Distance between the mouse and the nearest corner of the box. */
     public static final int OFFSET = 12;
@@ -47,6 +55,9 @@ public final class ItemTooltip {
 
     /**
      * Lines the tooltip of a stack is drawn from.
+     * <p>
+     * A stack that wears out adds what is left of it, so a pickaxe names its material and its life
+     * while a stone names itself, see {@link com.philia093.neofactory.item.Damageable}.
      *
      * @param stack stack under the mouse, may be {@code null}
      * @return the lines, empty for a stack that holds nothing
@@ -55,7 +66,13 @@ public final class ItemTooltip {
         if (stack == null || stack.isEmpty()) {
             return List.of();
         }
-        return linesOf(stack.item());
+        List<String> lines = linesOf(stack.item());
+        if (lines.isEmpty() || !stack.isDamageable()) {
+            return lines;
+        }
+        List<String> withLife = new ArrayList<>(lines);
+        withLife.add(LIFE_LABEL + stack.remainingDamage() + " / " + stack.maxDamage());
+        return withLife;
     }
 
     /**

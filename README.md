@@ -22,7 +22,19 @@ stored on disk so that a session can be continued later.
   is held, the right button builds the held block into the cell behind the face the
   line of sight entered, and both are limited by the reach of the player. A block
   hangs on whatever it is built against, so a wall is built against and a bridge
-  grows sideways.
+  grows sideways. A break takes as long as the hardness of the block says, a tool
+  that fits the block is faster than a bare hand, and a tool that is too weak still
+  breaks the block but leaves nothing behind; the cracks of the break are drawn over
+  the block while it runs. What a block leaves behind is its loot table - and a block
+  that names no table leaves itself. Creative mode breaks every block at once and
+  hands nothing over, see `assets/loot_tables/blocks`.
+- **Tools and wear** - a tool names the kind of work it is good for and the level of its
+  material, which is exactly what a block asks for: a pickaxe is quick on stone and an axe
+  is no faster there than a hand, stone hands its item over only to a pickaxe of level 1 and
+  a trunk to an axe. Every block a tool harvests costs it one use, the slot shows what is
+  left as a bar under the icon, the tooltip names it, and a tool that is used up leaves the
+  hand. Iron lasts 250 blocks and diamond 1561. Any item may declare a life and not only a
+  tool, see `Damageable`.
 - **Inventory and hotbar** - nine hotbar slots, a full inventory screen, and
   dropped items that are thrown where the player looks, fall on the ground and are
   picked up by walking over them; any kind of item is drawn, a block as the cube of
@@ -154,6 +166,7 @@ stored on disk so that a session can be continued later.
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection and the sinks broken blocks hand items to |
+| `loot` | what a broken block leaves behind: the tables, the files below `assets/loot_tables` and the rule that a block without a table drops itself |
 | `world` | chunks, the world, the game mode, the chunk store interface and the generator |
 | `world.decoration` | the trees and plants planted on a finished chunk |
 | `world.interaction` | aiming, breaking and building |
@@ -340,7 +353,7 @@ is an ordinary `Inventory` of result slots, so
 `ContainerMenu` shows it and hands a stack out on a click; the supply behind a slot is
 endless, see `CreativeInventory#sourceAt(int)`, which is why a stack that was taken is
 there again right away. The tabs are recognised by what an item *is* - a block, a machine,
-a material, food, a tool, armour - so a new item lands in its group by itself; a machine
+a material, food, a tool - so a new item lands in its group by itself; a machine
 is a block that asks for a block entity, which keeps it out of the group of the plain
 blocks without a line of its own.
 `CreativeLayout` owns the geometry of the panel, and the drawing code and the hit
@@ -421,6 +434,43 @@ pattern does not cover have to stay empty. A file that cannot be read is logged 
 skipped, so one typo never keeps the game from starting. `gradlew :core:test` writes
 `core/build/reports/inventory-preview.png`, a picture of the inventory screen as the game
 paints it, next to `panel-preview.png` for the panel itself.
+
+What a broken block leaves behind is read from `assets/loot_tables/blocks/<block>.json`, one
+file per block that needs one: the file is named after the block, so the folder is the whole
+link between a block and its drops, and a block that names no file hands over the item of its
+own block. A line names an item, how many of it - one number or a range - and how often it
+happens.
+
+```
+loot_tables/blocks/stone.json      { "drops": [ { "item": "cobblestone" } ] }
+loot_tables/blocks/clay.json       { "drops": [ { "item": "clay_ball", "count": 4 } ] }
+loot_tables/blocks/gravel.json     { "drops": [ { "item": "gravel" }, { "item": "flint", "chance": 0.1 } ] }
+loot_tables/blocks/glass.json      { "drops": [] }
+```
+
+A table with an empty list is not the same as no table at all: glass breaks into nothing,
+while a block without a file hands itself over. Whether anything is handed over is decided by
+the held tool - a tool that is too weak for a block still breaks it, it only leaves nothing
+behind - and creative mode breaks every block at once and hands nothing over.
+
+A tool says two things about itself: the kind of work it is good for, see `ToolType` - a pickaxe,
+an axe, a shovel, a hoe, a sword - and the level of its material. A block names the kind it is
+worked with as well, so a pickaxe mines stone with its own speed while an axe mines it no faster
+than a bare hand, and the same pair decides the other way round what happens under a trunk. A
+block that asks for a mining level hands its item over only to the kind it names and only while
+the tool reaches that level: stone wants a pickaxe of level 1, so an iron axe takes it apart
+slowly and loses the item, and an iron pickaxe is what the item comes back with. What a tool
+takes with every block it harvests is its life, and the item declares it - `250` for iron, `1561`
+for diamond - while the damage belongs to the stack that dug, see `Damageable` and
+`ItemStack#applyDamage(int)`. Nothing about that belongs to a tool: a mortar of a chemist, a
+screwdriver of a workshop or a part inside a machine declares its own life the same way and shows
+it in the same bar. The slot draws what is left as a bar under the icon, green while the piece is
+nearly new and red at its end, the tooltip names it under the name of the item, a copy and a
+stored inventory keep it, and a piece whose life is gone is reported to an `ItemWear` sink, which
+is what takes it out of the hand. A block that was not harvested costs the tool nothing at all,
+so a wrong tool is not worn away by stone. The eight pieces of armour the pack brought are gone
+for now: they were icons that no slot held and that no defence stood behind, and their item
+numbers stay free, see `Items#ARMOUR_ID_FROM`.
 
 Note that most tasks that are not specific to a single project can be run with a
 `name:` prefix, where the `name` is the id of the project, for example `core:test`.

@@ -13,6 +13,7 @@ import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.loot.LootTableLoader;
 
 import java.nio.file.Path;
 
@@ -63,6 +64,9 @@ public final class TestRegistries {
         ModelRegistry.freeze();
         BlockStateLoader.loadAllFrom(ASSETS);
         BlockStateRegistry.freeze();
+        // What a broken block leaves behind is asked of its loot table, and a block that names none hands
+        // over itself, see LootTableLoader: a test that breaks a block reads the tables of the game.
+        LootTableLoader.loadAllFrom(ASSETS);
         ready = true;
     }
 }

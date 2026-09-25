@@ -35,8 +35,13 @@ public final class SaveFormat {
      * material of the industry now, carried by a tank, a bucket or a cell, and the ground of a world is
      * dry everywhere. A chunk of version 3 names block ids that no longer exist - the water and the lava
      * of the landscape - so it is refused instead of loading a world with holes where its sea was.
+     * <p>
+     * <b>What version 5 changed.</b> A stack carries the damage a tool has taken, so a pickaxe wears out
+     * over a save game as well, see {@code SaveTags#DAMAGE}. At the same time the eight pieces of armour
+     * left the game: the numbers they held are free now, and a stored inventory that names one of them is
+     * read as an empty slot, see {@code Items#ARMOUR_ID_FROM}.
      */
-    public static final int DATA_VERSION = 4;
+    public static final int DATA_VERSION = 5;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

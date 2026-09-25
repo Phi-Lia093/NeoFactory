@@ -1,0 +1,6 @@
+{
+  "drops": [
+    { "item": "sapling_oak", "chance": 0.05 },
+    { "item": "stick", "chance": 0.02 }
+  ]
+}

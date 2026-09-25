@@ -161,6 +161,17 @@ class BlockPicturesTest {
         return corners;
     }
 
+    @Test
+    void theWorldHoldsEveryStageOfABreak() {
+        List<String> world = worldPictures();
+
+        for (int stage = 0; stage < BlockPictures.DESTROY_STAGES; stage++) {
+            assertTrue(world.contains(BlockPictures.destroyStagePicture(stage)),
+                    "the cracks of a breaking block are drawn from the pictures of the world, stage "
+                            + stage + " is missing");
+        }
+    }
+
     /** Keeps the test from passing on an empty list of pictures. */
     @Test
     void theWorldHoldsThePicturesOfEveryBlock() {

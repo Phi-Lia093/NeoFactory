@@ -75,8 +75,8 @@ class CreativeInventoryTest {
         assertTrue(tab("materials").matches(Items.STICK), "a stick is a material");
         assertTrue(tab("food").matches(Items.APPLE), "an apple is food");
         assertTrue(tab("tools").matches(Items.IRON_PICKAXE), "a pickaxe is a tool");
-        assertTrue(tab("armour").matches(Items.IRON_HELMET), "a helmet is armour");
-        assertFalse(tab("food").matches(Items.IRON_HELMET), "armour is not food");
+        assertTrue(tab("tools").matches(Items.DIAMOND_SWORD), "and a sword is one as well");
+        assertFalse(tab("food").matches(Items.IRON_PICKAXE), "a tool is not food");
         assertFalse(tab("tools").matches(Items.APPLE), "food is not a tool");
     }
 

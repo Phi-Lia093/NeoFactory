@@ -34,6 +34,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
+import com.philia093.neofactory.loot.LootTableRegistry;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.render.BlockIconRenderer;
 import com.philia093.neofactory.render.HumanoidRenderer;
@@ -53,7 +54,8 @@ import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
 import com.philia093.neofactory.world.interaction.BlockTargeting;
-import com.philia093.neofactory.world.interaction.InstantMining;
+import com.philia093.neofactory.world.interaction.GameModeMining;
+import com.philia093.neofactory.world.interaction.HardnessMining;
 import com.philia093.neofactory.world.interaction.MiningController;
 import com.philia093.neofactory.world.save.LevelData;
 import com.philia093.neofactory.world.save.SaveSummary;
@@ -508,7 +510,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // Items of a broken block fall on the ground and are picked up by walking
         // over them, see WorldDrops and ItemEntity.
         this.drops = new WorldDrops(world);
-        this.mining = new MiningController(new InstantMining(), drops);
+        // How long a break takes and whether it hands anything over is the rule of the mode: creative breaks
+        // every block at once and leaves nothing behind, survival takes hardness, mining level and the kind
+        // and speed of the tool into account and asks the loot table of the block, see GameModeMining,
+        // HardnessMining and LootTableLoader. Every harvested block costs the held tool one use, and a tool
+        // whose life is gone leaves the hand, see ItemWear and #wearHeldTool.
+        this.mining = new MiningController(
+                new GameModeMining(data::gameMode, new HardnessMining()), drops,
+                LootTableRegistry::byBlock, this::wearHeldTool);
         // The crafting field of the inventory is a work field: when the screen closes, what
         // is left in it is dropped where the player stands instead of being hidden, see
         // ContainerMenu and Slot.Rule.WORK.
@@ -736,6 +745,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         Gdx.gl.glEnable(GL20.GL_CULL_FACE);
         cubeRenderer.render(world, cubeCamera, SKY);
+        cubeRenderer.renderBreaking(cubeCamera, target, mining.progress(), SKY);
         cubeRenderer.renderSelection(cubeCamera, target);
         renderEntities();
         renderHand();
@@ -1423,6 +1433,26 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     }
 
     /**
+     * Takes a tool that is used up out of the hand of the player.
+     * <p>
+     * The mining controller wears the stack it was handed, which is the very stack of the selected hotbar
+     * slot, so the damage is already in the inventory when this is called. What is left to do is to clear
+     * that slot: a tool with no life left would otherwise stay in the hand and keep mining, see
+     * {@link com.philia093.neofactory.item.ItemWear}.
+     *
+     * @param tool stack that reached the end of its life
+     */
+    private void wearHeldTool(ItemStack tool) {
+        PlayerInventory inventory = player.inventory();
+        if (inventory.heldStack() != tool) {
+            // The player already switched to another slot, so the used up piece is gone with the old one.
+            return;
+        }
+        inventory.set(inventory.selectedSlot(), ItemStack.EMPTY);
+        LOGGER.info("The {} is used up", tool.item().displayName());
+    }
+
+    /**
      * Drops what the drop key points at.
      * <p>
      * While the inventory screen is open the slot under the mouse is dropped, which lets
@@ -1465,13 +1495,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * <p>
      * Temporary: the game has no save game and no way to obtain items yet, so a hand
      * written kit is what makes the hotbar and the inventory screen show something.
-     * The kit covers block items, materials, food, tools and armour, which is one
-     * example of every kind of icon the game knows.
+     * The kit covers block items, materials, food and tools, which is one
+     * example of every kind of icon the game knows, and one iron pickaxe is handed out half worn so
+     * that the bar of a slot is visible without digging first, see
+     * {@link com.philia093.neofactory.item.Damageable}.
      *
      * @param inventory inventory to fill
      */
     private void fillDebugInventory(PlayerInventory inventory) {
         inventory.add(ItemStack.of(Items.DIAMOND_PICKAXE, 1));
+        inventory.add(wornPickaxe());
         inventory.add(ItemStack.of(Items.DIAMOND_SWORD, 1));
         inventory.add(ItemStack.of(Items.IRON_SWORD, 1));
         inventory.add(ItemStack.of(Items.GRASS, 64));
@@ -1522,5 +1555,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         inventory.add(ItemStack.of(Items.BLAZE_ROD, 2));
         inventory.add(ItemStack.of(Items.BLAZE_POWDER, 3));
         inventory.add(ItemStack.of(Items.SUGAR, 17));
+    }
+
+    /**
+     * An iron pickaxe that has already dug, the piece the bar of a slot is shown on.
+     *
+     * @return the stack, worn to the middle of its life
+     */
+    private static ItemStack wornPickaxe() {
+        ItemStack pickaxe = ItemStack.of(Items.IRON_PICKAXE, 1);
+        pickaxe.setDamage(Items.IRON_TOOL_DURABILITY / 2);
+        return pickaxe;
     }
 }

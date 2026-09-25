@@ -8,10 +8,9 @@ package com.philia093.neofactory.item;
  * shown by the inventory screen. That order is the same order the slots are
  * drawn in, which keeps the mapping between a clicked slot and its index simple.
  * <p>
- * The four armour slots and the two by two crafting grid of the inventory
- * screen are not part of this inventory yet: they are drawn, but they neither
- * store items nor do they combine them. See
- * {@link com.philia093.neofactory.gui.InventoryLayout}.
+ * The two by two crafting grid of the inventory screen is not part of this inventory:
+ * it is drawn and it may hold something while the screen is open, but it stores
+ * nothing when the screen closes, see {@link com.philia093.neofactory.gui.InventoryLayout}.
  */
 public final class PlayerInventory extends Inventory {
 

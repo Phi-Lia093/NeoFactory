@@ -36,7 +36,7 @@ public class Item {
     /** Amount a normal item, such as a block, a material or a piece of food, stacks to. */
     public static final int DEFAULT_MAX_STACK = 64;
 
-    /** Amount a unique item, such as a tool or a piece of armour, stacks to. */
+    /** Amount a unique item, such as a tool, stacks to. */
     public static final int SINGLE_ITEM_STACK = 1;
 
     /** Mining speed of a bare hand, also the default of every item. */
@@ -51,6 +51,8 @@ public class Item {
     private final int maxStackSize;
     private final int toolLevel;
     private final float miningSpeed;
+    private final ToolType toolType;
+    private final int maxDamage;
     private final FluidContainer container;
     private final String chemicalFormula;
     private final String overlayTexture;
@@ -70,6 +72,8 @@ public class Item {
         this.maxStackSize = builder.maxStackSize;
         this.toolLevel = builder.toolLevel;
         this.miningSpeed = builder.miningSpeed;
+        this.toolType = builder.toolType;
+        this.maxDamage = builder.maxDamage;
         this.container = builder.container;
         this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
@@ -96,6 +100,8 @@ public class Item {
         this.maxStackSize = builder.maxStackSize;
         this.toolLevel = builder.toolLevel;
         this.miningSpeed = builder.miningSpeed;
+        this.toolType = builder.toolType;
+        this.maxDamage = builder.maxDamage;
         this.container = builder.container;
         this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
@@ -145,9 +151,10 @@ public class Item {
      * a block drops its item, see
      * {@link com.philia093.neofactory.world.interaction.HardnessMining}.
      * <p>
-     * Whether the tool <i>type</i> fits the block is not modelled yet: a level is
-     * only given to the tools that already know their material, so a sword never
-     * harvests stone by accident.
+     * The level says how good a tool is, the kind of it says what it is good for: a block of level
+     * {@code 1} hands its item to a pickaxe of that level and to nothing else, see
+     * {@link #toolType()}. A hoe and a sword carry level {@code 0}, because they open no block the
+     * game has.
      */
     public int toolLevel() {
         return toolLevel;
@@ -156,11 +163,50 @@ public class Item {
     /**
      * Speed this item breaks blocks with.
      * <p>
-     * {@code 1} is the speed of a bare hand, a diamond pickaxe reaches {@code 8}.
-     * Only read by a mining rule that lets a break take time.
+     * {@code 1} is the speed of a bare hand, a diamond pickaxe reaches {@code 8}. The speed counts
+     * for the blocks the kind of this item fits, see {@link #toolType()}, and only a rule with
+     * break times reads it.
      */
     public float miningSpeed() {
         return miningSpeed;
+    }
+
+    /**
+     * Kind of tool this item is, {@code null} for an item that is not a tool.
+     * <p>
+     * A block names the kind it is worked with as well, and the two are compared as objects: a
+     * block that wants a pickaxe is mined quickly by this item and slowly by every other one, and
+     * a block that asks for a mining level hands its item over only to the right kind of tool, see
+     * {@link com.philia093.neofactory.world.interaction.HardnessMining}.
+     *
+     * @return the kind of this tool, or {@code null} for a material, a block or a piece of food
+     */
+    public ToolType toolType() {
+        return toolType;
+    }
+
+    /** {@code true} when this item is a tool and not a material, a block or a piece of food. */
+    public boolean isTool() {
+        return toolType != null;
+    }
+
+    /**
+     * Amount of damage a fresh piece of this item takes before it is used up.
+     * <p>
+     * Zero is an item that never wears out, which is every material and every block; a tool of iron
+     * reaches {@code 250} and one of diamond {@code 1561}. The number belongs to the kind of item,
+     * the damage taken belongs to the stack that is used, see
+     * {@link Damageable} and {@link ItemStack#applyDamage(int)}.
+     *
+     * @return the life of a new piece, {@code 0} for an item that never wears out
+     */
+    public int maxDamage() {
+        return maxDamage;
+    }
+
+    /** {@code true} when this item wears out with use, which a tool and every future worn part does. */
+    public boolean isDamageable() {
+        return maxDamage > 0;
     }
 
     /**
@@ -181,7 +227,7 @@ public class Item {
         return container != null;
     }
 
-    /** {@code true} when the item stacks, which every item but a tool or armour piece does. */
+    /** {@code true} when the item stacks, which every item but a tool does. */
     public boolean isStackable() {
         return maxStackSize > 1;
     }
@@ -321,6 +367,8 @@ public class Item {
         private int maxStackSize = DEFAULT_MAX_STACK;
         private int toolLevel;
         private float miningSpeed = HAND_MINING_SPEED;
+        private ToolType toolType;
+        private int maxDamage;
         private FluidContainer container;
         private String chemicalFormula;
         private String overlayTexture;
@@ -398,6 +446,39 @@ public class Item {
                 throw new IllegalArgumentException("Mining speed must be positive: " + miningSpeed);
             }
             this.miningSpeed = miningSpeed;
+            return this;
+        }
+
+        /**
+         * Makes this item a tool of a kind.
+         * <p>
+         * The kind is what a block is worked with: a block that names a pickaxe is mined quickly by
+         * this item and slowly by every other one, and a block that asks for a mining level hands
+         * its item over only to the kind it names, see {@link ToolType} and
+         * {@link com.philia093.neofactory.world.interaction.HardnessMining}.
+         *
+         * @param toolType kind of tool, for example {@link ToolType#PICKAXE}
+         */
+        public Builder toolType(ToolType toolType) {
+            this.toolType = Objects.requireNonNull(toolType, "toolType");
+            return this;
+        }
+
+        /**
+         * Makes this item wear out with use.
+         * <p>
+         * The amount is what a fresh piece takes and it is not a property of a tool alone: a mortar,
+         * a screwdriver or any other piece of the workshop declares its own life the same way, see
+         * {@link Damageable}. The damage taken belongs to the stack that is used and starts at
+         * zero, so every piece that is handed out is new, see {@link ItemStack#applyDamage(int)}.
+         *
+         * @param maxDamage amount of use a fresh piece takes, must be positive
+         */
+        public Builder maxDamage(int maxDamage) {
+            if (maxDamage <= 0) {
+                throw new IllegalArgumentException("Durability must be positive: " + maxDamage);
+            }
+            this.maxDamage = maxDamage;
             return this;
         }
 
