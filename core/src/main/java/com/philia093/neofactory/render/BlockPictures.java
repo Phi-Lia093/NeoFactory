@@ -33,6 +33,27 @@ public class BlockPictures implements Disposable {
     /** Folder holding the pictures of the blocks, relative to the asset root. */
     public static final String FOLDER = "blocks/";
 
+    /**
+     * Name of the picture the arm of the player is drawn from.
+     * <p>
+     * The arm is no block, so it does not live in the folder of the blocks: it is a region of the skin of
+     * a body, cut to the shape of a layer like every other picture, see {@link #ARM_REGION} and
+     * {@link FirstPersonHand}.
+     */
+    public static final String HAND = "entity/hand";
+
+    /** File the picture of the hand is cut from, relative to the asset root. */
+    public static final String SKIN = "entity/steve.png";
+
+    /**
+     * Region of that file carrying the arm of the body, in pixels.
+     * <p>
+     * The layout is the one the classic skin uses: X, Y, width and height of the arm inside a body
+     * picture of sixty four by thirty two pixels. A test reads this region back out of the file, so a
+     * skin that is packed differently fails there instead of showing a stray piece of a face as an arm.
+     */
+    public static final int[] ARM_REGION = {40, 16, 16, 16};
+
     /** Side length of one picture in pixels, also the side of a block. */
     public static final int TILE = Constants.TILE_SIZE;
 
@@ -55,6 +76,9 @@ public class BlockPictures implements Disposable {
             }
             collect(block.texture(), names);
         }
+        // The arm of the player is a picture of its own: a view from inside a body shows the arm of that
+        // body, and the body picture travels with the art of the entities.
+        collect(HAND, names);
         if (names.size == 0) {
             LOGGER.warn("No picture of any block was found, the world cannot be drawn as cubes");
             return;
@@ -125,6 +149,9 @@ public class BlockPictures implements Disposable {
      * @return the pixels of one layer of the array
      */
     private static Pixmap load(String name) {
+        if (HAND.equals(name)) {
+            return loadRegion(SKIN, ARM_REGION);
+        }
         Pixmap sheet = new Pixmap(Gdx.files.internal(FOLDER + name + ".png"));
         if (sheet.getWidth() == TILE && sheet.getHeight() == TILE) {
             return sheet;
@@ -132,6 +159,22 @@ public class BlockPictures implements Disposable {
         Pixmap picture = new Pixmap(TILE, TILE, Pixmap.Format.RGBA8888);
         picture.setBlending(Pixmap.Blending.None);
         picture.drawPixmap(sheet, 0, 0, 0, 0, TILE, TILE);
+        sheet.dispose();
+        return picture;
+    }
+
+    /**
+     * Reads a region of a picture below the asset root, cut to the shape of a layer.
+     *
+     * @param file file to read, relative to the asset root, with extension
+     * @param region X, Y, width and height of the part to cut out, in pixels
+     * @return the pixels of one layer of the array
+     */
+    private static Pixmap loadRegion(String file, int[] region) {
+        Pixmap sheet = new Pixmap(Gdx.files.internal(file));
+        Pixmap picture = new Pixmap(TILE, TILE, Pixmap.Format.RGBA8888);
+        picture.setBlending(Pixmap.Blending.None);
+        picture.drawPixmap(sheet, region[0], region[1], 0, 0, region[2], region[3]);
         sheet.dispose();
         return picture;
     }

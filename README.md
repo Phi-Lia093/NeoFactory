@@ -13,6 +13,11 @@ stored on disk so that a session can be continued later.
 - **Terrain** - noise based biomes (plains, forest, desert, snow and a rocky one)
   with grass, trees, ore clusters and decorative plants, all generated from the
   world seed.
+- **View from inside the body** - the world is seen through the eyes of the player: the pointer turns the
+  view, `W`, `A`, `S`, `D` walk and `SPACE` jumps. The arm of the body is drawn in the lower right of the
+  picture, it sways with every step and it is thrown forward when a block is broken or built, and the
+  block the player holds sits in its hand. `CTRL` with the wheel, and `-` and `=` while they are held,
+  zoom the view - which is the field of view of the eye, so the arm stays where it is.
 - **Digging and building** - the left button breaks the block the eyes meet while it
   is held, the right button builds the held block into the cell behind the face the
   line of sight entered, and both are limited by the reach of the player. A block
@@ -95,7 +100,8 @@ stored on disk so that a session can be continued later.
 | --- | --- |
 | `W`, `A`, `S`, `D` | walk |
 | mouse | turn the view, the block the eyes meet is what an action applies to |
-| mouse wheel | select a hotbar slot |
+| mouse wheel | select a hotbar slot, `CTRL` with it zooms the view instead |
+| `-` / `=` | zoom out / in while held (numpad `-` and `+` do the same) |
 | left mouse button | break the block the eyes meet while held; a click on the hotbar selects that slot |
 | `1` to `9` | select a hotbar slot |
 | `[` / `]` | keep fewer / more chunks around the player |
@@ -216,6 +222,11 @@ that cannot lean on the graphics card. Tall grass and
 leaves keep their flat picture, they do not fill a cell. `gradlew :core:test` writes
 a sheet that shows the result to `core/build/reports/block-icons-preview.png`, with a
 few blocks enlarged in `block-icons-detail.png`.
+
+The arm of the first-person view is cut out of the body picture `assets/entity/steve.png`: the region of
+the skin that carries the arm becomes one layer of the texture array, see `BlockPictures`, and
+`HandMeshes` meshes the box of four by four by twelve pixels that shows it while `HandPose` says where it
+hangs. A skin that is packed differently fails the test that reads that region back out of the file.
 
 Water and lava are the fluids of the game, and neither has a picture of its own any more: a fluid is
 a name and a colour, see `Fluids`. The colour is what a tank of a machine and the window of a cell

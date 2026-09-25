@@ -155,6 +155,11 @@ public class WorldRenderer3D implements Disposable {
         return drawnSections;
     }
 
+    /** Cubes of the items, so the hand of a view can hold one, see {@link FirstPersonHand}. */
+    public ItemCubeMeshes itemCubes() {
+        return itemCubes;
+    }
+
     /**
      * Draws the frame around the cell an action would touch.
      * <p>

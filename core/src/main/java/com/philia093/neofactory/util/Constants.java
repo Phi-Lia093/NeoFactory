@@ -70,9 +70,8 @@ public final class Constants {
      * <p>
      * The number is the pace of the original game, which is what a body that stands in the world feels
      * right with: fast enough to cross a field, slow enough to look around while walking. The movement
-     * code multiplies it by {@link #BLOCK_SIZE}, the size of a block of the world, and by the speed scale
-     * the screen sets - which the flat view uses to keep the player feeling equally fast at any zoom and
-     * which a view from inside the body leaves at one.
+     * code multiplies it by {@link #BLOCK_SIZE}, the size of a block of the world, and by nothing else:
+     * how fast a body walks does not depend on where its view looks.
      */
     public static final float PLAYER_SPEED = 4.3f;
 

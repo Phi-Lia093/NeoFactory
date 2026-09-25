@@ -36,6 +36,7 @@ import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.render.BlockIconRenderer;
+import com.philia093.neofactory.render.FirstPersonHand;
 import com.philia093.neofactory.render.BlockPictures;
 import com.philia093.neofactory.render.BlockShader;
 import com.philia093.neofactory.render.BlockTextureCache;
@@ -193,6 +194,15 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final PerspectiveCamera cubeCamera;
     /** Draws the icon of a block by drawing the block, {@code null} while the flat view is used. */
     private final BlockIconRenderer blockIconRenderer;
+
+    /**
+     * The arm of the player and the block it holds, {@code null} while the world cannot be drawn.
+     * <p>
+     * A view from inside a body shows the hand of that body, see {@link FirstPersonHand}: it hangs in the
+     * lower right of the picture, it sways with every step and it is thrown forward when the player breaks
+     * or builds something.
+     */
+    private final FirstPersonHand hand;
 
 
     /** Reused direction of the view, so a frame does not fill the heap with vectors. */
@@ -445,6 +455,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.blockIconRenderer = new BlockIconRenderer(blockShader, pictures);
             blockIconRenderer.prime();
             textures.setBlockIconRenderer(blockIconRenderer);
+            this.hand = new FirstPersonHand(pictures, cubeRenderer.itemCubes());
             LOGGER.info("The world is drawn as cubes, {} pictures in the array", pictures.layerCount());
         } else {
             this.pictures = null;
@@ -453,6 +464,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.cubeRenderer = null;
             this.cubeCamera = null;
             this.blockIconRenderer = null;
+            this.hand = null;
             LOGGER.warn("This driver holds no texture array, the world of cubes cannot be drawn");
         }
         // The player is an entity like any other, so it is drawn by the same pass
@@ -671,6 +683,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 player.position().y + Constants.PLAYER_EYE_HEIGHT, player.position().z);
         cubeCamera.direction.set(lookDirection);
         cubeCamera.up.set(0.0f, 1.0f, 0.0f);
+        // The zoom of the view is the field of view of the camera: rolling the wheel in narrows what the
+        // eye sees, which is what moving closer to the world looks like from inside a body.
+        cubeCamera.fieldOfView = CUBE_FIELD_OF_VIEW / zoom;
         cubeCamera.update();
 
         Gdx.gl.glClearColor(SKY.r, SKY.g, SKY.b, 1.0f);
@@ -678,7 +693,25 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         cubeRenderer.render(world, cubeCamera, SKY);
         cubeRenderer.renderSelection(cubeCamera, target);
+        renderHand();
         Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
+    }
+
+    /**
+     * Draws the arm of the player and the block it holds in front of the world.
+     * <p>
+     * The hand is part of the view and not of the world: it is drawn with the field of view of a pair of
+     * eyes, so zooming the world in does not push the arm out of the picture, and the depth buffer is
+     * cleared before it is drawn, so nothing the world holds can cut into it.
+     */
+    private void renderHand() {
+        if (hand == null) {
+            return;
+        }
+        Gdx.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
+        cubeCamera.fieldOfView = CUBE_FIELD_OF_VIEW;
+        cubeCamera.update();
+        hand.render(cubeCamera, blockShader, player.inventory().heldStack());
     }
 
     /**
@@ -879,6 +912,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             LOGGER.error("Unable to save the world while closing it", e);
         }
         batch.dispose();
+        if (hand != null) {
+            hand.dispose();
+        }
         if (blockIconRenderer != null) {
             // The icons are textures of this screen, and the cache that hands them out - which outlives
             // the screen - has to stop asking for them before they are gone.
@@ -953,7 +989,6 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             // The world is played: the keyboard walks and the pointer turns the view, see InputHandler.
             // A screen that is open keeps both to itself, which is why this runs here and not above.
             inputHandler.update(player, camera);
-            player.setSpeedScale(Constants.BLOCK_SIZE);
             if (inputHandler.isJumpDown()) {
                 player.jump();
             }
@@ -1043,10 +1078,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // BlockTargeting#selectInSight.
         target = BlockTargeting.selectInSight(world, player, player.lookDirection(lookDirection));
 
+        if (hand != null) {
+            // The hand sways with the steps of the body, which is what the speed over the ground says.
+            boolean walking = Math.abs(player.velocity().x) + Math.abs(player.velocity().z) > 0.05f;
+            hand.update(delta, walking);
+        }
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 inputHandler.isBreakingDown());
         if (broken) {
             LOGGER.info("Broke block ({}, {}, {})", target.x(), target.y(), target.z());
+            if (hand != null) {
+                hand.swing();
+            }
         }
     }
 
@@ -1072,6 +1115,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         int z = target.z();
         if (!BlockPlacer.place(world, player, target, player.inventory())) {
             return false;
+        }
+        if (hand != null) {
+            hand.swing();
         }
         LOGGER.info("Built {} into block ({}, {}, {})", itemName, x, y, z);
         return true;
@@ -1188,14 +1234,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     }
 
     /**
-     * Places the camera on the player and applies the current zoom.
+     * Places the camera on the player.
      * <p>
-     * This is what keeps the player centered on screen: the world coordinates of
-     * the player are the world coordinates of the camera center.
+     * This is what keeps the player centered on screen: the world coordinates of the player are the world
+     * coordinates of the camera center. The zoom of the view is the field of view of the camera that
+     * stands in the world, so this only keeps the flat camera of the interface in step.
      */
     private void centerCameraOnPlayer() {
         camera.position.set(player.position().x, player.position().z, 0.0f);
-        camera.zoom = zoom;
         camera.up.set(0.0f, 1.0f, 0.0f);
         camera.direction.set(0.0f, 0.0f, -1.0f);
         camera.update();

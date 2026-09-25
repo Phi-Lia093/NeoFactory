@@ -71,15 +71,6 @@ public class Player extends Entity {
     private final PlayerInventory inventory = new PlayerInventory();
 
     /**
-     * Factor the walking speed is multiplied with.
-     * <p>
-     * The camera zoom is written into this field by the screen, which keeps the
-     * player feeling equally fast no matter how far the camera is zoomed out,
-     * without the entity interface having to know about a camera.
-     */
-    private float speedScale = 1.0f;
-
-    /**
      * Creates a player standing at a position.
      *
      * @param x world X coordinate of the player center
@@ -191,15 +182,6 @@ public class Player extends Entity {
         facing.set(-MathUtils.sinDeg(yaw), MathUtils.cosDeg(yaw));
     }
 
-    /**
-     * Sets the factor the walking speed is multiplied with.
-     *
-     * @param speedScale factor, greater than zero
-     */
-    public void setSpeedScale(float speedScale) {
-        this.speedScale = speedScale > 0.0f ? speedScale : 1.0f;
-    }
-
     @Override
     public float hitboxHalfExtent() {
         return Constants.PLAYER_HITBOX * 0.5f;
@@ -305,7 +287,7 @@ public class Player extends Entity {
      */
     @Override
     public void update(World world, float delta) {
-        float speed = Constants.PLAYER_SPEED * Constants.BLOCK_SIZE * speedScale;
+        float speed = Constants.PLAYER_SPEED * Constants.BLOCK_SIZE;
         // The keyboard asks for a walk in the frame of the view: forward is where the player looks and
         // right is the right hand of that view. The direction of a yaw is (-sin, 0, cos) and its right
         // hand is the cross product of that direction with the up axis, (direction x up) =
