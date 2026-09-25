@@ -9,6 +9,8 @@ import com.badlogic.gdx.utils.ObjectMap;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.BlockRegistry;
+import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,6 +34,9 @@ public class BlockPictures implements Disposable {
 
     /** Folder holding the pictures of the blocks, relative to the asset root. */
     public static final String FOLDER = "blocks/";
+
+    /** Folder holding the pictures of the items, relative to the asset root. */
+    public static final String ITEMS_FOLDER = "items/";
 
     /**
      * Name of the picture the arm of the player is drawn from.
@@ -76,6 +81,13 @@ public class BlockPictures implements Disposable {
             }
             collect(block.texture(), names);
         }
+        // The pictures of the items travel with them: a tool or a material has no cube, so the hand of a
+        // view holds it as a flat card of its own picture, see FirstPersonHand.
+        for (Item item : ItemRegistry.all()) {
+            if (!item.texture().isEmpty()) {
+                collect(ITEMS_FOLDER + item.texture(), names);
+            }
+        }
         // The arm of the player is a picture of its own: a view from inside a body shows the arm of that
         // body, and the body picture travels with the art of the entities.
         collect(HAND, names);
@@ -111,6 +123,16 @@ public class BlockPictures implements Disposable {
     public int layer(String picture) {
         Integer layer = layers.get(picture);
         return layer == null ? -1 : layer;
+    }
+
+    /**
+     * Name of the layer a picture of an item lives in.
+     *
+     * @param item item whose picture is asked for
+     * @return the name to hand to {@link #layer(String)}
+     */
+    public static String itemPicture(Item item) {
+        return ITEMS_FOLDER + item.texture();
     }
 
     /** Handle of the texture array, {@code 0} before it was built. */
@@ -152,7 +174,10 @@ public class BlockPictures implements Disposable {
         if (HAND.equals(name)) {
             return loadRegion(SKIN, ARM_REGION);
         }
-        Pixmap sheet = new Pixmap(Gdx.files.internal(FOLDER + name + ".png"));
+        // A picture with a folder of its own is read from there - the items live below items/ - and every
+        // other name is a picture of a block, see FOLDER.
+        String path = name.indexOf('/') >= 0 ? name + ".png" : FOLDER + name + ".png";
+        Pixmap sheet = new Pixmap(Gdx.files.internal(path));
         if (sheet.getWidth() == TILE && sheet.getHeight() == TILE) {
             return sheet;
         }

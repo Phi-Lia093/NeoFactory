@@ -1,5 +1,6 @@
 package com.philia093.neofactory.render;
 
+import com.philia093.neofactory.util.Constants;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
@@ -83,6 +84,50 @@ class HandPoseTest {
             assertTrue(vertex[3] >= 0.0f && vertex[3] <= 1.0f, "the picture spot stays inside a layer");
             assertTrue(vertex[4] >= 0.0f && vertex[4] <= 1.0f, "on both axes");
         }
+    }
+
+    @Test
+    void theArmStandsInThePictureOfTheEye() {
+        // The cone the eye of the game sees: the field of view across the vertical axis and a window of
+        // sixteen to nine. The hand is placed for that cone, so the far end of the arm has to be in it -
+        // a hand that hangs below the picture is drawn and never seen, which is what this case is for.
+        float halfHeight = (float) Math.tan(Math.toRadians(Constants.VIEW_FIELD_OF_VIEW) * 0.5);
+        float halfWidth = halfHeight * 16.0f / 9.0f;
+        HandPose pose = HandPose.rest();
+        MeshData arm = HandMeshes.arm(0);
+
+        int onScreen = 0;
+        for (int corner = 0; corner < arm.vertexCount(); corner++) {
+            float[] vertex = vertexOf(arm, corner);
+            // The renderer places the mesh with the inverse of the view times the pose, which for a hand
+            // at rest is the same as adding the place of the pose to the corner, and the hand hangs in
+            // front of the eye along the negative Z axis.
+            float x = vertex[0] + pose.x();
+            float y = vertex[1] + pose.y();
+            float depth = -(vertex[2] + pose.z());
+            if (depth > 0.0f && Math.abs(x) <= depth * halfWidth && Math.abs(y) <= depth * halfHeight) {
+                onScreen++;
+            }
+        }
+        assertTrue(onScreen >= 4, "the far end of the arm has to stand in the picture of the eye, "
+                + onScreen + " of " + arm.vertexCount() + " corners are in it: " + pose);
+    }
+
+    @Test
+    void aHeldToolIsACardThatFacesTheEye() {
+        MeshData card = HandMeshes.flatItem(4);
+
+        assertEquals(4, card.vertexCount(), "a card is one quad");
+        assertEquals(6, card.indexCount(), "two triangles");
+        for (int corner = 0; corner < card.vertexCount(); corner++) {
+            float[] vertex = vertexOf(card, corner);
+            assertTrue(Math.abs(vertex[0]) <= HandMeshes.LENGTH * 0.5f, "the card is as wide as the arm");
+            assertTrue(Math.abs(vertex[1]) <= HandMeshes.LENGTH * 0.5f, "and as tall");
+            assertEquals(-HandMeshes.LENGTH, vertex[2], 1.0e-6f, "it stands at the end of the arm");
+            assertEquals(4.0f, vertex[5], 1.0e-6f, "and shows the picture of the item");
+        }
+        // The two triangles of the quad, which is what makes the card a surface and not a line.
+        assertEquals(card.vertexCount() * 3 / 2, card.indexCount());
     }
 
     @Test

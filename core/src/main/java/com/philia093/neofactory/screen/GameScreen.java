@@ -111,7 +111,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private static final float AUTOSAVE_INTERVAL = 300.0f;
 
     /** Field of view of the camera that stands in the world, in degrees. */
-    private static final float CUBE_FIELD_OF_VIEW = 70.0f;
+    private static final float CUBE_FIELD_OF_VIEW = Constants.VIEW_FIELD_OF_VIEW;
 
     /** Distance the camera of a world of cubes starts drawing at, in blocks. */
     private static final float CUBE_NEAR = 0.05f;

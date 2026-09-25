@@ -84,6 +84,33 @@ public final class HandMeshes {
     }
 
     /**
+     * Meshes a flat item, the card a tool or a material is held as.
+     * <p>
+     * A block that is held is a small cube, see {@link ItemCubeMeshes}, but a stick, a pickaxe or an
+     * ingot has one picture and no shape: it is held as a card that faces the eye, which is what the
+     * original game shows as well. The card stands across the view at the end of the arm and covers the
+     * whole picture of the item, so the shape of it is the silhouette of its own art.
+     *
+     * @param layer layer the picture of the item lives in, see {@link BlockPictures#layer(String)}
+     * @return the two triangles of the card
+     */
+    public static MeshData flatItem(int layer) {
+        MeshData mesh = new MeshData();
+        float half = LENGTH * 0.5f;
+        int[] corners = new int[4];
+        // The card lies in the plane the eye looks along, so its four corners differ only in X and Y and
+        // it faces the eye with the whole picture, which is why it is written out here and not meshed
+        // from the faces of a block.
+        corners[0] = mesh.addVertex(-half, -half, -LENGTH, 0.0f, 0.0f, layer, 1.0f, 1.0f, 1.0f);
+        corners[1] = mesh.addVertex(half, -half, -LENGTH, 1.0f, 0.0f, layer, 1.0f, 1.0f, 1.0f);
+        corners[2] = mesh.addVertex(half, half, -LENGTH, 1.0f, 1.0f, layer, 1.0f, 1.0f, 1.0f);
+        corners[3] = mesh.addVertex(-half, half, -LENGTH, 0.0f, 1.0f, layer, 1.0f, 1.0f, 1.0f);
+        mesh.addTriangle(corners[0], corners[1], corners[2]);
+        mesh.addTriangle(corners[0], corners[2], corners[3]);
+        return mesh;
+    }
+
+    /**
      * Writes the four corners and the two triangles of one face of the arm.
      *
      * @param mesh mesh to write into

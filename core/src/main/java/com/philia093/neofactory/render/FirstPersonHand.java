@@ -6,7 +6,9 @@ import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,6 +42,9 @@ public class FirstPersonHand implements Disposable {
     /** Distance the held block hangs in front of the end of the arm, in blocks. */
     private static final float HELD_AHEAD = 0.06f;
 
+    /** Size of the card a tool or a material is held as, in blocks across. */
+    private static final float CARD_SCALE = 0.8f;
+
     /** Distance the fog of the hand pass starts at, far enough that a hand is never fogged. */
     private static final float NO_FOG_START = 100.0f;
 
@@ -61,6 +66,9 @@ public class FirstPersonHand implements Disposable {
     /** Set once the missing picture of the hand was reported, so the log holds one line. */
     private boolean reportedMissingPicture;
 
+    /** Set once the place of the arm was reported, so the log holds one line. */
+    private boolean reportedPlacement;
+
     /** Reused matrix of the pose of this frame. */
     private final Matrix4 pose = new Matrix4();
 
@@ -68,6 +76,9 @@ public class FirstPersonHand implements Disposable {
     private final Matrix4 model = new Matrix4();
     private final Matrix4 held = new Matrix4();
     private final Matrix4 placed = new Matrix4();
+
+    /** The card of every kind of item that was held once, keyed by its name. */
+    private final ObjectMap<String, Mesh> cards = new ObjectMap<>();
 
     /** Step of the walk cycle, {@code 0} to {@code 1}. */
     private float walk;
@@ -135,6 +146,10 @@ public class FirstPersonHand implements Disposable {
         if (arm == null && !build()) {
             return;
         }
+        if (!reportedPlacement) {
+            reportedPlacement = true;
+            reportPlacement(camera);
+        }
         HandPose at = currentPose();
         pose.idt()
                 .translate(at.x(), at.y(), at.z())
@@ -149,14 +164,20 @@ public class FirstPersonHand implements Disposable {
         shader.end();
     }
 
-    /** Draws the block a hand holds at the end of the arm. */
+    /** Draws the block a hand holds at the end of the arm, or the card of any other item. */
     private void renderHeld(ItemStack stack, BlockShader shader) {
         if (stack == null || stack.isEmpty()) {
             return;
         }
         Block block = stack.item().block();
         if (block == null) {
-            // A material or a tool has no cube, see ItemCubeMeshes: the hand shows the arm alone.
+            // A tool or a material has no cube: it is held as a flat card of its own picture.
+            Mesh card = cardOf(stack.item());
+            if (card != null) {
+                held.idt().translate(0.0f, 0.0f, -HELD_AHEAD).scale(CARD_SCALE, CARD_SCALE, CARD_SCALE);
+                placed.set(model).mul(held);
+                shader.render(card, placed);
+            }
             return;
         }
         float half = HELD_SIZE * 0.5f;
@@ -167,6 +188,24 @@ public class FirstPersonHand implements Disposable {
         for (Mesh mesh : cubes.cubeOf(block)) {
             shader.render(mesh, placed);
         }
+    }
+
+    /** The card of an item, meshed on first use, {@code null} when the array holds no picture of it. */
+    private Mesh cardOf(Item item) {
+        Mesh card = cards.get(item.name());
+        if (card != null) {
+            return card;
+        }
+        int layer = pictures.layer(BlockPictures.itemPicture(item));
+        if (layer < 0) {
+            return null;
+        }
+        MeshData data = HandMeshes.flatItem(layer);
+        Mesh built = new Mesh(true, data.vertexCount(), data.indexCount(), BlockShader.ATTRIBUTES);
+        built.setVertices(data.vertexFloats(), 0, data.vertexCount() * MeshData.FLOATS_PER_VERTEX);
+        built.setIndices(data.indexShorts(), 0, data.indexCount());
+        cards.put(item.name(), built);
+        return built;
     }
 
     /** Meshes the arm, once the picture of the hand was found in the array. */
@@ -183,8 +222,32 @@ public class FirstPersonHand implements Disposable {
         arm = new Mesh(true, data.vertexCount(), data.indexCount(), BlockShader.ATTRIBUTES);
         arm.setVertices(data.vertexFloats(), 0, data.vertexCount() * MeshData.FLOATS_PER_VERTEX);
         arm.setIndices(data.indexShorts(), 0, data.indexCount());
-        LOGGER.info("Meshed the arm of the player from layer {}", armLayer);
+        LOGGER.info("Meshed the arm of the player from layer {}: {} corners, {} triangles",
+                armLayer, data.vertexCount(), data.indexCount() / 3);
         return true;
+    }
+
+    /**
+     * Reports where the arm stands in the picture, once.
+     * <p>
+     * A hand is placed in the frame of the eye, so a wrong place means a hand that is drawn and never
+     * seen. The line names the pose and the two shares of the picture the far end of the arm reaches, so
+     * a report of a missing arm says at once whether it stands in the frame at all.
+     *
+     * @param camera camera the world is seen through
+     */
+    private void reportPlacement(PerspectiveCamera camera) {
+        HandPose at = currentPose();
+        float aspect = camera.viewportHeight <= 0.0f ? 1.0f : camera.viewportWidth / camera.viewportHeight;
+        float halfHeight = (float) Math.tan(Math.toRadians(camera.fieldOfView) * 0.5);
+        float halfWidth = halfHeight * aspect;
+        float depth = -(at.z() - HandMeshes.LENGTH);
+        int across = Math.round(50.0f + 50.0f * at.x() / (depth * halfWidth));
+        int down = Math.round(50.0f - 50.0f * at.y() / (depth * halfHeight));
+        LOGGER.info("The arm of the player: pose {}, eye of {} degrees over {}x{}, its end reaches "
+                        + "{} % across and {} % down the picture",
+                at, camera.fieldOfView, Math.round(camera.viewportWidth),
+                Math.round(camera.viewportHeight), across, down);
     }
 
     /** Layer the picture of the hand lives in, {@code -1} while it was not looked up. */
@@ -198,6 +261,10 @@ public class FirstPersonHand implements Disposable {
             arm.dispose();
             arm = null;
         }
+        for (Mesh card : cards.values()) {
+            card.dispose();
+        }
+        cards.clear();
         armLayer = -1;
     }
 

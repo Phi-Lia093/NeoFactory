@@ -112,6 +112,16 @@ public final class Constants {
     /** Highest angle the view may look up or down, in degrees, just short of straight up. */
     public static final float PITCH_LIMIT = 89.0f;
 
+    /**
+     * Field of view of the eye that stands in the world, in degrees, measured across the vertical axis.
+     * <p>
+     * The number is the one a first-person view of the original game uses. Everything that is placed in
+     * the frame of the eye depends on it: the view itself is drawn with it - narrowed when the player
+     * zooms in - and the hand of the player is placed so that it stands in the picture this cone shows,
+     * see {@code HandPose}. A hand placed for another cone hangs outside the frame and is never seen.
+     */
+    public static final float VIEW_FIELD_OF_VIEW = 70.0f;
+
     /** Side length of the square player collision box in blocks. */
     public static final float PLAYER_HITBOX = 0.7f;
 

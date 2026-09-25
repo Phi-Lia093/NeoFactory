@@ -27,13 +27,20 @@ import com.badlogic.gdx.math.MathUtils;
 public record HandPose(float x, float y, float z, float pitch) {
 
     /** Distance of a resting hand to the right of the middle of the view, in blocks. */
-    public static final float REST_X = 0.56f;
+    public static final float REST_X = 0.36f;
 
-    /** Height of a resting hand below the middle of the view, in blocks. */
-    public static final float REST_Y = -0.52f;
+    /**
+     * Height of a resting hand below the middle of the view, in blocks.
+     * <p>
+     * The number is what the field of view of an eye allows: the view of the world is seventy degrees
+     * across at the vertical axis, so a hand nearer than a block to the eye leaves the picture below
+     * about four tenths of a block. The arm is long enough to reach into the frame from there, which is
+     * how it shows without covering what the player looks at.
+     */
+    public static final float REST_Y = -0.26f;
 
     /** Distance of a resting hand in front of the eye, in blocks. */
-    public static final float REST_Z = -0.62f;
+    public static final float REST_Z = -0.42f;
 
     /** Highest sway of a walking hand to the sides, in blocks. */
     public static final float WALK_SWAY = 0.045f;
