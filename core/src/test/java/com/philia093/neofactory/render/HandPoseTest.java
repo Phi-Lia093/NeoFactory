@@ -1,5 +1,8 @@
 package com.philia093.neofactory.render;
 
+import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.ItemRegistry;
+import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Constants;
 import org.junit.jupiter.api.Test;
 
@@ -8,6 +11,8 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -115,7 +120,7 @@ class HandPoseTest {
 
     @Test
     void aHeldToolIsACardThatFacesTheEye() {
-        MeshData card = HandMeshes.flatItem(4);
+        MeshData card = HandMeshes.flatItem(4, 1.0f, 0.5f, 0.25f);
 
         assertEquals(4, card.vertexCount(), "a card is one quad");
         assertEquals(6, card.indexCount(), "two triangles");
@@ -125,6 +130,9 @@ class HandPoseTest {
             assertTrue(Math.abs(vertex[1]) <= HandMeshes.LENGTH * 0.5f, "and as tall");
             assertEquals(-HandMeshes.LENGTH, vertex[2], 1.0e-6f, "it stands at the end of the arm");
             assertEquals(4.0f, vertex[5], 1.0e-6f, "and shows the picture of the item");
+            assertEquals(1.0f, vertex[6], 1.0e-6f, "the whole card carries the tint of the item");
+            assertEquals(0.5f, vertex[7], 1.0e-6f);
+            assertEquals(0.25f, vertex[8], 1.0e-6f);
         }
         // The two triangles of the quad, which is what makes the card a surface and not a line.
         assertEquals(card.vertexCount() * 3 / 2, card.indexCount());
@@ -174,6 +182,24 @@ class HandPoseTest {
             }
             assertNotEquals(0, painted, "the region of the arm holds no pixel of the skin at all");
         }
+    }
+
+    @Test
+    void everyItemTheHandCanHoldHasAPicture() {
+        TestRegistries.ensure();
+        Path assets = Path.of("..", "assets");
+        List<String> missing = new ArrayList<>();
+        for (Item item : ItemRegistry.all()) {
+            if (item.block() != null || item.texture().isEmpty()) {
+                // A block is held as the cube of that block, so it needs no card of its own.
+                continue;
+            }
+            if (!Files.isRegularFile(assets.resolve(BlockPictures.path(BlockPictures.itemPicture(item))))
+                    && !Files.isRegularFile(assets.resolve(BlockPictures.path(item.texture())))) {
+                missing.add(item.name());
+            }
+        }
+        assertTrue(missing.isEmpty(), "no hand can show these items, their picture is nowhere: " + missing);
     }
 
     /** The ten floats of one corner of a mesh. */

@@ -92,19 +92,23 @@ public final class HandMeshes {
      * whole picture of the item, so the shape of it is the silhouette of its own art.
      *
      * @param layer layer the picture of the item lives in, see {@link BlockPictures#layer(String)}
+     * @param red red the picture is multiplied with, the tint of the item
+     * @param green green the picture is multiplied with
+     * @param blue blue the picture is multiplied with
      * @return the two triangles of the card
      */
-    public static MeshData flatItem(int layer) {
+    public static MeshData flatItem(int layer, float red, float green, float blue) {
         MeshData mesh = new MeshData();
         float half = LENGTH * 0.5f;
         int[] corners = new int[4];
         // The card lies in the plane the eye looks along, so its four corners differ only in X and Y and
         // it faces the eye with the whole picture, which is why it is written out here and not meshed
-        // from the faces of a block.
-        corners[0] = mesh.addVertex(-half, -half, -LENGTH, 0.0f, 0.0f, layer, 1.0f, 1.0f, 1.0f);
-        corners[1] = mesh.addVertex(half, -half, -LENGTH, 1.0f, 0.0f, layer, 1.0f, 1.0f, 1.0f);
-        corners[2] = mesh.addVertex(half, half, -LENGTH, 1.0f, 1.0f, layer, 1.0f, 1.0f, 1.0f);
-        corners[3] = mesh.addVertex(-half, half, -LENGTH, 0.0f, 1.0f, layer, 1.0f, 1.0f, 1.0f);
+        // from the faces of a block. The picture of a material holds brightness only, so the tint of the
+        // item is what makes a plate of iron and a plate of copper two different things in the hand.
+        corners[0] = mesh.addVertex(-half, -half, -LENGTH, 0.0f, 0.0f, layer, red, green, blue);
+        corners[1] = mesh.addVertex(half, -half, -LENGTH, 1.0f, 0.0f, layer, red, green, blue);
+        corners[2] = mesh.addVertex(half, half, -LENGTH, 1.0f, 1.0f, layer, red, green, blue);
+        corners[3] = mesh.addVertex(-half, half, -LENGTH, 0.0f, 1.0f, layer, red, green, blue);
         mesh.addTriangle(corners[0], corners[1], corners[2]);
         mesh.addTriangle(corners[0], corners[2], corners[3]);
         return mesh;

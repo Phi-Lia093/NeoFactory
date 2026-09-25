@@ -204,9 +204,15 @@ public class FirstPersonHand implements Disposable {
         }
         int layer = pictures.layer(BlockPictures.itemPicture(item));
         if (layer < 0) {
+            // The picture of an item may be the picture of a block it shows, which lives in the folder of
+            // the blocks, see BlockPictures.
+            layer = pictures.layer(item.texture());
+        }
+        if (layer < 0) {
             return null;
         }
-        MeshData data = HandMeshes.flatItem(layer);
+        Color tint = item.tint();
+        MeshData data = HandMeshes.flatItem(layer, tint.r, tint.g, tint.b);
         Mesh built = new Mesh(true, data.vertexCount(), data.indexCount(), BlockShader.ATTRIBUTES);
         built.setVertices(data.vertexFloats(), 0, data.vertexCount() * MeshData.FLOATS_PER_VERTEX);
         built.setIndices(data.indexShorts(), 0, data.indexCount());

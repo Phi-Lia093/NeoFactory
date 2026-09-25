@@ -82,9 +82,13 @@ public class BlockPictures implements Disposable {
             collect(block.texture(), names);
         }
         // The pictures of the items travel with them: a tool or a material has no cube, so the hand of a
-        // view holds it as a flat card of its own picture, see FirstPersonHand.
+        // view holds it as a flat card of its own picture, see FirstPersonHand. Which folder that picture
+        // lives in is decided by the file system - the picture of an item is its own one below items/, and
+        // the picture of a block item is the picture of that block, which is collected above - so both
+        // names are offered and the one without a file is skipped, see collect(String, Array).
         for (Item item : ItemRegistry.all()) {
             if (!item.texture().isEmpty()) {
+                collect(item.texture(), names);
                 collect(ITEMS_FOLDER + item.texture(), names);
             }
         }
@@ -157,11 +161,40 @@ public class BlockPictures implements Disposable {
 
     /** Adds a picture to the list, once, in the order the layers are numbered. */
     private void collect(String picture, Array<String> names) {
-        if (picture.isEmpty() || layers.containsKey(picture)) {
+        if (picture.isEmpty() || layers.containsKey(picture) || !exists(picture)) {
             return;
         }
         layers.put(picture, names.size);
         names.add(picture);
+    }
+
+    /**
+     * {@code true} when a picture of the game really exists.
+     * <p>
+     * Not every name an item carries is a file of its own: the items of a block show the picture of that
+     * block, and a shape of a material may share the picture of another one. The array holds the pictures
+     * that are there and says nothing about the rest - a name that has no file is skipped here instead of
+     * stopping the game while it opens a world.
+     *
+     * @param picture name of the picture, see {@link #path(String)}
+     * @return {@code true} when that file is there
+     */
+    private static boolean exists(String picture) {
+        return Gdx.files.internal(path(picture)).exists();
+    }
+
+    /**
+     * Path of a picture below the asset root.
+     * <p>
+     * The rule is the one the whole game follows: a name without a folder is a picture of a block and
+     * lives below {@link #FOLDER}, and a name that names its folder is read from there - the pictures of
+     * the items live below {@code items/} and the skin of a body below {@code entity/}.
+     *
+     * @param name name of the picture, either without a folder or with the one it lives in
+     * @return the path of the file, relative to the asset root
+     */
+    public static String path(String name) {
+        return name.indexOf('/') >= 0 ? name + ".png" : FOLDER + name + ".png";
     }
 
     /**
@@ -176,8 +209,7 @@ public class BlockPictures implements Disposable {
         }
         // A picture with a folder of its own is read from there - the items live below items/ - and every
         // other name is a picture of a block, see FOLDER.
-        String path = name.indexOf('/') >= 0 ? name + ".png" : FOLDER + name + ".png";
-        Pixmap sheet = new Pixmap(Gdx.files.internal(path));
+        Pixmap sheet = new Pixmap(Gdx.files.internal(path(name)));
         if (sheet.getWidth() == TILE && sheet.getHeight() == TILE) {
             return sheet;
         }
