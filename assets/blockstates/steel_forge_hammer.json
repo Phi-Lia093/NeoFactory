@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"],
+    "lit": ["false", "true"]
+  },
+  "variants": {
+    "facing=north,lit=false": { "model": "steel_forge_hammer", "y": 0 },
+    "facing=east,lit=false": { "model": "steel_forge_hammer", "y": 270 },
+    "facing=south,lit=false": { "model": "steel_forge_hammer", "y": 180 },
+    "facing=west,lit=false": { "model": "steel_forge_hammer", "y": 90 },
+    "facing=north,lit=true": { "model": "steel_forge_hammer_active", "y": 0 },
+    "facing=east,lit=true": { "model": "steel_forge_hammer_active", "y": 270 },
+    "facing=south,lit=true": { "model": "steel_forge_hammer_active", "y": 180 },
+    "facing=west,lit=true": { "model": "steel_forge_hammer_active", "y": 90 }
+  }
+}

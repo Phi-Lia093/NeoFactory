@@ -155,7 +155,7 @@ public class PipeBlockEntity extends BlockEntity implements FaceOperable {
         if (offer <= 0) {
             return;
         }
-        int sides = sidesThatGive(world, Pipes.maskOf(world.getState(x(), y(), z())));
+        int sides = sidesThatGive(world, Pipes.maskOf(world.getState(x(), y(), z())), pipe.flow());
         if (sides == 0) {
             return;
         }
@@ -188,9 +188,10 @@ public class PipeBlockEntity extends BlockEntity implements FaceOperable {
      *
      * @param world world this pipe lies in
      * @param mask connections of this pipe
+     * @param rate rate of this pipe in millibuckets a second, which is what a machine behind a side draws
      * @return amount of sides that were collected
      */
-    private int sidesThatGive(World world, int mask) {
+    private int sidesThatGive(World world, int mask, int rate) {
         int sides = 0;
         for (BlockFace face : Pipes.DIRECTIONS) {
             givingFaces[sides] = face;
@@ -225,11 +226,12 @@ public class PipeBlockEntity extends BlockEntity implements FaceOperable {
                 continue;
             }
             if (entity instanceof FluidNode node && node.takesOn(face.opposite())) {
-                // A machine behind this side: its mouth is a tank this pipe pours into, and a machine weighs
-                // one, because it names no rate of its own - the machine is the pump of the line.
+                // A machine behind this side: its mouth is a tank this pipe pours into, and the machine draws
+                // as much as a branch of the line would, see PipeTransport#weightOfMachine. Weighing it as one
+                // left the machine of the middle pipe of a line of three without a drop.
                 givingFaces[sides] = face;
                 givingNodes[sides] = node;
-                givingWeights[sides] = PipeTransport.weightOf(null);
+                givingWeights[sides] = PipeTransport.weightOfMachine(rate);
                 sides++;
             }
         }

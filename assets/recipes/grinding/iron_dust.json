@@ -1,0 +1,6 @@
+{
+  "ingredients": ["iron_ore"],
+  "result": { "item": "iron_dust", "count": 2 },
+  "time": 8.0,
+  "steam": 800
+}

@@ -11,6 +11,8 @@ import java.util.Objects;
  * <ul>
  *     <li>{@link #title()} is written in the upper left corner of the panel, the name the
  *         player reads;</li>
+ *     <li>{@link #style()} picks the panel the machine is drawn in - the grey one of the age of electricity or
+ *         the bronze one of the age of steam, see {@link MachineStyle};</li>
  *     <li>{@link #progress()} picks the pair of arrows the bar is drawn from;</li>
  *     <li>{@link #inputs()} and {@link #outputs()} name the kind of every slot a machine
  *         works with, one entry per slot. Their amount decides how the slots are arranged,
@@ -23,6 +25,7 @@ import java.util.Objects;
  * </ul>
  *
  * @param title name shown in the upper left corner of the screen
+ * @param style panel the machine is drawn in, see {@link MachineStyle}
  * @param progress pair of arrows the progress bar is drawn from
  * @param inputs kind of every input slot, in the order they are drawn
  * @param outputs kind of every output slot, in the order they are drawn
@@ -30,8 +33,29 @@ import java.util.Objects;
  * @param fluidOutputs amount of tanks a machine fills, {@code 0} to {@code 2}
  * @param configureSlot {@code true} to reserve the lower right corner for a configure slot
  */
-public record MachineScreen(String title, ProgressKind progress, List<SlotKind> inputs,
-        List<SlotKind> outputs, int fluidInputs, int fluidOutputs, boolean configureSlot) {
+public record MachineScreen(String title, MachineStyle style, ProgressKind progress,
+        List<SlotKind> inputs, List<SlotKind> outputs, int fluidInputs, int fluidOutputs,
+        boolean configureSlot) {
+
+    /**
+     * Describes a machine screen of the age of electricity.
+     * <p>
+     * A machine that names no style of its own is drawn with the grey panel, the one every machine of the
+     * game was drawn with before the age of steam brought its own, see {@link MachineStyle#NORMAL}.
+     *
+     * @param title name shown in the upper left corner of the screen
+     * @param progress pair of arrows the progress bar is drawn from
+     * @param inputs kind of every input slot, in the order they are drawn
+     * @param outputs kind of every output slot, in the order they are drawn
+     * @param fluidInputs amount of tanks a recipe drains, {@code 0} to {@code 2}
+     * @param fluidOutputs amount of tanks a machine fills, {@code 0} to {@code 2}
+     * @param configureSlot {@code true} to reserve the lower right corner for a configure slot
+     */
+    public MachineScreen(String title, ProgressKind progress, List<SlotKind> inputs,
+            List<SlotKind> outputs, int fluidInputs, int fluidOutputs, boolean configureSlot) {
+        this(title, MachineStyle.NORMAL, progress, inputs, outputs, fluidInputs, fluidOutputs,
+                configureSlot);
+    }
 
     /**
      * Amounts of slots a block of slots may hold, one of the shapes of the game.
@@ -47,6 +71,7 @@ public record MachineScreen(String title, ProgressKind progress, List<SlotKind> 
     /** Checks the description, so a broken machine fails while it is registered. */
     public MachineScreen {
         Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(style, "style");
         Objects.requireNonNull(progress, "progress");
         Objects.requireNonNull(inputs, "inputs");
         Objects.requireNonNull(outputs, "outputs");
@@ -134,7 +159,7 @@ public record MachineScreen(String title, ProgressKind progress, List<SlotKind> 
 
     @Override
     public String toString() {
-        return "MachineScreen(" + title + ", " + progress + ", " + inputSlots() + " in, "
+        return "MachineScreen(" + title + ", " + style + ", " + progress + ", " + inputSlots() + " in, "
                 + outputSlots() + " out, " + fluidInputs + "+" + fluidOutputs + " tanks)";
     }
 }

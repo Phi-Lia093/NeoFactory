@@ -56,7 +56,50 @@ public final class MultiFaceTextures {
             // second layer of the grass: it is the door of the boiler and it glows while the boiler burns.
             "bronze_casing/bronze_casing_bottom", "bronze_casing/bronze_casing_side",
             "bronze_casing/bronze_casing_top", "bronze_boiler/bronze_boiler_front",
-            "bronze_boiler/bronze_boiler_front_active");
+            "bronze_boiler/bronze_boiler_front_active",
+
+            // The front and the top of every machine of the age of steam, drawn over the casing the way the
+            // mouth of the boiler is: the picture of the machine, and the one of a machine that works, which
+            // glows while it runs. The machines of steel carry the same pictures over the casing of their own
+            // age, so both of them are listed.
+            "alloy_furnace/alloy_furnace_front", "alloy_furnace/alloy_furnace_front_active",
+            "alloy_furnace/alloy_furnace_top", "alloy_furnace/alloy_furnace_top_active",
+            "compressor/compressor_front", "compressor/compressor_front_active",
+            "compressor/compressor_top", "compressor/compressor_top_active",
+            "extractor/extractor_front", "extractor/extractor_front_active",
+            "extractor/extractor_top", "extractor/extractor_top_active",
+            "forge_hammer/forge_hammer_front", "forge_hammer/forge_hammer_front_active",
+            "forge_hammer/forge_hammer_top", "forge_hammer/forge_hammer_top_active",
+            "grinder/grinder_front", "grinder/grinder_front_active",
+            "grinder/grinder_top", "grinder/grinder_top_active",
+            "steam_furnace/steam_furnace_front", "steam_furnace/steam_furnace_front_active",
+            "steam_furnace/steam_furnace_top", "steam_furnace/steam_furnace_top_active",
+            "steel_alloy_furnace/steel_alloy_furnace_front",
+            "steel_alloy_furnace/steel_alloy_furnace_front_active",
+            "steel_alloy_furnace/steel_alloy_furnace_top",
+            "steel_alloy_furnace/steel_alloy_furnace_top_active",
+            "steel_boiler/steel_boiler_front", "steel_boiler/steel_boiler_front_active",
+            "steel_compressor/steel_compressor_front", "steel_compressor/steel_compressor_front_active",
+            "steel_compressor/steel_compressor_top", "steel_compressor/steel_compressor_top_active",
+            "steel_extractor/steel_extractor_front", "steel_extractor/steel_extractor_front_active",
+            "steel_extractor/steel_extractor_top", "steel_extractor/steel_extractor_top_active",
+            "steel_forge_hammer/steel_forge_hammer_front",
+            "steel_forge_hammer/steel_forge_hammer_front_active",
+            "steel_forge_hammer/steel_forge_hammer_top",
+            "steel_forge_hammer/steel_forge_hammer_top_active",
+            "steel_grinder/steel_grinder_front", "steel_grinder/steel_grinder_front_active",
+            "steel_grinder/steel_grinder_top", "steel_grinder/steel_grinder_top_active",
+            "steel_steam_furnace/steel_steam_furnace_front",
+            "steel_steam_furnace/steel_steam_furnace_front_active",
+            "steel_steam_furnace/steel_steam_furnace_top",
+            "steel_steam_furnace/steel_steam_furnace_top_active",
+            "steel_bricks_casing/steel_bricks_casing_bottom", "steel_bricks_casing/steel_bricks_casing_side",
+            "steel_bricks_casing/steel_bricks_casing_top",
+            "steel_casing/steel_casing_bottom", "steel_casing/steel_casing_side",
+            "steel_casing/steel_casing_top",
+            "bronze_bricks_casing/bronze_bricks_casing_bottom",
+            "bronze_bricks_casing/bronze_bricks_casing_side",
+            "bronze_bricks_casing/bronze_bricks_casing_top");
 
     /**
      * Sheets whose animation is described by a metadata file next to them.

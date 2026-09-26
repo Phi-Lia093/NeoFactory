@@ -167,13 +167,14 @@ public final class MachineMenu {
         }
 
         ContainerLayout layout = new ContainerLayout();
-        addBlock(layout, inventory, inputs, screen.inputs(), true);
-        addBlock(layout, inventory, outputs, screen.outputs(), false);
-        addUpgrades(layout, inventory, upgrades);
+        MachineStyle style = screen.style();
+        addBlock(layout, inventory, inputs, screen.inputs(), true, style);
+        addBlock(layout, inventory, outputs, screen.outputs(), false, style);
+        addUpgrades(layout, inventory, upgrades, style);
         this.fluidSlots = buildFluidSlots(machine, screen);
         if (!configure.isEmpty()) {
             layout.add(CONFIGURE_LEFT, FOOT_TOP, inventory, configure.get(0), Slot.Rule.NORMAL,
-                    SlotKind.GENERIC.column(), SlotKind.GENERIC.row());
+                    iconColumn(SlotKind.GENERIC, style), iconRow(SlotKind.GENERIC, style));
         }
         layout.addGrid(PLAYER_LEFT, PLAYER_STORAGE_TOP, PLAYER_COLUMNS, PLAYER_STORAGE_ROWS, player,
                 PlayerInventory.HOTBAR_SLOTS, Slot.Rule.NORMAL);
@@ -253,12 +254,32 @@ public final class MachineMenu {
      * with four fills the column up to the status line, see {@link #statusRight()}.
      */
     private static void addUpgrades(ContainerLayout layout, MachineInventory inventory,
-            List<Integer> upgrades) {
+            List<Integer> upgrades, MachineStyle style) {
         for (int index = 0; index < upgrades.size(); index++) {
             layout.add(UPGRADE_LEFT, UPGRADE_BOTTOM - index * ContainerLayout.SLOT_PITCH,
-                    inventory, upgrades.get(index), Slot.Rule.NORMAL, SlotKind.GENERIC.column(),
-                    SlotKind.GENERIC.row());
+                    inventory, upgrades.get(index), Slot.Rule.NORMAL,
+                    iconColumn(SlotKind.GENERIC, style), iconRow(SlotKind.GENERIC, style));
         }
+    }
+
+    /**
+     * Column of the cell a kind of slot is drawn from.
+     * <p>
+     * The plain kind names no cell of the sheet: it is the slot of the very panel the machine stands in, which
+     * is grey for a machine of the electrical age and bronze for one of the steam age, so such a slot is handed
+     * to the screen without a picture, see {@link Slot#DEFAULT_ICON} and {@link MachineStyle}.
+     *
+     * @param kind kind the machine declared for a slot
+     * @param style style the machine is drawn in
+     * @return the column of the cell, {@link Slot#DEFAULT_ICON} for the plain slot of the style
+     */
+    private static int iconColumn(SlotKind kind, MachineStyle style) {
+        return kind == SlotKind.GENERIC ? Slot.DEFAULT_ICON : kind.column(style);
+    }
+
+    /** Row of the cell a kind of slot is drawn from, {@link Slot#DEFAULT_ICON} for the plain slot. */
+    private static int iconRow(SlotKind kind, MachineStyle style) {
+        return kind == SlotKind.GENERIC ? Slot.DEFAULT_ICON : kind.row(style);
     }
 
     /** Says what a machine and its screen disagree about. */
@@ -278,7 +299,7 @@ public final class MachineMenu {
      * asks for.
      */
     private static void addBlock(ContainerLayout layout, MachineInventory inventory,
-            List<Integer> slots, List<SlotKind> kinds, boolean input) {
+            List<Integer> slots, List<SlotKind> kinds, boolean input, MachineStyle style) {
         if (slots.isEmpty()) {
             // A machine may hold no slot of a side: a boiler has no product and a tank of fluid has no
             // item at all, so there is nothing to arrange, see MachineScreen#columns(int).
@@ -297,7 +318,8 @@ public final class MachineMenu {
                 SlotKind kind = kinds.get(index);
                 layout.add(left + column * ContainerLayout.SLOT_PITCH,
                         top + row * ContainerLayout.SLOT_PITCH, inventory, slots.get(index),
-                        input ? Slot.Rule.NORMAL : Slot.Rule.OUTPUT, kind.column(), kind.row());
+                        input ? Slot.Rule.NORMAL : Slot.Rule.OUTPUT, iconColumn(kind, style),
+                        iconRow(kind, style));
             }
         }
     }
@@ -380,6 +402,11 @@ public final class MachineMenu {
     /** Kind of the progress bar of this machine, given when it was registered. */
     public ProgressKind progressKind() {
         return machine.screen().progress();
+    }
+
+    /** Style the machine is drawn in, which is the panel and the slots its screen uses. */
+    public MachineStyle style() {
+        return machine.screen().style();
     }
 
     /** What is wrong with the machine right now, {@link MachineError#NONE} for a fine one. */

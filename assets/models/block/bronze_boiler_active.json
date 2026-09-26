@@ -4,16 +4,12 @@
       "from": [0, 0, 0],
       "to": [16, 16, 16],
       "faces": {
-        "down": { "texture": "bronze_casing/bronze_casing_bottom", "cullface": "down" },
-        "up": { "texture": "bronze_casing/bronze_casing_top", "cullface": "up" },
-        "north": {
-          "texture": "bronze_casing/bronze_casing_side",
-          "overlay": "bronze_boiler/bronze_boiler_front_active",
-          "cullface": "north"
-        },
-        "south": { "texture": "bronze_casing/bronze_casing_side", "cullface": "south" },
-        "west": { "texture": "bronze_casing/bronze_casing_side", "cullface": "west" },
-        "east": { "texture": "bronze_casing/bronze_casing_side", "cullface": "east" }
+        "down": { "texture": "bronze_bricks_casing/bronze_bricks_casing_bottom", "cullface": "down" },
+        "up": { "texture": "bronze_bricks_casing/bronze_bricks_casing_top", "cullface": "up" },
+        "north": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "overlay": "bronze_boiler/bronze_boiler_front_active", "cullface": "north" },
+        "south": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "south" },
+        "west": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "west" },
+        "east": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "east" }
       }
     }
   ]

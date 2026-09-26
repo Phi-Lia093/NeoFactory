@@ -1,0 +1,6 @@
+{
+  "ingredients": ["iron_ingot"],
+  "result": { "item": "wrought_iron_ingot" },
+  "time": 10.0,
+  "steam": 1000
+}

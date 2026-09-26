@@ -58,8 +58,27 @@ public class BlockIconRenderer implements Disposable {
      * without it the icon is a view along the horizon and the block looks like a wall. The share here lifts
      * the eye about thirty degrees above that horizon, which is the corner the original game draws a block
      * item from.
+     * <p>
+     * <b>The corner is the one of the north face.</b> The picture a block shows a player is drawn on its
+     * north side - the mouth of a furnace, the front of a machine, the door of a boiler - so the eye stands
+     * north of the cube, where it meets the top, the north side and the east flank of it. A camera south of
+     * the cube would show the three sides a machine has nothing drawn on: every machine of an age, built of
+     * the same casing, would look like every other one in a slot, which is what a player has to tell apart.
      */
-    private static final Vector3 DIRECTION = new Vector3(1f, 0.85f, 1f).nor();
+    private static final Vector3 DIRECTION = new Vector3(1f, 0.85f, -1f).nor();
+
+    /**
+     * The direction the eye of an icon stands in, seen from the cube.
+     * <p>
+     * The corner is arithmetic and not a drawing, so a test can check which faces of a block an icon shows
+     * without a graphics card - which is the one thing of an icon that no test could see otherwise, see
+     * {@link #DIRECTION}.
+     *
+     * @return a copy of the direction, safe to change
+     */
+    static Vector3 eyeDirection() {
+        return new Vector3(DIRECTION);
+    }
 
     /**
      * How far the camera stands from the middle of the cube, in blocks.

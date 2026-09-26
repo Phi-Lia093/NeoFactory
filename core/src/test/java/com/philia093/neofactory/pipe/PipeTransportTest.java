@@ -53,8 +53,27 @@ class PipeTransportTest {
         assertTrue(PipeTransport.weightOf(pipe(PipeMaterials.STEEL, PipeSize.HUGE))
                 > PipeTransport.weightOf(pipe(PipeMaterials.COPPER, PipeSize.TINY)),
                 "a wide pipe draws more than a narrow one");
-        assertEquals(1, PipeTransport.weightOf(null),
-                "something that is not a pipe at all still takes a share");
+        assertEquals(1, PipeTransport.weightOfMachine(0),
+                "a machine always draws a share, however slowly the line runs");
+        assertEquals(PipeMaterials.COPPER.flow(PipeSize.MEDIUM),
+                PipeTransport.weightOfMachine(PipeMaterials.COPPER.flow(PipeSize.MEDIUM)),
+                "a machine draws what the pipe that reaches it moves");
+    }
+
+    @Test
+    void aMachineBesideAPipeIsHandedAShareOfItsOwn() {
+        // The bug this covers: a pipe that both pours into a machine and carries on down the line handed the
+        // machine a weight of one against the rate of the branch, which rounded to nothing - so the machine of
+        // the middle pipe of a line of three stayed dry while the machines at its two ends were served.
+        int rate = PipeMaterials.COPPER.flow(PipeSize.MEDIUM);
+        int[] shares = new int[2];
+        PipeTransport.split(20,
+                new int[] { PipeTransport.weightOfMachine(rate), PipeTransport.weightOf(pipe(
+                        PipeMaterials.COPPER, PipeSize.MEDIUM)) },
+                shares);
+
+        assertEquals(10, shares[0], "the machine takes half of what the pipe offers");
+        assertEquals(10, shares[1], "and the branch behind it the other half");
     }
 
     @Test

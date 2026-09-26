@@ -8,6 +8,7 @@ import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.machine.GrinderMachine;
 import com.philia093.neofactory.pipe.PipeFlow;
 import com.philia093.neofactory.pipe.PipeMaterials;
 import com.philia093.neofactory.pipe.PipeSize;
@@ -252,6 +253,51 @@ class PipeFlowTest {
         assertEquals(400, amountOf(world, west) + amountOf(world, middle) + amountOf(world, east),
                 "the fluid of a line stays in the line");
         assertTrue(amountOf(world, east) > 0, "and it reached the far end of it");
+    }
+
+    @Test
+    void everyMachineBesideALineIsServedAndNotOnlyTheEnds() {
+        World world = new World(SEED, 12, 0);
+        // A line of three pipes, each of them with a machine on a side of its own: one at the head of the
+        // line, one in its middle and one at its end.
+        PipeBlockEntity head = place(world, copper(), 0, Y, 0, BlockFace.EAST, BlockFace.NORTH);
+        PipeBlockEntity centre = place(world, copper(), 1, Y, 0, BlockFace.WEST, BlockFace.EAST,
+                BlockFace.NORTH);
+        PipeBlockEntity tail = place(world, copper(), 2, Y, 0, BlockFace.WEST, BlockFace.NORTH);
+        MachineBlockEntity near = machine(world, 0);
+        MachineBlockEntity middle = machine(world, 1);
+        MachineBlockEntity far = machine(world, 2);
+
+        // Every pipe of the line is given what one tick of it moves, the way a machine pouring into it gives
+        // its fluid away, and the line runs for a while.
+        fill(world, head, Fluids.STEAM, 20);
+        fill(world, centre, Fluids.STEAM, 20);
+        fill(world, tail, Fluids.STEAM, 20);
+        settle(world, 20);
+
+        // A pipe hands its fluid out by weight, and a machine used to weigh one against the four hundred of
+        // the pipe behind the branch: its share rounded away, so the machine of the middle pipe of a line of
+        // three stayed dry while the machines at the two ends were served, see
+        // PipeTransport#weightOfMachine. Every machine beside a line is served today.
+        assertTrue(steamOf(near) > 0, "the machine at the head of the line is served");
+        assertTrue(steamOf(middle) > 0, "the machine in the middle of the line is served as well");
+        assertTrue(steamOf(far) > 0, "and the machine at the end of it");
+        assertEquals(60, steamOf(near) + steamOf(middle) + steamOf(far),
+                "and the fluid the line was given is what the machines took");
+    }
+
+    /** Places a machine of the age of steam beside a pipe, on the north side of it. */
+    private static MachineBlockEntity machine(World world, int x) {
+        world.setBlock(x, Y, -1, Blocks.GRINDER);
+        MachineBlockEntity entity = new MachineBlockEntity(BlockEntityTypes.GRINDER, new GrinderMachine());
+        entity.setPosition(x, Y, -1);
+        world.addBlockEntity(entity);
+        return entity;
+    }
+
+    /** Steam the tank of a machine of the age of steam holds. */
+    private static int steamOf(MachineBlockEntity machine) {
+        return machine.machine().tank(0).storage().amount();
     }
 
     @Test

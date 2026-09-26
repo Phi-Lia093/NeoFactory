@@ -1,0 +1,6 @@
+{
+  "ingredients": ["clay_ball"],
+  "result": { "item": "brick" },
+  "time": 6.0,
+  "steam": 600
+}

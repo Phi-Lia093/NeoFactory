@@ -64,6 +64,17 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
      */
     public static final String LIT = "lit";
 
+    /**
+     * Seconds a machine stays lit after the last frame of work it did, see {@link #updateLitState(World, float)}.
+     * <p>
+     * A quarter of a second covers the gap between two crafts of a machine that is fed without pause, and it is
+     * short enough that a machine which really stopped goes dark while a player watches it.
+     */
+    private static final float LIT_HOLD_SECONDS = 0.25f;
+
+    /** Seconds this machine has left to stay lit after the last frame of work it did. */
+    private float litHold;
+
     private final Machine machine;
 
     /** Side the machine looks in, turned by the wrench and stored with the machine. */
@@ -97,7 +108,7 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
         }
         updateExhaust(world);
         pourIntoPipes(world);
-        updateLitState(world);
+        updateLitState(world, delta);
     }
 
     /**
@@ -185,7 +196,6 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
     public BlockFace facing() {
         return facing;
     }
-
     /** Side the steam of this machine blows out of. */
     public BlockFace exhaustFace() {
         return exhaustFace;
@@ -283,15 +293,29 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
      * travels with the chunk like the block itself, so a world that is opened again shows a boiler that
      * still burns. The lookup only runs for a block that carries the property at all, so the cost is one
      * map lookup per tick for every machine of the game.
+     * <p>
+     * <b>A machine that keeps working keeps glowing.</b> The state is not turned off the moment a craft ends
+     * but stands for {@link #LIT_HOLD_SECONDS} after the last frame of work, because a machine that hands one
+     * craft over and takes the next one a frame later is busy the whole time: turning the picture off in
+     * between made the front of a working machine flicker like a lamp, and what a player has to see is whether
+     * the machine works at all.
+     *
+     * @param world world this machine lies in
+     * @param delta time since the last frame in seconds
      */
-    private void updateLitState(World world) {
+    private void updateLitState(World world, float delta) {
+        if (machine.isRunning()) {
+            litHold = LIT_HOLD_SECONDS;
+        } else {
+            litHold = Math.max(0.0f, litHold - delta);
+        }
         BlockStateTable states = world.getBlock(x(), y(), z()).states();
         if (!states.hasProperty(LIT)) {
             return;
         }
         int state = world.getState(x(), y(), z());
         Map<String, String> values = new LinkedHashMap<>(states.decode(state));
-        String wanted = machine.isRunning() ? "true" : "false";
+        String wanted = litHold > 0.0f ? "true" : "false";
         if (wanted.equals(values.get(LIT))) {
             return;
         }

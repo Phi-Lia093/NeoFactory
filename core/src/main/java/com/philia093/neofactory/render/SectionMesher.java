@@ -55,9 +55,19 @@ public final class SectionMesher {
      * Distance a second layer is lifted off the face below it, in blocks.
      * <p>
      * Two cards in the same place are one card to a graphics card, which keeps whichever of them it
-     * happened to draw; a hair of distance is what the frame around a block uses for the same reason.
+     * happened to draw, so the layer above a face is lifted a little. <b>How far it has to be lifted is a
+     * question of the distance the card looks at:</b> a depth buffer resolves less and less the further a
+     * face lies from the eye, and a hair that is enough under the nose of the player falls below the step the
+     * buffer takes a few dozen blocks away. The block below the layer then wins the depth test in patches,
+     * which shows as the grain of the face underneath coming through the layer above it - the casing of a
+     * machine showing through the picture of its front - and the flatter the angle a face is seen at, the
+     * worse it gets, because the depth of a face changes fastest where it is seen edge on.
+     * <p>
+     * A twentieth of a block is still less than one pixel of a picture of sixteen pixels - the offset stays
+     * invisible - and it lies above the step of the buffer far beyond the distance the camera draws, see
+     * {@code NeoFactoryGame}.
      */
-    private static final float OVERLAY_OFFSET = 0.002f;
+    private static final float OVERLAY_OFFSET = 0.05f;
 
     /** The colour a face takes that carries no tint, the white a picture is multiplied with. */
     private static final Color NO_TINT = new Color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -109,7 +119,13 @@ public final class SectionMesher {
         int stateAt(int x, int y, int z);
     }
 
-    /** Tells the layer a picture lives in inside the texture array. */
+    /**
+     * Tells the layer a picture lives in inside the texture array and how many frames it holds.
+     * <p>
+     * A picture that is a strip of frames lives in as many layers as it has frames, one below the
+     * other, and the layer this interface names is the first of them, see
+     * {@link com.philia093.neofactory.render.BlockPictures}.
+     */
     @FunctionalInterface
     public interface Pictures {
 
@@ -120,6 +136,19 @@ public final class SectionMesher {
          * @return the layer, or a negative value when the picture is not in the array
          */
         int layer(String picture);
+
+        /**
+         * Amount of frames a picture holds.
+         * <p>
+         * A picture that stands still names one frame, which is what a caller that knows nothing of
+         * animations - a test, a break overlay - leaves it at.
+         *
+         * @param picture name of the picture, relative to {@code blocks/} without extension
+         * @return the frames, at least one
+         */
+        default int frames(String picture) {
+            return 1;
+        }
     }
 
     /**
@@ -201,7 +230,8 @@ public final class SectionMesher {
                                 meshes.add(mesh);
                                 mesh = new MeshData();
                             }
-                            addFace(mesh, block, box, face, picture, layer, shown.rotateY(), x, y, z,
+                            addFace(mesh, block, box, face, picture, layer,
+                                    pictures.frames(picture.picture()), shown.rotateY(), x, y, z,
                                     originX, originY, originZ, shadow, 0.0f);
                             if (picture.hasOverlay()) {
                                 int overlay = pictures.layer(picture.overlay());
@@ -211,8 +241,8 @@ public final class SectionMesher {
                                         mesh = new MeshData();
                                     }
                                     addFace(mesh, block, box, face, picture, overlay,
-                                            shown.rotateY(), x, y, z, originX, originY, originZ, null,
-                                            OVERLAY_OFFSET);
+                                            pictures.frames(picture.overlay()), shown.rotateY(), x, y, z,
+                                            originX, originY, originZ, null, OVERLAY_OFFSET);
                                 }
                             }
                         }
@@ -238,7 +268,8 @@ public final class SectionMesher {
      * @param box box the face belongs to
      * @param face face to write
      * @param picture picture and window of the face
-     * @param layer layer the picture lives in inside the texture array
+     * @param layer layer the first frame of the picture lives in inside the texture array
+     * @param frames amount of frames the picture holds, one for a picture that stands still
      * @param rotateY quarter turns the whole model is turned by
      * @param x local X coordinate of the block
      * @param y local Y coordinate of the block
@@ -250,8 +281,8 @@ public final class SectionMesher {
      * @param offset distance the face is lifted along its own direction, {@code 0} for the face itself
      */
     private static void addFace(MeshData mesh, Block block, ModelBox box, BlockFace face,
-            ModelFace picture, int layer, int rotateY, int x, int y, int z, int originX, int originY,
-            int originZ, boolean[] shadow, float offset) {
+            ModelFace picture, int layer, int frames, int rotateY, int x, int y, int z, int originX,
+            int originY, int originZ, boolean[] shadow, float offset) {
         Color tint = picture.tinted() ? block.tint() : NO_TINT;
         float pushX = face.x() * offset;
         float pushY = face.y() * offset;
@@ -304,7 +335,7 @@ public final class SectionMesher {
                     originY + y + localY + pushY,
                     originZ + z + localZ + pushZ,
                     window[0], window[1], layer,
-                    tint.r * light, tint.g * light, tint.b * light);
+                    tint.r * light, tint.g * light, tint.b * light, frames);
         }
         // The corners are walked counter clockwise as seen from outside the block, so both triangles
         // face the viewer with the winding a graphics card keeps. A turn of the box or of the state

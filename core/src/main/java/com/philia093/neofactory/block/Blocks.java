@@ -80,8 +80,52 @@ public final class Blocks {
     // pipes name together - a hundred and forty five of them - and the run is given those very numbers, so a
     // block that comes after the pipes starts at 174, see Pipes.
 
+    /** The steam furnace, the machine that smelts ore with the steam of the boiler. */
+    public static final int STEAM_FURNACE_ID = 174;
+
+    /** The alloy furnace, the machine that melts two metals into one. */
+    public static final int ALLOY_FURNACE_ID = 175;
+
+    /** The grinder, the machine that turns ore into dust. */
+    public static final int GRINDER_ID = 176;
+
+    /** The compressor, the machine that presses an item together. */
+    public static final int COMPRESSOR_ID = 177;
+
+    /** The extractor, the machine that squeezes what is in an item out of it. */
+    public static final int EXTRACTOR_ID = 178;
+
+    /** The forge hammer, the machine that beats an ingot into shape. */
+    public static final int FORGE_HAMMER_ID = 179;
+
+    /**
+     * Ids of the machines of the age of steel, one per machine of bronze.
+     * <p>
+     * The seven of them stand behind the machines of bronze, so nothing that was stored before them moved, see
+     * {@link #NEXT_FREE_ID}.
+     */
+    public static final int STEEL_BOILER_ID = 180;
+
+    /** The steam furnace of steel, which smelts twice as fast as the one of bronze. */
+    public static final int STEEL_STEAM_FURNACE_ID = 181;
+
+    /** The alloy furnace of steel. */
+    public static final int STEEL_ALLOY_FURNACE_ID = 182;
+
+    /** The grinder of steel. */
+    public static final int STEEL_GRINDER_ID = 183;
+
+    /** The compressor of steel. */
+    public static final int STEEL_COMPRESSOR_ID = 184;
+
+    /** The extractor of steel. */
+    public static final int STEEL_EXTRACTOR_ID = 185;
+
+    /** The forge hammer of steel. */
+    public static final int STEEL_FORGE_HAMMER_ID = 186;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 174;
+    public static final int NEXT_FREE_ID = 187;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -179,6 +223,45 @@ public final class Blocks {
 
     /** The bronze boiler block, the machine that turns water into steam. */
     public static Block BRONZE_BOILER;
+
+    /** The steam furnace, the first machine that runs on the steam of the boiler. */
+    public static Block STEAM_FURNACE;
+
+    /** The alloy furnace, the machine that melts two metals into one. */
+    public static Block ALLOY_FURNACE;
+
+    /** The grinder, the machine that turns ore into dust. */
+    public static Block GRINDER;
+
+    /** The compressor, the machine that presses an item together. */
+    public static Block COMPRESSOR;
+
+    /** The extractor, the machine that squeezes what is in an item out of it. */
+    public static Block EXTRACTOR;
+
+    /** The forge hammer, the machine that beats an ingot into shape. */
+    public static Block FORGE_HAMMER;
+
+    /** The boiler of the age of steel, which makes steam faster than the boiler of bronze. */
+    public static Block STEEL_BOILER;
+
+    /** The steam furnace of steel. */
+    public static Block STEEL_STEAM_FURNACE;
+
+    /** The alloy furnace of steel. */
+    public static Block STEEL_ALLOY_FURNACE;
+
+    /** The grinder of steel. */
+    public static Block STEEL_GRINDER;
+
+    /** The compressor of steel. */
+    public static Block STEEL_COMPRESSOR;
+
+    /** The extractor of steel. */
+    public static Block STEEL_EXTRACTOR;
+
+    /** The forge hammer of steel. */
+    public static Block STEEL_FORGE_HAMMER;
 
     private Blocks() {
         // Utility class: never instantiated.
@@ -502,11 +585,67 @@ public final class Blocks {
         BlockRegistry.register(BRONZE_BOILER);
 
         // ------------------------------------------------------------------
+        // The six machines of the age of steam. Every one of them is the same block - a cube of bronze
+        // casing whose front shows the machine that stands there - and they differ in the entity behind it
+        // and in the picture of their front, see SteamMachine.
+        // ------------------------------------------------------------------
+        STEAM_FURNACE = machineBlock(STEAM_FURNACE_ID, "steam_furnace");
+        ALLOY_FURNACE = machineBlock(ALLOY_FURNACE_ID, "alloy_furnace");
+        GRINDER = machineBlock(GRINDER_ID, "grinder");
+        COMPRESSOR = machineBlock(COMPRESSOR_ID, "compressor");
+        EXTRACTOR = machineBlock(EXTRACTOR_ID, "extractor");
+        FORGE_HAMMER = machineBlock(FORGE_HAMMER_ID, "forge_hammer");
+
+        // ------------------------------------------------------------------
+        // The machines of the age of steel. Every one of them is the twin of a machine of bronze, built of the
+        // casing of its own age and driven harder, see MachinePressure.
+        // ------------------------------------------------------------------
+        STEEL_BOILER = machineBlock(STEEL_BOILER_ID, "steel_boiler");
+        STEEL_STEAM_FURNACE = machineBlock(STEEL_STEAM_FURNACE_ID, "steel_steam_furnace");
+        STEEL_ALLOY_FURNACE = machineBlock(STEEL_ALLOY_FURNACE_ID, "steel_alloy_furnace");
+        STEEL_GRINDER = machineBlock(STEEL_GRINDER_ID, "steel_grinder");
+        STEEL_COMPRESSOR = machineBlock(STEEL_COMPRESSOR_ID, "steel_compressor");
+        STEEL_EXTRACTOR = machineBlock(STEEL_EXTRACTOR_ID, "steel_extractor");
+        STEEL_FORGE_HAMMER = machineBlock(STEEL_FORGE_HAMMER_ID, "steel_forge_hammer");
+
+        // ------------------------------------------------------------------
         // The pipes of the industry, one block per material and size. They are not written out here
         // because there are twenty eight of them: the table of the pipes builds them, see Pipes.
         // ------------------------------------------------------------------
         Pipes.registerBlocks();
 
         BlockRegistry.freeze();
+    }
+
+    /**
+     * Builds one of the machines of the age of steam.
+     * <p>
+     * Every one of them is the same block: a cube of bronze casing whose front shows the machine that stands
+     * there, a cube that is taken apart with the wrench and hands everything it holds over, a cube that names
+     * a tank a line of pipes may be built towards, and a cube that names the block entity which holds its
+     * slots, its tank and its work, see
+     * {@link com.philia093.neofactory.blockentity.BlockEntityTypes}. Only the name and the picture of the
+     * front tell the six of them apart, so one method builds all of them.
+     *
+     * @param id id of the block, written down in this class
+     * @param name name of the block, also the name of its texture folder and of the block entity behind it
+     * @return the registered block
+     */
+    private static Block machineBlock(int id, String name) {
+        Block block = Block.builder(id, name)
+                .texture(name + "/" + name + "_front")
+                .solid(true)
+                .hardness(3.5f)
+                // A machine is taken apart with the wrench and with nothing else: the tool kind is what makes
+                // the wrench quick at it and a bare hand slow, and the level of nothing keeps every kind of
+                // tool able to break it, so a machine that has to go always hands its blocks over, see
+                // HardnessMining.
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
+                .blockEntity(name)
+                .carriesFluid()
+                .build();
+        BlockRegistry.register(block);
+        return block;
     }
 }

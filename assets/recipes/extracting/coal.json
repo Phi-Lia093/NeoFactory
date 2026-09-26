@@ -1,0 +1,6 @@
+{
+  "ingredients": ["coal_ore"],
+  "result": { "item": "coal", "count": 3 },
+  "time": 8.0,
+  "steam": 800
+}

@@ -1,0 +1,6 @@
+{
+  "ingredients": ["potato"],
+  "result": { "item": "baked_potato" },
+  "time": 6.0,
+  "steam": 600
+}

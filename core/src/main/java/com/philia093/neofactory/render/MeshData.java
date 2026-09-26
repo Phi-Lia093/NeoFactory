@@ -16,20 +16,33 @@ package com.philia093.neofactory.render;
  * <p>
  * <b>An index addresses a vertex of this mesh</b>, which is what keeps a shared corner between two
  * faces from being written twice.
+ * <p>
+ * <b>A corner also carries the frames of its picture.</b> A picture that is a strip of frames lives in
+ * as many layers of the array as it has frames, one below the other, see
+ * {@link com.philia093.neofactory.render.BlockPictures}; the layer of a corner is the first frame of
+ * that run and the count beside it is how many layers it may run to. A still picture names one frame
+ * and never moves, and the shader picks the frame of the run out of the tick the world is in, see
+ * {@link BlockShader#animationFrame(int)}. That is what keeps the casing of a machine still while the
+ * gear on its top turns.
  */
 public final class MeshData {
 
     /** Highest amount of vertices one mesh may hold, the limit of a sixteen bit index. */
     public static final int MAX_VERTICES = 65_535;
 
-    /** Amount of floats of one vertex: position, texture coordinate, picture layer and colour. */
-    public static final int FLOATS_PER_VERTEX = 10;
+    /**
+     * Amount of floats of one vertex: position, texture coordinate, picture layer, colour and frames.
+     */
+    public static final int FLOATS_PER_VERTEX = 11;
 
     /** Amount of floats one triangle covers. */
     public static final int FLOATS_PER_TRIANGLE = FLOATS_PER_VERTEX * 3;
 
     /** Offset of the red of a vertex inside its floats. */
     public static final int RED = 6;
+
+    /** Offset of the amount of frames of the picture a corner shows inside its floats. */
+    public static final int FRAMES = 10;
 
     private final float[] vertices = new float[MAX_VERTICES * FLOATS_PER_VERTEX];
 
@@ -74,6 +87,28 @@ public final class MeshData {
      */
     public int addVertex(float x, float y, float z, float u, float v, float layer, float red,
             float green, float blue) {
+        return addVertex(x, y, z, u, v, layer, red, green, blue, 1);
+    }
+
+    /**
+     * Writes one corner of a face of an animated picture.
+     * <p>
+     * The layer is the first frame of the run the shader walks through, see {@link #FRAMES}.
+     *
+     * @param x world X coordinate of the corner
+     * @param y world Y coordinate of the corner, the height
+     * @param z world Z coordinate of the corner
+     * @param u texture coordinate across the picture
+     * @param v texture coordinate up the picture
+     * @param layer layer the first frame of the picture lives in inside the texture array
+     * @param red red of the colour the corner is drawn with
+     * @param green green of the colour the corner is drawn with
+     * @param blue blue of the colour the corner is drawn with
+     * @param frames amount of frames the picture holds, at least one
+     * @return the index of the corner inside this mesh
+     */
+    public int addVertex(float x, float y, float z, float u, float v, float layer, float red,
+            float green, float blue, int frames) {
         int index = vertexCount;
         int base = index * FLOATS_PER_VERTEX;
         vertices[base] = x;
@@ -86,6 +121,7 @@ public final class MeshData {
         vertices[base + 7] = clamp(green);
         vertices[base + 8] = clamp(blue);
         vertices[base + 9] = 1.0f;
+        vertices[base + FRAMES] = frames >= 1 ? frames : 1;
 
         vertexCount++;
         return index;

@@ -1,0 +1,6 @@
+{
+  "ingredients": ["log_oak"],
+  "result": { "item": "charcoal" },
+  "time": 10.0,
+  "steam": 900
+}

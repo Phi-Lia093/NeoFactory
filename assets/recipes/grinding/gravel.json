@@ -1,0 +1,6 @@
+{
+  "ingredients": ["stone"],
+  "result": { "item": "gravel" },
+  "time": 6.0,
+  "steam": 600
+}

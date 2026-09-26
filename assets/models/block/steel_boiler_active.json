@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "steel_bricks_casing/steel_bricks_casing_bottom", "cullface": "down" },
+        "up": { "texture": "steel_bricks_casing/steel_bricks_casing_top", "cullface": "up" },
+        "north": { "texture": "steel_bricks_casing/steel_bricks_casing_side", "overlay": "steel_boiler/steel_boiler_front_active", "cullface": "north" },
+        "south": { "texture": "steel_bricks_casing/steel_bricks_casing_side", "cullface": "south" },
+        "west": { "texture": "steel_bricks_casing/steel_bricks_casing_side", "cullface": "west" },
+        "east": { "texture": "steel_bricks_casing/steel_bricks_casing_side", "cullface": "east" }
+      }
+    }
+  ]
+}

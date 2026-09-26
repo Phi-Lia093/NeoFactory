@@ -102,6 +102,9 @@ public class WorldRenderer3D implements Disposable {
         drawnSections = 0;
         drawnMeshes = 0;
         cache.beginFrame();
+        // The frame of every animated picture of the world comes from the one clock the world runs on,
+        // see BlockAnimation: a machine whose gear turns is drawn from the very tick that turned it.
+        shader.animationFrame(BlockAnimation.frameIndex(world.tickCount(), BlockShader.ANIMATION));
         shader.begin(camera, pictures, sky, camera.far * FOG_START_SHARE, camera.far);
         for (Chunk chunk : world.chunks()) {
             int originX = chunk.originX();

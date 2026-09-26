@@ -12,6 +12,12 @@ import com.badlogic.gdx.math.MathUtils;
  * to the share of the progress - turns the pair into a bar that works for the arrow
  * of the crafting interface and for the gauge of a machine alike.
  * <p>
+ * <b>A bar that stands on its side</b> grows from the bottom of its cell upwards and is filled instead of cut,
+ * see {@link #ArrowElement(TextureRegion, TextureRegion, boolean)}: the bright part of such a bar is a plain
+ * block of colour, so stretching it is what makes it meet the top of its track exactly. Its track may be larger
+ * than the bright part - the tall bar of a forge hammer is - and the picture of the element follows whichever of
+ * the two is bigger.
+ * <p>
  * The bright arrow is cut once per possible width when the element is created, so
  * drawing it never allocates anything, no matter how often the progress changes.
  */
@@ -25,6 +31,12 @@ public final class ArrowElement {
 
     /** Picture of the dark track, drawn behind the bright arrow. */
     private final TextureRegion track;
+
+    /** Picture of the bright arrow, the part that grows with the progress. */
+    private final TextureRegion bright;
+
+    /** {@code true} when this bar grows upwards instead of to the right. */
+    private final boolean vertical;
 
     /** Width of this arrow in pixels. */
     private final int width;
@@ -56,10 +68,33 @@ public final class ArrowElement {
      * @param empty the dark track behind it
      */
     public ArrowElement(TextureRegion full, TextureRegion empty) {
+        this(full, empty, false);
+    }
+
+    /**
+     * Cuts a pair of arrows out of any sheet, either across or upwards.
+     * <p>
+     * A bar that stands on its side grows upwards from the bottom of its cell, and it is filled rather than
+     * cut: the bright part of such a bar is a plain block of colour, so stretching it to the height the
+     * progress asks for is what makes it meet the top of the track. The size of the element is the larger of
+     * the two pictures on either axis, because the tall bar of a forge hammer carries a track that is bigger
+     * than the bright part inside it.
+     *
+     * @param full the bright arrow, the part that grows with the progress
+     * @param empty the dark track behind it
+     * @param vertical {@code true} when the bar grows upwards, {@code false} for one that grows to the right
+     */
+    public ArrowElement(TextureRegion full, TextureRegion empty, boolean vertical) {
         this.track = empty;
-        this.width = full != null ? full.getRegionWidth() : 0;
-        this.height = full != null ? full.getRegionHeight() : 0;
-        this.parts = cut(full, width, height);
+        this.bright = full;
+        this.vertical = vertical;
+        this.width = Math.max(full != null ? full.getRegionWidth() : 0,
+                empty != null ? empty.getRegionWidth() : 0);
+        this.height = Math.max(full != null ? full.getRegionHeight() : 0,
+                empty != null ? empty.getRegionHeight() : 0);
+        // A vertical bar is never cut: the whole picture is drawn, stretched to the height the progress asks
+        // for, so a track that is taller than the bright part still ends up full.
+        this.parts = vertical ? new TextureRegion[0] : cut(full, width, height);
     }
 
     /** Cuts the bright arrow into one picture per possible part of the bar. */
@@ -68,8 +103,9 @@ public final class ArrowElement {
         if (full == null || width <= 0 || height <= 0) {
             return found;
         }
-        for (int part = 0; part <= width; part++) {
-            found[part] = new TextureRegion(full, 0, 0, part, height);
+        int reachable = Math.min(width, full.getRegionWidth());
+        for (int part = 0; part <= reachable; part++) {
+            found[part] = new TextureRegion(full, 0, 0, part, full.getRegionHeight());
         }
         return found;
     }
@@ -86,7 +122,15 @@ public final class ArrowElement {
         if (track != null) {
             batch.draw(track, x, y, width, height);
         }
-        int part = Math.round(MathUtils.clamp(progress, 0.0f, 1.0f) * width);
+        float done = MathUtils.clamp(progress, 0.0f, 1.0f);
+        if (bright == null || done <= 0.0f) {
+            return;
+        }
+        if (vertical) {
+            batch.draw(bright, x, y, width, height * done);
+            return;
+        }
+        int part = Math.round(done * width);
         if (part <= 0 || part >= parts.length || parts[part] == null) {
             return;
         }
@@ -103,8 +147,13 @@ public final class ArrowElement {
         return height;
     }
 
-    /** {@code true} when both arrows of the sheet could be used. */
+    /** {@code true} when this bar grows upwards instead of to the right. */
+    public boolean isVertical() {
+        return vertical;
+    }
+
+    /** {@code true} when the bright arrow of the sheet could be used. */
     public boolean isComplete() {
-        return parts.length > 0 && parts[parts.length - 1] != null;
+        return bright != null && (vertical || parts.length > 0 && parts[parts.length - 1] != null);
     }
 }

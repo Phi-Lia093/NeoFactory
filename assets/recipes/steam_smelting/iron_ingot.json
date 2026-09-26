@@ -1,0 +1,6 @@
+{
+  "ingredients": ["iron_ore"],
+  "result": { "item": "iron_ingot" },
+  "time": 10.0,
+  "steam": 1000
+}

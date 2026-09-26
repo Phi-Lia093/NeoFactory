@@ -101,8 +101,8 @@ class SteamMachineTest {
 
         assertFalse(machine.takesAnExhaustCheck(),
                 "a recipe that spends no steam leaves nothing to blow out");
-        assertEquals(400, SteamMachine.steamPerSecond(recipe), "the recipe names its steam");
-        assertEquals(0, SteamMachine.steamPerSecond(new TestRecipe("free", 0.5f, 0)));
+        assertEquals(400, SteamMachine.steamOf(recipe), "the recipe names its steam");
+        assertEquals(0, SteamMachine.steamOf(new TestRecipe("free", 0.5f, 0)));
     }
 
     @Test

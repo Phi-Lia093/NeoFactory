@@ -148,6 +148,12 @@ public final class RecipeLoader {
             return new SmeltingRecipe(name, readIngredient(name, root.get("ingredient")), result,
                     root.getFloat("time", SmeltingRecipe.DEFAULT_SECONDS));
         }
+        if (type.isSteam()) {
+            // A recipe of the age of steam names its ingredients as a list, the way a shapeless recipe does,
+            // and says how many millibuckets of steam one craft spends, see SteamRecipe.
+            return new SteamRecipe(name, type, readIngredients(name, root.get("ingredients")), result,
+                    root.getFloat("time", SteamRecipe.DEFAULT_SECONDS), root.getInt("steam", 0));
+        }
         throw new IllegalArgumentException("No loader for the recipe type '" + type.name() + "'");
     }
 

@@ -130,7 +130,7 @@ public class SectionMeshCache implements Disposable {
         SectionMesher.States states =
                 (x, y, z) -> world.peekState(originX + x, originY + y, originZ + z);
         List<MeshData> data = SectionMesher.build(section, originX, originY, originZ, blocks, states,
-                pictures::layer);
+                pictures);
         section.clearDirty();
 
         Array<Mesh> meshes = new Array<>();

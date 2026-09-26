@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Disposable;
+import com.philia093.neofactory.block.Block;
 
 /**
  * The shader every block of the world is drawn with.
@@ -28,15 +29,18 @@ import com.badlogic.gdx.utils.Disposable;
 public class BlockShader implements Disposable {
 
     /**
-     * Layout of one corner: position, texture coordinate, layer of the picture and colour.
+     * Layout of one corner: position, texture coordinate, layer of the picture, colour and frames.
      * <p>
      * The names are the ones this shader declares, which is how a mesh and the program find each other.
+     * The amount of frames is the last number of a corner because it was added after the rest, see
+     * {@link MeshData#FRAMES}.
      */
     public static final VertexAttributes ATTRIBUTES = new VertexAttributes(
             VertexAttribute.Position(),
             new VertexAttribute(VertexAttributes.Usage.TextureCoordinates, 2, "a_texCoords"),
             new VertexAttribute(VertexAttributes.Usage.Generic, 1, "a_layer"),
-            VertexAttribute.ColorUnpacked());
+            VertexAttribute.ColorUnpacked(),
+            new VertexAttribute(VertexAttributes.Usage.Generic, 1, "a_frames"));
 
     private static final String VERTEX_SHADER = """
             #version 150
@@ -44,12 +48,14 @@ public class BlockShader implements Disposable {
             in vec2 a_texCoords;
             in float a_layer;
             in vec4 a_color;
+            in float a_frames;
 
             uniform mat4 u_projViewTrans;
             uniform mat4 u_modelTrans;
             uniform vec3 u_cameraPosition;
             uniform float u_fogStart;
             uniform float u_fogEnd;
+            uniform float u_frame;
 
             out vec2 v_texCoords;
             out float v_layer;
@@ -58,7 +64,11 @@ public class BlockShader implements Disposable {
 
             void main() {
                 v_texCoords = a_texCoords;
-                v_layer = a_layer;
+                // A picture that is a strip of frames lives in as many layers as it has frames, one
+                // below the other, so the frame of this corner is the layer of the first frame plus
+                // the frame the world is in, wrapped around the run. A still picture names one frame
+                // and therefore always lands on the layer it was meshed with.
+                v_layer = a_layer + mod(u_frame, max(a_frames, 1.0));
                 v_color = a_color;
                 // A mesh of a section already stands where it belongs, so its model matrix is the one
                 // that changes nothing; a mesh of an item or a body is moved and scaled by this one.
@@ -92,6 +102,9 @@ public class BlockShader implements Disposable {
 
     private final ShaderProgram program = new ShaderProgram(VERTEX_SHADER, FRAGMENT_SHADER);
 
+    /** Frame of an animated picture the next pass shows, see {@link #animationFrame(int)}. */
+    private float animationFrame;
+
     /** Model matrix that moves nothing, the one a mesh of a section is drawn with. */
     private static final Matrix4 NO_MOVE = new Matrix4();
 
@@ -104,6 +117,32 @@ public class BlockShader implements Disposable {
             throw new IllegalStateException("The block shader did not compile: " + program.getLog());
         }
     }
+
+    /**
+     * Frame of an animated picture the next pass shows.
+     * <p>
+     * Every picture of the world shares the frame, which is what makes a lake of water one body and
+     * not a field of pictures that each started at their own moment; a still picture names one frame
+     * and is not moved by it at all. The renderer sets it once a frame out of the tick the world is
+     * in, see {@link BlockAnimation#frameIndex(long, com.philia093.neofactory.block.Block.Animation)}
+     * and {@link #ANIMATION}, and the meshes that were built before the frame was ever set stand
+     * still on their first frame.
+     *
+     * @param frame frame of the animation that is running, counted from zero
+     */
+    public void animationFrame(int frame) {
+        this.animationFrame = Math.max(0, frame);
+    }
+
+    /**
+     * The round an animated picture of the world runs through, four ticks a frame.
+     * <p>
+     * One round serves every picture: a strip of four frames passes through them four times as fast
+     * as one of sixty four, because the shader wraps the frame around the run of its own picture, see
+     * {@link MeshData#FRAMES}. A machine whose gear turns four steps a second is therefore one strip
+     * of four frames on disk and nothing else.
+     */
+    public static final Block.Animation ANIMATION = new Block.Animation(64, 4);
 
     /**
      * Makes this program the one the next meshes are drawn with.
@@ -124,6 +163,7 @@ public class BlockShader implements Disposable {
         program.setUniformf("u_fogStart", fogStart);
         program.setUniformf("u_fogEnd", fogEnd);
         program.setUniformi("u_texture", TEXTURE_UNIT);
+        program.setUniformf("u_frame", animationFrame);
         pictures.bind(TEXTURE_UNIT);
     }
 

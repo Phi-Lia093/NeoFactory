@@ -105,8 +105,23 @@ class CreativeInventoryTest {
         assertEquals(Items.FURNACE, creative.stackAt(0).item(), "the furnace comes first");
         assertEquals(Items.BRONZE_BOILER, creative.stackAt(1).item(),
                 "then the boiler of the industry");
-        assertTrue(creative.stackAt(2).isEmpty(), "and nothing behind them so far");
-        assertEquals(2, creative.matches().size(), "the list holds the two machines of the game");
+        assertEquals(Items.STEAM_FURNACE, creative.stackAt(2).item(),
+                "then the machines that run on its steam");
+        assertEquals(Items.ALLOY_FURNACE, creative.stackAt(3).item(), "the alloy furnace");
+        assertEquals(Items.GRINDER, creative.stackAt(4).item(), "the grinder");
+        assertEquals(Items.COMPRESSOR, creative.stackAt(5).item(), "the compressor");
+        assertEquals(Items.EXTRACTOR, creative.stackAt(6).item(), "the extractor");
+        assertEquals(Items.FORGE_HAMMER, creative.stackAt(7).item(), "and the forge hammer");
+        assertEquals(Items.STEEL_BOILER, creative.stackAt(8).item(),
+                "then the machines of the age of steel, one per machine of bronze");
+        assertEquals(Items.STEEL_STEAM_FURNACE, creative.stackAt(9).item(), "the steam furnace of steel");
+        assertEquals(Items.STEEL_ALLOY_FURNACE, creative.stackAt(10).item(), "the alloy furnace of steel");
+        assertEquals(Items.STEEL_GRINDER, creative.stackAt(11).item(), "the grinder of steel");
+        assertEquals(Items.STEEL_COMPRESSOR, creative.stackAt(12).item(), "the compressor of steel");
+        assertEquals(Items.STEEL_EXTRACTOR, creative.stackAt(13).item(), "the extractor of steel");
+        assertEquals(Items.STEEL_FORGE_HAMMER, creative.stackAt(14).item(), "and the hammer of steel");
+        assertTrue(creative.stackAt(15).isEmpty(), "and nothing behind them so far");
+        assertEquals(15, creative.matches().size(), "the list holds the machines of the game");
     }
 
     @Test

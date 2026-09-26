@@ -99,6 +99,23 @@ stored on disk so that a session can be continued later.
   filled and emptied by clicking its tanks with a cell as well, and a
   boiler that cannot let its steam out is a boiler that ruins itself - a wooden pipe at its hatch bursts
   with the steam of three hundred and seventy three kelvin.
+- **The machines of the age of steam** - six machines that run on the steam of the boiler instead of on a
+  flame of their own: the **steam furnace** and the **alloy furnace**, which smelt an ore and melt two metals
+  together, the **grinder**, which turns ore into dust, the **compressor**, which presses an item into a
+  plate, the **extractor**, which takes something apart, and the **forge hammer**, which beats an ingot into
+  shape. Each of them holds one tank of sixteen thousand millibuckets, which a line of pipes or a cell fills,
+  and each reads its own kind of recipe from its own folder of `assets/recipes` - `steam_smelting`,
+  `alloy_smelting`, `grinding`, `compressing`, `extracting` and `forging` - where every file says how long a
+  craft takes and how many millibuckets of steam it spends. **Steam is spent while a craft runs**, the way a
+  machine of the electrical age spends its energy: one frame pays the share of the craft it is worth, so a
+  machine whose tank is empty waits with its input in the slot until the boiler catches up.
+  **A machine of the bronze age blows its steam out.** The wrench sets which side of the block is its front
+  and which one is its exhaust - a plain right click turns the machine, a right click with `SHIFT` held moves
+  the exhaust - and the moment a craft ends the machine looks at that face: a solid block standing there is
+  reported in the corner of its panel and the machine refuses the next recipe until the way out is open again.
+  The craft that was already running is always finished, because the steam of it was paid for. A machine of
+  this age is built of bronze casing like the boiler, is taken apart with the wrench, and its front glows
+  while it works.
 - **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
   comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
   medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
@@ -424,7 +441,24 @@ itself off screen, and the frame it is drawn in is the cell: a slot says how lar
 the ring around it is, so a tiny pipe is a thin tube in the middle of a slot and a block fills its slot
 the way it fills its cell. What a pipe is drawn *as* is the state `Block#itemState` names - a straight
 length of itself with its arms, not the bare stub of state zero - so a slot, a hand and the ground show
-the very piece of pipe a player thinks of.
+the very piece of pipe a player thinks of. **The eye stands at the corner of the north face**, which is the
+side a block draws its picture on - the mouth of a furnace, the front of a machine, the door of a boiler -
+so a slot shows the top, that front and the flank beside it, and the machines of an age, built of one
+casing, are told apart by what stands on their front, see `BlockIconRenderer#DIRECTION`.
+
+**The art of a machine and the gear that turns while it works.** `tools/import_machine_art.ps1` takes the
+pictures of the machines of the industry out of the pack: the casing of their age - bronze or steel, plain and
+in bricks for the two that hold a fire - and the front and the top that stand on it, one picture for a machine
+at rest and one for a machine that works. **A picture that is a strip of frames moves.** The array of the world
+gives every frame of such a strip a layer of its own, one below the other, and a corner of a face carries the
+layer of the first frame of the run and how many frames follow it, see `MeshData#FRAMES`; the shader of the
+world walks that run with the tick the world is in, one frame every four ticks, see `BlockShader#ANIMATION`.
+The layer a face names therefore never shifts for the faces around it, which is what turns the gear on the top
+of a running grinder, compressor or extractor - the pack draws the gear of a macerator as four frames and the
+script writes the tops of the other two as four counter clockwise quarter turns of their picture - while the
+casing and the mouth of the same machine stay where they are, because a still picture names one frame and no
+run at all. A top that is a strip is counted from its file and never from the model that draws it, so a machine
+begins to turn as soon as its art is a strip, see `BlockPictures#frameCountOf`.
 
 **The models of the pipes are written by a script and checked by a test.** A pipe is drawn from the state
 of its cell - the mask of the six sides it joins, see `pipe` - and sixty four masks in seven sizes are more
@@ -587,20 +621,24 @@ and only the loaded chunks are ticked: a chunk that is dropped from memory is wr
 first, machines and all. Breaking a machine hands what it holds to the player before the
 block goes, so nothing that was put into it is lost.
 
-The screen of a machine comes from `gui/machine_icons.png`: the panel is empty in its upper
-half, where a machine stands the slots it works with, and carries the slots of the player
-inventory in its lower half. Next to the panel the sheet holds a grid of icons - one per kind
-of item slot, a bright and an empty pair of arrows per kind of process, the error pictures
-and one icon per kind of tank - and a machine names the cells it wants through `SlotKind` and
-`ProgressKind`.
+The screen of a machine comes from `gui/machine_icons.png`, which carries one panel per age of the industry:
+the light grey one at the top, which every machine of the electrical age is drawn with, and the bronze one
+right below it for the machines that run on steam, see `MachineStyle`. Either panel is empty in its upper
+half, where a machine stands the slots it works with, and carries the slots of the player inventory in its
+lower half. Next to the panels the sheet holds a grid of icons - one per kind of item slot, the slots of the
+bronze age in a column of their own, a bright and an empty pair of arrows per kind of process, the error
+pictures of both ages, one icon per kind of tank, and one heavy track beyond the grid for the tall bar of a
+forge hammer - and a machine names the cells it wants through `SlotKind` and `ProgressKind`. A slot a machine
+leaves plain is drawn with the slot of its own panel, which is what turns the same screen grey or bronze.
 
 What a machine shows is registered with the machine, see `MachineScreen`: the title of the
-upper left corner, the pair of arrows its progress bar is drawn from, the kind of every slot
-it works with and the tanks it holds. The layout turns that into a screen of its own, see
-`MachineMenu`: a block of one, two, four or six slots takes the shape its size asks for - one
-slot alone, two above each other, a square of four and two rows of three - the inputs to the
-left of the progress bar and the products to its right, the tanks at the foot of the panel
-and the slots of the player inventory on the rows its own panel carries. The column at the
+upper left corner, the panel of the age it belongs to, the pair of arrows its progress bar is
+drawn from, the kind of every slot it works with and the tanks it holds. The layout turns that
+into a screen of its own, see `MachineMenu`: a block of one, two, four or six slots takes the
+shape its size asks for - one slot alone, two above each other, a square of four and two rows
+of three - the inputs to the left of the progress bar and the products to its right, the tanks
+at the foot of the panel and the slots of the player inventory on the rows its own panel
+carries. The column at the
 right edge belongs to the upgrade slots, of which a machine may hold four: they fill it from
 the lower corner upwards, and the status line of the upper right corner stops beside them.
 The configure slot a machine asks for stands at the right of the foot. Every cell of the

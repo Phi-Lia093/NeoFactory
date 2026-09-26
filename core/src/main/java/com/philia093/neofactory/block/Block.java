@@ -247,6 +247,15 @@ public final class Block {
      * below the other, and the renderer shows the cell that belongs to the current tick,
      * see {@link com.philia093.neofactory.render.BlockAnimation}. The first user is the
      * water of a lake, the same ability serves a machine that moves while it works.
+     * <p>
+     * <b>The renderer reads the frames of a picture out of its file, not out of this record.</b> A
+     * picture that is a strip of tiles takes one layer per frame of the texture array, and the
+     * shader of the world walks that run with the tick of the world, which is what turns the gear
+     * on the top of a machine while it works and keeps the casing around it still, see
+     * {@link com.philia093.neofactory.render.BlockPictures#frameCountOf(int, int)} and
+     * {@link com.philia093.neofactory.render.BlockShader#ANIMATION}. A block therefore moves as soon
+     * as its picture is a strip; the length of a frame is the round of the world and no round of the
+     * block's own.
      *
      * @return the animation, or {@code null} when the block has none
      */

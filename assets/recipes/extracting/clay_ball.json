@@ -1,0 +1,6 @@
+{
+  "ingredients": ["clay"],
+  "result": { "item": "clay_ball", "count": 4 },
+  "time": 6.0,
+  "steam": 600
+}

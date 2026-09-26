@@ -240,6 +240,56 @@ public final class Items {
      */
     public static final int PIPE_ID_FROM = 100;
 
+    /**
+     * Ids of the six machines of the age of steam, the ones that run on the steam of the boiler.
+     * <p>
+     * They are the first numbers no item held, see {@link #NEXT_FREE_ID}: the machines of the coming steps of
+     * the industry take a run of their own above the materials, so no item a stored world holds moves and the
+     * save game needs no new version. {@code STEAM_FURNACE_ID} takes the first number of the run.
+     */
+    public static final int STEAM_FURNACE_ID = 245;
+
+    /** Id of the alloy furnace, the machine that melts two metals into one. */
+    public static final int ALLOY_FURNACE_ID = 246;
+
+    /** Id of the grinder, the machine that turns ore into dust. */
+    public static final int GRINDER_ID = 247;
+
+    /** Id of the compressor, the machine that presses an item together. */
+    public static final int COMPRESSOR_ID = 248;
+
+    /** Id of the extractor, the machine that squeezes what is in an item out of it. */
+    public static final int EXTRACTOR_ID = 249;
+
+    /** Id of the forge hammer, the machine that beats an ingot into shape. */
+    public static final int FORGE_HAMMER_ID = 250;
+
+    /**
+     * Ids of the seven machines of the age of steel, the twin of every machine of bronze.
+     * <p>
+     * They take the numbers right behind the machines of bronze, so nothing that a stored inventory holds
+     * moved.
+     */
+    public static final int STEEL_BOILER_ID = 251;
+
+    /** Id of the steam furnace of steel. */
+    public static final int STEEL_STEAM_FURNACE_ID = 252;
+
+    /** Id of the alloy furnace of steel. */
+    public static final int STEEL_ALLOY_FURNACE_ID = 253;
+
+    /** Id of the grinder of steel. */
+    public static final int STEEL_GRINDER_ID = 254;
+
+    /** Id of the compressor of steel. */
+    public static final int STEEL_COMPRESSOR_ID = 255;
+
+    /** Id of the extractor of steel. */
+    public static final int STEEL_EXTRACTOR_ID = 256;
+
+    /** Id of the forge hammer of steel. */
+    public static final int STEEL_FORGE_HAMMER_ID = 257;
+
     // ------------------------------------------------------------------
     // The block items of the blocks that came with the third axis. They are appended above every
     // number that was written down before them, so no id that a world already holds changes its
@@ -283,8 +333,15 @@ public final class Items {
      * window the industry had kept free - and bronze and steel joined the materials, so every item of every
      * material stands another twenty eight numbers higher. A stored world of version 9 is refused for the
      * same reason as one of version 7.
+     * <p>
+     * <b>What version 12 added.</b> The six machines of the age of steam took the numbers 245 to 250, the
+     * first numbers no item held. They stand behind the materials, which is where a new item always goes, so
+     * nothing that a stored inventory holds moved.
+     * <p>
+     * <b>What the age of steel added.</b> The seven machines of that age took the numbers 251 to 257, right
+     * behind the machines of bronze, so no item that a stored world holds moved again.
      */
-    public static final int NEXT_FREE_ID = 245;
+    public static final int NEXT_FREE_ID = 258;
 
     /**
      * Amount an empty container stacks to.
@@ -468,6 +525,45 @@ public final class Items {
 
     /** The bronze boiler, the block a player builds to make steam. */
     public static Item BRONZE_BOILER;
+
+    /** The steam furnace, the first machine that runs on the steam of the boiler. */
+    public static Item STEAM_FURNACE;
+
+    /** The alloy furnace, the machine that melts two metals into one. */
+    public static Item ALLOY_FURNACE;
+
+    /** The grinder, the machine that turns ore into dust. */
+    public static Item GRINDER;
+
+    /** The compressor, the machine that presses an item together. */
+    public static Item COMPRESSOR;
+
+    /** The extractor, the machine that squeezes what is in an item out of it. */
+    public static Item EXTRACTOR;
+
+    /** The forge hammer, the machine that beats an ingot into shape. */
+    public static Item FORGE_HAMMER;
+
+    /** The boiler of the age of steel, which makes steam faster than the boiler of bronze. */
+    public static Item STEEL_BOILER;
+
+    /** The steam furnace of steel. */
+    public static Item STEEL_STEAM_FURNACE;
+
+    /** The alloy furnace of steel. */
+    public static Item STEEL_ALLOY_FURNACE;
+
+    /** The grinder of steel. */
+    public static Item STEEL_GRINDER;
+
+    /** The compressor of steel. */
+    public static Item STEEL_COMPRESSOR;
+
+    /** The extractor of steel. */
+    public static Item STEEL_EXTRACTOR;
+
+    /** The forge hammer of steel. */
+    public static Item STEEL_FORGE_HAMMER;
 
     /**
      * Creates and registers every item.
@@ -766,6 +862,51 @@ public final class Items {
         BRONZE_BOILER = register(Item.builder(BRONZE_BOILER_ID, "bronze_boiler")
                 .displayName("Bronze Boiler")
                 .buildBlock(Blocks.BRONZE_BOILER));
+
+        // The six machines of the age of steam. They are block items like the boiler: each borrows the
+        // picture of its block, and the block names the entity that holds its slots, its tank and its work.
+        STEAM_FURNACE = register(Item.builder(STEAM_FURNACE_ID, "steam_furnace")
+                .displayName("Steam Furnace")
+                .buildBlock(Blocks.STEAM_FURNACE));
+        ALLOY_FURNACE = register(Item.builder(ALLOY_FURNACE_ID, "alloy_furnace")
+                .displayName("Alloy Furnace")
+                .buildBlock(Blocks.ALLOY_FURNACE));
+        GRINDER = register(Item.builder(GRINDER_ID, "grinder")
+                .displayName("Grinder")
+                .buildBlock(Blocks.GRINDER));
+        COMPRESSOR = register(Item.builder(COMPRESSOR_ID, "compressor")
+                .displayName("Compressor")
+                .buildBlock(Blocks.COMPRESSOR));
+        EXTRACTOR = register(Item.builder(EXTRACTOR_ID, "extractor")
+                .displayName("Extractor")
+                .buildBlock(Blocks.EXTRACTOR));
+        FORGE_HAMMER = register(Item.builder(FORGE_HAMMER_ID, "forge_hammer")
+                .displayName("Forge Hammer")
+                .buildBlock(Blocks.FORGE_HAMMER));
+
+        // The machines of the age of steel: the twin of every machine of bronze, built of steel and driven
+        // harder, see MachinePressure.
+        STEEL_BOILER = register(Item.builder(STEEL_BOILER_ID, "steel_boiler")
+                .displayName("High Pressure Boiler")
+                .buildBlock(Blocks.STEEL_BOILER));
+        STEEL_STEAM_FURNACE = register(Item.builder(STEEL_STEAM_FURNACE_ID, "steel_steam_furnace")
+                .displayName("High Pressure Steam Furnace")
+                .buildBlock(Blocks.STEEL_STEAM_FURNACE));
+        STEEL_ALLOY_FURNACE = register(Item.builder(STEEL_ALLOY_FURNACE_ID, "steel_alloy_furnace")
+                .displayName("High Pressure Alloy Furnace")
+                .buildBlock(Blocks.STEEL_ALLOY_FURNACE));
+        STEEL_GRINDER = register(Item.builder(STEEL_GRINDER_ID, "steel_grinder")
+                .displayName("High Pressure Grinder")
+                .buildBlock(Blocks.STEEL_GRINDER));
+        STEEL_COMPRESSOR = register(Item.builder(STEEL_COMPRESSOR_ID, "steel_compressor")
+                .displayName("High Pressure Compressor")
+                .buildBlock(Blocks.STEEL_COMPRESSOR));
+        STEEL_EXTRACTOR = register(Item.builder(STEEL_EXTRACTOR_ID, "steel_extractor")
+                .displayName("High Pressure Extractor")
+                .buildBlock(Blocks.STEEL_EXTRACTOR));
+        STEEL_FORGE_HAMMER = register(Item.builder(STEEL_FORGE_HAMMER_ID, "steel_forge_hammer")
+                .displayName("High Pressure Forge Hammer")
+                .buildBlock(Blocks.STEEL_FORGE_HAMMER));
 
         // The pipes of the industry: one item per material and size, the blocks of them were built while
         // the blocks were registered, see Pipes. They take the numbers 100 to 127, a run of their own:

@@ -7,6 +7,7 @@ import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.save.SaveTags;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A machine that runs on the steam of a tank and blows it out of an exhaust.
@@ -38,6 +39,9 @@ public abstract class SteamMachine extends RecipeMachine {
     /** Steam that is owed for the craft that runs, always below one millibucket. */
     private float steamDebt;
 
+    /** Pressure this machine works at, which is what its screen names and how fast it works. */
+    private final MachinePressure pressure;
+
     /** {@code true} while the next recipe waits for the exhaust of the machine to be free. */
     private boolean exhaustBlocked;
 
@@ -53,7 +57,20 @@ public abstract class SteamMachine extends RecipeMachine {
      */
     protected SteamMachine(MachineScreen screen, MachineInventory inventory,
             List<RecipeType> recipeTypes) {
-        this(screen, inventory, recipeTypes, new SimpleFluidStorage(STEAM_CAPACITY));
+        this(screen, inventory, recipeTypes, MachinePressure.LOW);
+    }
+
+    /**
+     * Creates a steam machine of a pressure.
+     *
+     * @param screen how this machine is shown
+     * @param inventory inventory whose slots carry the roles of the machine
+     * @param recipeTypes types of recipe the machine reads
+     * @param pressure pressure it works at, which is what its screen names
+     */
+    protected SteamMachine(MachineScreen screen, MachineInventory inventory,
+            List<RecipeType> recipeTypes, MachinePressure pressure) {
+        this(screen, inventory, recipeTypes, pressure, new SimpleFluidStorage(STEAM_CAPACITY));
     }
 
     /**
@@ -66,9 +83,56 @@ public abstract class SteamMachine extends RecipeMachine {
      */
     protected SteamMachine(MachineScreen screen, MachineInventory inventory,
             List<RecipeType> recipeTypes, SimpleFluidStorage tank) {
+        this(screen, inventory, recipeTypes, MachinePressure.LOW, tank);
+    }
+
+    /**
+     * Creates a steam machine of a pressure with a tank of its own.
+     *
+     * @param screen how this machine is shown
+     * @param inventory inventory whose slots carry the roles of the machine
+     * @param recipeTypes types of recipe the machine reads
+     * @param pressure pressure it works at
+     * @param tank the tank that holds its steam
+     */
+    protected SteamMachine(MachineScreen screen, MachineInventory inventory,
+            List<RecipeType> recipeTypes, MachinePressure pressure, SimpleFluidStorage tank) {
         super(screen, inventory, new SimpleEnergyStorage(0), recipeTypes,
                 new MachineTank(tank, MachineTank.Role.INPUT));
         this.steam = tank;
+        this.pressure = Objects.requireNonNull(pressure, "pressure");
+    }
+
+    /** Pressure this machine works at, see {@link MachinePressure}. */
+    public MachinePressure pressure() {
+        return pressure;
+    }
+
+    /**
+     * Seconds one craft takes in this machine, which is what its pressure does to the recipe.
+     * <p>
+     * A machine of pressure runs the very recipes of its bronze twin in half the time, and because the steam a
+     * craft costs does not change with the pressure, a tick of it drinks twice as much, see
+     * {@link MachinePressure}.
+     */
+    @Override
+    protected float craftTime(MachineRecipe recipe) {
+        return recipe.seconds() * pressure.timeShare();
+    }
+
+    /**
+     * Steam this machine drinks in one tick of a craft.
+     * <p>
+     * The number is the steam of the whole craft divided by the time the craft takes in this machine, so a
+     * machine of pressure drinks twice what its bronze twin drinks - the craft costs the same millibuckets
+     * either way.
+     *
+     * @param recipe recipe that runs
+     * @return the millibuckets of one second, {@code 0} for a recipe that spends none
+     */
+    public float rateOf(MachineRecipe recipe) {
+        int whole = steamOf(recipe);
+        return whole <= 0 ? 0.0f : whole / Math.max(craftTime(recipe), 0.001f);
     }
 
     /** Steam in the tank of this machine, the one a line or a cell fills. */
@@ -77,12 +141,12 @@ public abstract class SteamMachine extends RecipeMachine {
     }
 
     /**
-     * Steam one second of a recipe takes.
+     * Steam one craft of a recipe costs, in millibuckets.
      *
      * @param recipe recipe that runs
-     * @return the millibuckets of one second, {@code 0} for a recipe that spends none
+     * @return the millibuckets, {@code 0} for a recipe that spends none
      */
-    public static int steamPerSecond(MachineRecipe recipe) {
+    public static int steamOf(MachineRecipe recipe) {
         return Math.max(0, recipe.steam());
     }
 
@@ -177,17 +241,20 @@ public abstract class SteamMachine extends RecipeMachine {
     /**
      * Pays for one frame with the steam of the tank.
      * <p>
-     * The number of the recipe is what the whole craft costs, so one frame pays the share of it that the
-     * frame is worth and the fraction below a millibucket waits for the frames after it, exactly the way
-     * {@link RecipeMachine} pays with energy.
+     * The number of the recipe is what the whole craft costs, so one frame pays the share of it that the frame
+     * is worth and the fraction below a millibucket waits for the frames after it, exactly the way
+     * {@link RecipeMachine} pays with energy. <b>The frame is measured against the time this machine takes</b>
+     * and not against the time the recipe names, which is what makes a machine of pressure drink twice the
+     * steam a tick for half as long: the craft costs the same tankful either way, see
+     * {@link MachinePressure}.
      */
     @Override
     protected boolean payForWork(MachineRecipe recipe, float delta) {
-        int cost = steamPerSecond(recipe);
+        int cost = steamOf(recipe);
         if (cost <= 0) {
             return true;
         }
-        float seconds = Math.max(recipe.seconds(), delta);
+        float seconds = Math.max(craftTime(recipe), delta);
         steamDebt += cost * delta / seconds;
         int whole = (int) steamDebt;
         if (whole <= 0) {
@@ -206,7 +273,7 @@ public abstract class SteamMachine extends RecipeMachine {
 
     @Override
     protected void craftFinished(MachineRecipe recipe) {
-        if (steamPerSecond(recipe) > 0) {
+        if (steamOf(recipe) > 0) {
             // The steam of a recipe goes out of the exhaust, so the block has to look at that face before
             // the next recipe may start, see MachineBlockEntity and SteamMachine#takesAnExhaustCheck().
             exhaustToCheck = true;

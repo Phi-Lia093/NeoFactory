@@ -1,0 +1,6 @@
+{
+  "ingredients": ["bronze_ingot"],
+  "result": { "item": "bronze_plate" },
+  "time": 8.0,
+  "steam": 900
+}

@@ -4,6 +4,8 @@ import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.pipe.Pipes.Pipe;
 import com.philia093.neofactory.world.TickClock;
 
+import java.util.Objects;
+
 /**
  * The arithmetic of the fluid that runs through the pipes.
  * <p>
@@ -82,15 +84,35 @@ public final class PipeTransport {
      * The weight a pipe draws fluid with.
      * <p>
      * A pipe is measured by what it moves a second: the wider the pipe behind a junction, the larger its
-     * share of what the junction has to give. One is the least any neighbour weighs, so a pipe that is
-     * joined to something which is not a pipe at all still takes a share instead of nothing - the tanks of
-     * the machines arrive with the transport of fluids, see {@code FluidNode}.
+     * share of what the junction has to give. One is the least any neighbour weighs, so no pipe is ever
+     * handed nothing.
      *
-     * @param pipe pipe that takes the fluid, {@code null} for everything else
+     * @param pipe pipe that takes the fluid, never {@code null}
      * @return the weight, at least one
      */
     public static int weightOf(Pipe pipe) {
-        return pipe == null ? 1 : Math.max(1, pipe.flow());
+        return Math.max(1, Objects.requireNonNull(pipe, "pipe").flow());
+    }
+
+    /**
+     * The weight a machine draws fluid with, which is the rate of the pipe that pours into it.
+     * <p>
+     * <b>A machine names no rate of its own</b>, and weighing it as one - which is what this used to do -
+     * made its share round away as soon as a branch of the line stood beside it: a pipe that both pours into
+     * a machine and carries on to the next pipe hands its fluid out by weight, and a weight of one against
+     * the four hundred of a bronze pipe is a share of a quarter of a millibucket, which is no millibucket at
+     * all. A machine in the middle of a line was left dry that way, while the machines at the two ends of the
+     * line were served.
+     * <p>
+     * A machine is therefore measured by what the pipe that reaches it moves in one tick: it draws as much as
+     * a branch of the line would, so every machine beside a line is served, and a machine whose tank is full
+     * takes nothing more while the fluid carries on down the line.
+     *
+     * @param rate rate of the pipe that pours, in millibuckets a second
+     * @return the weight, at least one
+     */
+    public static int weightOfMachine(int rate) {
+        return Math.max(1, rate);
     }
 
     /**

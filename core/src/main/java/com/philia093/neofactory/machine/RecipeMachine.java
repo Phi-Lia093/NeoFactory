@@ -167,10 +167,25 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
             return;
         }
         craft = recipe;
-        craftTotal = recipe.seconds();
+        craftTotal = craftTime(recipe);
         craftSeconds = 0.0f;
         energyDebt = 0.0f;
         recipe.consume(inputs());
+    }
+
+    /**
+     * Seconds one craft of a recipe takes in this machine.
+     * <p>
+     * The time a recipe names is what a machine of the first age takes for it. <b>A machine that works faster
+     * overrides this and not the loop around it:</b> a machine of pressure runs the very recipes of its bronze
+     * twin in half the time, which is what makes it spend twice the steam a tick and the same steam on the
+     * craft, see {@code MachinePressure}.
+     *
+     * @param recipe recipe that is about to run
+     * @return the seconds a craft of it takes
+     */
+    protected float craftTime(MachineRecipe recipe) {
+        return recipe.seconds();
     }
 
     /** Forgets the craft that runs, which is what an interruption and a finished work both do. */

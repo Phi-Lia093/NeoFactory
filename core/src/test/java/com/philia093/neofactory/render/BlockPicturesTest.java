@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -113,6 +114,33 @@ class BlockPicturesTest {
     private static final int RGBA = 6;
 
     /**
+     * Size of a PNG, read from its header, as width and height.
+     * <p>
+     * The width and the height stand in the first block of the file, behind the eight bytes of the
+     * signature and the four of the name and the length of that block, each of them four bytes long and
+     * written the way round a picture reader expects them.
+     *
+     * @param file picture to read
+     * @return the width and the height in pixels
+     * @throws IOException when the file cannot be read
+     */
+    private static int[] sizeOf(Path file) throws IOException {
+        byte[] header = new byte[24];
+        try (InputStream stream = Files.newInputStream(file)) {
+            if (stream.read(header) != header.length) {
+                throw new IOException(file + " is no picture, it is too short for a header");
+            }
+        }
+        return new int[] {fourBytes(header, 16), fourBytes(header, 20)};
+    }
+
+    /** One four byte number of a header, the way round a picture reader writes it. */
+    private static int fourBytes(byte[] header, int at) {
+        return (header[at] & 0xFF) << 24 | (header[at + 1] & 0xFF) << 16 | (header[at + 2] & 0xFF) << 8
+                | (header[at + 3] & 0xFF);
+    }
+
+    /**
      * Colour type of a PNG, read from its header.
      * <p>
      * The byte behind the signature and the length of the first block names how the pixels are stored:
@@ -164,14 +192,60 @@ class BlockPicturesTest {
      * @return the names, in the order the layers are numbered
      */
     private static List<String> worldPictures() {
-        return BlockPictures.pictureNames(new ObjectMap<>(), name -> {
+        return BlockPictures.pictureNames(new ObjectMap<>(), new ObjectMap<>(), name -> {
             if (BlockPictures.HAND.equals(name) || SkinRegions.isSkinFace(name)) {
                 // A piece cut out of the skin of a body and no file of its own: no cube shows a body, the
                 // hand of a view is drawn by the renderer of the figure.
                 return false;
             }
             return Files.isRegularFile(ASSETS.resolve(BlockPictures.path(name)));
-        });
+        }, BlockPicturesTest::framesInTheFileOf);
+    }
+
+    /**
+     * Frames the file of a picture holds, read out of the picture itself.
+     * <p>
+     * The game reads them the very same way while it stacks the array, see
+     * {@link BlockPictures#frameCountOf(int, int)}: a picture of one tile stands still and a strip of
+     * tiles is a picture that moves.
+     *
+     * @param name name of the picture, relative to {@code blocks/} without extension
+     * @return the frames, at least one
+     */
+    private static int framesInTheFileOf(String name) {
+        try {
+            int[] size = sizeOf(ASSETS.resolve(BlockPictures.path(name)));
+            return BlockPictures.frameCountOf(size[0], size[1]);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to read " + name, e);
+        }
+    }
+
+    /**
+     * A strip of frames is counted as the frames it holds and takes a layer each.
+     * <p>
+     * The top of a machine that works is a strip of four tiles, the first frame at the top of the file,
+     * and everything else of the machine is a single picture: the engine plays the run of the strip with
+     * the tick of the world while the casing around it stays where it is, see
+     * {@code BlockShader#ANIMATION} and {@code MeshData#FRAMES}.
+     */
+    @Test
+    void aStripOfFramesIsCountedFromItsFile() {
+        assertEquals(4, framesInTheFileOf("grinder/grinder_top_active"),
+                "the gear on the top of a running grinder is the strip of the art pack");
+        assertEquals(4, framesInTheFileOf("compressor/compressor_top_active"),
+                "and the top of a compressor is written as the quarter turns of its picture");
+        assertEquals(4, framesInTheFileOf("steel_extractor/steel_extractor_top_active"),
+                "which the machine of steel carries as well");
+        assertEquals(1, framesInTheFileOf("grinder/grinder_top"),
+                "the top of a machine that stands still is one picture");
+        assertEquals(1, framesInTheFileOf("grinder/grinder_front_active"),
+                "and the mouth of a running machine does not turn either");
+        assertEquals(1, framesInTheFileOf("bronze_casing/bronze_casing_side"),
+                "the casing of a machine is a single picture like any other block");
+
+        assertTrue(worldPictures().contains("compressor/compressor_top_active"),
+                "a strip is a picture of the world like every other one");
     }
 
     /**

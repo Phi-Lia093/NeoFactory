@@ -26,11 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SteamBoilerMachineTest {
 
-    /** Water one second of boiling takes, which the tests measure against. */
-    private static final int WATER_PER_SECOND = (int) SteamBoilerMachine.WATER_PER_SECOND;
+    /** Seconds the tests let a boiler boil before they measure what it made. */
+    private static final int MEASURED_SECONDS = 8;
 
-    /** Steam one second of boiling makes. */
-    private static final int STEAM_PER_SECOND = WATER_PER_SECOND * SteamBoilerMachine.STEAM_PER_WATER;
+    /** Water that many seconds of boiling take, which the tests measure against. */
+    private static final int WATER_OF_THE_STRETCH =
+            (int) (MEASURED_SECONDS * SteamBoilerMachine.BRONZE_STEAM_PER_SECOND
+                    / SteamBoilerMachine.STEAM_PER_WATER);
 
     private SteamBoilerMachine boiler;
 
@@ -70,20 +72,23 @@ class SteamBoilerMachineTest {
 
     @Test
     void aFlameHeatsTheBoilerAndItCoolsDownAgain() {
+        boiler.water().fill(Fluids.WATER, 8000, false);
         boiler.inventory().set(SteamBoilerMachine.FUEL, ItemStack.of(Items.STICK, 1));
 
-        // A stick burns for five seconds, see Fuels.
-        run(boiler, 5.0f);
+        // A stick burns for five seconds in a furnace and four and a half times as long in the boiler of
+        // bronze, see Fuels and SteamBoilerMachine#BRONZE_FUEL_SHARE. The water of this boiler carries the heat
+        // away, so it reaches the boiling point and stays there while the stick burns.
+        run(boiler, 5.0f * SteamBoilerMachine.BRONZE_FUEL_SHARE + 0.1f);
 
-        assertEquals(SteamBoilerMachine.STANDARD_TEMPERATURE + 5 * SteamBoilerMachine.HEAT_PER_SECOND,
-                boiler.temperature(), 0.01f);
+        assertEquals(SteamBoilerMachine.BOILING_TEMPERATURE, boiler.temperature(), 1.0f,
+                "water that boils carries the heat away; the flame ends a frame or two before the run does");
         assertFalse(boiler.isRunning(), "the stick burned down");
 
         run(boiler, 2.0f);
 
-        assertEquals(SteamBoilerMachine.STANDARD_TEMPERATURE + 5 * SteamBoilerMachine.HEAT_PER_SECOND
-                        - 2 * SteamBoilerMachine.COOL_PER_SECOND,
-                boiler.temperature(), 0.01f, "the boiler loses heat without a flame");
+        assertEquals(SteamBoilerMachine.BOILING_TEMPERATURE - 2 * SteamBoilerMachine.COOL_PER_SECOND,
+                boiler.temperature(), 1.0f,
+                "the boiler loses heat without a flame, a frame before the run ends counted as well");
     }
 
     @Test
@@ -100,10 +105,13 @@ class SteamBoilerMachineTest {
 
         int water = boiler.water().amount();
         int steam = boiler.steam().amount();
-        run(boiler, 1.0f);
+        run(boiler, MEASURED_SECONDS);
+        int boiled = water - boiler.water().amount();
 
-        assertEquals(WATER_PER_SECOND, water - boiler.water().amount(), "one second of boiling");
-        assertEquals(STEAM_PER_SECOND, boiler.steam().amount() - steam);
+        assertEquals(WATER_OF_THE_STRETCH, boiled, 1,
+                MEASURED_SECONDS + " seconds of boiling take six units of water");
+        assertEquals(boiled * SteamBoilerMachine.STEAM_PER_WATER, boiler.steam().amount() - steam,
+                "and one unit of water always becomes a hundred and sixty units of steam");
     }
 
     @Test
@@ -172,25 +180,18 @@ class SteamBoilerMachineTest {
     }
 
     @Test
-    void waterIsHarmlessOnceTheBoilerCooledDownAgain() {
-        boiler.inventory().set(SteamBoilerMachine.FUEL, ItemStack.of(Items.STICK, 2));
+    void aBoilerThatRunsDryWithFuelInItIsLost() {
+        boiler.inventory().set(SteamBoilerMachine.FUEL, ItemStack.of(Items.STICK, 1));
 
-        // Ten seconds of fire under an empty tank: two sticks take the boiler past the boiling point.
-        run(boiler, 10.0f);
+        // A stick burns four and a half times as long here as in a furnace, see
+        // SteamBoilerMachine#BRONZE_FUEL_SHARE, and a boiler that cannot boil has nothing to carry the heat
+        // away: forty odd seconds of fire are more than the two hundred kelvin a boiler takes, so a boiler
+        // that runs dry while it is fed is lost before its fuel is gone. Watching the tank of water is what a
+        // boiler asks of a player, and it asks it earlier now that a piece of fuel lasts longer.
+        run(boiler, 5.0f * SteamBoilerMachine.BRONZE_FUEL_SHARE);
 
-        assertTrue(boiler.temperature() >= SteamBoilerMachine.BOILING_TEMPERATURE);
-        assertFalse(boiler.isExploded(), "a hot boiler that ran dry is not lost yet");
-
-        // The fire is out and the boiler falls below the boiling point.
-        run(boiler, 6.0f);
-
-        assertTrue(boiler.temperature() < SteamBoilerMachine.BOILING_TEMPERATURE);
-        boiler.water().fill(Fluids.WATER, 1000, false);
-        boiler.inventory().set(SteamBoilerMachine.FUEL, ItemStack.of(Items.STICK, 8));
-        run(boiler, 10.0f);
-
-        assertFalse(boiler.isExploded(), "a boiler that had cooled down takes water again");
-        assertTrue(boiler.steam().amount() > 0, "and it boils like any other boiler");
+        assertTrue(boiler.isExploded(), "a boiler that boils dry while it burns is lost");
+        assertFalse(boiler.steam().amount() > 0, "and it made no steam of the heat it died of");
     }
 
     @Test
@@ -215,8 +216,10 @@ class SteamBoilerMachineTest {
 
         run(boiler, 40.0f);
 
-        assertEquals(0.5f, menu.craftProgress(), 0.01f,
-                "half of the coal is burned, so the bar filled from the left");
+        // The coal burns four and a half times as long in the boiler as it would in a furnace, so forty
+        // seconds of it are a ninth of the piece and not half of it, see SteamBoilerMachine#BRONZE_FUEL_SHARE.
+        assertEquals(0.5f / SteamBoilerMachine.BRONZE_FUEL_SHARE, menu.craftProgress(), 0.01f,
+                "the piece of coal is burning, so the bar filled from the left");
     }
 
     @Test

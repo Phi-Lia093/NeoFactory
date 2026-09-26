@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "bronze_bricks_casing/bronze_bricks_casing_bottom", "cullface": "down" },
+        "up": { "texture": "bronze_bricks_casing/bronze_bricks_casing_top", "overlay": "steam_furnace/steam_furnace_top", "cullface": "up" },
+        "north": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "overlay": "steam_furnace/steam_furnace_front", "cullface": "north" },
+        "south": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "south" },
+        "west": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "west" },
+        "east": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "east" }
+      }
+    }
+  ]
+}

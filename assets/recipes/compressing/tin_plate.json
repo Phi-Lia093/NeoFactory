@@ -1,0 +1,6 @@
+{
+  "ingredients": ["tin_ingot"],
+  "result": { "item": "tin_plate" },
+  "time": 6.0,
+  "steam": 700
+}

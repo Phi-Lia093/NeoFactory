@@ -16,6 +16,7 @@ import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.MachineMenu;
+import com.philia093.neofactory.machine.MachineStyle;
 import com.philia093.neofactory.machine.ProgressKind;
 import com.philia093.neofactory.machine.SlotKind;
 import com.philia093.neofactory.render.BlockTextureCache;
@@ -63,11 +64,19 @@ public final class MachineGui {
     private final PixelFont font;
     private final ContainerView view;
 
-    /** Pictures of a machine screen, drawn instead of the standard panel. */
-    private final MachineTextures panel;
+    /**
+     * Pictures of a machine screen, one set per style of panel.
+     * <p>
+     * The sheet carries a panel per age - the grey one and the bronze one - so the screen cuts all of them
+     * once and draws the machine that is up with its own, see {@link MachineStyle}.
+     */
+    private final MachineTextures[] panels;
 
-    /** The bar of every kind of progress, cut once when the screen is created. */
-    private final ArrowElement[] arrows;
+    /** The set of pictures of the machine that is up, the one of its style. */
+    private MachineTextures panel;
+
+    /** The bar of every kind of progress, one row per style, cut once when the screen is created. */
+    private final ArrowElement[][] arrows;
 
     /** Menu of the machine that is up, {@code null} while the screen is closed. */
     private MachineMenu menu;
@@ -83,14 +92,18 @@ public final class MachineGui {
         this.textures = textures;
         this.viewport = viewport;
         this.font = font;
-        this.panel = new MachineTextures(textures);
-        this.view = new ContainerView(textures, font, viewport);
-        // A machine is drawn from its own panel, which is empty where its slots stand.
-        this.view.setAppearance(panel);
-        this.arrows = new ArrowElement[ProgressKind.values().length];
-        for (ProgressKind kind : ProgressKind.values()) {
-            arrows[kind.ordinal()] = panel.arrows(kind);
+        this.panels = new MachineTextures[MachineStyle.values().length];
+        for (MachineStyle style : MachineStyle.values()) {
+            panels[style.ordinal()] = new MachineTextures(textures, style);
         }
+        this.panel = panels[MachineStyle.NORMAL.ordinal()];
+        this.arrows = new ArrowElement[MachineStyle.values().length][ProgressKind.values().length];
+        for (MachineStyle style : MachineStyle.values()) {
+            for (ProgressKind kind : ProgressKind.values()) {
+                arrows[style.ordinal()][kind.ordinal()] = panels[style.ordinal()].arrows(kind);
+            }
+        }
+        this.view = new ContainerView(textures, font, viewport);
     }
 
     /** {@code true} while the screen covers the world. */
@@ -124,6 +137,9 @@ public final class MachineGui {
     public void open(Machine machine, PlayerInventory player) {
         menu = new MachineMenu(machine, player);
         menu.container().open();
+        // A machine is drawn with the panel of its own age, which is empty where its slots stand.
+        panel = panels[menu.style().ordinal()];
+        view.setAppearance(panel);
     }
 
     /**
@@ -301,7 +317,7 @@ public final class MachineGui {
 
     /** Draws the bar that shows how far the work of the machine has come. */
     private void drawProgress(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
-        ArrowElement bar = arrows[menu.progressKind().ordinal()];
+        ArrowElement bar = arrows[menu.style().ordinal()][menu.progressKind().ordinal()];
         bar.draw(batch, panelX + MachineMenu.ARROW_X,
                 panelY + panelHeight - MachineMenu.ARROW_Y - bar.height(), menu.craftProgress());
     }

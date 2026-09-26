@@ -40,7 +40,7 @@ import java.util.List;
  * as dangerous as leaving it alone. A marked boiler that had time to cool below the boiling point takes
  * water again. Watching the tank of water is what a boiler asks of a player.
  */
-public final class SteamBoilerMachine extends Machine implements StatusMachine, ProgressMachine {
+public class SteamBoilerMachine extends Machine implements StatusMachine, ProgressMachine {
 
     /** Slot that holds what keeps the boiler burning. */
     public static final int FUEL = 0;
@@ -63,11 +63,49 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
     /** Heat a second without a flame takes away, in kelvin. */
     public static final float COOL_PER_SECOND = 5.0f;
 
-    /** Water a second of boiling turns into steam, in units of the game. */
-    public static final float WATER_PER_SECOND = 20.0f;
+    /**
+     * Steam a second of boiling makes in the bronze boiler, in millibuckets.
+     * <p>
+     * It is the first rate of the industry and a slow one, which is what makes a player build a second boiler
+     * or move on to the boiler of the steel age.
+     */
+    public static final float BRONZE_STEAM_PER_SECOND = 120.0f;
 
-    /** Units of steam one unit of water becomes. */
-    public static final int STEAM_PER_WATER = 16;
+    /**
+     * Steam a second of boiling makes in the boiler of the steel age, in millibuckets.
+     * <p>
+     * It is two and a half times the rate of the bronze boiler, and it is what the machines of that age drink:
+     * a machine of pressure takes twice the steam of a bronze one every tick, see
+     * {@link MachinePressure#HIGH}.
+     */
+    public static final float STEEL_STEAM_PER_SECOND = 300.0f;
+
+    /**
+     * How much longer a piece of fuel burns in the bronze boiler than in a furnace.
+     * <p>
+     * The bronze boiler is the first machine a player builds and it is a machine of no pressure: it burns
+     * what it is given slowly, four and a half times as long as the furnace of the game would, so a piece of
+     * coal keeps it hot for six minutes instead of eighty seconds.
+     */
+    public static final float BRONZE_FUEL_SHARE = 4.5f;
+
+    /**
+     * How much longer a piece of fuel burns in the boiler of the steel age than in a furnace.
+     * <p>
+     * Twice as long, which is less than the bronze boiler gets: a boiler of pressure burns hot and eats
+     * through its fuel, and it is built to make steam rather than to save coal.
+     */
+    public static final float STEEL_FUEL_SHARE = 2.0f;
+
+    /**
+     * Units of steam one unit of water becomes.
+     * <p>
+     * <b>The ratio is exact and never rounded:</b> every millibucket of water that boils becomes
+     * {@value #STEAM_PER_WATER} millibuckets of steam, so the water in the tank and the steam made of it are
+     * two counts of the same thing. A boiler that made more than that would be a machine that invents water
+     * out of heat, and one that made less would lose the water a player hauled to it.
+     */
+    public static final int STEAM_PER_WATER = 160;
 
     /** Amount of water the tank of the boiler holds, sixteen cells. */
     public static final int WATER_CAPACITY = 16_000;
@@ -76,15 +114,39 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
     public static final int STEAM_CAPACITY = 16_000;
 
     /**
-     * Screen of the boiler: the fuel on the left, the slot of the ash on the right, and the two tanks at the
-     * foot of the panel - the water it takes in and the steam it makes.
+     * Screen of the bronze boiler: the fuel on the left, the slot of the ash on the right, and the two tanks
+     * at the foot of the panel - the water it takes in and the steam it makes.
+     * <p>
+     * It is the first machine of the age of steam, so it is drawn in the bronze panel of the sheet, with the
+     * flame of the bronze age for the fuel it burns and the bar of the bronze age for what it has left, see
+     * {@link MachineStyle#BRONZE} and {@link ProgressKind#BRONZE}.
      */
-    public static final MachineScreen SCREEN = new MachineScreen("Bronze Boiler",
-            ProgressKind.GENERIC, List.of(SlotKind.SMELTING),
-            List.of(SlotKind.GENERIC), 1, 1, false);
+    public static final MachineScreen SCREEN = screen(MachinePressure.LOW);
+
+    /**
+     * Screen of a boiler of one pressure.
+     * <p>
+     * Both boilers are drawn with the panel of the age of steam - the sheet of the game carries one panel per
+     * age and the bronze one is the panel of the industry - so only the name of the machine tells a player
+     * which of the two they stand at, see {@link MachinePressure#title(String)}.
+     *
+     * @param pressure pressure the boiler works at
+     * @return the screen of that boiler
+     */
+    public static MachineScreen screen(MachinePressure pressure) {
+        return new MachineScreen(pressure == MachinePressure.LOW ? "Bronze Boiler"
+                : pressure.title("Boiler"), MachineStyle.BRONZE, ProgressKind.BRONZE,
+                List.of(SlotKind.SMELTING), List.of(SlotKind.GENERIC), 1, 1, false);
+    }
 
     private final SimpleFluidStorage water;
     private final SimpleFluidStorage steam;
+
+    /** Steam this boiler makes a second of boiling, in millibuckets. */
+    private final float steamPerSecond;
+
+    /** How much longer a piece of fuel burns here than in a furnace. */
+    private final float fuelShare;
 
     /** Temperature of the boiler, in kelvin. */
     private float temperature = STANDARD_TEMPERATURE;
@@ -98,15 +160,33 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
     /** {@code true} once the boiler boiled dry while it was hot. */
     private boolean scorched;
 
-    /** Creates an empty boiler. */
+    /** Creates the bronze boiler of the first age of the industry. */
     public SteamBoilerMachine() {
-        super(SCREEN, new MachineInventory(MachineInventory.Role.FUEL, MachineInventory.Role.OUTPUT),
+        this(MachinePressure.LOW, BRONZE_STEAM_PER_SECOND, BRONZE_FUEL_SHARE);
+    }
+
+    /**
+     * Creates a boiler of a kind of its own.
+     * <p>
+     * A boiler of the steel age is the same machine at another pressure: it boils faster and it makes the
+     * steam its machines drink, see {@link MachinePressure} and
+     * {@link #STEEL_STEAM_PER_SECOND}.
+     *
+     * @param pressure pressure the boiler works at, which names its screen
+     * @param steamPerSecond steam it makes a second of boiling, in millibuckets
+     * @param fuelShare how much longer a piece of fuel burns here than in a furnace
+     */
+    public SteamBoilerMachine(MachinePressure pressure, float steamPerSecond, float fuelShare) {
+        super(screen(pressure), new MachineInventory(MachineInventory.Role.FUEL,
+                        MachineInventory.Role.OUTPUT),
                 new SimpleEnergyStorage(0), List.of(),
                 new MachineTank(new SimpleFluidStorage(WATER_CAPACITY), MachineTank.Role.INPUT),
                 new MachineTank(new SimpleFluidStorage(STEAM_CAPACITY), MachineTank.Role.OUTPUT));
         // The machine hands its tanks back, so the boiler works on the very storages it was built with.
         this.water = (SimpleFluidStorage) tank(0).storage();
         this.steam = (SimpleFluidStorage) tank(1).storage();
+        this.steamPerSecond = steamPerSecond;
+        this.fuelShare = fuelShare;
     }
 
     /** Tank of water this boiler boils. */
@@ -122,6 +202,21 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
     /** Temperature of the boiler, in kelvin. */
     public float temperature() {
         return temperature;
+    }
+
+    /** Steam this boiler makes a second of boiling, in millibuckets. */
+    public float steamPerSecond() {
+        return steamPerSecond;
+    }
+
+    /** Water this boiler takes a second of boiling, in millibuckets. */
+    public float waterPerSecond() {
+        return steamPerSecond / STEAM_PER_WATER;
+    }
+
+    /** How much longer a piece of fuel burns here than in a furnace. */
+    public float fuelShare() {
+        return fuelShare;
     }
 
     @Override
@@ -141,6 +236,10 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
 
     /**
      * Takes a piece of fuel out of the slot and lights it.
+     * <p>
+     * A boiler is no furnace: the same piece of coal burns longer here than in the furnace of the game, by the
+     * share {@link #fuelShare()} names - four and a half times as long in the boiler of bronze, twice as long
+     * in the boiler of pressure.
      *
      * @return {@code true} when a flame started
      */
@@ -149,7 +248,7 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
         if (fuel.isEmpty()) {
             return false;
         }
-        float seconds = Fuels.secondsOf(fuel.item());
+        float seconds = Fuels.secondsOf(fuel.item()) * fuelShare;
         if (seconds <= 0.0f) {
             return false;
         }
@@ -244,11 +343,14 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
     /**
      * Turns water into steam while the boiler is hot enough to boil.
      * <p>
-     * The rate is a constant of the boiler and not of what it burns: a second of boiling takes
-     * {@link #WATER_PER_SECOND} units of water and makes {@code WATER_PER_SECOND * STEAM_PER_WATER} units of
-     * steam. Only whole units are moved and the rest is kept in {@link #waterDebt}, so a slow frame loses
-     * nothing; the water that is there and the room the steam has limit the amount, which keeps a tank from
-     * being written past its edge.
+     * The rate is a constant of the boiler and not of what it burns: a second of boiling turns
+     * {@link #waterPerSecond()} units of water into steam, which is
+     * {@link #steamPerSecond()} units of the tank behind it - a hundred and twenty in the boiler of bronze and
+     * three hundred in the boiler of pressure. <b>One unit of water always becomes
+     * {@value #STEAM_PER_WATER} units of steam</b>, so the two tanks hold two counts of the same thing and
+     * neither heat nor a slow frame can change that. Only whole units of water are moved and the rest is kept
+     * in {@link #waterDebt}, so a slow frame loses nothing; the water that is there and the room the steam has
+     * limit the amount, which keeps a tank from being written past its edge.
      *
      * @param delta time since the last frame in seconds
      */
@@ -263,7 +365,7 @@ public final class SteamBoilerMachine extends Machine implements StatusMachine, 
             waterDebt = 0.0f;
             return;
         }
-        waterDebt += delta * WATER_PER_SECOND;
+        waterDebt += delta * waterPerSecond();
         int earned = (int) waterDebt;
         if (earned <= 0) {
             return;

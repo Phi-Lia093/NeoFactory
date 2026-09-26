@@ -1,0 +1,6 @@
+{
+  "ingredients": ["copper_ingot"],
+  "result": { "item": "copper_plate" },
+  "time": 6.0,
+  "steam": 700
+}

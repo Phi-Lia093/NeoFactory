@@ -38,6 +38,19 @@ class SectionMesherTest {
             Map.entry("furnace/furnace_side", 9), Map.entry("furnace/furnace_top", 10),
             Map.entry("furnace/furnace_front_off", 11));
 
+    /**
+     * Layers of a grinder that runs, the machine whose top is a strip of frames.
+     * <p>
+     * The numbers are far behind the ones of the pictures above, so a corner of a machine is never
+     * counted as a corner of the terrain these tests mesh otherwise.
+     */
+    private static final Map<String, Integer> GRINDER_LAYERS = Map.ofEntries(
+            Map.entry("bronze_casing/bronze_casing_top", 20),
+            Map.entry("bronze_casing/bronze_casing_side", 21),
+            Map.entry("bronze_casing/bronze_casing_bottom", 22),
+            Map.entry("grinder/grinder_top_active", 23),
+            Map.entry("grinder/grinder_front_active", 24));
+
     /** Section the tests mesh. */
     private final Section section = new Section(0);
 
@@ -162,6 +175,37 @@ class SectionMesherTest {
                 "the mouth of a furnace that was never set");
         assertEquals(4, cornersOfLayer(meshes, LAYERS.get("furnace/furnace_front_off")),
                 "and it is drawn on one face only, the one the model writes its front on");
+    }
+
+    @Test
+    void theGearOnTheTopOfARunningMachineCarriesItsFrames() {
+        put(4, 4, 4, Blocks.GRINDER);
+        int running = Blocks.GRINDER.states().stateOf(Map.of("facing", "north", "lit", "true"));
+
+        List<MeshData> meshes = SectionMesher.build(section, 0, 0, 0, this::blockAt,
+                (x, y, z) -> running, new SectionMesher.Pictures() {
+
+                    @Override
+                    public int layer(String picture) {
+                        return GRINDER_LAYERS.getOrDefault(picture, -1);
+                    }
+
+                    @Override
+                    public int frames(String picture) {
+                        // The gear of the art pack is a strip of four frames; the mouth of the machine
+                        // and the casing around it are single pictures, see BlockPictures#frameCountOf.
+                        return "grinder/grinder_top_active".equals(picture) ? 4 : 1;
+                    }
+                });
+
+        assertEquals(4, framesOf(meshes, GRINDER_LAYERS.get("grinder/grinder_top_active")),
+                "the gear turns through the four frames of the run its layer begins");
+        assertEquals(4, cornersOfLayer(meshes, GRINDER_LAYERS.get("grinder/grinder_top_active")),
+                "and that run is drawn on the top of the machine and nowhere else");
+        assertEquals(1, framesOf(meshes, GRINDER_LAYERS.get("grinder/grinder_front_active")),
+                "the mouth of the machine stands still while the gear behind it turns");
+        assertEquals(1, framesOf(meshes, GRINDER_LAYERS.get("bronze_casing/bronze_casing_side")),
+                "and so does the casing the machine is built of");
     }
 
     @Test
@@ -336,6 +380,21 @@ class SectionMesherTest {
             }
         }
         return count;
+    }
+
+    /** Frames the corners of one layer carry, {@code 0} when that layer is not drawn at all. */
+    private static int framesOf(List<MeshData> meshes, int layer) {
+        int frames = 0;
+        for (MeshData mesh : meshes) {
+            float[] vertices = mesh.vertexFloats();
+            for (int corner = 0; corner < mesh.vertexCount(); corner++) {
+                if ((int) vertices[corner * MeshData.FLOATS_PER_VERTEX + 5] == layer) {
+                    frames = Math.max(frames,
+                            (int) vertices[corner * MeshData.FLOATS_PER_VERTEX + MeshData.FRAMES]);
+                }
+            }
+        }
+        return frames;
     }
 
     /** {@code true} when a corner of the mesh asks for that layer of the array. */

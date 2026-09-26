@@ -6,6 +6,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
 import com.philia093.neofactory.support.TestRegistries;
+import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -51,12 +52,22 @@ class MachineLitStateTest {
         assertTrue(boiler.isRunning());
         assertEquals("true", litOf(world), "the mouth of a burning boiler glows");
 
-        // A stick burns for five seconds, see Fuels, and five seconds of fire do not take this boiler past
-        // the boiling point: it ends up cold instead of ruined.
-        entity.tick(world, 5.0f);
+        // A stick burns four and a half times as long in the boiler as in a furnace, see
+        // SteamBoilerMachine#BRONZE_FUEL_SHARE, and this boiler holds water, so the fire does not take it past
+        // the boiling point. The world ticks the machine a frame at a time, see TickClock, which is the rate a
+        // boiler reaches its boiling point at before its heat is carried away.
+        int ticks = Math.round(5.0f * SteamBoilerMachine.BRONZE_FUEL_SHARE / TickClock.TICK_SECONDS) + 2;
+        for (int tick = 0; tick < ticks; tick++) {
+            entity.tick(world, TickClock.TICK_SECONDS);
+        }
 
         assertFalse(boiler.isExploded(), "the boiler was not pushed past its limit");
         assertFalse(boiler.isRunning(), "the stick burned down");
+
+        // The light stands a moment past the last frame of work, so that a machine which hands one craft over
+        // and takes the next one does not flicker, see MachineBlockEntity#LIT_HOLD_SECONDS.
+        entity.tick(world, 0.5f);
+
         assertEquals("false", litOf(world), "and the light goes out with the flame");
     }
 

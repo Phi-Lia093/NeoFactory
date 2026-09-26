@@ -1,6 +1,7 @@
 package com.philia093.neofactory.recipe;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -25,12 +26,48 @@ public final class RecipeType {
     /** A recipe a machine performs over time, such as smelting an ore. */
     public static final RecipeType SMELTING = new RecipeType("smelting");
 
+    /**
+     * A recipe the furnace of the age of steam smelts.
+     * <p>
+     * It reads like {@link #SMELTING} and spends steam besides, see {@link #isSteam()}: a machine of the age
+     * of steam pays for its work with the steam of the boiler and not with a flame of its own, so the two ages
+     * cannot share one folder - an ore that is smelted for free would not be a machine of the steam age.
+     */
+    public static final RecipeType STEAM_SMELTING = new RecipeType("steam_smelting");
+
+    /** A recipe the alloy furnace mixes out of two items. */
+    public static final RecipeType ALLOY_SMELTING = new RecipeType("alloy_smelting");
+
+    /** A recipe the grinder turns an ore into dust with. */
+    public static final RecipeType GRINDING = new RecipeType("grinding");
+
+    /** A recipe the compressor presses an item into a plate with. */
+    public static final RecipeType COMPRESSING = new RecipeType("compressing");
+
+    /** A recipe the extractor squeezes an item with. */
+    public static final RecipeType EXTRACTING = new RecipeType("extracting");
+
+    /** A recipe the forge hammer beats an ingot into shape with. */
+    public static final RecipeType FORGING = new RecipeType("forging");
+
     private static final Map<String, RecipeType> BY_NAME = new LinkedHashMap<>();
+
+    /**
+     * The kinds of recipe a machine of the age of steam reads, the ones of {@link #STEAM_SMELTING} through
+     * {@link #FORGING}.
+     */
+    private static final List<RecipeType> STEAM;
 
     static {
         BY_NAME.put(CRAFTING_SHAPED.name, CRAFTING_SHAPED);
         BY_NAME.put(CRAFTING_SHAPELESS.name, CRAFTING_SHAPELESS);
         BY_NAME.put(SMELTING.name, SMELTING);
+        List<RecipeType> steam = List.of(STEAM_SMELTING, ALLOY_SMELTING, GRINDING, COMPRESSING,
+                EXTRACTING, FORGING);
+        for (RecipeType type : steam) {
+            BY_NAME.put(type.name, type);
+        }
+        STEAM = steam;
     }
 
     private final String name;
@@ -52,6 +89,22 @@ public final class RecipeType {
      */
     public static RecipeType byName(String name) {
         return name == null ? null : BY_NAME.get(name);
+    }
+
+    /**
+     * {@code true} when this kind of recipe is performed by a machine of the age of steam.
+     * <p>
+     * A kind of that age is read from its own folder and spends steam, see
+     * {@link com.philia093.neofactory.recipe.SteamRecipe} and
+     * {@link com.philia093.neofactory.machine.SteamMachine}.
+     */
+    public boolean isSteam() {
+        return STEAM.contains(this);
+    }
+
+    /** The kinds of recipe a machine of the age of steam reads, in the order they are declared. */
+    public static List<RecipeType> steamKinds() {
+        return STEAM;
     }
 
     /** Every type the game knows, in the order they are declared. */
