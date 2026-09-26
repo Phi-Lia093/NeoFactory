@@ -11,6 +11,9 @@ import com.philia093.neofactory.world.Section;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -70,6 +73,63 @@ class BlockPicturesTest {
         assertTrue(world.contains("stone_slab_side"), "and the rim of its upper half");
         assertTrue(world.contains("anvil/anvil_top"), "the plate of an anvil");
         assertTrue(world.contains("anvil/anvil_base"), "and the body of its base");
+    }
+
+    /**
+     * Every picture of the art pack is stored with the alpha channel the array is uploaded from.
+     * <p>
+     * A layer is written with four bytes per pixel, and libGDX reads a picture into as many pixels as its
+     * file carries: a picture stored as plain RGB, or as a palette, is three bytes - or one - where the
+     * upload reads four, so every pixel of it slips and the layer shows a shifted, coloured mesh instead of
+     * the picture. That is exactly how the plates of the pipes were stored: a bundle of their pipes was a
+     * fine coloured grid on screen instead of the plate with four or nine tubes on it. The array converts a
+     * picture that arrives in another format as well, see {@code BlockPictures#toLayerFormat}, and this check
+     * is what keeps the art itself honest.
+     */
+    @Test
+    void everyPictureOfTheWorldCarriesAnAlphaChannel() {
+        int checked = 0;
+        List<String> plain = new ArrayList<>();
+        for (String folder : List.of("blocks", "items")) {
+            Path root = ASSETS.resolve(folder);
+            try (var files = Files.walk(root)) {
+                for (Path file : files.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".png")).toList()) {
+                    checked++;
+                    if (colourTypeOf(file) != RGBA) {
+                        plain.add(file + " carries no alpha channel, see BlockPictures#build");
+                    }
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to walk " + root, e);
+            }
+        }
+
+        assertTrue(checked > 100, "the art of the world was not found at all: " + checked + " pictures");
+        assertTrue(plain.isEmpty(), String.join("\n", plain));
+    }
+
+    /** Colour type of a PNG file that carries an alpha channel, see the format of a PNG. */
+    private static final int RGBA = 6;
+
+    /**
+     * Colour type of a PNG, read from its header.
+     * <p>
+     * The byte behind the signature and the length of the first block names how the pixels are stored:
+     * {@code 2} is red, green and blue, {@code 3} a palette, {@code 6} red, green, blue and alpha.
+     *
+     * @param file picture to read
+     * @return the colour type
+     * @throws IOException when the file cannot be read
+     */
+    private static int colourTypeOf(Path file) throws IOException {
+        byte[] header = new byte[26];
+        try (InputStream stream = Files.newInputStream(file)) {
+            if (stream.read(header) != header.length) {
+                throw new IOException(file + " is no picture, it is too short for a header");
+            }
+        }
+        return header[25] & 0xFF;
     }
 
     /**

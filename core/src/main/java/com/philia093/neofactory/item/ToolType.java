@@ -34,7 +34,17 @@ public enum ToolType {
     HOE,
 
     /** Blade of a fight: it cuts what stands and mines nothing, which is why no block names it. */
-    SWORD;
+    SWORD,
+
+    /**
+     * The wrench, the tool of the workshop.
+     * <p>
+     * It opens no block by itself, the way a hoe and a sword open none: it is held at a face and not swung
+     * at a block, see {@link com.philia093.neofactory.item.FaceTool}. A block that a player turns - a pipe
+     * whose side is opened and closed, a machine whose front is set - is a block this kind fits, and one
+     * day a machine will name it the way a stone names a pickaxe.
+     */
+    WRENCH;
 
     /**
      * Name of this kind as a word, used where a tool names what it is.

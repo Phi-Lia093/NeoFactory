@@ -15,11 +15,12 @@ import com.philia093.neofactory.world.World;
  * here - a cell of its grid opens or closes the line that runs on that side - and a machine will follow
  * with the wrench that turns it and the screwdriver that loosens its cover.
  * <p>
- * <b>Such a block is a whole cube while the grid is open.</b> A pipe is thin and a player would stand
- * inside it; the world therefore answers a whole cell for every block that shows the grid as long as one
- * of them does, see {@link World#shape(int, int, int, com.philia093.neofactory.util.Aabb)}. The rule is
- * the one the original machine mod follows, and it is what keeps a player from falling through what they
- * are working on.
+ * <b>The grid changes nothing about the shape of a block.</b> A grid used to fill the cell of the block it
+ * was opened on, so that a player would stand on a thin pipe instead of inside it. That turned the cell a
+ * player stands in into a wall, and the pipe of the large sizes is a cell of its own: a body that was
+ * inside one could not leave it again. A pipe is now walked through with a wrench in hand exactly as it is
+ * without one, which is what a see-through block of the game promises, see
+ * {@code BlockAccess#shape(int, int, int, com.philia093.neofactory.util.Aabb)}.
  * <p>
  * A block entity implements this, because it is the part of a block that holds what the operation
  * changes - the connections of a pipe, the side a machine faces, the cover of a face.

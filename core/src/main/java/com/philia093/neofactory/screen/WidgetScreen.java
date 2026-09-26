@@ -102,11 +102,13 @@ public abstract class WidgetScreen extends NeoFactoryScreen {
 
         @Override
         public boolean scrolled(float amountX, float amountY) {
-            // The wheel belongs to the list the mouse is over.
+            // The wheel belongs to the list the mouse is over. The sign is turned here for the reason
+            // InputHandler#scrolled writes down: a notch rolled forwards comes in negative, and a list reads
+            // a positive number as a scroll down.
             for (int index = widgets.size() - 1; index >= 0; index--) {
                 Widget widget = widgets.get(index);
                 if (widget instanceof ScrollListWidget && widget.contains(mouse.x, mouse.y)) {
-                    ((ScrollListWidget) widget).scroll(-amountY);
+                    ((ScrollListWidget) widget).scroll(amountY);
                     return true;
                 }
             }

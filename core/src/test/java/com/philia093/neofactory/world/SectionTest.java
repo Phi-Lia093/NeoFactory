@@ -161,6 +161,26 @@ class SectionTest {
     }
 
     @Test
+    void aStateAsksForANewMesh() {
+        // A pipe is drawn from the state of its cell and a machine is turned by one, so a section that was
+        // given a state has to be meshed again: the state is what the shape of a cell is read from. Without
+        // the mark a player who turns a side of a pipe with the wrench would see nothing happen at all.
+        Section section = new Section(LOWEST);
+        section.setRawId(2, 2, 2, Blocks.FURNACE.id());
+        section.clearDirty();
+
+        section.setState(2, 2, 2, 1);
+
+        assertTrue(section.isDirty(), "the shape of the cell is what the state says it is");
+
+        // A state of zero written into a section that carries none changes nothing and costs nothing.
+        Section empty = new Section(LOWEST);
+        empty.clearDirty();
+        empty.setState(3, 3, 3, 0);
+        assertFalse(empty.isDirty());
+    }
+
+    @Test
     void aStateOfZeroCostsNothing() {
         Section section = new Section(LOWEST);
 

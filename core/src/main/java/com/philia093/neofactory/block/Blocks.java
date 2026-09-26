@@ -2,6 +2,7 @@ package com.philia093.neofactory.block;
 
 import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.item.ToolType;
+import com.philia093.neofactory.pipe.Pipes;
 
 /**
  * Declaration of every block type used by the game.
@@ -76,7 +77,7 @@ public final class Blocks {
     public static final int BRONZE_BOILER_ID = 28;
 
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 29;
+    public static final int NEXT_FREE_ID = 57;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -488,6 +489,12 @@ public final class Blocks {
                 .blockEntity("bronze_boiler")
                 .build();
         BlockRegistry.register(BRONZE_BOILER);
+
+        // ------------------------------------------------------------------
+        // The pipes of the industry, one block per material and size. They are not written out here
+        // because there are twenty eight of them: the table of the pipes builds them, see Pipes.
+        // ------------------------------------------------------------------
+        Pipes.registerBlocks();
 
         BlockRegistry.freeze();
     }

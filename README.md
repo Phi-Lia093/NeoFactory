@@ -62,21 +62,74 @@ stored on disk so that a session can be continued later.
   that writes how much fuel is left. The contract behind it - slots and tanks with a
   role, energy, fluids and the recipe types a machine reads - is what the larger machines
   will be built from, and a test builds a reactor of that shape out of the same pieces.
-  A machine that declares a slot of the role `CELL` is fed by hand: while it ticks it trades the
-  cell that lies there with its tanks, so a full cell is poured into the tank it takes fluid from
-  and an empty one is filled from the tank it made fluid in, see `CellExchange`. The trade never
-  loses anything - a cell is only emptied when a single tank takes the whole amount it holds - and
-  the slot is offered to no recipe, which never eats a cell.
+  A machine is filled with fluid by hand through its tanks and not through a slot: a player clicks a tank
+  with a cell on the mouse, which pours a full cell into a tank the machine takes fluid from or fills an
+  empty cell from a tank it makes fluid in, see `CellTransfer`. Nothing is ever lost - a tank is only
+  emptied when it holds a whole cell's worth and a cell is only poured into a tank that is empty of
+  anything else or holds the very fluid and still has room for all of it - and hovering a tank names the
+  fluid, what it holds and what it takes.
+  A machine swallows what a recipe needs the moment the work starts and not when it ends, so a craft
+  that is interrupted - the block broken, the buffer empty, a flame gone for good - costs the portion
+  that was being worked on and hands nothing back. A machine that cannot pay for a frame takes nothing
+  at all, which is what keeps a machine without power from eating a stack one piece at a time, and the
+  recipe of a craft that runs travels with the state, so a furnace that is saved and opened again
+  carries on with the work it had.
 - **The bronze boiler** - the second machine and the first one of the industry: a fire under a tank of
-  water. It holds one slot and two tanks - fuel, the water it boils and the steam it makes - and its screen
-  shows the two tanks at the foot of the panel with the fuel line above them, which is what a machine
-  without a product looks like. One unit of water becomes sixteen units of steam and a second of burning
-  boils twenty of them, so a piece of coal keeps a boiler going for eighty seconds and makes more steam than
-  its tank holds. A boiler does not waste fuel: it takes a piece only when it has water to boil and room for
-  the steam, and a flame already burning waits while the tank of water is empty or the tank of steam is full,
-  so a boiler that ran dry sits quiet instead of chewing through a stack of coal. Its mouth glows while it
-  burns, which is the state of the cell and therefore part of the saved world. It has no slot for a cell:
-  water arrives through the pipe of the next step, and the fluid it makes leaves the same way.
+  water. It holds one slot each way - the fuel it burns and the slot its ash will land in once the game has
+  ash - and its two tanks take no slot at all: the tank of water it boils and the tank of steam it makes,
+  drawn at the foot of the panel with the bar above them, are filled and emptied by clicking them with a
+  cell on the mouse.
+  **A boiler is read by its temperature**: it starts at the standard temperature of the game, 298 K or 25
+  degrees Celsius, a flame adds ten kelvin a second while no flame takes five away, and water starts to
+  boil at 373 K or 100 degrees Celsius - the number the corner of the panel writes and the one the bar
+  fills towards while a piece of fuel burns. Boiling water carries the heat away, so a boiler that boils
+  holds the temperature of boiling water and turns twenty units of water into three hundred and twenty
+  units of steam a second whatever it burns: the fuel decides how long a boiler stays hot, not how fast it
+  boils. A boiler that cannot boil - because its tank of water ran dry, or because its tank of steam is
+  full and has nowhere to put more - keeps climbing, and at 473 K or 200 degrees Celsius it is ruined: the
+  block goes and the entity that holds its slots and tanks goes with it, so neither what was in it nor the
+  boiler itself is handed back. A boiler that boils dry while it is hot is marked as well, and water that
+  reaches it while it is still that hot cracks the metal: filling a red hot boiler by hand is as dangerous
+  as leaving it alone, while one that had time to cool down below the boiling point takes water again. Its
+  mouth glows while it burns, which is the state of the cell and therefore part of the saved world. Water
+  is meant to arrive through a pipe and the steam to leave the same way: a machine will take fluid on the
+  one face its art shows - the mouth or the hatch of its front - and give it on every other face. Until
+  those pipes are in the game a boiler is filled and emptied by clicking its tanks with a cell, and a
+  boiler that cannot let its steam out is a boiler that ruins itself.
+- **Pipes** - the fluid system of the industry, four materials in seven sizes: wood, copper, bronze and
+  steel, each as a tiny, small, medium, large and huge tube and as a quadruple and a nonuple bundle of
+  tubes, which is twenty eight pipes. A pipe decides one thing and nothing else: **which of its six sides
+  it joins.** Those six sides are the six properties of its block and the number of its state is the mask
+  of the connections, so the game knows every way a pipe can run without a line of code per case. **A pipe
+  joins nothing by itself**: it is placed with its six sides closed and stays that way, and the wrench of
+  the game opens a side and closes it again, see the tools below. **Any side may be turned**, whatever it
+  faces: a side that is opened towards nothing shows the open ending of the tube with the plate of its size
+  on it, and a side that faces a wall may be opened as well, because the wall may be gone a moment later.
+  A side that was joined stays joined when the block behind it is taken away.
+  Nothing of the world is read and no mask heals itself, so a
+  player gets exactly the lines they built: two lines that meet at a wall stay apart, and a line that runs
+  past a machine does not take from it by accident. Two pipes always join, whatever their material and
+  their size; a machine will join on the faces that carry a tank of fluid as well - the mouth of its front
+  takes fluid in and every other face gives it - which arrives with the transport of fluids. A pipe is not
+  a wall: it is walked through like a torch, it is drawn from the eight grey scale pictures of the pack
+  that every metal shares (its colour is painted over them, so a new metal needs no art at all), and its
+  geometry is a thin tube that ends at the border of its cell in the plate of its own size. That plate is
+  what a joined side shows: two tubes of one size put the very same plate against each other and the seam
+  between them disappears, so a line reads as one tube, while two tubes of different sizes cover one plate
+  with the other - the plate of the wider tube is the collar of a reducer, and it is the only place the art
+  of a pipe is seen from its end. A bundle is the other way round: it fills its cell and is read by its
+  cross section from wherever a player looks at it, so all six of its sides carry the plate of the bundle -
+  the picture with four or nine tubes on it - and none of them is left out, because a side that is left out
+  would be a hole in a block that fills its cell. In a slot a pipe is drawn as a straight length of itself,
+  the way a hand and the ground show it, and the frame of that icon follows the shape of the pipe: a tiny
+  pipe is a thin bar across the slot, a huge one a fat bar and a bundle the block it is, so a player can
+  tell the sizes apart in the inventory, see `BlockIconRenderer`. Its twenty eight
+  blocks take the block ids 29 to 56 and the item ids 100 to 127, so bronze and steel joined the materials
+  as well and every item of every material stands twenty eight numbers higher than before: `DATA_VERSION`
+  is 10 and a world of version 9 is refused. The heat a material takes and what it moves are placeholders
+  for now - a larger pipe carries more than a smaller one and a better metal takes more heat - and the
+  transport, the flow rates, the temperature a pipe bursts at and the fluids it carries are the next step.
+  In the creative inventory the pipes have a tab of their own.
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
 - **Faces and tools** - a block is worked on from the face it is looked at, and the faces a player
@@ -85,10 +138,17 @@ stored on disk so that a session can be continued later.
   block - which is how a pipe is told to let go of the line that runs behind a block, see `FaceGrid`.
   The grid appears while a tool is held - a wrench, a wire cutter, a crowbar or a screwdriver - or while
   a crouching player holds nothing at all, and a click on a cell does what the tool is good for on the
-  face that cell stands for, see `FaceOperable`. While a grid is open every block that shows one fills
-  its cell, so a player stands on a thin pipe instead of inside it. No block answers to it yet - the
-  pipe of the coming fluid system is the first that will - and the tools are items the art pack of the
-  machine mod brings.
+  face that cell stands for, see `FaceOperable`. **A grid changes nothing about the shape of a block**: it
+  is an overlay a player works through, so a pipe is walked through with a wrench in hand exactly as it is
+  without one. A grid used to fill the cell of the block it was opened on, which turned the block a player
+  stands in into a wall - and a pipe of the large sizes is a cell of its own, so a body inside one could
+  not leave it again. **The wrench is the first tool of the
+  game** - `Items.WRENCH`, item id 88, listed with the tools, a picture of its own and the kind
+  `ToolType.WRENCH`, so it opens no block and is held at a face - and the pipe is the first block that
+  answers to a grid: a click on a cell turns the side of the pipe that the cell stands for - either button
+  works, and holding the left one does not start to break the block - so the four corners of the grid reach
+  the four sides a player cannot see from where they stand. The wire cutter, the
+  crowbar and the screwdriver are items the art of the machine mod brings and will follow.
 - **Shapes and states** - a block is not one picture but a shape, and the skin of its faces lives in
   `assets/models/block`: a model names the picture of every face of every box, a template is written
   once and inherited, and a second layer is drawn over a face where the colour of a biome belongs
@@ -119,7 +179,12 @@ stored on disk so that a session can be continued later.
   group, a scroll bar and a search box, and a stack that was taken is there again right
   away. A slot of the grid shows one piece and carries no amount, because the shelf of the
   game is not a chest: the left button takes one piece, the right button a whole stack, and
-  the slot fills itself again either way. Every tab carries the icon of its group, an empty
+  a click with shift held hands over one group of the item and no more - the supply never
+  runs out, so a whole session there would be a backpack full of it. A creative player
+  builds for nothing as well: a block is placed the very way it is in survival and the
+  stack in the hand is not touched, so a line of a hundred blocks may be laid with one
+  piece, see `BlockPlacer#place` and `GameModeMining` for the same rule while a block is
+  broken. Every tab carries the icon of its group, an empty
   search box lists everything
   and the scroll bar tells a list that fits into the grid from one that goes on. The tabs
   frame the panel - the first row above it and the second one below it, painted with the
@@ -133,7 +198,11 @@ stored on disk so that a session can be continued later.
 - **Fluids** - a fluid is a material of the industry and no longer a block of the world: water, lava and
   the steam of the first machines are held in the tank of a machine and carried by a cell, and a recipe
   asks for them by amount. None of them is ever met in the terrain, so nothing spreads, nothing floods
-  and no picture of a fluid is drawn into the world. The game has one container: a cell carries any fluid
+  and no picture of a fluid is drawn into the world. **What lies in a tank is continuous and what travels
+  in a cell is not**: a tank holds whatever amount a machine boiled or a recipe drained, while a cell
+  carries whole thousands of it - a thousand millibuckets is one cell - so a hand that meets a tank moves a
+  whole cell's worth of fluid or moves nothing at all, see `CellTransfer`. The game has one container: a
+  cell carries any fluid
   the industry brings, and a filled cell shows its fluid in the window
   while the steel around it stays grey. The buckets are gone with the fluids that used to stand in the
   world as a block, so the item ids 67, 68 and 69 name nothing and the cells kept theirs - 70, 71 and
@@ -150,8 +219,9 @@ stored on disk so that a session can be continued later.
   the game keeps the two apart: `Material` says what a material is - a name, a colour, a chemical
   formula and the shapes it comes in - `MaterialForm` says what a shape is - the picture, the name
   its item carries and how many of them fit in a slot - and `Materials` builds every item of every
-  material out of those two. Ten metals bring about two hundred items with them today, and a metal
-  that arrives later is one line in that file. An item is named after material and shape, so a
+  material out of those two. Twelve metals bring two hundred and twenty eight items with them today - the
+  last two are bronze and steel, the metals of the bronze age the boiler and the pipes are built of - and
+  a metal that arrives later is one line in that file. An item is named after material and shape, so a
   plate of iron is `iron_plate` and reads as "Iron Plate" over "Fe" in its tooltip: the name first,
   the formula of the material under it, and the search box of the creative inventory finds an item
   by that formula as well. The picture of a shape holds brightness only and the colour of the
@@ -164,7 +234,7 @@ stored on disk so that a session can be continued later.
 | --- | --- |
 | `W`, `A`, `S`, `D` | walk |
 | mouse | turn the view, the block the eyes meet is what an action applies to |
-| mouse wheel | select a hotbar slot, `CTRL` with it zooms the view instead |
+| mouse wheel | select a hotbar slot, `CTRL` with it zooms the view instead; a notch rolled forwards walks towards the first slot |
 | `-` / `=` | zoom out / in while held (numpad `-` and `+` do the same) |
 | left mouse button | break the block the eyes meet while held; a click on the hotbar selects that slot |
 | `1` to `9` | select a hotbar slot |
@@ -190,15 +260,16 @@ stored on disk so that a session can be continued later.
 | Package | Contents |
 | --- | --- |
 | `fluid` | what a fluid is: the kinds, the colour a tank and a cell paint it in, and the containers that carry it |
+| `pipe` | the pipes of the industry: the materials and sizes a pipe comes in, the mask of the sides it joins, and the table of the twenty eight blocks - a side is turned with the wrench of the game, see `blockentity` and `world.interaction` |
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
-| `item` | item types, stacks, the inventory, the hotbar selection and the sinks broken blocks hand items to |
+| `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |
 | `loot` | what a broken block leaves behind: the tables, the files below `assets/loot_tables` and the rule that a block without a table drops itself |
 | `world` | chunks, the world, the game mode, the chunk store interface and the generator |
 | `world.decoration` | the trees and plants planted on a finished chunk |
-| `world.interaction` | aiming, breaking and building |
+| `world.interaction` | aiming, breaking and building, and the grid of nine cells a tool works a face of a block with (`FaceGrid`, `FaceOperable`) |
 | `world.save` | the save format, the level file, the chunk files and the entity tags |
 | `entity` | entities: the base class, the type registry, the manager, the player and dropped items |
 | `chat` | the input line, the messages and the commands a line behind a slash is looked up in |
@@ -239,7 +310,10 @@ file, and the array of a section is stored as a palette plus one packed index pe
 so a piece of terrain that repeats six blocks spends a few bits per block instead of
 four bytes. The state is what a block carries beyond its id - the direction a machine
 faces, the shape a pipe is drawn with - and it travels with the chunk, while a cell
-whose block changes loses the state it had.
+whose block changes loses the state it had. Writing a state is a change like writing a
+block is: the section is meshed again, because the state is what the shape of the cell is
+read from, and the chunk is marked for the save game, or a turned pipe would be drawn and
+stored as the pipe it was before the wrench.
 
 What a block carries beyond that - the slots, the buffer and the tanks of a machine - is
 stored with the chunk as well, as a list of block entities next to the sections. An
@@ -251,7 +325,11 @@ still being built, so nothing is converted between versions: a world written by 
 version is refused with a clear reason instead of being read halfway. Version 2 is the
 one that turned the two flat layers of a chunk into the column of sections a world of
 cubes needs, so a world of version 1 is refused instead of being read into a shape it
-never had, and version 3 names the spawn and the player of the level file by X and Z.
+never had, version 3 names the spawn and the player of the level file by X and Z, and
+version 10 gave the pipes the item ids 100 to 127 and bronze and steel their items, so
+every item of every material moved twenty eight numbers up. The wrench took item id 88
+when it arrived, a number of the window that stood free next to the pipes, which costs
+no version: no stored inventory can hold it.
 
 ## Build and run
 
@@ -286,6 +364,38 @@ is kept. The cube is folded at four times the cell that shows it and drawn with 
 the steps along its slanted edges are four pixels wide instead of sixteen and the graphics card turns
 them into soft edges; `BlockIconFactory#downscale` is the same arithmetic for a preview that cannot
 lean on the graphics card. Tall grass and leaves keep their flat picture, they do not fill a cell.
+
+**The icon of a block is framed around the cell the block stands in.** `BlockIconRenderer` draws the block
+itself off screen, and the frame it is drawn in is the cell: a slot says how large a thing is by the room
+the ring around it is, so a tiny pipe is a thin tube in the middle of a slot and a block fills its slot
+the way it fills its cell. What a pipe is drawn *as* is the state `Block#itemState` names - a straight
+length of itself with its arms, not the bare stub of state zero - so a slot, a hand and the ground show
+the very piece of pipe a player thinks of.
+
+**The models of the pipes are written by a script and checked by a test.** A pipe is drawn from the state
+of its cell - the mask of the six sides it joins, see `pipe` - and sixty four masks in seven sizes are more
+files than a hand writes, so `tools/gen_pipe_models.ps1` writes them: one model per family, size and
+canonical mask (a turn of a pipe is the same pipe, so a size needs twenty four models and not sixty four),
+one blockstate per pipe block naming the model and the quarter turn of every one of its states, and one
+short model per pipe block that points at a straight length of it, which is the shape a pipe is drawn from
+where a block is shown as itself. The script reads the art of the pack - the grey scale `pipeSide` and one
+plate per size, the same eight files for every metal, see `PipeTexture` - and writes nothing a hand has to
+keep in step, because `PipeModelTest` opens every file again and checks the boxes against the very mask
+`Pipes` computes, including that no box of a pipe is wider than the tube of its size - a collar that ran
+around every block boundary is gone, a joined side shows the end face of the arm and nothing else - and
+that no side of a pipe is ever left out: a bundle that fills its cell carries a face on all six of its
+sides (the flank where the line goes on, the plate of the bundle where its tubes end) and a pipe that is
+joined on every side keeps its core as the joint the arms meet in, because a side that is left out is a
+hole a player looks straight through.
+`PipePreviewTest` paints every size and five ways of being joined into
+`core/build/reports/pipe-preview.png` and the places where two tubes meet into
+`core/build/reports/pipe-junction.png` - two of one size, which must show no seam at all, and pairs of
+different sizes, which show the plate of the wider tube - so the thickness of a tube and the collar of a
+reducer are judged without starting the game. Run the script after a change of the table:
+
+```bash
+powershell -File tools/gen_pipe_models.ps1
+```
 
 A dropped item is a small body of its own: the cube of the block it stands for, or - when it places no
 block, a tool or a material - one upright board of its own picture, see `ItemCubeMeshes`. The board is one
@@ -328,7 +438,7 @@ missing icon. One shape covers something: a fine wire is drawn from two layers, 
 around the darker core inside it, and `Item#overlayTexture` is that second layer, drawn in its own
 colours while the shape below takes the tint. `gradlew :core:test` paints every shape of every
 material into `core/build/reports/material-preview.png`, one row per material and one column per
-shape, which is how the colours of ten metals are reviewed without starting the game.
+shape, which is how the colours of twelve metals are reviewed without starting the game.
 
 The flat engine only ever needed the view from above, so the side, the bottom and the front of every
 block had been deleted: `assets/blocks` held 271 pictures of the art pack instead of 356, and a test

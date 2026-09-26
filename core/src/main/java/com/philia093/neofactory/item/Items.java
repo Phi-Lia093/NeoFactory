@@ -4,6 +4,7 @@ import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.material.Materials;
+import com.philia093.neofactory.pipe.Pipes;
 
 /**
  * Declaration of every item type used by the game.
@@ -154,6 +155,15 @@ public final class Items {
     /** Amount of use a tool of diamond takes before it is used up. */
     public static final int DIAMOND_TOOL_DURABILITY = 1561;
 
+    /**
+     * Amount of use the wrench takes before it is used up.
+     * <p>
+     * A wrench is swung at a block as rarely as a hoe is: the work it is made for is the turn of a face,
+     * which costs it nothing, so its life is the one of an iron tool and is only spent when a player
+     * breaks a block with it in hand, see {@code GameScreen#wearHeldTool}.
+     */
+    public static final int WRENCH_DURABILITY = 250;
+
     public static final int IRON_PICKAXE_ID = 48;
     public static final int IRON_AXE_ID = 49;
     public static final int IRON_SHOVEL_ID = 50;
@@ -211,6 +221,25 @@ public final class Items {
      */
     public static final int BRONZE_BOILER_ID = 87;
 
+    /**
+     * Id of the wrench, the tool the industry is built with.
+     * <p>
+     * It takes a number that the window between the boiler and the materials held free, see
+     * {@link #PIPE_ID_FROM}: the wrench is not a thing of a material and needs no room of its own, and a
+     * number that no stored inventory can hold costs no version of the save game, see
+     * {@link #NEXT_FREE_ID}.
+     */
+    public static final int WRENCH_ID = 88;
+
+    /**
+     * Id of the first pipe, one item per material and size.
+     * <p>
+     * The twenty eight pipes do not fit into the numbers between the boiler and the materials, so they take
+     * a run of their own and the materials stand behind it, see {@link #NEXT_FREE_ID}. {@code Pipes} hands
+     * the numbers out in the order its materials and sizes are declared.
+     */
+    public static final int PIPE_ID_FROM = 100;
+
     // ------------------------------------------------------------------
     // The block items of the blocks that came with the third axis. They are appended above every
     // number that was written down before them, so no id that a world already holds changes its
@@ -239,17 +268,23 @@ public final class Items {
      * number itself and bumps this one, while the run of the materials follows behind. A number
      * from the middle may never be taken, or the items of the materials would move.
      * <p>
-     * <b>The industry writes its items down before the materials.</b> The cell of steam took 86 and the
-     * bronze boiler 87, and the machines, pipes and tools of the coming steps take the numbers behind them;
-     * this number is therefore set past that run, so the materials keep their place while the industry
-     * grows. One of those items costs a line here and moves nothing at all.
+     * <b>The industry writes its items down before the materials.</b> The cell of steam took 86, the
+     * bronze boiler 87 and the twenty eight pipes 100 to 127, and the machines and tools of the coming
+     * steps take the numbers behind them; this number is therefore set past that run, so the materials
+     * keep their place while the industry grows. One of those items costs a line here and moves nothing at
+     * all.
      * <p>
      * <b>What version 8 of the save game changed.</b> The items of the industry took the numbers 86 to 99,
      * so every item of every material stands fourteen numbers higher than it did - which is why a world of
      * an older version is refused instead of being read with the wrong items in it, see
      * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
+     * <p>
+     * <b>What version 10 changed.</b> The pipes took the numbers 100 to 127 - fourteen items more than the
+     * window the industry had kept free - and bronze and steel joined the materials, so every item of every
+     * material stands another twenty eight numbers higher. A stored world of version 9 is refused for the
+     * same reason as one of version 7.
      */
-    public static final int NEXT_FREE_ID = 100;
+    public static final int NEXT_FREE_ID = 128;
 
     /**
      * Amount an empty container stacks to.
@@ -406,6 +441,8 @@ public final class Items {
     public static Item IRON_HOE;
     /** Iron sword. */
     public static Item IRON_SWORD;
+    /** The wrench, the tool that opens a side of a pipe and turns what stands built. */
+    public static Item WRENCH;
     /** Diamond pickaxe. */
     public static Item DIAMOND_PICKAXE;
     /** Diamond axe. */
@@ -689,6 +726,21 @@ public final class Items {
         DIAMOND_SWORD = register(toolItem(DIAMOND_SWORD_ID, "diamond_sword", "Diamond Sword",
                 ToolType.SWORD, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, DIAMOND_TOOL_DURABILITY));
 
+        // The wrench: the tool a player builds the industry with. It opens no block, it opens faces - a
+        // side of a pipe, the front of a machine - so it is built here and not by toolItem(): its kind is
+        // the one it turns blocks with, its level is the one of a hand, and FaceTool#WRENCH is what makes
+        // the grid of nine cells appear on the block a player looks at, see Item#faceTool.
+        WRENCH = register(Item.builder(WRENCH_ID, "wrench")
+                .displayName("Wrench")
+                .texture(Item.ITEM_FOLDER + "wrench")
+                .maxStackSize(Item.SINGLE_ITEM_STACK)
+                .toolType(ToolType.WRENCH)
+                .toolLevel(HAND_TOOL_LEVEL)
+                .miningSpeed(Item.HAND_MINING_SPEED)
+                .maxDamage(WRENCH_DURABILITY)
+                .faceTool(FaceTool.WRENCH)
+                .build());
+
         // The armour is gone for now: eight icons that no slot held and that no defence stood behind.
         // Its numbers stay free, see ARMOUR_ID_FROM above.
 
@@ -711,6 +763,11 @@ public final class Items {
         BRONZE_BOILER = register(Item.builder(BRONZE_BOILER_ID, "bronze_boiler")
                 .displayName("Bronze Boiler")
                 .buildBlock(Blocks.BRONZE_BOILER));
+
+        // The pipes of the industry: one item per material and size, the blocks of them were built while
+        // the blocks were registered, see Pipes. They take the numbers 100 to 127, a run of their own:
+        // the wrench is the only item that stands in the window between the boiler and them.
+        Pipes.registerItems();
 
         // The materials bring their own items, one per shape they come in. They are registered
         // here, right before the table closes, so that they append behind every item written above

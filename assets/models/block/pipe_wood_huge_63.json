@@ -1,0 +1,86 @@
+{
+  "textures": {
+    "side": "pipe_wood/side",
+    "end": "pipe_wood/huge"
+  },
+  "elements": [
+    {
+      "from": [1, 1, 1],
+      "to": [15, 15, 15],
+      "faces": {
+        "north": { "texture": "#side" },
+        "east": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [1, 1, 0],
+      "to": [15, 15, 1],
+      "faces": {
+        "north": { "texture": "#end" },
+        "east": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [15, 1, 1],
+      "to": [16, 15, 15],
+      "faces": {
+        "north": { "texture": "#side" },
+        "east": { "texture": "#end" },
+        "south": { "texture": "#side" },
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [1, 1, 15],
+      "to": [15, 15, 16],
+      "faces": {
+        "east": { "texture": "#side" },
+        "south": { "texture": "#end" },
+        "west": { "texture": "#side" },
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [0, 1, 1],
+      "to": [1, 15, 15],
+      "faces": {
+        "north": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#end" },
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [1, 15, 1],
+      "to": [15, 16, 15],
+      "faces": {
+        "north": { "texture": "#side" },
+        "east": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "top": { "texture": "#end" }
+      }
+    },
+    {
+      "from": [1, 0, 1],
+      "to": [15, 1, 15],
+      "faces": {
+        "north": { "texture": "#side" },
+        "east": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "bottom": { "texture": "#end" }
+      }
+    }
+  ]
+}

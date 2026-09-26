@@ -1,0 +1,21 @@
+{
+  "textures": {
+    "side": "pipe_metal/side",
+    "end": "pipe_metal/quadruple"
+  },
+  "tint": true,
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": { "texture": "#end" },
+        "east": { "texture": "#end" },
+        "south": { "texture": "#end" },
+        "west": { "texture": "#end" },
+        "top": { "texture": "#end" },
+        "bottom": { "texture": "#end" }
+      }
+    }
+  ]
+}

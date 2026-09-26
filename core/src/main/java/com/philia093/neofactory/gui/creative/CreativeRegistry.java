@@ -2,6 +2,9 @@ package com.philia093.neofactory.gui.creative;
 
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.pipe.PipeMaterials;
+import com.philia093.neofactory.pipe.PipeSize;
+import com.philia093.neofactory.pipe.Pipes;
 
 import java.util.List;
 import java.util.Locale;
@@ -32,6 +35,8 @@ public final class CreativeRegistry {
     private static final List<CreativeTab> TABS = List.of(
             CreativeTab.items("blocks", "Blocks", Items.STONE, CreativeRegistry::isBlock),
             CreativeTab.items("machines", "Machines", Items.FURNACE, CreativeRegistry::isMachine),
+            CreativeTab.items("pipes", "Pipes", Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM).item(),
+                    CreativeRegistry::isPipe),
             CreativeTab.items("fluids", "Fluids", Items.WATER_CELL, CreativeRegistry::isFluid),
             CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
             CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
@@ -57,9 +62,20 @@ public final class CreativeRegistry {
         return TABS.get(0);
     }
 
-    /** {@code true} when an item places a plain block, the machines have a tab of their own. */
+    /** {@code true} when an item places a plain block, the machines and the pipes have tabs of their own. */
     private static boolean isBlock(Item item) {
-        return item.isBlockItem() && !isMachine(item);
+        return item.isBlockItem() && !isMachine(item) && !isPipe(item);
+    }
+
+    /**
+     * {@code true} when an item places a pipe.
+     * <p>
+     * A pipe carries a block entity like a machine does, so it would land in the tab of the machines by
+     * itself, see {@link #isMachine(Item)}: the pipes have a tab of their own instead, because a player who
+     * is building a line of them looks for all of them at once, see {@link Pipes}.
+     */
+    private static boolean isPipe(Item item) {
+        return item.isBlockItem() && item.block() != null && Pipes.of(item.block()) != null;
     }
 
     /**
@@ -73,7 +89,8 @@ public final class CreativeRegistry {
      * exactly one tab.
      */
     private static boolean isMachine(Item item) {
-        return item.isBlockItem() && item.block() != null && item.block().hasBlockEntity();
+        return item.isBlockItem() && item.block() != null && item.block().hasBlockEntity()
+                && !isPipe(item);
     }
 
     /** {@code true} when an item is a raw material the game has no other group for. */

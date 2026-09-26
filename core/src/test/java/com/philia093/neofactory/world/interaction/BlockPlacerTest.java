@@ -7,6 +7,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.support.TestRegistries;
+import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.World;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +61,7 @@ class BlockPlacerTest {
         // anything, and that is exactly what the aim of a body brings along.
         world.setBlock(1, air, 1, Blocks.STONE);
 
-        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory),
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory, GameMode.SURVIVAL),
                 "the side of the wall carries the block");
 
         assertEquals(Blocks.STONE, world.getBlock(0, air, 1), "the block was built beside the wall");
@@ -70,7 +71,7 @@ class BlockPlacerTest {
     @Test
     void aBlockIsRefusedWhereNothingCanCarryIt() {
         // The cell behind the face is empty as well, so the block would hang in the air.
-        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory),
+        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory, GameMode.SURVIVAL),
                 "a block with nothing behind the face is refused");
 
         assertEquals(Blocks.AIR, world.getBlock(1, air, 1), "and nothing was written");
@@ -80,11 +81,11 @@ class BlockPlacerTest {
     void aCellTheMouseNamedStillStandsOnTheGroundBelow() {
         // A cell the mouse named knows no side, so the rule of the view from above answers: the air
         // right above the terrain is carried by the terrain.
-        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(2, air, 2), inventory),
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(2, air, 2), inventory, GameMode.SURVIVAL),
                 "the ground below carries it");
         assertEquals(Blocks.STONE, world.getBlock(2, air, 2));
 
-        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(2, air + 2, 2), inventory),
+        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(2, air + 2, 2), inventory, GameMode.SURVIVAL),
                 "two blocks higher there is nothing to stand on");
         assertEquals(Blocks.AIR, world.getBlock(2, air + 2, 2), "and nothing was written");
     }
@@ -96,7 +97,7 @@ class BlockPlacerTest {
         inventory.set(inventory.selectedSlot(), ItemStack.of(Items.STONE_SLAB, 8));
 
         // An aim that came down onto the floor: the lower half is the half the floor carries.
-        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(5, air, 5, BlockFace.TOP), inventory),
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(5, air, 5, BlockFace.TOP), inventory, GameMode.SURVIVAL),
                 "the floor carries the slab");
 
         assertEquals(halfState(BlockPlacer.LOWER_HALF), world.getState(5, air, 5),
@@ -106,7 +107,7 @@ class BlockPlacerTest {
         world.setBlock(6, air - 1, 6, Blocks.STONE);
         world.setBlock(6, air + 1, 6, Blocks.STONE);
 
-        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(6, air, 6, BlockFace.BOTTOM), inventory),
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(6, air, 6, BlockFace.BOTTOM), inventory, GameMode.SURVIVAL),
                 "the ceiling carries the slab");
 
         assertEquals(halfState(BlockPlacer.UPPER_HALF), world.getState(6, air, 6),
@@ -121,7 +122,7 @@ class BlockPlacerTest {
         inventory.set(inventory.selectedSlot(), ItemStack.of(Items.STONE_SLAB, 8));
         player.setView(0.0f, 30.0f);
 
-        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(7, air, 7, BlockFace.WEST), inventory),
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(7, air, 7, BlockFace.WEST), inventory, GameMode.SURVIVAL),
                 "the wall beside it carries the slab");
 
         assertEquals(halfState(BlockPlacer.UPPER_HALF), world.getState(7, air, 7),
@@ -135,7 +136,7 @@ class BlockPlacerTest {
         world.setBlock(1, air, 1, Blocks.STONE);
         inventory.set(inventory.selectedSlot(), ItemStack.of(Items.LADDER, 8));
 
-        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory),
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory, GameMode.SURVIVAL),
                 "the face of the wall carries the ladder");
 
         assertEquals(Blocks.LADDER, world.getBlock(0, air, 1), "the ladder hangs on the wall");
@@ -147,10 +148,45 @@ class BlockPlacerTest {
     void aLadderIsRefusedWhereNoWallHoldsIt() {
         inventory.set(inventory.selectedSlot(), ItemStack.of(Items.LADDER, 8));
 
-        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(3, air, 3), inventory),
+        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(3, air, 3), inventory, GameMode.SURVIVAL),
                 "a ladder without a wall behind it would hang in the air");
 
         assertEquals(Blocks.AIR, world.getBlock(3, air, 3));
+    }
+
+    @Test
+    void aCreativePlayerBuildsForNothing() {
+        // A creative player owns every item of the game already, so a build costs nothing: the block goes
+        // into the world and the stack in the hand is left exactly as it was, which is what lets a player
+        // lay a whole line with the one piece they hold, see BlockPlacer#place.
+        inventory.set(inventory.selectedSlot(), ItemStack.of(Items.STONE, 1));
+        world.setBlock(1, air, 1, Blocks.STONE);
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory,
+                GameMode.CREATIVE), "the side of the wall carries the block");
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.SOUTH), inventory,
+                GameMode.CREATIVE), "and the next one is built from the same single piece");
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.NORTH), inventory,
+                GameMode.CREATIVE), "and so is the one after that");
+
+        assertEquals(Blocks.STONE, world.getBlock(0, air, 1), "the first block was built beside the wall");
+        assertEquals(Blocks.STONE, world.getBlock(1, air, 2), "and the second one as well");
+        assertEquals(Blocks.STONE, world.getBlock(1, air, 0), "and the third");
+        assertEquals(1, inventory.heldStack().count(), "the one piece in the hand is still there");
+    }
+
+    @Test
+    void aSurvivalPlayerPaysOneItemPerBuild() {
+        // The other way round: survival is where a build costs what the player carries.
+        inventory.set(inventory.selectedSlot(), ItemStack.of(Items.STONE, 2));
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(2, air, 2), inventory,
+                GameMode.SURVIVAL));
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(3, air, 3), inventory,
+                GameMode.SURVIVAL));
+        assertTrue(inventory.heldStack().isEmpty(), "two builds used the two pieces up");
+        assertFalse(BlockPlacer.place(world, player, BlockTarget.of(4, air, 4), inventory,
+                GameMode.SURVIVAL), "an empty hand builds nothing");
     }
 
     /** The state of a slab of the given half. */

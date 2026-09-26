@@ -436,6 +436,36 @@ class ContainerMenuTest {
     }
 
     @Test
+    void aShiftClickOnTheCreativeGridHandsOutOneStack() {
+        // The grid of the creative inventory hands out one piece per left click and a whole stack per right
+        // one, and a click with shift held asks for one group of the item: the supply never runs out, so a
+        // whole session there would be a backpack full of the item, see ContainerMenu#setCreativeSupply.
+        Inventory grid = new Inventory(1);
+        ContainerLayout creativeLayout = new ContainerLayout();
+        creativeLayout.add(8, 8, grid, 0, Slot.Rule.OUTPUT);
+        creativeLayout.addGrid(8, 62, 9, 4, player, 0, Slot.Rule.NORMAL);
+        ContainerMenu container = new ContainerMenu(creativeLayout, player);
+        container.open();
+        container.setCreativeSupply(true);
+        container.setResultFiller(slot -> ItemStack.of(Items.DIAMOND, 1));
+        Slot gridSlot = creativeLayout.slots().get(0);
+        gridSlot.set(ItemStack.of(Items.DIAMOND, 1));
+
+        click(container, gridSlot, LEFT, true);
+
+        assertEquals(Items.DIAMOND.maxStackSize(), player.countOf(Items.DIAMOND),
+                "one group of the item was handed out and the grid did not empty the backpack into itself");
+        assertTrue(container.cursorStack().isEmpty(), "nothing is left on the mouse");
+        assertEquals(1, gridSlot.stack().count(), "and the shelf shows one piece again");
+        for (int slot = 0; slot < player.size(); slot++) {
+            if (player.get(slot).item() == Items.DIAMOND) {
+                assertEquals(Items.DIAMOND.maxStackSize(), player.get(slot).count(),
+                        "the group is a whole stack and no more");
+            }
+        }
+    }
+
+    @Test
     void thePanelRectTellsInsideFromOutside() {
         assertTrue(layout.contains(0, 0), "the upper left corner belongs to the panel");
         assertTrue(layout.contains(layout.panelWidth() - 1, layout.panelHeight() - 1),

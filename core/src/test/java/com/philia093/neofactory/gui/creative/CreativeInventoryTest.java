@@ -5,6 +5,9 @@ import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.pipe.PipeMaterials;
+import com.philia093.neofactory.pipe.PipeSize;
+import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.support.TestRegistries;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -104,6 +107,22 @@ class CreativeInventoryTest {
                 "then the boiler of the industry");
         assertTrue(creative.stackAt(2).isEmpty(), "and nothing behind them so far");
         assertEquals(2, creative.matches().size(), "the list holds the two machines of the game");
+    }
+
+    @Test
+    void theTabOfThePipesListsEveryPipeAndNoMachine() {
+        CreativeInventory creative = new CreativeInventory();
+        creative.select(indexOfTab("pipes"));
+
+        assertEquals(Pipes.COUNT, creative.matches().size(), "a tab for all the pipes of the game");
+        assertEquals(Pipes.of(PipeMaterials.WOOD, PipeSize.TINY).item(), creative.stackAt(0).item(),
+                "wood comes first, the smallest size at its front");
+        assertEquals(Pipes.of(PipeMaterials.STEEL, PipeSize.NONUPLE).item(),
+                creative.stackAt(Pipes.COUNT - 1).item(), "steel comes last, the bundle at its end");
+        assertFalse(tab("pipes").matches(Items.FURNACE), "a machine is no pipe");
+        assertFalse(tab("pipes").matches(Items.STONE), "and neither is a stone");
+        assertFalse(tab("machines").matches(Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM).item()),
+                "and a pipe is no machine");
     }
 
     @Test

@@ -172,9 +172,9 @@ class BlockEntityPersistenceTest {
         Machine machine = ((MachineBlockEntity) reopened).machine();
         assertEquals(1, machine.inventory().get(SmeltingMachine.OUTPUT).count(),
                 "the ingot the furnace made is gone");
-        assertEquals(1, machine.inventory().get(SmeltingMachine.INPUT).count(),
-                "the ore that was left is gone");
-        assertTrue(machine.isRunning(), "the coal is still burning");
+        assertEquals(0, machine.inventory().get(SmeltingMachine.INPUT).count(),
+                "the ore of the second craft went into the fire when that craft started");
+        assertTrue(machine.isRunning(), "the furnace is still working");
     }
 
     @Test

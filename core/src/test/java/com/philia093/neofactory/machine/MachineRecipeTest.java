@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -142,6 +143,36 @@ class MachineRecipeTest {
     }
 
     @Test
+    void anInterruptedCraftCostsTheInputAndAMachineWithoutPowerEatsNothing() {
+        fillInputs();
+        tick(reactor, 50);
+
+        assertTrue(reactor.isRunning(), "the machine is working");
+
+        // The buffer runs dry in the middle of the work. The craft stops where it was, and the ore the
+        // machine swallowed when the work started is not handed back: that is what an interruption costs.
+        reactor.energy().extract(BUFFER, false);
+        tick(reactor, 5);
+
+        assertFalse(reactor.isRunning(), "the machine stopped");
+        assertEquals(0, reactor.inventory().get(TestReactor.MAIN).count(),
+                "the input of the interrupted craft is gone");
+        assertEquals(0, reactor.inventory().get(TestReactor.INGOT_OUTPUT).count(),
+                "and no product was made");
+
+        // A machine without energy takes nothing at all, so it cannot eat a stack one piece at a time.
+        reactor.inventory().set(TestReactor.MAIN, ItemStack.of(Items.IRON_ORE, 3));
+        reactor.inventory().set(TestReactor.SECONDARY, ItemStack.of(Items.SAND, 3));
+        reactor.tank(0).storage().fill(Fluids.WATER, 100, false);
+        tick(reactor, 200);
+
+        assertEquals(3, reactor.inventory().get(TestReactor.MAIN).count(),
+                "a machine without energy eats nothing");
+        assertEquals(3, reactor.inventory().get(TestReactor.SECONDARY).count());
+        assertEquals(MachineError.NO_POWER, reactor.error());
+    }
+
+    @Test
     void theWorkTravelsThroughTheStateOfTheMachine() {
         fillInputs();
         tick(reactor, 50);
@@ -156,8 +187,11 @@ class MachineRecipeTest {
                 "the work of the machine was lost");
         assertEquals(reactor.energy().amount(), restored.energy().amount());
         assertEquals(Fluids.WATER, restored.tank(0).storage().fluid());
-        assertEquals(200, restored.tank(0).storage().amount());
-        assertEquals(1, restored.inventory().get(TestReactor.MAIN).count());
+        assertEquals(100, restored.tank(0).storage().amount(),
+                "the water of the craft was taken when the work started");
+        assertEquals(0, restored.inventory().get(TestReactor.MAIN).count(),
+                "and so was the ore: that is what an interrupted craft costs");
+        assertTrue(restored.isRunning(), "the machine took the work up where it left it");
     }
 
     /** Fills the two input slots, the fluid tank and the buffer of the reactor. */

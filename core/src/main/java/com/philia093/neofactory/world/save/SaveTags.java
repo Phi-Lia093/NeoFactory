@@ -163,12 +163,32 @@ public final class SaveTags {
     public static final String BURN_TOTAL = "BurnTotal";
 
     /**
+     * Name of the recipe a machine works on.
+     * <p>
+     * A machine swallows what a recipe needs before it starts, see
+     * {@code RecipeMachine#startCraft(float)}, so the recipe it is working on has to travel with it: a
+     * recipe that is looked for again after a world was opened would not find its input any more.
+     */
+    public static final String CRAFT_RECIPE = "CraftRecipe";
+
+    /**
      * Water a boiler earned but has not turned into steam yet.
      * <p>
      * The amount is below one unit, so it is the part of the work of a frame that the arithmetic did not
      * reach and that the frames after it carry on with.
      */
     public static final String WATER_DEBT = "WaterDebt";
+
+    /** Temperature a boiler has reached, in kelvin. */
+    public static final String TEMPERATURE = "Temperature";
+
+    /**
+     * {@code true} once a boiler boiled dry while it was hot.
+     * <p>
+     * Such a boiler is ruined by the first water that reaches it, so the mark has to travel with it, see
+     * {@code SteamBoilerMachine}.
+     */
+    public static final String SCORCHED = "Scorched";
 
     /** List of the block entities of a chunk. */
     public static final String BLOCK_ENTITIES = "BlockEntities";

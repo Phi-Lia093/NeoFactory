@@ -161,6 +161,10 @@ public class ItemCubeMeshes implements Disposable {
     private Array<Mesh> build(Block block) {
         Section section = new Section(0);
         section.setRawId(0, 0, 0, block.id());
+        // The block stands in the state its item is drawn in, which is state zero for everything that is a
+        // cube and the state whose model shows a piece of the block for everything else - a pipe is meshed
+        // as a straight length of itself, see Block#itemState.
+        section.setState(0, 0, 0, block.itemState());
         SectionMesher.Blocks blocks = (x, y, z) -> x == 0 && y == 0 && z == 0
                 ? BlockRegistry.byId(block.id())
                 : Blocks.AIR;

@@ -142,7 +142,14 @@ public class InputHandler extends InputAdapter {
     /** Reused vector holding the unprojected mouse position. */
     private final Vector3 cursor = new Vector3();
 
-    /** Mouse wheel notches collected since the last frame, positive means zoom in. */
+    /**
+     * Mouse wheel notches collected since the last frame.
+     * <p>
+     * Positive means the wheel was rolled <b>forwards</b>, away from the player, which walks the hotbar
+     * towards its first slot and magnifies the view, see {@code GameScreen#applyWheel}. The sign of the
+     * event is turned around once, in {@link #scrolled(float, float)}, because the backend reports a notch
+     * forwards as a negative amount.
+     */
     private float zoomSteps;
 
     /** Set when the fullscreen key was pressed, cleared by the consumer. */
@@ -196,9 +203,16 @@ public class InputHandler extends InputAdapter {
         // Browsers and touchpads report fractional values, only the direction
         // matters because the caller applies fixed multiplicative steps or walks
         // the hotbar one slot at a time.
-        if (amountY > 0.0f) {
+        //
+        // The wheel of a desktop reports a notch rolled forwards - away from the
+        // player - as a negative amount, while every caller here reads a positive
+        // number as the notch forwards: a notch forwards walks the hotbar towards
+        // its first slot and magnifies the view. The sign is therefore turned
+        // here, once, so that the wheel walks forwards when it is rolled forwards,
+        // see GameScreen#applyWheel and CreativeInventoryGui#scrolled.
+        if (amountY < 0.0f) {
             zoomSteps += 1.0f;
-        } else if (amountY < 0.0f) {
+        } else if (amountY > 0.0f) {
             zoomSteps -= 1.0f;
         }
         return false;

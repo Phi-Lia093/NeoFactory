@@ -201,6 +201,9 @@ public final class Section {
             states = new short[VOLUME];
         }
         states[index(x, y, z)] = (short) state;
+        // A state is what a pipe is drawn from and what a machine turns by, so a section that was given
+        // one has to be meshed again: without this the cell would keep the shape of the state it had.
+        markDirty();
     }
 
     /**

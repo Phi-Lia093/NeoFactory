@@ -49,17 +49,6 @@ public final class MachineInventory extends Inventory {
          */
         CONFIGURE,
 
-        /**
-         * Holds a cell the machine trades with its tanks.
-         * <p>
-         * A full cell is poured into the tanks the machine takes fluid from, and an empty one is filled
-         * from the tanks it makes fluid in, see
-         * {@link com.philia093.neofactory.item.CellExchange}. The slot is therefore not part of what a
-         * recipe is offered - a recipe never eats a cell - and it is the one place where a player hands a
-         * fluid to a machine, or takes one away, without a pipe.
-         */
-        CELL,
-
         /** A plain slot without a job. */
         NORMAL
     }

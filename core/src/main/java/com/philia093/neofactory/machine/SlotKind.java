@@ -20,21 +20,16 @@ public enum SlotKind {
     /** A slot that holds the energy of a machine, a battery for example. */
     BATTERY(0, 2),
 
-    /** A tank of fluid a recipe drains. */
+    /**
+     * A tank of fluid a recipe drains, and how a machine is filled by hand.
+     * <p>
+     * A tank is not a slot: nothing is ever put into it, a player clicks it with a cell in hand instead, see
+     * {@link com.philia093.neofactory.item.CellTransfer}.
+     */
     FLUID_INPUT(4, 0),
 
     /** A tank a machine pours the fluid it made into. */
-    FLUID_OUTPUT(4, 1),
-
-    /**
-     * A slot that holds a cell the machine trades with its tanks.
-     * <p>
-     * The slot is drawn with the plain bevel of {@link #GENERIC}, because what lies in it is a cell
-     * like any other item: the picture of the cell already shows which fluid it carries. A kind of its
-     * own keeps the slot out of the hands of a recipe, which never eats a cell, see
-     * {@link com.philia093.neofactory.item.CellExchange}.
-     */
-    CELL(0, 0);
+    FLUID_OUTPUT(4, 1);
 
     private final int column;
     private final int row;

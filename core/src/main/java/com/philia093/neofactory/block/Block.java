@@ -40,6 +40,7 @@ public final class Block {
     private final ToolType toolType;
     private final String blockEntityTypeName;
     private final Animation animation;
+    private final int itemState;
 
     private Block(Builder builder) {
         this.id = builder.id;
@@ -56,6 +57,7 @@ public final class Block {
         this.toolType = builder.toolType;
         this.blockEntityTypeName = builder.blockEntityTypeName;
         this.animation = builder.animation;
+        this.itemState = builder.itemState;
     }
 
     /** Unique numeric id, also used as the palette index inside chunks. */
@@ -110,6 +112,21 @@ public final class Block {
     /** {@code true} when blocks below this one stay visible. */
     public boolean isTransparent() {
         return transparent;
+    }
+
+    /**
+     * The state this block is drawn in while it stands for an item.
+     * <p>
+     * A block that is a cube looks the same in every state and answers {@code 0}. A block whose shape is the
+     * state itself - a pipe, whose six properties are its six sides - would be drawn as a bare stub in state
+     * zero, which is not what a player holds in mind: the state named here is the one whose model shows the
+     * block as a piece of itself, and it is what a hand, a drop and the icon of a slot are meshed from, see
+     * {@code ItemCubeMeshes} and {@code BlockIconRenderer}.
+     *
+     * @return the state the item of this block is drawn in
+     */
+    public int itemState() {
+        return itemState;
     }
 
     /**
@@ -415,6 +432,7 @@ public final class Block {
         private ToolType toolType;
         private String blockEntityTypeName = "";
         private Animation animation;
+        private int itemState;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -433,6 +451,19 @@ public final class Block {
          */
         public Builder texture(String texture) {
             this.texture = Objects.requireNonNull(texture, "texture");
+            return this;
+        }
+
+        /**
+         * Sets the state this block is drawn in while it stands for an item.
+         * <p>
+         * Only a block whose shape is its state needs this, see {@link Block#itemState()}: a pipe is drawn
+         * as a straight length of itself in the hand, on the ground and in a slot.
+         *
+         * @param itemState state the item of this block is drawn in, {@code 0} for a block that is a cube
+         */
+        public Builder itemState(int itemState) {
+            this.itemState = itemState;
             return this;
         }
 

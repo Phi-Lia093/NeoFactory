@@ -328,11 +328,35 @@ public class BlockPictures implements Disposable {
         // other name is a picture of a block, see FOLDER.
         Pixmap sheet = new Pixmap(Gdx.files.internal(path(name)));
         if (sheet.getWidth() == TILE && sheet.getHeight() == TILE) {
-            return sheet;
+            return toLayerFormat(sheet);
         }
         Pixmap picture = scaleToTile(sheet);
         sheet.dispose();
-        return picture;
+        return toLayerFormat(picture);
+    }
+
+    /**
+     * Copies a picture into the format a layer is uploaded in - four bytes per pixel, RGBA.
+     * <p>
+     * <b>A layer is read as RGBA, and the art of the pack is not always stored that way.</b> The plates of
+     * the pipes, for one, come as plain RGB: three bytes of a pixel where the upload reads four, so every
+     * pixel of such a picture slips and the layer shows a shifted, coloured mesh instead of the plate - which
+     * is what a bundle of the pipes looked like, see {@link #build()}. A picture that arrives in another
+     * format is therefore copied once while the array is built, and a picture that already carries an alpha
+     * channel is handed on untouched.
+     *
+     * @param picture picture to copy into the format of a layer
+     * @return the picture itself when it is already RGBA, a copy of it otherwise
+     */
+    static Pixmap toLayerFormat(Pixmap picture) {
+        if (picture.getFormat() == Pixmap.Format.RGBA8888) {
+            return picture;
+        }
+        Pixmap layer = new Pixmap(picture.getWidth(), picture.getHeight(), Pixmap.Format.RGBA8888);
+        layer.setBlending(Pixmap.Blending.None);
+        layer.drawPixmap(picture, 0, 0);
+        picture.dispose();
+        return layer;
     }
 
     /**

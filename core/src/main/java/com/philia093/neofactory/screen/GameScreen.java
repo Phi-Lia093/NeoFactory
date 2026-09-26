@@ -347,6 +347,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                     player.inventory().setSelectedSlot(slot);
                     return true;
                 }
+                if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL) {
+                    // The left button works on an open grid as well: the wrench is a tool of the hand and a
+                    // player reaches for it the way they reach for a pickaxe. The cell is what the click is
+                    // spent on, whether the operation changed anything or not.
+                    workOnFace();
+                    return true;
+                }
             }
             if (InputHandler.isBuildButton(button)) {
                 return buildBlock();
@@ -1214,8 +1221,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             boolean walking = Math.abs(player.velocity().x) + Math.abs(player.velocity().z) > 0.05f;
             humanoid.update(delta, walking);
         }
+        // A grid that is open takes the left button as well: a player who holds a wrench at a block works on
+        // it and does not start to break it, which is what a click on a cell of the grid means, see
+        // #workOnFace. Releasing the button stops the work, so nothing is repeated by holding it.
+        boolean workingOnAGrid = world.isFaceGridOpen() && faceCell != NO_FACE_CELL;
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
-                inputHandler.isBreakingDown());
+                !workingOnAGrid && inputHandler.isBreakingDown());
         if (broken) {
             LOGGER.info("Broke block ({}, {}, {})", target.x(), target.y(), target.z());
             if (humanoid != null) {
@@ -1321,7 +1332,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         int x = target.x();
         int y = target.y();
         int z = target.z();
-        if (!BlockPlacer.place(world, player, target, player.inventory())) {
+        if (!BlockPlacer.place(world, player, target, player.inventory(), gameMode())) {
             return false;
         }
         if (humanoid != null) {

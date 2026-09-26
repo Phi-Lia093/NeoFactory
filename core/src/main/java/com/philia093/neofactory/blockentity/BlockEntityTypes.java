@@ -25,6 +25,10 @@ public final class BlockEntityTypes {
     public static final BlockEntityType BRONZE_BOILER = new BlockEntityType("bronze_boiler",
             type -> new MachineBlockEntity(type, new SteamBoilerMachine()));
 
+    /** A pipe, which keeps the connections of its cell up to date. */
+    public static final BlockEntityType PIPE = new BlockEntityType("pipe",
+            type -> new PipeBlockEntity(type));
+
     private static boolean registered;
 
     private BlockEntityTypes() {
@@ -38,6 +42,7 @@ public final class BlockEntityTypes {
         }
         BlockEntityRegistry.register(FURNACE);
         BlockEntityRegistry.register(BRONZE_BOILER);
+        BlockEntityRegistry.register(PIPE);
         registered = true;
     }
 }

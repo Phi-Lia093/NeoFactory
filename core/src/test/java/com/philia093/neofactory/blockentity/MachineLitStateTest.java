@@ -45,15 +45,18 @@ class MachineLitStateTest {
         assertEquals("false", litOf(world), "a boiler that stands still is not lit");
 
         boiler.water().fill(Fluids.WATER, 1000, false);
-        boiler.inventory().set(SteamBoilerMachine.FUEL, ItemStack.of(Items.COAL, 1));
+        boiler.inventory().set(SteamBoilerMachine.FUEL, ItemStack.of(Items.STICK, 1));
         entity.tick(world, 1.0f);
 
         assertTrue(boiler.isRunning());
         assertEquals("true", litOf(world), "the mouth of a burning boiler glows");
 
-        entity.tick(world, 80.0f);
+        // A stick burns for five seconds, see Fuels, and five seconds of fire do not take this boiler past
+        // the boiling point: it ends up cold instead of ruined.
+        entity.tick(world, 5.0f);
 
-        assertFalse(boiler.isRunning(), "the coal burned down");
+        assertFalse(boiler.isExploded(), "the boiler was not pushed past its limit");
+        assertFalse(boiler.isRunning(), "the stick burned down");
         assertEquals("false", litOf(world), "and the light goes out with the flame");
     }
 

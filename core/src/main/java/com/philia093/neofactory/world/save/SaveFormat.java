@@ -57,8 +57,13 @@ public final class SaveFormat {
      * game stand behind that run, so every item of every material moved fourteen numbers up. A stored
      * inventory of an older version therefore names the wrong items and is refused instead of being read,
      * see {@code Items#BRONZE_BOILER_ID}.
+     * <p>
+     * <b>What version 10 changed.</b> The twenty eight pipes of the game took the numbers 100 to 127, which
+     * is more than the window of the industry had kept free, and bronze and steel joined the materials as
+     * well, so every item of every material moved another twenty eight numbers up: what version 8 said
+     * about a stored inventory holds here word for word, see {@code Items#PIPE_ID_FROM}.
      */
-    public static final int DATA_VERSION = 8;
+    public static final int DATA_VERSION = 10;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

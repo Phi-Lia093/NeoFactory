@@ -43,6 +43,14 @@ public final class SmeltingMachine extends Machine implements ProgressMachine, F
     private float burnTotal;
 
     /**
+     * Recipe the furnace works on, {@code null} while it is idle.
+     * <p>
+     * The furnace swallows its ore when the work starts, see {@link #startCraft()}, so the recipe has to be
+     * remembered: looking for one again would not find it, because the ore it was looking for is gone.
+     */
+    private MachineRecipe craft;
+
+    /**
      * Screen of the furnace: the ore and the fuel in one column on the left and the product
      * on the right of the progress bar, which is the plain pair of arrows.
      */
@@ -84,14 +92,15 @@ public final class SmeltingMachine extends Machine implements ProgressMachine, F
 
     @Override
     protected void update(float delta) {
-        MachineRecipe recipe = findRecipe();
-        if (recipe == null || !recipe.fits(outputs())) {
-            coolDown(delta);
-            return;
-        }
-        craftTotal = recipe.seconds();
-        if (burnSeconds <= 0.0f && !consumeFuel()) {
-            // Without fuel nothing burns, the work done so far is kept for a while.
+        if (craft == null) {
+            startCraft();
+            if (craft == null) {
+                coolDown(delta);
+                return;
+            }
+        } else if (burnSeconds <= 0.0f && !consumeFuel()) {
+            // The flame is out and there is nothing left to light: the work done so far is kept for a
+            // while, and the craft carries on as soon as fuel arrives.
             coolDown(delta);
             return;
         }
@@ -101,10 +110,32 @@ public final class SmeltingMachine extends Machine implements ProgressMachine, F
         burn(delta);
         craftSeconds += burning;
         if (craftSeconds >= craftTotal) {
+            craft.produce(outputs());
+            craft = null;
             craftSeconds = 0.0f;
-            recipe.consume(inputs());
-            recipe.produce(outputs());
         }
+    }
+
+    /**
+     * Swallows the ore of a recipe, takes the fuel it needs and starts the work.
+     * <p>
+     * Nothing is taken unless a recipe is recognised, its products fit into the output slot and there is
+     * fuel to light: a furnace with no flame waits with its ore still in the slot. Once both are taken the
+     * work begins, and an interruption after that - the block broken, the flame gone for good - costs the
+     * portion that was being worked on, see {@link Machine#tick(float)}.
+     */
+    private void startCraft() {
+        MachineRecipe recipe = findRecipe();
+        if (recipe == null || !recipe.fits(outputs())) {
+            return;
+        }
+        if (burnSeconds <= 0.0f && !consumeFuel()) {
+            return;
+        }
+        craft = recipe;
+        craftTotal = recipe.seconds();
+        craftSeconds = 0.0f;
+        recipe.consume(inputs());
     }
 
     /** The first smelting recipe that recognises the input slot. */
@@ -155,6 +186,7 @@ public final class SmeltingMachine extends Machine implements ProgressMachine, F
         state.putFloat(SaveTags.CRAFT_TOTAL, craftTotal);
         state.putFloat(SaveTags.BURN_SECONDS, burnSeconds);
         state.putFloat(SaveTags.BURN_TOTAL, burnTotal);
+        state.putString(SaveTags.CRAFT_RECIPE, craft == null ? "" : craft.name());
     }
 
     @Override
@@ -164,6 +196,11 @@ public final class SmeltingMachine extends Machine implements ProgressMachine, F
         craftTotal = total > 0.0f ? total : 1.0f;
         burnSeconds = state.getFloat(SaveTags.BURN_SECONDS, 0.0f);
         burnTotal = state.getFloat(SaveTags.BURN_TOTAL, 0.0f);
+        // The ore of a craft that was under way is already gone, so the recipe is looked up again by name:
+        // a furnace that cannot find it stands idle and the portion is lost.
+        Recipe recipe = RecipeRegistry.byName(state.getString(SaveTags.CRAFT_RECIPE, ""));
+        craft = recipe instanceof MachineRecipe machine && machine.type() == RecipeType.SMELTING
+                ? machine : null;
     }
 
     @Override

@@ -507,10 +507,28 @@ public final class World implements BlockAccess {
         return chunk.state(Chunk.localOf(x), y, Chunk.localOf(z));
     }
 
+    /**
+     * Writes the state of a cell.
+     * <p>
+     * The state is what a block carries beyond its id - the sides a pipe is joined on, the direction a
+     * machine faces - so writing one is a change to the world and no less: the section is marked as
+     * needing a new mesh, or the cell would keep the shape of the state it had, and the chunk is marked
+     * as changed by a player, or the state would never reach the save game. Nothing else has to be told:
+     * the interface redraws a section that is marked, and the store writes a chunk that is marked.
+     */
     @Override
     public void setState(int x, int y, int z, int state) {
         Chunk chunk = preparedChunk(x, z);
-        chunk.setState(Chunk.localOf(x), y, Chunk.localOf(z), state);
+        int localX = Chunk.localOf(x);
+        int localZ = Chunk.localOf(z);
+        if (chunk.state(localX, y, localZ) == state) {
+            // Writing what is already there changes nothing, so nothing is meshed again and nothing is
+            // written to the save game: a system that rewrites the state of a cell every tick - a tank
+            // that stays full, a machine that waits for its work - costs no mesh and no save.
+            return;
+        }
+        chunk.setState(localX, y, localZ, state);
+        chunk.markModified();
     }
 
     /**
@@ -576,8 +594,11 @@ public final class World implements BlockAccess {
      * Opens the grid of faces of a block.
      * <p>
      * Called by the interaction while a player holds a tool and looks at a block that answers to
-     * {@link FaceOperable}. While a grid is open every block that shows one is a whole cube, see
-     * {@link #shape(int, int, int, Aabb)}, so a player stands on a thin pipe instead of inside it.
+     * {@link FaceOperable}. The grid is an overlay and an operation and nothing else: it changes no shape,
+     * because a cell that filled itself while a grid was open would turn the block a player stands in into
+     * a wall - a large pipe is a cell of its own and a body inside one could not leave it again. A pipe is
+     * therefore walked through with a wrench in hand exactly as it is without one, see
+     * {@link BlockAccess#shape(int, int, int, Aabb)}.
      *
      * @param entity block entity the grid belongs to, {@code null} closes the grid
      */
@@ -598,30 +619,6 @@ public final class World implements BlockAccess {
     /** {@code true} while the grid of faces of a block is open. */
     public boolean isFaceGridOpen() {
         return faceGrid != null;
-    }
-
-    /**
-     * The part of a cell a body cannot enter, at the place the cell stands in the world.
-     * <p>
-     * A world of cubes asks this for every cell a body reaches, see
-     * {@link BlockAccess#overlaps(Aabb, Aabb)} and {@link BlockAccess#landingHeight(Aabb, int, float,
-     * Aabb)}, so the rule of the grid of faces lives here: <b>while a grid is open, every block that
-     * shows one fills its cell.</b> A pipe is drawn thin and a player would otherwise stand inside what
-     * they are working on, and a machine that is a whole cube anyway does not change at all. Everything
-     * else keeps the shape of its own model, see {@link BlockAccess#shape(int, int, int, Aabb)}.
-     *
-     * @param x block X coordinate
-     * @param y block Y coordinate, the height
-     * @param z block Z coordinate
-     * @param into box to write the shape into, in the units of the world
-     * @return the box, empty when a body walks through the cell
-     */
-    @Override
-    public Aabb shape(int x, int y, int z, Aabb into) {
-        if (faceGrid != null && blockEntity(x, y, z) instanceof FaceOperable) {
-            return into.setBlock(x, y, z);
-        }
-        return BlockAccess.super.shape(x, y, z, into);
     }
 
     /**

@@ -1,8 +1,10 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerMenu;
 import com.philia093.neofactory.gui.container.Slot;
+import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.PlayerInventory;
 
 import java.util.ArrayList;
@@ -97,6 +99,12 @@ public final class MachineMenu {
     /** Pixels between the status line and the column of the upgrade slots. */
     public static final int TEXT_GAP = 4;
 
+    /** Unit the tooltip of a tank writes behind an amount of fluid, one cell being a thousand of them. */
+    public static final String FLUID_UNIT = "mB";
+
+    /** Name the tooltip of a tank writes while nothing is in it. */
+    public static final String EMPTY_TANK = "Empty";
+
     /** Left edge of the first slot of the player inventory. */
     public static final int PLAYER_LEFT = ContainerLayout.PADDING;
 
@@ -172,20 +180,69 @@ public final class MachineMenu {
         layout.addGrid(PLAYER_LEFT, PLAYER_HOTBAR_TOP, PLAYER_COLUMNS, 1, player, 0,
                 Slot.Rule.NORMAL);
         this.container = new ContainerMenu(layout, player);
+        // The tanks of the machine are not slots of the container - nothing is ever put into them - so the
+        // container asks back here when a click lands on one, see ContainerMenu#setTankFinder.
+        container.setTankFinder(this::tankAt);
     }
 
     /**
      * The slots a machine takes input from, in the order it declared them.
      * <p>
-     * The cells come last, after the inputs and the fuel, because the machine collects the slots of a
-     * role one after the other; the kinds of {@link MachineScreen#inputs()} have to be listed in the
-     * very same order.
+     * The fuel comes after the inputs because the machine collects the slots of a role one after the
+     * other; the kinds of {@link MachineScreen#inputs()} have to be listed in the very same order.
      */
     private static List<Integer> inputSlots(MachineInventory inventory) {
         List<Integer> found = new ArrayList<>(inventory.slotsOf(MachineInventory.Role.INPUT));
         found.addAll(inventory.slotsOf(MachineInventory.Role.FUEL));
-        found.addAll(inventory.slotsOf(MachineInventory.Role.CELL));
         return found;
+    }
+
+    /**
+     * Tank of the panel under a point, for the container that trades cells with it.
+     *
+     * @param localX X coordinate relative to the panel
+     * @param localY Y coordinate relative to the panel, measured downwards
+     * @return the tank, or {@code null} when the point is not on one
+     */
+    private ContainerMenu.Tank tankAt(int localX, int localY) {
+        FluidSlot slot = fluidSlotAt(localX, localY);
+        if (slot == null) {
+            return null;
+        }
+        return new ContainerMenu.Tank(machine.tank(slot.tank()).storage(), slot.input());
+    }
+
+    /**
+     * Tank of the panel under a point, which is also the cell a tooltip is drawn at.
+     *
+     * @param localX X coordinate relative to the panel
+     * @param localY Y coordinate relative to the panel, measured downwards
+     * @return the tank, or {@code null} when the point is not on one
+     */
+    public FluidSlot fluidSlotAt(int localX, int localY) {
+        for (FluidSlot slot : fluidSlots) {
+            if (localX >= slot.x() && localX < slot.x() + ContainerLayout.SLOT_SIZE
+                    && localY >= slot.y() && localY < slot.y() + ContainerLayout.SLOT_SIZE) {
+                return slot;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Lines the tooltip of a tank is drawn from.
+     * <p>
+     * A player who is about to click a tank wants to know what is in it and how much room is left, so the
+     * box names the fluid first and then what the tank holds of how much it takes. A tank that is empty
+     * says so, and a fluid the player has never seen is named by the fluid itself.
+     *
+     * @param slot tank to describe
+     * @return the lines of the box
+     */
+    public List<String> tankTooltip(FluidSlot slot) {
+        FluidStorage tank = machine.tank(slot.tank()).storage();
+        String name = tank.isEmpty() ? EMPTY_TANK : Item.prettify(tank.fluid().name());
+        return List.of(name, tank.amount() + " / " + tank.capacity() + " " + FLUID_UNIT);
     }
 
     /**
@@ -333,12 +390,16 @@ public final class MachineMenu {
     /**
      * Line a machine writes in the upper right corner of its panel.
      * <p>
-     * A furnace reports what is left of the fuel it burns, see {@link FuelMachine}; a machine
-     * that has nothing to say leaves the corner empty.
+     * A machine that has a number of its own answers first, see {@link StatusMachine} - the temperature of a
+     * boiler is what a player watches there. Next comes what the furnace reports, what is left of the fuel it
+     * burns, see {@link FuelMachine}; a machine that has nothing to say leaves the corner empty.
      *
      * @return the text, empty when the machine reports nothing
      */
     public String statusText() {
+        if (machine instanceof StatusMachine status) {
+            return status.statusText();
+        }
         if (machine instanceof FuelMachine fuel) {
             return "Remain fuel: " + Math.round(fuel.fuelSeconds()) + "s";
         }

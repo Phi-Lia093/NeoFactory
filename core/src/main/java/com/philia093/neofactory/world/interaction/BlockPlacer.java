@@ -11,6 +11,7 @@ import com.philia093.neofactory.blockentity.BlockEntityType;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
 import org.apache.logging.log4j.LogManager;
@@ -73,15 +74,22 @@ public final class BlockPlacer {
 
     /**
      * Builds one item of the held stack into the targeted cell.
+     * <p>
+     * <b>A creative player builds for nothing.</b> Nothing is taken out of the stack in
+     * {@link GameMode#CREATIVE}, because a creative player owns every item of the game already: the block
+     * is written the way it always is and the stack is left as it was, so a line of a hundred blocks may be
+     * laid with one piece in hand. Everything else is asked of survival, where a build costs one item, see
+     * {@code GameModeMining} for the same rule while a block is broken.
      *
      * @param world world to change
      * @param player player that must stay able to move
      * @param target cell to build into
      * @param inventory inventory holding the stack the player carries
-     * @return {@code true} when the world changed and one item was used up
+     * @param mode mode the world is played in, which decides whether an item is used up
+     * @return {@code true} when the world changed, with one item used up in survival
      */
     public static boolean place(World world, Player player, BlockTarget target,
-            PlayerInventory inventory) {
+            PlayerInventory inventory, GameMode mode) {
         if (target == null) {
             return false;
         }
@@ -94,15 +102,16 @@ public final class BlockPlacer {
             // A material, a tool or a block that is never drawn, such as water.
             return false;
         }
+        boolean costs = mode != GameMode.CREATIVE;
         if (world.getBlock(target.x(), target.y(), target.z()).isAir()) {
-            return buildInto(world, player, target, block, inventory, held);
+            return buildInto(world, player, target, block, inventory, held, costs);
         }
         // The cell is taken. A ray knows the face it entered through, so the block goes into the cell
         // behind that face: that is how a wall is built against and how a bridge grows from the block
         // it is laid on. A cell the mouse named has no face, and then there is nothing to build
         // against.
         BlockTarget behind = target.neighbour();
-        return behind != null && buildInto(world, player, behind, block, inventory, held);
+        return behind != null && buildInto(world, player, behind, block, inventory, held, costs);
     }
 
     /**
@@ -120,10 +129,11 @@ public final class BlockPlacer {
      * @param block block to store
      * @param inventory inventory holding the stack the player carries
      * @param held stack the player holds
-     * @return {@code true} when the world changed and one item was used up
+     * @param costs {@code true} when the build takes one item out of the held stack
+     * @return {@code true} when the world changed
      */
     private static boolean buildInto(World world, Player player, BlockTarget cell, Block block,
-            PlayerInventory inventory, ItemStack held) {
+            PlayerInventory inventory, ItemStack held, boolean costs) {
         if (!holds(world, cell, block)) {
             return false;
         }
@@ -136,7 +146,9 @@ public final class BlockPlacer {
         world.setState(cell.x(), cell.y(), cell.z(), placedState(block, player, cell));
 
         placeBlockEntity(world, cell, block);
-        useOneItem(inventory, held);
+        if (costs) {
+            useOneItem(inventory, held);
+        }
         return true;
     }
 

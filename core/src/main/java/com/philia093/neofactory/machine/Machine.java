@@ -3,7 +3,6 @@ package com.philia093.neofactory.machine;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.fluid.Fluids;
-import com.philia093.neofactory.item.CellExchange;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.recipe.RecipeType;
@@ -53,6 +52,9 @@ public abstract class Machine {
 
     /** Output side, built once for the same reason. */
     private final MachineOutputs outputs;
+
+    /** {@code true} once this machine has ruined itself, see {@link #explode()}. */
+    private boolean exploded;
 
     /**
      * Creates a machine.
@@ -166,45 +168,40 @@ public abstract class Machine {
     /**
      * Advances the machine by one frame.
      * <p>
-     * The cells of the machine trade with its tanks before the work of the frame is done, so a machine
-     * that is fed by hand sees the fluid it was given in the very frame the cell was put in, see
-     * {@link #exchangeCells()}.
+     * A machine that is fed by hand is fed through its tanks and not through a slot: a player clicks a tank
+     * with a cell in hand, see {@code ContainerMenu#setTankFinder}, so the fluid is in the tank before the
+     * frame that uses it is ever worked on.
      *
      * @param delta time since the last frame in seconds, ignored when not positive
      */
     public final void tick(float delta) {
-        if (delta > 0.0f) {
-            exchangeCells();
+        if (delta > 0.0f && !exploded) {
             update(delta);
         }
     }
 
     /**
-     * Lets every cell of the machine trade with the tanks of the machine.
+     * {@code true} once this machine has ruined itself.
      * <p>
-     * A machine declares the slots a cell may lie in with
-     * {@link MachineInventory.Role#CELL}, so this runs for every machine without it knowing anything
-     * about it: a full cell is poured into the tanks the machine takes fluid from and an empty one is
-     * filled from the tanks it makes fluid in, see {@link CellExchange}. A machine without such a slot
-     * and a machine without a tank skip the work.
+     * A machine sets it by breaking its own rule - a boiler that was heated past its limit - and the block
+     * that carries the machine takes it out of the world, see
+     * {@link com.philia093.neofactory.blockentity.MachineBlockEntity#update(com.philia093.neofactory.world.World,
+     * float)}. A machine knows no world of its own, so this flag is how it reports what happened.
+     *
+     * @return {@code true} while the machine is beyond saving
      */
-    private void exchangeCells() {
-        List<Integer> slots = inventory.slotsOf(MachineInventory.Role.CELL);
-        if (slots.isEmpty()) {
-            return;
-        }
-        List<FluidStorage> received = List.of(storages(MachineTank.Role.INPUT));
-        List<FluidStorage> made = List.of(storages(MachineTank.Role.OUTPUT));
-        if (received.isEmpty() && made.isEmpty()) {
-            return;
-        }
-        for (int slot : slots) {
-            ItemStack carried = inventory.get(slot);
-            ItemStack afterwards = CellExchange.exchange(carried, received, made);
-            if (afterwards != carried) {
-                inventory.set(slot, afterwards);
-            }
-        }
+    public boolean isExploded() {
+        return exploded;
+    }
+
+    /**
+     * Ruins this machine, which takes it out of the world together with what it holds.
+     * <p>
+     * Called by a machine whose own rule was broken. Nothing is handed back: the slots, the tanks and the
+     * buffer go with the block, which is what makes a machine that is pushed past its limit expensive.
+     */
+    protected void explode() {
+        exploded = true;
     }
 
     /** {@code true} while the machine is working on something. */

@@ -68,6 +68,29 @@ public final class RecipeRegistry {
     }
 
     /**
+     * Finds a recipe by its name.
+     * <p>
+     * A machine that was saved while it worked has to find the very recipe it swallowed its input for, and
+     * the name of a recipe is what a file stores, see {@link com.philia093.neofactory.machine.Machine}.
+     *
+     * @param name name of a recipe, the name of its file
+     * @return the recipe, or {@code null} when no type holds one of that name
+     */
+    public static Recipe byName(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        for (List<Recipe> recipes : BY_TYPE.values()) {
+            for (Recipe recipe : recipes) {
+                if (name.equals(recipe.name())) {
+                    return recipe;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Amount of recipes of one type.
      *
      * @param type type to count

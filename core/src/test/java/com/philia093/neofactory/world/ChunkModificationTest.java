@@ -67,6 +67,32 @@ class ChunkModificationTest {
     }
 
     @Test
+    void aStateWrittenByThePlayerMarksItsChunk() {
+        // A state is a change like a block is: the sides a pipe is joined on live in the state of its cell,
+        // so a chunk that carries a turned pipe has to reach the save game. A state that is written without
+        // the mark is lost as soon as the chunk leaves memory, which is silent and therefore pinned here.
+        World world = new World(11, 0, 0);
+        world.setBlock(3, 65, 1, Blocks.FURNACE);
+        Chunk chunk = world.chunkIfLoaded(0, 0);
+        assertNotNull(chunk);
+        // The chunk of the block is marked by the block itself; what is asked here is the state alone.
+        chunk.clearModified();
+
+        world.setState(3, 65, 1, 5);
+
+        assertTrue(chunk.isModified(), "a written state has to reach the save game");
+        assertEquals(5, world.getState(3, 65, 1));
+        assertEquals(1, world.modifiedChunkCount());
+
+        // The same state written again is not a change: a system that rewrites the state of a cell every
+        // tick must not keep the chunk on the list of what has to be saved.
+        chunk.clearModified();
+        world.setState(3, 65, 1, 5);
+
+        assertEquals(0, world.modifiedChunkCount(), "writing the same state again costs nothing");
+    }
+
+    @Test
     void readingAStoredChunkClearsTheFlag() {
         Chunk written = new Chunk(0, 0);
         written.setRawId(5, 6, 1, Blocks.STONE.id());

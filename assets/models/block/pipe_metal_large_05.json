@@ -1,0 +1,41 @@
+{
+  "textures": {
+    "side": "pipe_metal/side",
+    "end": "pipe_metal/large"
+  },
+  "tint": true,
+  "elements": [
+    {
+      "from": [3, 3, 3],
+      "to": [13, 13, 13],
+      "faces": {
+        "north": { "texture": "#end" },
+        "east": { "texture": "#end" },
+        "south": { "texture": "#end" },
+        "top": { "texture": "#end" }
+      }
+    },
+    {
+      "from": [0, 3, 3],
+      "to": [3, 13, 13],
+      "faces": {
+        "north": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#end" },
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
+      }
+    },
+    {
+      "from": [3, 0, 3],
+      "to": [13, 3, 13],
+      "faces": {
+        "north": { "texture": "#side" },
+        "east": { "texture": "#side" },
+        "south": { "texture": "#side" },
+        "west": { "texture": "#side" },
+        "bottom": { "texture": "#end" }
+      }
+    }
+  ]
+}

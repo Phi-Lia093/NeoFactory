@@ -1,6 +1,8 @@
 package com.philia093.neofactory.gui.container;
 
 import com.badlogic.gdx.Input;
+import com.philia093.neofactory.fluid.FluidStorage;
+import com.philia093.neofactory.item.CellTransfer;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
@@ -78,6 +80,36 @@ public final class ContainerMenu {
         void drop(ItemStack stack);
     }
 
+    /**
+     * A tank of a machine a cell in the hand is traded with, see {@link TankFinder}.
+     *
+     * @param storage tank of the machine
+     * @param input {@code true} for a tank a recipe drains, {@code false} for one a machine fills
+     */
+    public record Tank(FluidStorage storage, boolean input) {
+    }
+
+    /**
+     * Finds the tank of a machine under a point of the panel.
+     * <p>
+     * A container knows nothing about a machine and a machine knows nothing about a mouse, so a screen that
+     * draws tanks hands this finder over, see {@link com.philia093.neofactory.machine.MachineMenu}. Clicking
+     * a tank with a cell in hand then pours the cell into a tank a recipe drains - or fills an empty cell
+     * from a tank the machine made fluid in - which is how a player hands a fluid to a machine by hand,
+     * see {@link CellTransfer}. Without a finder a click beside every slot is a click on nothing.
+     */
+    public interface TankFinder {
+
+        /**
+         * Tank under a point of the panel.
+         *
+         * @param localX X coordinate relative to the panel
+         * @param localY Y coordinate relative to the panel, measured downwards
+         * @return the tank, or {@code null} when the point is not on one
+         */
+        Tank tankAt(int localX, int localY);
+    }
+
     private ContainerLayout layout;
 
     /** Inventory the other side of the container belongs to, see {@link #touchDown}. */
@@ -88,6 +120,9 @@ public final class ContainerMenu {
     private ChangeListener listener;
     private ResultFiller resultFiller;
     private StackDropper dropper;
+
+    /** Finds the tank of a machine under a click, {@code null} for a container without tanks. */
+    private TankFinder tankFinder;
 
     /** {@code true} when items that find no place are destroyed, see {@link #setVoidsOverflow}. */
     private boolean voidsOverflow;
@@ -369,6 +404,18 @@ public final class ContainerMenu {
     }
 
     /**
+     * Sets the finder of the tanks of the machine behind this container.
+     * <p>
+     * Without one the container only knows its slots, and a click beside every slot puts the carried stack
+     * back; with one a click on a tank trades a cell with it instead, see {@link TankFinder}.
+     *
+     * @param tankFinder finder to ask, {@code null} for a container without tanks
+     */
+    public void setTankFinder(TankFinder tankFinder) {
+        this.tankFinder = tankFinder;
+    }
+
+    /**
      * Slot under a point of the panel.
      *
      * @param localX X coordinate relative to the panel
@@ -392,6 +439,12 @@ public final class ContainerMenu {
     public boolean touchDown(int localX, int localY, int button, boolean shift) {
         Slot slot = layout.slotAt(localX, localY);
         if (slot == null) {
+            if (tradeWithTank(localX, localY)) {
+                // The click was on a tank: it either moved a cell's worth of fluid or it did nothing, and
+                // what the mouse carries stays where it is either way.
+                changed();
+                return true;
+            }
             // A click beside every slot puts the carried stack back.
             carryBack();
             changed();
@@ -410,6 +463,36 @@ public final class ContainerMenu {
         dragMoved = false;
         dragSlots.clear();
         dragAmounts.clear();
+        return true;
+    }
+
+    /**
+     * Trades the stack the mouse carries with the tank under the mouse.
+     * <p>
+     * <b>A tank is continuous, a cell is not.</b> What lies in a tank is a number that grows and falls by
+     * any amount while a cell carries a whole thousand of it or nothing, so one click moves a whole cell's
+     * worth of fluid or moves nothing at all, see {@link CellTransfer}. Which way the fluid goes follows
+     * from the rank of the tank: a tank a recipe drains takes a full cell and hands an empty one back, and
+     * a tank the machine fills takes an empty cell and hands a full one back.
+     *
+     * @param localX X coordinate relative to the panel
+     * @param localY Y coordinate relative to the panel, measured downwards
+     * @return {@code true} when the click was on a tank, whether or not it moved anything
+     */
+    private boolean tradeWithTank(int localX, int localY) {
+        if (tankFinder == null) {
+            return false;
+        }
+        Tank tank = tankFinder.tankAt(localX, localY);
+        if (tank == null) {
+            return false;
+        }
+        CellTransfer.Result result = tank.input()
+                ? CellTransfer.pour(cursor, tank.storage())
+                : CellTransfer.fill(cursor, tank.storage());
+        if (result.moved()) {
+            cursor = result.carried();
+        }
         return true;
     }
 
@@ -757,7 +840,7 @@ public final class ContainerMenu {
     }
 
     /**
-     * Hands out as many results of a result slot as the recipe and the room allow.
+     * Hands out results of a result slot as long as its ingredients and the room allow.
      * <p>
      * A click with shift held on a result is a whole crafting session: the container makes
      * one result after the other and moves every one of them to the player, which goes on
@@ -766,6 +849,10 @@ public final class ContainerMenu {
      * really receives - a full inventory leaves them where they are instead of eating them
      * for nothing. What does not fit of a single result waits in the result slot, because
      * the field has not been touched for it yet.
+     * <p>
+     * <b>The grid of a creative inventory stops after one stack.</b> Its supply never runs out, so a click
+     * there may not be a whole session either: a player who holds shift at the grid asks for one group of
+     * the item and not for a backpack full of it, see {@link #setCreativeSupply(boolean)}.
      *
      * @param slot result slot that was clicked
      */
@@ -774,8 +861,10 @@ public final class ContainerMenu {
             return;
         }
         // A filler that never runs out of ingredients would loop forever, and a player can
-        // never receive more than the inventory holds.
-        int guard = playerSide.size() * Math.max(1, slot.stack().item().maxStackSize());
+        // never receive more than the inventory holds. A creative supply stops after one
+        // stack, which is the largest group a slot of the player could hold anyway.
+        int group = Math.max(1, slot.stack().item().maxStackSize());
+        int guard = creativeSupply ? group : playerSide.size() * group;
         for (int taken = 0; taken < guard && !slot.stack().isEmpty(); taken++) {
             ItemStack made = slot.stack();
             int leftover = playerSide.add(made);

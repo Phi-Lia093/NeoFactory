@@ -9,6 +9,7 @@ import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerView;
+import com.philia093.neofactory.gui.container.ItemTooltip;
 import com.philia093.neofactory.gui.panel.ArrowElement;
 import com.philia093.neofactory.gui.panel.MachineTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
@@ -32,6 +33,11 @@ import com.philia093.neofactory.render.PixelFont;
  * What a machine burns is written next to it instead of being drawn as a flame - the game
  * has no fire in its screens - so the screen writes the seconds of fuel that are left, see
  * {@link com.philia093.neofactory.machine.FuelMachine}.
+ * <p>
+ * The tanks at the foot of the panel are not slots: they are described by a tooltip of their
+ * own while the mouse rests on one - what fluid lies in it, how much of it and how much the
+ * tank takes - and a click on one trades a cell with the tank, see
+ * {@link com.philia093.neofactory.item.CellTransfer}.
  * <p>
  * The screen is opened by using a block, see
  * {@link com.philia093.neofactory.screen.GameScreen}, and it takes the input while it is
@@ -196,6 +202,27 @@ public final class MachineGui {
         // The arrow and the fuel line are decorations of the container: they are drawn with
         // the slots and below the items, so they never cover the name of an item.
         view.render(batch, menu.container(), panelX(), panelY(), mouseX, mouseY, this::drawMachine);
+        drawTankTooltip(batch, mouseX, mouseY);
+    }
+
+    /**
+     * Draws what the tank under the mouse holds, beside the mouse.
+     * <p>
+     * A tank is not a slot and has no item to name, so the box is not what {@link ContainerView} draws: it
+     * names the fluid and says how much of it lies in the tank and how much room is left, see
+     * {@link MachineMenu#tankTooltip}. It is drawn last, so it lies over everything else the screen shows.
+     *
+     * @param batch batch switched to the projection of the interface viewport
+     * @param mouseX X coordinate of the mouse inside the interface
+     * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
+     */
+    private void drawTankTooltip(SpriteBatch batch, float mouseX, float mouseY) {
+        MachineMenu.FluidSlot tank = menu.fluidSlotAt(localX(mouseX), localY(mouseY));
+        if (tank == null) {
+            return;
+        }
+        ItemTooltip.draw(batch, font, textures.whitePixel(), menu.tankTooltip(tank), mouseX, mouseY,
+                viewport.guiWidth(), viewport.guiHeight());
     }
 
     /** X coordinate of the left edge of the panel, centred in the interface. */

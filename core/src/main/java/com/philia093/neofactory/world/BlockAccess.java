@@ -31,6 +31,24 @@ public interface BlockAccess {
     Block getBlock(int x, int y, int z);
 
     /**
+     * Returns a block of the world without asking for its chunk to be built.
+     * <p>
+     * A reader that only wants to know what stands next to it - a pipe looking for the pipes around it, a
+     * machine looking for a wall - asks here instead of {@link #getBlock(int, int, int)}: a chunk that is
+     * not in memory answers with air, so a look at the edge of the loaded world costs nothing and never
+     * pulls a piece of terrain into memory that the player is not near. A world that cannot tell the two
+     * apart simply reads the block.
+     *
+     * @param x block X coordinate, may be negative
+     * @param y block Y coordinate, the height, {@code MIN_Y} to {@code MAX_Y}
+     * @param z block Z coordinate, may be negative
+     * @return the block at that cell, air for a cell of a chunk that is not in memory
+     */
+    default Block peekBlock(int x, int y, int z) {
+        return getBlock(x, y, z);
+    }
+
+    /**
      * Stores a block in the world.
      *
      * @param x block X coordinate, may be negative

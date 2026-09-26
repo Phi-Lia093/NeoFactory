@@ -166,8 +166,16 @@ public final class ModelLoader {
                 continue;
             }
             JsonValue elements = shape.getValue().elements();
-            if (elements == null || elements.size == 0) {
-                LOGGER.error("The model '{}' holds no boxes and is skipped", shape.getKey());
+            if (elements == null) {
+                LOGGER.error("The model '{}' names no boxes at all and is skipped", shape.getKey());
+                continue;
+            }
+            if (elements.size == 0) {
+                // A model that names an empty list of boxes draws nothing, which is a shape of its own: a
+                // pipe that is joined on every side is covered by its neighbours and has no face left to
+                // draw, see Pipes. A file that forgot its boxes names no list at all and is a mistake,
+                // which is what the error above is for.
+                models.put(shape.getKey(), new BlockModel(shape.getKey(), List.of()));
                 continue;
             }
             try {

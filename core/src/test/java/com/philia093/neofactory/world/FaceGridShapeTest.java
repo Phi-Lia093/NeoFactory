@@ -4,9 +4,14 @@ import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.blockentity.BlockEntityType;
+import com.philia093.neofactory.blockentity.BlockEntityTypes;
+import com.philia093.neofactory.blockentity.PipeBlockEntity;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.pipe.PipeMaterials;
+import com.philia093.neofactory.pipe.PipeSize;
+import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Aabb;
 import com.philia093.neofactory.util.nbt.NbtCompound;
@@ -23,10 +28,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Checks what the grid of faces does to the shape of a cell.
  * <p>
- * While a grid is open every block that shows one is a whole cube, so a player stands on a thin pipe
- * instead of inside it - and a block that shows no grid keeps the shape of its own model. The rule lives
- * in {@link World#shape(int, int, int, Aabb)}, which is the very method the box of a body is measured
- * against, see {@link BlockAccess#overlaps(Aabb, Aabb)}, so what is checked here is the box of a cell.
+ * <b>Nothing at all.</b> A grid is an overlay a player works through: the cell of the block it was opened
+ * on keeps the shape of its own model, so a pipe is walked through with the wrench in hand exactly as it is
+ * without one. A grid that filled the cell, which is what this game did first, turns the block a player
+ * stands in into a wall - and the pipe of the large sizes is a cell of its own, so a body inside one could
+ * not leave it again. That is what these checks pin down, one for a thin block, one for a large pipe.
  * <p>
  * The cell of the test lies far above the terrain, so nothing but the block that was put there is in the
  * way of a body.
@@ -61,7 +67,7 @@ class FaceGridShapeTest {
     }
 
     @Test
-    void aThinBlockIsAWholeCubeWhileAGridIsOpen() {
+    void aGridChangesNoShapeOfItsBlock() {
         Aabb shape = new Aabb();
 
         world.shape(CELL_X, CELL_Y, CELL_Z, shape);
@@ -70,16 +76,11 @@ class FaceGridShapeTest {
         world.setFaceGrid(grid);
 
         world.shape(CELL_X, CELL_Y, CELL_Z, shape);
-        assertEquals(CELL_X, shape.minX(), 1.0e-6f);
-        assertEquals(CELL_Y, shape.minY(), 1.0e-6f);
-        assertEquals(CELL_Z, shape.minZ(), 1.0e-6f);
-        assertEquals(CELL_X + 1.0f, shape.maxX(), 1.0e-6f);
-        assertEquals(CELL_Y + 1.0f, shape.maxY(), 1.0e-6f);
-        assertEquals(CELL_Z + 1.0f, shape.maxZ(), 1.0e-6f);
+        assertTrue(shape.isEmpty(), "and the grid of faces does not make a cube of it");
     }
 
     @Test
-    void aBodyIsStoppedByTheCubeAndNotByTheThinBlock() {
+    void aBodyWalksThroughTheCellOfAGrid() {
         Aabb body = Aabb.of(CELL_X + 0.2f, CELL_Y + 0.2f, CELL_Z + 0.2f,
                 CELL_X + 0.8f, CELL_Y + 0.8f, CELL_Z + 0.8f);
         Aabb cell = new Aabb();
@@ -88,11 +89,33 @@ class FaceGridShapeTest {
 
         world.setFaceGrid(grid);
 
-        assertTrue(world.overlaps(body, cell), "and is stopped by the whole cube of the grid");
+        assertFalse(world.overlaps(body, cell),
+                "and keeps walking through it while its grid is open, with the tool in hand");
     }
 
     @Test
-    void theWholeCubeIsGivenBackWhenTheGridCloses() {
+    void aBodyStandsInALargePipeWhileItsGridIsOpen() {
+        // A pipe of the large sizes is a cell of its own, so a body that stands in one has to be able to
+        // leave it again: a grid that filled the cell would lock the player inside the block they work on.
+        Pipes.Pipe pipe = Pipes.of(PipeMaterials.BRONZE, PipeSize.NONUPLE);
+        world.setBlock(CELL_X, CELL_Y, CELL_Z, pipe.block());
+        PipeBlockEntity pipeEntity = new PipeBlockEntity(BlockEntityTypes.PIPE);
+        pipeEntity.setPosition(CELL_X, CELL_Y, CELL_Z);
+        world.addBlockEntity(pipeEntity);
+        Aabb body = Aabb.of(CELL_X + 0.2f, CELL_Y + 0.2f, CELL_Z + 0.2f,
+                CELL_X + 0.8f, CELL_Y + 0.8f, CELL_Z + 0.8f);
+        Aabb cell = new Aabb();
+
+        assertFalse(world.overlaps(body, cell), "a body walks through a pipe");
+
+        world.setFaceGrid(pipeEntity);
+
+        assertFalse(world.overlaps(body, cell),
+                "and is free to leave the pipe it stands in while its grid is open");
+    }
+
+    @Test
+    void theShapeOfABlockIsItsOwnWhenTheGridCloses() {
         Aabb shape = new Aabb();
 
         world.setFaceGrid(grid);
@@ -126,7 +149,7 @@ class FaceGridShapeTest {
         // carries the blocks and the entities only, and the shape a body meets is the one of the blocks.
         assertEquals(1, world.modifiedChunkCount(), "only the block that was put there changed a chunk");
         world.shape(CELL_X, CELL_Y, CELL_Z, shape);
-        assertEquals(CELL_Y, shape.minY(), 1.0e-6f);
+        assertTrue(shape.isEmpty(), "a torch is a torch while it is looked at");
     }
 
     /** Block entity of the test that answers for the grid of faces. */

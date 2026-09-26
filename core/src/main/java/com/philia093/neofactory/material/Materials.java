@@ -49,6 +49,21 @@ public final class Materials {
     /** Copper, the metal that carries a current. */
     public static Material COPPER;
 
+    /**
+     * Colour of copper, shared with the pipes that are made of it.
+     * <p>
+     * The colour of a material is written down here as a constant as well, because a block needs it while
+     * the blocks are registered - the pipes of copper are painted with it, see {@code PipeMaterials} - and
+     * the materials themselves are declared later, while the items are registered.
+     */
+    public static final Color COPPER_COLOR = new Color(0.85f, 0.55f, 0.35f, 1f);
+
+    /** Colour of bronze, shared with the pipes that are made of it. */
+    public static final Color BRONZE_COLOR = new Color(0.72f, 0.45f, 0.22f, 1f);
+
+    /** Colour of steel, shared with the pipes that are made of it. */
+    public static final Color STEEL_COLOR = new Color(0.58f, 0.60f, 0.64f, 1f);
+
     /** Tin, used to solder and to alloy. */
     public static Material TIN;
 
@@ -69,6 +84,24 @@ public final class Materials {
 
     /** Tungsten, the metal that takes the most heat. */
     public static Material TUNGSTEN;
+
+    /**
+     * Bronze, the alloy of the bronze age.
+     * <p>
+     * It is the metal of the first machines of the industry: the boiler that makes the steam is built of
+     * bronze, the pipes that carry it are, and the machines of the age that follow are. It is declared
+     * behind every other metal because the ids of the items a material brings must never move, see the
+     * class comment.
+     */
+    public static Material BRONZE;
+
+    /**
+     * Steel, the metal of the age behind bronze.
+     * <p>
+     * Steel takes more heat than bronze and more pressure, which is what the steam of a larger boiler and
+     * the machines of a workshop ask for.
+     */
+    public static Material STEEL;
 
     private static final List<Material> DECLARED = new ArrayList<>();
     private static boolean registered;
@@ -108,7 +141,7 @@ public final class Materials {
                 .formula("Au").kind(MaterialKind.METAL)
                 .item(MaterialForm.INGOT, Items.GOLD_INGOT_ID).build());
         COPPER = register(Material.builder("copper", "Copper")
-                .color(new Color(0.85f, 0.55f, 0.35f, 1f)).formula("Cu").build());
+                .color(COPPER_COLOR).formula("Cu").build());
         TIN = register(Material.builder("tin", "Tin").color(new Color(0.80f, 0.82f, 0.85f, 1f))
                 .formula("Sn").build());
         LEAD = register(Material.builder("lead", "Lead").color(new Color(0.50f, 0.52f, 0.62f, 1f))
@@ -123,6 +156,13 @@ public final class Materials {
                 .color(new Color(0.82f, 0.92f, 0.94f, 1f)).formula("Pt").build());
         TUNGSTEN = register(Material.builder("tungsten", "Tungsten")
                 .color(new Color(0.44f, 0.44f, 0.48f, 1f)).formula("W").build());
+        // The two metals of the bronze age. They stand at the end of the list on purpose: a material
+        // declares its items in the order it is written down in, so a metal that is added later has to be
+        // appended here and never inserted between two others, see the class comment.
+        BRONZE = register(Material.builder("bronze", "Bronze")
+                .color(BRONZE_COLOR).formula("Cu3Sn").kind(MaterialKind.METAL).build());
+        STEEL = register(Material.builder("steel", "Steel")
+                .color(STEEL_COLOR).formula("FeC").kind(MaterialKind.METAL).build());
     }
 
     /** Writes a material into the registry and hands it back. */
