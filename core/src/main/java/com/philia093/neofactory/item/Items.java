@@ -284,7 +284,7 @@ public final class Items {
      * material stands another twenty eight numbers higher. A stored world of version 9 is refused for the
      * same reason as one of version 7.
      */
-    public static final int NEXT_FREE_ID = 128;
+    public static final int NEXT_FREE_ID = 245;
 
     /**
      * Amount an empty container stacks to.
@@ -736,7 +736,10 @@ public final class Items {
                 .maxStackSize(Item.SINGLE_ITEM_STACK)
                 .toolType(ToolType.WRENCH)
                 .toolLevel(HAND_TOOL_LEVEL)
-                .miningSpeed(Item.HAND_MINING_SPEED)
+                // The wrench is swung slowly but it is a tool of iron: a pipe and a machine name it as the
+                // tool they are taken apart with, so the speed it mines those with is the one of an iron
+                // tool, see ToolType#WRENCH and Blocks#BRONZE_BOILER.
+                .miningSpeed(IRON_TOOL_SPEED)
                 .maxDamage(WRENCH_DURABILITY)
                 .faceTool(FaceTool.WRENCH)
                 .build());

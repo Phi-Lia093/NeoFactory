@@ -31,11 +31,12 @@ class MaterialTest {
     }
 
     @Test
-    void everyMetalOfTheGameComesInTheShapesOfItsKind() {
+    void everyMaterialComesInTheShapesItsKindGivesIt() {
         assertFalse(Materials.all().isEmpty(), "the game has to have materials");
         for (Material material : Materials.all()) {
-            assertEquals(MaterialKind.METAL.defaultForms(), material.forms(),
-                    material.name() + " does not come in the shapes of a metal");
+            assertFalse(material.forms().isEmpty(), material.name() + " has no shape at all");
+            assertTrue(MaterialKind.METAL.defaultForms().containsAll(material.forms()),
+                    material.name() + " comes in a shape no kind of the game knows");
         }
     }
 
@@ -59,11 +60,10 @@ class MaterialTest {
     @Test
     void everyItemCarriesTheColourAndTheFormulaOfItsMaterial() {
         for (Material material : Materials.all()) {
-            assertTrue(material.hasChemicalFormula(), material.name() + " has no formula");
             for (Item item : material.items()) {
                 assertEquals(material.color(), item.tint(), item.name());
                 assertEquals(material.chemicalFormula(), item.chemicalFormula(), item.name());
-                assertTrue(item.hasChemicalFormula(), item.name());
+                assertEquals(material.hasChemicalFormula(), item.hasChemicalFormula(), item.name());
             }
         }
     }

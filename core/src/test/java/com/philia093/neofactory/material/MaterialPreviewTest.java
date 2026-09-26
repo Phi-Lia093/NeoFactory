@@ -103,6 +103,11 @@ class MaterialPreviewTest {
             long first = 0L;
             String firstName = null;
             for (Material material : materials) {
+                if (!material.has(form)) {
+                    // A material that is no metal does not come in every shape of one: wood is a board and
+                    // nothing else, see Materials#declare.
+                    continue;
+                }
                 int[] pixels = paintedIcon(material, form);
                 assertNotNull(pixels, material.name() + " has no " + form);
                 assertTrue(opaque(pixels) > 8,

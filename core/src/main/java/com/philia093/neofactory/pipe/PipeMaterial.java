@@ -2,6 +2,8 @@ package com.philia093.neofactory.pipe;
 
 import com.badlogic.gdx.graphics.Color;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -20,13 +22,21 @@ import java.util.Objects;
  *         the first machines;</li>
  *     <li>{@link #flow(PipeSize)} what it moves a second, which grows with its size.</li>
  * </ul>
- * <b>The numbers of the table are placeholders.</b> Whether a bronze pipe carries more than a copper one
- * and by how much is a question of the balance of the game and is decided later; the flow rates written
- * in {@link PipeMaterials} are a first guess that keeps the sizes and the materials in a sane order - a
- * larger size carries more, a better material takes more heat - and nothing else depends on the exact
- * value.
+ * <b>Not every material comes in every size.</b> A flow rate of {@link #NOT_MADE} says that the game has
+ * no such pipe - wood is made of three tubes and no bundle, and a later material may stop at the huge
+ * pipe - and those cells of the table are simply left empty, see {@link #hasSize(PipeSize)}. It is the
+ * table of the game and no rule of arithmetic: every cell and every temperature is a decision of the
+ * design and nothing but the order of the table depends on the numbers, see {@link PipeMaterials}.
  */
 public final class PipeMaterial {
+
+    /**
+     * Flow rate of a size this material is not made in.
+     * <p>
+     * A cell of the table left empty, see {@link PipeMaterials}: the game holds no pipe of that material
+     * and that size, so {@link #hasSize(PipeSize)} answers {@code false} for it.
+     */
+    public static final int NOT_MADE = 0;
 
     private final String name;
     private final String displayName;
@@ -44,7 +54,8 @@ public final class PipeMaterial {
      * @param texture family of art this material is drawn from
      * @param maxTemperature hottest fluid this material carries, in kelvin
      * @param flow what it moves a second in one pipe of each size, in millibuckets, one per
-     *             {@link PipeSize}, in the order the sizes are declared
+     *             {@link PipeSize}, in the order the sizes are declared; a cell left at
+     *             {@link #NOT_MADE} says the material is not made in that size
      */
     PipeMaterial(String name, String displayName, Color color, PipeTexture texture,
             float maxTemperature, int... flow) {
@@ -63,11 +74,20 @@ public final class PipeMaterial {
             throw new IllegalArgumentException("The pipes of " + name + " name " + flow.length
                     + " flow rates, but the game holds " + PipeSize.values().length + " sizes");
         }
+        int made = 0;
         for (int rate : flow) {
-            if (rate <= 0) {
+            if (rate < 0) {
                 throw new IllegalArgumentException("A pipe of " + name
-                        + " moves nothing at all, a flow rate has to be above zero");
+                        + " moves less than nothing, and a size it is not made in is left at "
+                        + NOT_MADE);
             }
+            if (rate > 0) {
+                made++;
+            }
+        }
+        if (made == 0) {
+            throw new IllegalArgumentException("The pipes of " + name
+                    + " are made in no size at all, which is no material");
         }
         this.maxTemperature = maxTemperature;
         this.flow = flow.clone();
@@ -106,10 +126,36 @@ public final class PipeMaterial {
      * What one pipe of a size moves a second.
      *
      * @param size size of the pipe
-     * @return the flow rate in millibuckets per second
+     * @return the flow rate in millibuckets per second, {@link #NOT_MADE} for a size this material is
+     *         not made in
      */
     public int flow(PipeSize size) {
         return flow[size.ordinal()];
+    }
+
+    /**
+     * {@code true} when this material is made in a size.
+     *
+     * @param size size to ask about
+     * @return {@code true} when the game holds a pipe of that size
+     */
+    public boolean hasSize(PipeSize size) {
+        return flow[size.ordinal()] > NOT_MADE;
+    }
+
+    /**
+     * The sizes this material is made in, in the order the sizes are declared.
+     *
+     * @return the sizes, never empty
+     */
+    public List<PipeSize> sizes() {
+        List<PipeSize> made = new ArrayList<>();
+        for (PipeSize size : PipeSize.values()) {
+            if (hasSize(size)) {
+                made.add(size);
+            }
+        }
+        return List.copyOf(made);
     }
 
     @Override

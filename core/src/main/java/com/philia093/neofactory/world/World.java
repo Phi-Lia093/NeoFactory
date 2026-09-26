@@ -3,6 +3,8 @@ package com.philia093.neofactory.world;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.BlockEntity;
+import com.philia093.neofactory.blockentity.BlockEntityRegistry;
+import com.philia093.neofactory.blockentity.BlockEntityType;
 import com.philia093.neofactory.entity.EntityManager;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.util.Aabb;
@@ -466,6 +468,12 @@ public final class World implements BlockAccess {
             // it: a machine that stayed behind would keep running where nothing stands.
             chunk.removeBlockEntity(localX, y, localZ);
         }
+        if (chunk.rawId(localX, y, localZ) != block.id()) {
+            // The state of the block that stood there belongs to it and means nothing for the one that takes
+            // its place, see Chunk#setRawId: a cell therefore loses its state with its block, and the block
+            // that is written now starts at the state every property of it is written first in.
+            chunk.setState(localX, y, localZ, 0);
+        }
         chunk.setBlock(localX, y, localZ, block);
         // This is the public write path of the world: everything reaching it is a
         // player change and has to survive unloading and saving.
@@ -609,6 +617,48 @@ public final class World implements BlockAccess {
     /** Closes the grid of faces, which is what a frame without a tool or without a target does. */
     public void clearFaceGrid() {
         this.faceGrid = null;
+    }
+
+    /**
+     * The block entity of a cell, created when the block there names one and none is stored.
+     * <p>
+     * A cell that carries a block entity is the block: a machine does nothing without one and a pipe with no
+     * entity of its own cannot be ticked, cannot be turned with the wrench and shows no grid of faces, while
+     * its block is still a pipe that a line may be built against. <b>That is a cell which is half broken</b>,
+     * and a player meets it as a pipe that does nothing at all, so every reader of a cell that needs the
+     * entity asks here instead of at {@link #blockEntity(int, int, int)}: a missing entity is put back where
+     * it belongs, and the log names the block and the cell it happened to, because a block entity is only
+     * ever lost by a bug.
+     * <p>
+     * The entity is created empty - a lost machine does not get its slots back - but the cell works again,
+     * which is what a player can see.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @return the entity of the cell, or {@code null} when the block there names none or names an unknown one
+     */
+    public BlockEntity ensureBlockEntity(int x, int y, int z) {
+        BlockEntity stored = blockEntity(x, y, z);
+        if (stored != null) {
+            return stored;
+        }
+        Block block = getBlock(x, y, z);
+        if (!block.hasBlockEntity()) {
+            return null;
+        }
+        BlockEntityType type = BlockEntityRegistry.byName(block.blockEntityTypeName());
+        if (type == null) {
+            LOGGER.warn("The block '{}' names the unknown block entity '{}', it stays empty",
+                    block.name(), block.blockEntityTypeName());
+            return null;
+        }
+        BlockEntity created = type.create();
+        created.setPosition(x, y, z);
+        addBlockEntity(created);
+        LOGGER.info("The {} at ({}, {}, {}) had lost its block entity, a new one was put in its place",
+                block.name(), x, y, z);
+        return created;
     }
 
     /** Block entity whose grid of faces is open, {@code null} while none is. */

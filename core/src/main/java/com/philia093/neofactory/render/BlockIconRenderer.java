@@ -100,11 +100,15 @@ public class BlockIconRenderer implements Disposable {
      * <p>
      * The frame is the cell a block stands in, so a thin block covers little of it: a tiny pipe is a few
      * pixels wide and a plant is a few leaves in the middle of a slot. Such a drawing is what a player
-     * expects - a slot says how large a thing is by the room it leaves - so the number here is low and only
-     * catches a frame that stayed empty, where the tile the block was folded from reads better than an
-     * empty slot.
+     * expects - a slot says how large a thing is by the room it leaves - so the number here only catches a
+     * frame that stayed empty, where the tile the block was folded from reads better than an empty slot.
+     * <b>It is deliberately far below the drawing of the thinnest block of the game:</b> the two pipes whose
+     * art is only four sixteenths of a block wide cover about a hundredth of the frame, and the value this
+     * number had - one twentieth - was above that share, so the smallest pipes of the game were reported as
+     * "too little to read" and kept their folded tile, which a player sees as a pipe that fills the slot
+     * like a block, see {@link #reachedTheFrame(Block)} and {@code BlockIconRendererTest}.
      */
-    private static final float MINIMUM_COVERAGE = 0.05f;
+    private static final float MINIMUM_COVERAGE = 0.01f;
 
     private final BlockShader shader;
     private final BlockPictures pictures;

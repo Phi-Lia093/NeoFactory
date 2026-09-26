@@ -115,10 +115,8 @@ class CreativeInventoryTest {
         creative.select(indexOfTab("pipes"));
 
         assertEquals(Pipes.COUNT, creative.matches().size(), "a tab for all the pipes of the game");
-        assertEquals(Pipes.of(PipeMaterials.WOOD, PipeSize.TINY).item(), creative.stackAt(0).item(),
-                "wood comes first, the smallest size at its front");
-        assertEquals(Pipes.of(PipeMaterials.STEEL, PipeSize.NONUPLE).item(),
-                creative.stackAt(Pipes.COUNT - 1).item(), "steel comes last, the bundle at its end");
+        assertEquals(Pipes.of(PipeMaterials.WOOD, PipeSize.SMALL).item(), creative.stackAt(0).item(),
+                "wood comes first, the smallest size it is made in at its front");
         assertFalse(tab("pipes").matches(Items.FURNACE), "a machine is no pipe");
         assertFalse(tab("pipes").matches(Items.STONE), "and neither is a stone");
         assertFalse(tab("machines").matches(Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM).item()),

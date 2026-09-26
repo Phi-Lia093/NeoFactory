@@ -121,4 +121,43 @@ class FaceGridTest {
         assertThrows(IllegalArgumentException.class,
                 () -> FaceGrid.faceOf(BlockFace.NORTH, null, 0, -1));
     }
+
+    @Test
+    void theCellsOfTheGridAreCutOneToTwoToOne() {
+        // A side of the grid is cut in four shares and the middle cell takes two of them, which is what
+        // makes the cell a player looks at the largest target of the nine.
+        assertEquals(4, FaceGrid.SHARES);
+        assertEquals(0, FaceGrid.shareFrom(0));
+        assertEquals(1, FaceGrid.shareTo(0));
+        assertEquals(1, FaceGrid.shareFrom(1));
+        assertEquals(3, FaceGrid.shareTo(1));
+        assertEquals(3, FaceGrid.shareFrom(2));
+        assertEquals(4, FaceGrid.shareTo(2));
+        assertEquals(0.0f, FaceGrid.fromOf(0));
+        assertEquals(0.25f, FaceGrid.toOf(0));
+        assertEquals(0.25f, FaceGrid.fromOf(1));
+        assertEquals(0.75f, FaceGrid.toOf(1));
+        assertEquals(0.75f, FaceGrid.fromOf(2));
+        assertEquals(1.0f, FaceGrid.toOf(2));
+        assertThrows(IllegalArgumentException.class, () -> FaceGrid.fromOf(FaceGrid.SIZE));
+        assertThrows(IllegalArgumentException.class, () -> FaceGrid.toOf(-1));
+    }
+
+    @Test
+    void aPlaceOnAFaceFallsIntoTheShareOfItsStrip() {
+        // The lines of the grid lie a quarter and three quarters along a side, so a place is read the way
+        // the cells are cut and not in thirds: a hair to either side of a line belongs to the cell behind it.
+        // A row is counted from the top of the grid, and the right of the grid on a north wall seen from the
+        // south is the west of the world, so a place at x = 0 is in the last column.
+        assertEquals(8, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 0.0f, 0.24f, 0.0f));
+        assertEquals(5, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 0.0f, 0.26f, 0.0f));
+        assertEquals(5, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 0.0f, 0.74f, 0.0f));
+        assertEquals(2, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 0.0f, 0.76f, 0.0f));
+        // A place a third of the way along the face belongs to the middle cell now and not to the one beside
+        // it, because the middle cell takes two of the four shares of the side.
+        assertEquals(4, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 1.0f / 3, 0.5f, 0.0f));
+        assertEquals(4, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 2.0f / 3, 0.5f, 0.0f));
+        assertEquals(5, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 0.1f, 0.5f, 0.0f));
+        assertEquals(3, FaceGrid.cellOf(BlockFace.NORTH, BlockFace.SOUTH, 0.9f, 0.5f, 0.0f));
+    }
 }

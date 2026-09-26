@@ -37,13 +37,19 @@ class ItemTooltipTest {
     }
 
     @Test
-    void everyItemOfEveryMaterialBringsTwoLines() {
+    void everyItemOfEveryMaterialBringsItsNameAndItsFormulaWhenItHasOne() {
         for (Material material : Materials.all()) {
             for (Item item : material.items()) {
                 List<String> lines = ItemTooltip.linesOf(item);
-                assertEquals(2, lines.size(), item.name() + " does not name its formula");
                 assertEquals(item.displayName(), lines.get(0), item.name());
-                assertEquals(material.chemicalFormula(), lines.get(1), item.name());
+                if (material.hasChemicalFormula()) {
+                    assertEquals(2, lines.size(), item.name() + " does not name its formula");
+                    assertEquals(material.chemicalFormula(), lines.get(1), item.name());
+                } else {
+                    // A material whose formula is not known yet draws its name and nothing else, so a line
+                    // that is filled in later is one line here and one value in Materials.
+                    assertEquals(1, lines.size(), item.name() + " names a formula it does not have");
+                }
             }
         }
     }

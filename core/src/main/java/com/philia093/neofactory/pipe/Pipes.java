@@ -5,6 +5,8 @@ import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
+import com.philia093.neofactory.item.ToolType;
+import com.philia093.neofactory.world.BlockAccess;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,9 +17,10 @@ import java.util.Locale;
  * <p>
  * A pipe is the simplest block of the industry and the one the most of it is built from: a tube that
  * carries a fluid from the tank of one machine to the tank of another. The game holds one block per
- * {@link PipeMaterial material} and {@link PipeSize size} - twenty eight of them, from the tiny wooden
- * pipe to the nonuple steel one - and every one of those blocks carries the same six properties, one per
- * direction, which is the whole of what a pipe decides: <b>which of its six sides it joins.</b>
+ * {@link PipeMaterial material} and per {@link PipeSize size} the tables name together - twenty four of
+ * them today, from the small wooden pipe to the nonuple steel one - and every one of those blocks carries
+ * the same six properties, one per direction, which is the whole of what a pipe decides: <b>which of its
+ * six sides it joins.</b>
  * <p>
  * <b>The state of a pipe is its mask.</b> The six properties are declared in the order {@code north},
  * {@code east}, {@code south}, {@code west}, {@code up}, {@code down}, so the number of a state is the
@@ -55,8 +58,8 @@ public final class Pipes {
     /** Id of the first pipe item, in the order of {@link PipeMaterials#all()}. */
     public static final int FIRST_ITEM_ID = 100;
 
-    /** Amount of pipes: one per material and size. */
-    public static final int COUNT = PipeMaterials.all().size() * PipeSize.values().length;
+    /** Amount of pipes: one per material and size the tables name together. */
+    public static final int COUNT = countOfPipes();
 
     /** Seconds of work a pipe takes to break. */
     public static final float HARDNESS = 0.4f;
@@ -100,6 +103,22 @@ public final class Pipes {
 
     private Pipes() {
         // Utility class: never instantiated.
+    }
+
+    /**
+     * Counts the pipes the two tables name together.
+     * <p>
+     * The materials are read before the blocks are built, so the number of the blocks of the game is known
+     * while they are numbered - and it is the sum of the sizes of every material and not one size for all
+     * of them, because a material may be made in fewer sizes than the game has, see
+     * {@link PipeMaterial#hasSize(PipeSize)}.
+     */
+    private static int countOfPipes() {
+        int count = 0;
+        for (PipeMaterial material : PipeMaterials.all()) {
+            count += material.sizes().size();
+        }
+        return count;
     }
 
     /**
@@ -164,6 +183,21 @@ public final class Pipes {
      */
     public static int toggled(int state, BlockFace face) {
         return stateOf(maskOf(state) ^ bit(face));
+    }
+
+    /**
+     * The state a pipe has after one of its sides was joined.
+     * <p>
+     * This is what a pipe is given to join a line: joining a side that is already joined changes nothing,
+     * which is what makes this the safe way to join a pipe - a line that is joined twice is a line that is
+     * joined once, see {@link #connectOnPlacement(BlockAccess, int, int, int, BlockFace)}.
+     *
+     * @param state state of the pipe before the join
+     * @param face side of the pipe to join
+     * @return the number of the state after the join
+     */
+    public static int joined(int state, BlockFace face) {
+        return stateOf(maskOf(state) | bit(face));
     }
 
     /**
@@ -292,6 +326,16 @@ public final class Pipes {
             return size;
         }
 
+        /** What this pipe moves a second, in millibuckets, see {@link PipeMaterial#flow(PipeSize)}. */
+        public int flow() {
+            return material.flow(size);
+        }
+
+        /** Hottest fluid this pipe carries, in kelvin, see {@link PipeMaterial#maxTemperature()}. */
+        public float maxTemperature() {
+            return material.maxTemperature();
+        }
+
         /** Block of this pipe. */
         public Block block() {
             return block;
@@ -344,6 +388,11 @@ public final class Pipes {
         int id = FIRST_BLOCK_ID;
         for (PipeMaterial material : PipeMaterials.all()) {
             for (PipeSize size : PipeSize.values()) {
+                if (!material.hasSize(size)) {
+                    // The table of the materials names no such pipe - wood is made of three tubes and of no
+                    // bundle - so no block is built for it and the number of the next pipe moves on.
+                    continue;
+                }
                 Block.Builder builder = Block.builder(id++, material.name() + "_pipe_" + size.fileName())
                         // The picture of a pipe is a fallback: a pipe of the world is drawn from the model of
                         // its state, see Pipes. It is named all the same, because a block without a picture is
@@ -357,6 +406,10 @@ public final class Pipes {
                         // nothing about the size, see Block#itemState and BlockIconRenderer.
                         .itemState(STRAIGHT_MASK)
                         .hardness(HARDNESS)
+                        // A pipe is taken apart with the wrench: the kind of the tool is what makes the wrench
+                        // quick at it, and the level of nothing keeps every tool able to break one, so a line
+                        // that has to go always hands its pipes over, see HardnessMining.
+                        .toolType(ToolType.WRENCH)
                         .blockEntity(BLOCK_ENTITY);
                 if (material.texture().isTinted()) {
                     builder.tint(material.color());
@@ -415,14 +468,22 @@ public final class Pipes {
 
     /**
      * The pipe of a material and a size.
+     * <p>
+     * The pair is looked up in the pipes the tables name together, which is a short list - a material is
+     * made in a few sizes and the game holds a few materials - and therefore a plain walk instead of a
+     * table of offsets that would have to keep the shape of the tables in step with the code.
      *
      * @param material material of the pipe
      * @param size size of the pipe
      * @return the pipe, or {@code null} when the game has none
      */
     public static Pipe of(PipeMaterial material, PipeSize size) {
-        int index = PipeMaterials.all().indexOf(material) * PipeSize.values().length + size.ordinal();
-        return index < 0 || index >= PIPES.size() ? null : PIPES.get(index);
+        for (Pipe pipe : PIPES) {
+            if (pipe.material() == material && pipe.size() == size) {
+                return pipe;
+            }
+        }
+        return null;
     }
 
     /**
@@ -430,9 +491,9 @@ public final class Pipes {
      * <p>
      * Two pipes always join, whatever their material and their size: a line may run from a wooden pipe into
      * a steel one, and which of them limits the flow is a question of the transport and not of the shape. A
-     * machine will join on the faces that carry a tank of fluid as well - the mouth of its front takes
-     * fluid in and every other face gives it - which arrives with the transport, see {@code FluidNode}.
-     * Until then only pipes join.
+     * machine joins as well, because it names the tanks behind its sides - the mouth of its front takes
+     * fluid in and every other side gives it - and a block says that of itself while it is built, see
+     * {@link Block#carriesFluid()} and {@link com.philia093.neofactory.fluid.FluidNode}.
      * <p>
      * <b>This is the question of the transport</b> and not one a wrench asks: the wrench turns any side a
      * player puts it to, see {@code PipeBlockEntity#operateFace}. A test pins the rule down so that the
@@ -442,6 +503,49 @@ public final class Pipes {
      * @return {@code true} when a pipe reaches it
      */
     public static boolean connects(Block block) {
-        return of(block) != null;
+        return of(block) != null || block != null && block.carriesFluid();
+    }
+
+    /**
+     * Joins a pipe that was just built to the pipe it was built against.
+     * <p>
+     * <b>This is the one connection a player is given for free</b>, and it is deliberately narrow: a pipe
+     * that is put down while the eyes name a pipe - the ray met the face of that pipe and the new pipe went
+     * into the cell beside it - is joined to that very pipe on both sides at once, and only while the two are
+     * of the same {@link PipeMaterial material}. A bronze pipe reaches a bronze pipe by itself; a bronze pipe
+     * beside a steel one, a line that runs the other way, and a pipe that was put down without aiming at
+     * anything all wait for the wrench, see {@link #toggled(int, BlockFace)}.
+     * <p>
+     * The material is what the rule counts, because that is what says what a player means: a line of one
+     * material is one line. The size is free - a line may step from a tiny pipe into a huge one, and which of
+     * the two limits the flow is the question of the transport, see {@link #connects(Block)}.
+     * <p>
+     * The face handed in is the face of the block that was aimed at, the one the build came through: the new
+     * pipe therefore joins its side <i>across</i> from that face, and the pipe that stood there joins the face
+     * itself.
+     *
+     * @param world world the pipe was built in
+     * @param x block X coordinate of the pipe that was just built
+     * @param y block Y coordinate of the pipe that was just built
+     * @param z block Z coordinate of the pipe that was just built
+     * @param face face of the block the pipe was built against, {@code null} when the aim named no face
+     * @return {@code true} when the two pipes were joined
+     */
+    public static boolean connectOnPlacement(BlockAccess world, int x, int y, int z, BlockFace face) {
+        if (face == null) {
+            return false;
+        }
+        // The block the pipe was built against stands on the other side of the face the aim came through.
+        int otherX = x - face.x();
+        int otherY = y - face.y();
+        int otherZ = z - face.z();
+        Pipe built = of(world.getBlock(x, y, z));
+        Pipe standing = of(world.peekBlock(otherX, otherY, otherZ));
+        if (built == null || standing == null || built.material() != standing.material()) {
+            return false;
+        }
+        world.setState(x, y, z, joined(world.getState(x, y, z), face.opposite()));
+        world.setState(otherX, otherY, otherZ, joined(world.getState(otherX, otherY, otherZ), face));
+        return true;
     }
 }

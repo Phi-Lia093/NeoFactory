@@ -77,9 +77,15 @@ class PipeConnectionTest {
      * @param face side of the pipe to turn
      * @return {@code true} when the pipe turned that side
      */
-    private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face) {
+    private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face,
+            boolean modifier) {
         return pipe.operateFace(world, pipe.x(), pipe.y(), pipe.z(), face, FaceTool.WRENCH, null,
-                ItemStack.of(Items.WRENCH, 1));
+                ItemStack.of(Items.WRENCH, 1), modifier);
+    }
+
+    /** Turns one side of a pipe with the wrench and no modifier key, the way a plain click does. */
+    private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face) {
+        return turn(world, pipe, face, false);
     }
 
     /** Lets the world tick for a while, which is what must not change any mask of any pipe. */
@@ -153,11 +159,11 @@ class PipeConnectionTest {
     @Test
     void aSideIsOpenedTowardsEveryMaterialAndSize() {
         World world = new World(SEED, 4, 4);
-        PipeBlockEntity tiny = place(world, Pipes.of(PipeMaterials.WOOD, PipeSize.TINY), 0, Y, 0);
+        PipeBlockEntity small = place(world, Pipes.of(PipeMaterials.WOOD, PipeSize.SMALL), 0, Y, 0);
         PipeBlockEntity bundle = place(world, Pipes.of(PipeMaterials.STEEL, PipeSize.NONUPLE), 1, Y, 0);
 
-        assertTrue(turn(world, tiny, BlockFace.EAST), "a tiny pipe joins a bundle");
-        assertTrue(turn(world, bundle, BlockFace.WEST), "and the bundle joins the tiny pipe back");
+        assertTrue(turn(world, small, BlockFace.EAST), "a small pipe joins a bundle");
+        assertTrue(turn(world, bundle, BlockFace.WEST), "and the bundle joins the small pipe back");
 
         assertEquals(Pipes.mask(BlockFace.EAST), maskOf(world, 0, Y, 0));
         assertEquals(Pipes.mask(BlockFace.WEST), maskOf(world, 1, Y, 0));
@@ -223,8 +229,8 @@ class PipeConnectionTest {
 
         for (FaceTool tool : List.of(FaceTool.CROWBAR, FaceTool.WIRE_CUTTER, FaceTool.SCREWDRIVER,
                 FaceTool.EMPTY_HAND)) {
-            assertFalse(pipe.operateFace(world, 0, Y, 0, BlockFace.EAST, tool, null, ItemStack.EMPTY),
-                    tool + " turned a side of a pipe");
+            assertFalse(pipe.operateFace(world, 0, Y, 0, BlockFace.EAST, tool, null, ItemStack.EMPTY,
+                    false), tool + " turned a side of a pipe");
         }
         assertEquals(0, maskOf(world, 0, Y, 0), "only the wrench turns a pipe");
     }

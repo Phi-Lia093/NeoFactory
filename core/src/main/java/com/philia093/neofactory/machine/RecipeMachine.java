@@ -130,8 +130,23 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
         craftSeconds += delta;
         if (craftSeconds >= craftTotal) {
             craft.produce(outputs());
+            MachineRecipe finished = craft;
             forgetCraft();
+            craftFinished(finished);
         }
+    }
+
+    /**
+     * Does what a finished craft leaves behind.
+     * <p>
+     * The loop calls this once the products are handed over, which is the moment a machine may look at the
+     * world again: a steam machine asks its block whether the exhaust of the recipe it just ran was free, see
+     * {@link SteamMachine}. The recipe that ended is handed in because the machine has already forgotten it.
+     *
+     * @param recipe recipe whose products were just handed over
+     */
+    protected void craftFinished(MachineRecipe recipe) {
+        // A machine that cares about more than its slots writes this, see SteamMachine.
     }
 
     /**

@@ -159,6 +159,18 @@ public final class SaveTags {
     /** Seconds a furnace has left to burn. */
     public static final String BURN_SECONDS = "BurnSeconds";
 
+    /**
+     * Name of the flag with which a steam machine says that its exhaust was found blocked, see
+     * {@code SteamMachine}: a machine that cannot blow its steam out waits with the next recipe.
+     */
+    public static final String EXHAUST_BLOCKED = "ExhaustBlocked";
+
+    /** Name of the side a machine was turned to, see {@code MachineBlockEntity#facing()}. */
+    public static final String MACHINE_FACING = "Facing";
+
+    /** Name of the side a steam machine blows its steam out of, see {@code MachineBlockEntity}. */
+    public static final String MACHINE_EXHAUST = "Exhaust";
+
     /** Seconds a whole piece of fuel burns. */
     public static final String BURN_TOTAL = "BurnTotal";
 

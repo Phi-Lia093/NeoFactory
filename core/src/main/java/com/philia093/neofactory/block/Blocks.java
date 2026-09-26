@@ -76,8 +76,12 @@ public final class Blocks {
     /** The bronze boiler, the machine that turns water into steam. */
     public static final int BRONZE_BOILER_ID = 28;
 
+    // The pipes take the ids 29 to 173 behind the machines, one per material and size the tables of the
+    // pipes name together - a hundred and forty five of them - and the run is given those very numbers, so a
+    // block that comes after the pipes starts at 174, see Pipes.
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 57;
+    public static final int NEXT_FREE_ID = 174;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -484,9 +488,16 @@ public final class Blocks {
                 .texture("bronze_boiler/bronze_boiler_front")
                 .solid(true)
                 .hardness(3.5f)
-                .harvestLevel(1)
-                .toolType(ToolType.PICKAXE)
+                // A machine is taken apart with the wrench and with nothing else: the tool kind is what makes
+                // the wrench quick at it and a bare hand slow, and the level of nothing keeps every kind of
+                // tool able to break it, so a machine that has to go always hands its blocks over, see
+                // HardnessMining.
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
                 .blockEntity("bronze_boiler")
+                // The boiler is the first machine a line reaches: a pipe may be built towards it, because the
+                // block names the tanks behind its sides, see FluidNode and Pipes#connects.
+                .carriesFluid()
                 .build();
         BlockRegistry.register(BRONZE_BOILER);
 

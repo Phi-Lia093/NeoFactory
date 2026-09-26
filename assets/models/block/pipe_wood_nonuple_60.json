@@ -12,8 +12,8 @@
         "east": { "texture": "#end" },
         "south": { "texture": "#end" },
         "west": { "texture": "#end" },
-        "top": { "texture": "#end" },
-        "bottom": { "texture": "#end" }
+        "top": { "texture": "#side" },
+        "bottom": { "texture": "#side" }
       }
     }
   ]

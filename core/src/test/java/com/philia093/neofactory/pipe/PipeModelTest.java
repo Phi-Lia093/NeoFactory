@@ -178,15 +178,17 @@ class PipeModelTest {
                     assertEquals(1, model.boxes().size(), where + " is one box");
                     ModelBox box = model.boxes().get(0);
                     assertTrue(box.isWholeCube(), where + " has to fill its cell");
-                    // Every side carries the plate of the bundle, joined or not: a bundle is a block of tubes
-                    // and is read by its cross section from wherever a player looks at it, which is also what
-                    // the item of a bundle shows in a slot. A side that is left out would be a hole through a
-                    // block that fills its cell.
+                    // Every side carries a face - a side that is left out would be a hole through a block that
+                    // fills its cell - and which picture it carries says whether the column of tubes runs on
+                    // there: the plate of the bundle where it does, the plain flank of the block where it ends.
                     assertEquals(6, model.faceCount(), where + " shows all six of its sides");
                     for (BlockFace face : Pipes.DIRECTIONS) {
                         assertTrue(box.hasFace(face), where + " has no side towards " + face);
-                        assertEquals(texture.end(size), box.face(face).picture(),
-                                where + " has to show the plate of the bundle towards " + face);
+                        boolean joined = Pipes.isConnected(mask, face);
+                        assertEquals(joined ? texture.end(size) : texture.side(), box.face(face).picture(),
+                                where + (joined
+                                        ? " has to carry the column of tubes on towards " + face
+                                        : " has to show the flank it was capped with towards " + face));
                     }
                 }
             }

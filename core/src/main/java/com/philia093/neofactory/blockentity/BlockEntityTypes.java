@@ -25,7 +25,7 @@ public final class BlockEntityTypes {
     public static final BlockEntityType BRONZE_BOILER = new BlockEntityType("bronze_boiler",
             type -> new MachineBlockEntity(type, new SteamBoilerMachine()));
 
-    /** A pipe, which keeps the connections of its cell up to date. */
+    /** A pipe, which carries the little fluid of its tube and the valve of every side. */
     public static final BlockEntityType PIPE = new BlockEntityType("pipe",
             type -> new PipeBlockEntity(type));
 

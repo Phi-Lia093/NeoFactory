@@ -12,6 +12,8 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.world.interaction.FaceGrid;
+import com.philia093.neofactory.world.interaction.FaceMark;
 import com.philia093.neofactory.entity.Entity;
 import com.philia093.neofactory.entity.ItemEntity;
 import com.philia093.neofactory.item.ItemStack;
@@ -64,6 +66,12 @@ public class WorldRenderer3D implements Disposable {
 
     /** Corners of the cell of the grid under the mouse, written with the lines. */
     private final float[] gridCell = new float[FaceOverlay.CELL_FLOATS];
+
+    /** Crossing of the cell of the grid that is being written, one cell at a time. */
+    private final float[] gridDiagonals = new float[FaceOverlay.DIAGONAL_FLOATS];
+
+    /** Arrow of the cell of the grid that is being written, one cell at a time. */
+    private final float[] gridArrow = new float[FaceOverlay.ARROW_FLOATS];
 
     private int drawnSections;
     private int drawnMeshes;
@@ -246,6 +254,9 @@ public class WorldRenderer3D implements Disposable {
      * {@link FaceOverlay} and drawn a hair outside the block with the depth test still on, so a wall in
      * front of the block hides the grid the way it hides the block itself.
      * <p>
+     * <b>Every cell says what its side does.</b> The marks the block answered with are drawn with the
+     * grid: a side that is not joined is crossed out by its two diagonals and a side that carries the valve
+     * of a one way line carries the small arrow of it, out of the block or into it, see {@link FaceMark}.
      * The grid is drawn after the world and before the frame of the targeted cell, so the frame stays the
      * outermost mark of what an action would touch.
      *
@@ -254,8 +265,10 @@ public class WorldRenderer3D implements Disposable {
      * @param viewerFacing side the player faces, only read for a face that lies flat
      * @param cell cell of the grid under the mouse, {@code 0} to
      *        {@link com.philia093.neofactory.world.interaction.FaceGrid#CELLS} minus one
+     * @param marks mark of every cell of the grid, {@code null} or a missing entry for a plain cell
      */
-    public void renderFaceGrid(Camera camera, BlockTarget target, BlockFace viewerFacing, int cell) {
+    public void renderFaceGrid(Camera camera, BlockTarget target, BlockFace viewerFacing, int cell,
+            FaceMark[] marks) {
         if (target == null || target.face() == null) {
             return;
         }
@@ -275,6 +288,26 @@ public class WorldRenderer3D implements Disposable {
             frame.line(gridLines[at], gridLines[at + 1], gridLines[at + 2],
                     gridLines[at + 3], gridLines[at + 4], gridLines[at + 5]);
         }
+        // The sides that are not joined are crossed out in the same dark line the grid is drawn with, so the
+        // shape of a line reads at a glance, and the arrows of the sides that only run one way stand out.
+        frame.setColor(0.0f, 0.0f, 0.0f, 0.45f);
+        for (int at = 0; at < FaceGrid.CELLS; at++) {
+            if (marks == null || at >= marks.length || marks[at] == null || !marks[at].isCrossed()) {
+                continue;
+            }
+            FaceOverlay.diagonals(target.x(), target.y(), target.z(), target.face(), viewerFacing, at,
+                    gridDiagonals);
+            drawLines(gridDiagonals, FaceOverlay.DIAGONAL_LINES);
+        }
+        frame.setColor(0.98f, 0.78f, 0.24f, 0.95f);
+        for (int at = 0; at < FaceGrid.CELLS; at++) {
+            if (marks == null || at >= marks.length || marks[at] == null || !marks[at].isArrow()) {
+                continue;
+            }
+            FaceOverlay.arrow(target.x(), target.y(), target.z(), target.face(), viewerFacing, at,
+                    marks[at].pointsOut(), gridArrow);
+            drawLines(gridArrow, FaceOverlay.ARROW_LINES);
+        }
         // The cell under the mouse is traced in white, so a player sees which face a click would take.
         frame.setColor(1.0f, 1.0f, 1.0f, 0.9f);
         for (int corner = 0; corner < FaceOverlay.CELL_CORNERS; corner++) {
@@ -286,6 +319,15 @@ public class WorldRenderer3D implements Disposable {
         frame.end();
         Gdx.gl.glLineWidth(1.0f);
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /** Draws the first lines of a block of points the overlay wrote, two points to a line. */
+    private void drawLines(float[] points, int lines) {
+        for (int line = 0; line < lines; line++) {
+            int at = line * 2 * FaceOverlay.POINT_FLOATS;
+            frame.line(points[at], points[at + 1], points[at + 2],
+                    points[at + 3], points[at + 4], points[at + 5]);
+        }
     }
 
     /**

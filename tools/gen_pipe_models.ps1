@@ -43,11 +43,39 @@ $FAMILIES = @(
 )
 
 # The materials of the game, see PipeMaterials, in the order their blocks are numbered in.
+#
+# Sizes names the sizes this material is made in, in the order of the table of the materials, and a
+# material without the key is made in every size of $SIZES. Wood comes as three tubes and as no bundle,
+# exactly as the table of the industry writes it down, so the blockstates of the four sizes it is not
+# made in are removed instead of left behind.
 $MATERIALS = @(
-    @{ Name = 'wood';   Family = 'wood' },
+    @{ Name = 'wood';   Family = 'wood';  Sizes = @('small', 'medium', 'large') },
     @{ Name = 'copper'; Family = 'metal' },
     @{ Name = 'bronze'; Family = 'metal' },
-    @{ Name = 'steel';  Family = 'metal' }
+    @{ Name = 'steel';  Family = 'metal' },
+    # The rest of the line, appended in the order of the table of the materials, see PipeMaterials. A
+    # material without the Sizes key is made in every size of $SIZES; the five size ones carry no bundle.
+    @{ Name = 'clay';               Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'wrought_iron';       Family = 'metal' },
+    @{ Name = 'lead';               Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'polyethylene';       Family = 'metal' },
+    @{ Name = 'stainless_steel';    Family = 'metal' },
+    @{ Name = 'titanium';           Family = 'metal' },
+    @{ Name = 'ptfe';               Family = 'metal' },
+    @{ Name = 'tungsten_steel';     Family = 'metal' },
+    @{ Name = 'pbi';                Family = 'metal' },
+    @{ Name = 'niobium_titanium';   Family = 'metal' },
+    @{ Name = 'tungsten';           Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'tantalum_tungsten_60'; Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'tantalum_tungsten_61'; Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'europium';           Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'depleted_uranium';   Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'maraging_steel_300'; Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'inconel_690';        Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'inconel_792';        Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'maraging_steel_350'; Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'hastelloy_x';        Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') },
+    @{ Name = 'incoloy_903';        Family = 'metal'; Sizes = @('tiny', 'small', 'medium', 'large', 'huge') }
 )
 
 # The six directions in the order the properties of a pipe are declared in, see Pipes. The order is
@@ -136,15 +164,18 @@ function ArmBox($size, [int]$index) {
 # The boxes of one size joined in one way.
 function Boxes($size, [int]$mask) {
     if ($size.Bundle) {
-        # A bundle fills its cell, so it is one box and every one of its six sides carries the plate of the
-        # bundle - the picture that shows four or nine tubes side by side. A bundle is a block of tubes and
-        # not a tube: a player reads it by its cross section, wherever they look at it, which is also what
-        # the item of a bundle shows in a slot, see Pipes#itemState. The column of a bundle is therefore made
-        # of the plate and of nothing else, and no side of it is left out, because a side that is left out is
-        # a hole a player looks straight through, see Boxes.
+        # A bundle fills its cell, so it is one box and every one of its six sides carries a face. The side a
+        # tube runs towards shows the plate of the bundle - the picture with four or nine tubes on it, because
+        # that is where the column of tubes goes on - and every side nothing runs towards shows the plain
+        # flank of the bundle, which reads as the plate a player capped it with. A side that is left out would
+        # be a hole through a block that fills its cell, see Boxes.
         $faces = @{}
         for ($index = 0; $index -lt 6; $index++) {
-            $faces[$DIRECTIONS[$index]] = 'end'
+            if (Connected $mask $index) {
+                $faces[$DIRECTIONS[$index]] = 'end'
+            } else {
+                $faces[$DIRECTIONS[$index]] = 'side'
+            }
         }
         return @{ From = @(0, 0, 0); To = @(16, 16, 16); Faces = $faces }
     }
@@ -236,6 +267,14 @@ function WriteModel([string]$family, [string]$size, [int]$mask, [bool]$tinted) {
     SaveText $path ($lines -join "`n")
 }
 
+# The sizes a material is made in: the ones it names, or every size of the table when it names none.
+function SizesOf($material) {
+    if ($material.ContainsKey('Sizes')) { return $material.Sizes }
+    $all = @()
+    foreach ($size in $SIZES) { $all += $size.Name }
+    return $all
+}
+
 # The state of one pipe block: the six directions as properties and one variant per way to join them.
 function WriteBlockState([string]$material, [string]$family, [string]$size) {
     $path = Join-Path $Assets "blockstates/${material}_pipe_$size.json"
@@ -288,6 +327,7 @@ function WriteBlockModel([string]$material, [string]$family, [string]$size) {
 
 $models = 0
 $states = 0
+$removed = 0
 foreach ($family in $FAMILIES) {
     foreach ($size in $SIZES) {
         $written = @{}
@@ -301,11 +341,24 @@ foreach ($family in $FAMILIES) {
     }
 }
 foreach ($material in $MATERIALS) {
+    $made = SizesOf $material
     foreach ($size in $SIZES) {
-        WriteBlockState $material.Name $material.Family $size.Name
-        WriteBlockModel $material.Name $material.Family $size.Name
-        $states++
+        if ($made -contains $size.Name) {
+            WriteBlockState $material.Name $material.Family $size.Name
+            WriteBlockModel $material.Name $material.Family $size.Name
+            $states++
+            continue
+        }
+        # A size this material is not made in: the game holds no such block, so a blockstate left over from
+        # an earlier run is removed instead of pointing at a pipe that does not exist.
+        foreach ($stale in @((Join-Path $Assets "blockstates/$($material.Name)_pipe_$($size.Name).json"),
+                (Join-Path $Assets "models/block/$($material.Name)_pipe_$($size.Name).json"))) {
+            if (Test-Path $stale) {
+                Remove-Item $stale -Force
+                $removed++
+            }
+        }
     }
 }
-Write-Output "Wrote $models models and $states blockstates plus their block models."
+Write-Output "Wrote $models models and $states blockstates plus their block models, removed $removed."
 

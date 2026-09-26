@@ -54,6 +54,22 @@ public interface MachineRecipe extends Recipe {
     }
 
     /**
+     * Steam one craft takes, in millibuckets, {@code 0} for a machine that runs on something else.
+     * <p>
+     * <b>This is the number a steam machine pays with</b>, and it is what makes two recipes of the same
+     * machine cost different amounts of steam: a recipe that grinds a soft ore asks for less of it than one
+     * that melts a metal, and both say so in their own file, see {@code SteamMachine}. The number is not
+     * {@link #fluidIngredients()}: a fluid ingredient is something the machine keeps - it is taken out of the
+     * tank and away with the craft - while the steam of a recipe is what the machine <i>spends</i>, and the
+     * exhaust is where it goes, see {@code SteamMachine#steamPerSecond(MachineRecipe)}.
+     *
+     * @return the steam in millibuckets, never negative
+     */
+    default int steam() {
+        return 0;
+    }
+
+    /**
      * {@code true} when the machine holds what this recipe needs.
      * <p>
      * The default combines the items of the input with the fluids a recipe asks for, so

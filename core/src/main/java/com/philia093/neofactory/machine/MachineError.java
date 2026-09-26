@@ -29,7 +29,16 @@ public enum MachineError {
      * The picture is the third cell of the column of errors of the sheet, the one that reads as a flask -
      * which is what a boiler that ran dry has to say.
      */
-    NO_WATER(3, 2);
+    NO_WATER(3, 2),
+
+    /**
+     * A steam machine finished a craft and found its exhaust blocked.
+     * <p>
+     * The picture is the fourth cell of the column of errors of the sheet. A steam machine that cannot blow
+     * its steam out refuses the next recipe, because the craft it already ran was paid for: what a player
+     * has to do is clear the face the exhaust looks through, see {@code SteamMachine}.
+     */
+    NO_EXHAUST(3, 3);
 
     private final int column;
     private final int row;

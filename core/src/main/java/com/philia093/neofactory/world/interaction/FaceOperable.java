@@ -43,6 +43,25 @@ public interface FaceOperable {
     boolean showsFaceGrid(World world, int x, int y, int z);
 
     /**
+     * What one cell of the grid says about one face of this block.
+     * <p>
+     * The grid draws the answer: a side that is crossed out, a side that carries the small arrow of a one
+     * way valve, or a plain cell, see {@link FaceMark}. A block that says nothing about its sides keeps the
+     * plain grid, which is what the default does - a machine that is only turned by a wrench has no marks
+     * yet - so this is a question a block may answer and not one it has to.
+     *
+     * @param world world the block lies in
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param face face of the block the cell stands for
+     * @return the mark of that face, {@link FaceMark#NOTHING} when the block says nothing
+     */
+    default FaceMark faceMark(World world, int x, int y, int z, BlockFace face) {
+        return FaceMark.NOTHING;
+    }
+
+    /**
      * Does what one cell of the grid asks for.
      * <p>
      * The face handed in is the one the cell stands for, which is not always the face the grid is drawn
@@ -58,8 +77,12 @@ public interface FaceOperable {
      * @param tool tool the operation is carried out with, never {@link FaceTool#NONE}
      * @param player player who works on the block
      * @param held stack the player holds in that hand, never empty
+     * @param modifier {@code true} when the player holds the modifier key, the second way of working on the
+     *        same cell: a pipe turns the valve of a side instead of its join, see
+     *        {@code PipeBlockEntity#operateFace(World, int, int, int, BlockFace, FaceTool, Player,
+     *        ItemStack, boolean)}
      * @return {@code true} when something was done
      */
     boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-            Player player, ItemStack held);
+            Player player, ItemStack held, boolean modifier);
 }

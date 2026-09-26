@@ -6,6 +6,9 @@ import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.pipe.PipeMaterials;
+import com.philia093.neofactory.pipe.PipeSize;
+import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.World;
@@ -187,6 +190,70 @@ class BlockPlacerTest {
         assertTrue(inventory.heldStack().isEmpty(), "two builds used the two pieces up");
         assertFalse(BlockPlacer.place(world, player, BlockTarget.of(4, air, 4), inventory,
                 GameMode.SURVIVAL), "an empty hand builds nothing");
+    }
+
+    @Test
+    void aPipeIsJoinedToThePipeItWasBuiltAgainst() {
+        // The one connection a player is given for free: a pipe that is put down while the eyes name a pipe of
+        // its own material is joined to that very pipe, on both sides at once, see Pipes#connectOnPlacement.
+        Pipes.Pipe bronze = Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM);
+        world.setBlock(1, air, 1, bronze.block());
+        inventory.set(inventory.selectedSlot(), ItemStack.of(bronze.item(), 8));
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory,
+                GameMode.SURVIVAL), "the pipe was built beside the pipe it was aimed at");
+
+        assertEquals(Pipes.mask(BlockFace.EAST), Pipes.maskOf(world.getState(0, air, 1)),
+                "the new pipe joins the pipe it was built against");
+        assertEquals(Pipes.mask(BlockFace.WEST), Pipes.maskOf(world.getState(1, air, 1)),
+                "and that pipe joins the new one back");
+    }
+
+    @Test
+    void aPipeOfAnotherMaterialIsNotJoinedByItself() {
+        // The rule counts the material and nothing else: another metal waits for the wrench, whatever size the
+        // pipe is, see Pipes#connectOnPlacement.
+        Pipes.Pipe bronze = Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM);
+        Pipes.Pipe steel = Pipes.of(PipeMaterials.STEEL, PipeSize.MEDIUM);
+        world.setBlock(1, air, 1, steel.block());
+        inventory.set(inventory.selectedSlot(), ItemStack.of(bronze.item(), 8));
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory,
+                GameMode.SURVIVAL));
+
+        assertEquals(0, Pipes.maskOf(world.getState(0, air, 1)), "another material waits for the wrench");
+        assertEquals(0, Pipes.maskOf(world.getState(1, air, 1)), "on both sides");
+    }
+
+    @Test
+    void aPipeOfAnotherSizeOfTheSameMaterialIsJoined() {
+        // The size says how much travels through a line and not what a line is, so a tiny pipe reaches a huge
+        // one of the same material by itself.
+        Pipes.Pipe tiny = Pipes.of(PipeMaterials.BRONZE, PipeSize.TINY);
+        Pipes.Pipe huge = Pipes.of(PipeMaterials.BRONZE, PipeSize.HUGE);
+        world.setBlock(1, air, 1, huge.block());
+        inventory.set(inventory.selectedSlot(), ItemStack.of(tiny.item(), 8));
+
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(1, air, 1, BlockFace.WEST), inventory,
+                GameMode.SURVIVAL));
+
+        assertEquals(Pipes.mask(BlockFace.EAST), Pipes.maskOf(world.getState(0, air, 1)));
+        assertEquals(Pipes.mask(BlockFace.WEST), Pipes.maskOf(world.getState(1, air, 1)));
+    }
+
+    @Test
+    void aPipeBuiltWithNoFaceInSightJoinsNothing() {
+        Pipes.Pipe bronze = Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM);
+        world.setBlock(1, air, 1, bronze.block());
+        inventory.set(inventory.selectedSlot(), ItemStack.of(bronze.item(), 8));
+
+        // A cell the aim named carries no face: the block goes into the named cell and there is no pipe it was
+        // built against, even when the pipe stands right beside it.
+        world.setBlock(0, air - 1, 1, Blocks.STONE);
+        assertTrue(BlockPlacer.place(world, player, BlockTarget.of(0, air, 1), inventory, GameMode.SURVIVAL));
+
+        assertEquals(0, Pipes.maskOf(world.getState(0, air, 1)), "the pipe stands alone");
+        assertEquals(0, Pipes.maskOf(world.getState(1, air, 1)), "and its neighbour keeps its sides");
     }
 
     /** The state of a slab of the given half. */

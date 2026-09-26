@@ -10,9 +10,9 @@ import java.util.Map;
  * Every fluid of the game.
  * <p>
  * The table is small on purpose: water, lava and the steam of the first machines, plus whatever the
- * industry adds later. A fluid is a name and the colour a tank and a cell are painted in, see
- * {@link Fluid}, and nothing else - the game has no fluid block, so a fluid is never met in the world
- * and is only ever carried by a tank or a cell.
+ * industry adds later. A fluid is a name, the colour a tank and a cell are painted in and the
+ * temperature it carries, see {@link Fluid}, and nothing else - the game has no fluid block, so a fluid
+ * is never met in the world and is only ever carried by a tank or a cell.
  */
 public final class Fluids {
 
@@ -45,6 +45,31 @@ public final class Fluids {
     /** Steam, what a boiler makes out of water and what the first machines run on. */
     public static Fluid STEAM;
 
+    /**
+     * Temperature water arrives at, in kelvin.
+     * <p>
+     * The fluids of the game keep the heat of the place they come from: the water of a river and of a
+     * boiler that is still cold is three hundred kelvin, which is what a wooden pipe takes and what a
+     * copper one has no trouble with, see {@link com.philia093.neofactory.pipe.PipeMaterial}.
+     */
+    public static final float WATER_TEMPERATURE = 300.0f;
+
+    /**
+     * Temperature lava arrives at, in kelvin.
+     * <p>
+     * Hotter than every pipe of the first materials: lava moves in bronze and in steel and bursts the
+     * pipes of copper and of wood, see {@link com.philia093.neofactory.pipe.PipeMaterials}.
+     */
+    public static final float LAVA_TEMPERATURE = 1300.0f;
+
+    /**
+     * Temperature steam arrives at, in kelvin, the boiling point of water.
+     * <p>
+     * A steam pipe has to take this and no less: a wooden pipe of three hundred and fifty kelvin carries
+     * the water of a river and bursts the moment the steam of a boiler reaches it.
+     */
+    public static final float STEAM_TEMPERATURE = 373.0f;
+
     private static final Map<String, Fluid> BY_NAME = new LinkedHashMap<>();
 
     private Fluids() {
@@ -62,9 +87,9 @@ public final class Fluids {
         if (!BY_NAME.isEmpty()) {
             return;
         }
-        WATER = register("water", WATER_COLOR);
-        LAVA = register("lava", LAVA_COLOR);
-        STEAM = register("steam", STEAM_COLOR);
+        WATER = register("water", WATER_COLOR, WATER_TEMPERATURE);
+        LAVA = register("lava", LAVA_COLOR, LAVA_TEMPERATURE);
+        STEAM = register("steam", STEAM_COLOR, STEAM_TEMPERATURE);
     }
 
     /**
@@ -72,10 +97,11 @@ public final class Fluids {
      *
      * @param name name of the fluid, the name a save file stores
      * @param color colour the fluid is painted in
+     * @param temperature how hot the fluid is, in kelvin
      * @return the fluid, ready to be used by an item or a machine
      */
-    private static Fluid register(String name, Color color) {
-        Fluid fluid = new Fluid(name, color);
+    private static Fluid register(String name, Color color, float temperature) {
+        Fluid fluid = new Fluid(name, color, temperature);
         BY_NAME.put(name, fluid);
         return fluid;
     }

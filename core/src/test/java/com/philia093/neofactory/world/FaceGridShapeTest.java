@@ -166,7 +166,7 @@ class FaceGridShapeTest {
 
         @Override
         public boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-                Player player, ItemStack held) {
+                Player player, ItemStack held, boolean modifier) {
             return true;
         }
 

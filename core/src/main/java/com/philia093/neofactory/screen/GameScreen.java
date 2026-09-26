@@ -57,6 +57,7 @@ import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
 import com.philia093.neofactory.world.interaction.BlockTargeting;
 import com.philia093.neofactory.world.interaction.FaceGrid;
+import com.philia093.neofactory.world.interaction.FaceMark;
 import com.philia093.neofactory.world.interaction.FaceOperable;
 import com.philia093.neofactory.world.interaction.GameModeMining;
 import com.philia093.neofactory.world.interaction.HardnessMining;
@@ -292,6 +293,17 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private int faceCell = NO_FACE_CELL;
 
     /**
+     * What every cell of the grid of faces says about the side it stands for, written once per frame.
+     * <p>
+     * A side that is not joined is crossed out by the grid and a side that carries the valve of a one way
+     * line carries the small arrow of it, see {@link com.philia093.neofactory.world.interaction.FaceMark}.
+     * The marks are read from the block every frame the grid is open - nine reads of a state and a bit -
+     * and handed to the renderer, which is what keeps the grid the only place that has to know how they
+     * look.
+     */
+    private final FaceMark[] faceMarks = new FaceMark[FaceGrid.CELLS];
+
+    /**
      * Cell the mouse is not over, the value of {@link #faceCell} while no grid is open.
      */
     private static final int NO_FACE_CELL = -1;
@@ -347,10 +359,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                     player.inventory().setSelectedSlot(slot);
                     return true;
                 }
-                if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL) {
-                    // The left button works on an open grid as well: the wrench is a tool of the hand and a
-                    // player reaches for it the way they reach for a pickaxe. The cell is what the click is
-                    // spent on, whether the operation changed anything or not.
+                if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL && faceTool != FaceTool.WRENCH) {
+                    // The left button works on an open grid for every tool but the wrench: the wrench is the
+                    // tool of the workshop, and a player who holds it takes a block apart with the left
+                    // button and turns a face with the right one, see #updateInteraction and #buildBlock.
                     workOnFace();
                     return true;
                 }
@@ -771,7 +783,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL) {
             // The grid of faces stands between the cracks of a break and the frame of the cell, so the
             // frame stays the outermost mark of what an action would touch.
-            cubeRenderer.renderFaceGrid(cubeCamera, target, viewerFacing(), faceCell);
+            cubeRenderer.renderFaceGrid(cubeCamera, target, viewerFacing(), faceCell, faceMarks);
         }
         cubeRenderer.renderSelection(cubeCamera, target);
         renderEntities();
@@ -1221,10 +1233,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             boolean walking = Math.abs(player.velocity().x) + Math.abs(player.velocity().z) > 0.05f;
             humanoid.update(delta, walking);
         }
-        // A grid that is open takes the left button as well: a player who holds a wrench at a block works on
-        // it and does not start to break it, which is what a click on a cell of the grid means, see
-        // #workOnFace. Releasing the button stops the work, so nothing is repeated by holding it.
-        boolean workingOnAGrid = world.isFaceGridOpen() && faceCell != NO_FACE_CELL;
+        // A grid that is open normally takes the left button as well: a player who holds a wrench at a block
+        // works on it and does not start to break it. **The wrench is the exception**: with the wrench in
+        // hand the left button is what takes the block apart - that is what a wrench is for - and the right
+        // button is what turns a face, see #workOnFace. Releasing the button stops the work, so nothing is
+        // repeated by holding it.
+        boolean workingOnAGrid = world.isFaceGridOpen() && faceCell != NO_FACE_CELL
+                && faceTool != FaceTool.WRENCH;
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 !workingOnAGrid && inputHandler.isBreakingDown());
         if (broken) {
@@ -1251,7 +1266,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             faceCell = NO_FACE_CELL;
             return;
         }
-        BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
+        BlockEntity entity = world.ensureBlockEntity(target.x(), target.y(), target.z());
         if (!(entity instanceof FaceOperable operable)
                 || !operable.showsFaceGrid(world, target.x(), target.y(), target.z())) {
             world.clearFaceGrid();
@@ -1261,6 +1276,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         world.setFaceGrid(entity);
         faceCell = FaceGrid.cellOf(target.face(), viewerFacing(), target.hitX(), target.hitY(),
                 target.hitZ());
+        // Every cell says what its side does, which the grid draws: the sides that are crossed out and the
+        // arrows of the sides that only run one way, see FaceMark.
+        for (int cell = 0; cell < FaceGrid.CELLS; cell++) {
+            faceMarks[cell] = operable.faceMark(world, target.x(), target.y(), target.z(),
+                    FaceGrid.faceOf(target.face(), viewerFacing(), cell));
+        }
     }
 
     /**
@@ -1284,11 +1305,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return false;
         }
         BlockFace face = FaceGrid.faceOf(target.face(), viewerFacing(), faceCell);
+        boolean modifier = InputHandler.isShiftHeld();
         boolean done = operable.operateFace(world, target.x(), target.y(), target.z(), face, faceTool,
-                player, player.inventory().heldStack());
-        LOGGER.info("The grid of faces of ({}, {}, {}) reached the {} face with the {}, {}",
+                player, player.inventory().heldStack(), modifier);
+        LOGGER.info("The grid of faces of ({}, {}, {}) reached the {} face with the {}, {}{}",
                 target.x(), target.y(), target.z(), face, faceTool,
-                done ? "and it worked" : "which did nothing");
+                done ? "and it worked" : "which did nothing",
+                modifier ? ", the modifier key held" : "");
         return true;
     }
 
@@ -1315,6 +1338,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * Called from the mouse event while the inventory screen is closed, so a click
      * builds exactly one block, see
      * {@link BlockPlacer#place(World, Player, BlockTarget, PlayerInventory)}.
+     * <p>
+     * <b>The use key does three things, in this order.</b> A face of a block that answers to
+     * {@link FaceOperable} is worked on first, then the screen of a machine opens, and only then is the
+     * held block built. <b>The modifier key skips the screen of the machine:</b> a player who builds
+     * against a machine - a pipe that leads into the boiler, a wall that closes a gap beside it - holds
+     * shift and gets the block instead of the interface, which is the one gesture that could not be
+     * reached while every use of a machine opened its slots.
      *
      * @return {@code true} when a block was built
      */
@@ -1325,7 +1355,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (workOnFace()) {
             return true;
         }
-        if (openMachine()) {
+        if (!InputHandler.isShiftHeld() && openMachine()) {
             return true;
         }
         String itemName = player.inventory().heldStack().item().displayName();

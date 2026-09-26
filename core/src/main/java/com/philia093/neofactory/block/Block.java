@@ -39,6 +39,7 @@ public final class Block {
     private final int harvestLevel;
     private final ToolType toolType;
     private final String blockEntityTypeName;
+    private final boolean carriesFluid;
     private final Animation animation;
     private final int itemState;
 
@@ -56,6 +57,7 @@ public final class Block {
         this.harvestLevel = builder.harvestLevel;
         this.toolType = builder.toolType;
         this.blockEntityTypeName = builder.blockEntityTypeName;
+        this.carriesFluid = builder.carriesFluid;
         this.animation = builder.animation;
         this.itemState = builder.itemState;
     }
@@ -223,6 +225,19 @@ public final class Block {
     /** {@code true} when this block carries a block entity. */
     public boolean hasBlockEntity() {
         return !blockEntityTypeName.isEmpty();
+    }
+
+    /**
+     * {@code true} when this block carries a tank of fluid, see {@link com.philia093.neofactory.fluid.FluidNode}.
+     * <p>
+     * A pipe joins what a block says about itself and not what the world happens to hold in a cell: a
+     * machine names the fluid in its picture while it is built, which is how {@code Pipes#connects} knows
+     * that a line may be built towards it without a world to ask.
+     *
+     * @return {@code true} when a pipe may reach this block
+     */
+    public boolean carriesFluid() {
+        return carriesFluid;
     }
 
     /**
@@ -431,6 +446,9 @@ public final class Block {
         private int harvestLevel;
         private ToolType toolType;
         private String blockEntityTypeName = "";
+
+        /** {@code true} for a block that carries a tank of fluid, see {@link Block#carriesFluid()}. */
+        private boolean carriesFluid = false;
         private Animation animation;
         private int itemState;
 
@@ -561,6 +579,20 @@ public final class Block {
          */
         public Builder blockEntity(String typeName) {
             this.blockEntityTypeName = Objects.requireNonNull(typeName, "typeName");
+            return this;
+        }
+
+        /**
+         * Names the fluid this block carries, so a pipe may be built towards it.
+         * <p>
+         * The flag is what {@code Pipes#connects} reads, and it is the block that says it: the machine
+         * behind the block answers with a tank of its own on every side, see
+         * {@link com.philia093.neofactory.fluid.FluidNode}.
+         *
+         * @return this builder, so the calls chain
+         */
+        public Builder carriesFluid() {
+            this.carriesFluid = true;
             return this;
         }
 

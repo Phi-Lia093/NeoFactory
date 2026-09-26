@@ -1,8 +1,10 @@
 package com.philia093.neofactory.item;
 
+import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.gui.creative.CreativeRegistry;
 import com.philia093.neofactory.gui.creative.CreativeTab;
 import com.philia093.neofactory.support.TestRegistries;
+import com.philia093.neofactory.world.interaction.HardnessMining;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -60,8 +62,14 @@ class WrenchTest {
     @Test
     void theWrenchOpensNoBlockOfItsOwn() {
         assertEquals(Items.HAND_TOOL_LEVEL, Items.WRENCH.toolLevel(), "it works as well as a bare hand");
-        assertEquals(Item.HAND_MINING_SPEED, Items.WRENCH.miningSpeed(), 1.0e-6f,
-                "and no faster than one: the work it is made for is the turn of a face");
+        // It is quick at the blocks that name the wrench - a pipe, a machine - and no faster than a hand at
+        // everything else, because those name another kind of tool, see ToolType#WRENCH and HardnessMining.
+        assertEquals(Items.IRON_TOOL_SPEED, Items.WRENCH.miningSpeed(), 1.0e-6f,
+                "the wrench is a tool of iron");
+        assertTrue(new HardnessMining().breakSeconds(Blocks.STONE, ItemStack.of(Items.WRENCH, 1))
+                        > new HardnessMining().breakSeconds(Blocks.STONE,
+                                ItemStack.of(Items.IRON_PICKAXE, 1)),
+                "a stone hands its item to a pickaxe and not to a wrench, so a wrench is slow at it");
     }
 
     @Test

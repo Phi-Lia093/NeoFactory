@@ -20,6 +20,12 @@ import com.philia093.neofactory.block.BlockFace;
  *     behind    down    behind
  * </pre>
  *
+ * <b>The cells are not the same size.</b> A side of the grid is cut in four shares - one, two, one - so the
+ * middle cell of every row and of every column is twice as wide as the two beside it, see {@link #SHARES},
+ * {@link #fromOf(int)} and {@link #toOf(int)}. The face a player looks at is the middle cell and it is
+ * therefore the largest target of the nine, which is what makes the grid usable at a pipe: the cell a
+ * player aims at most often is the one that is easiest to hit.
+ *
  * <b>Which way "up" is depends on the face.</b> On a wall the top of the grid is the sky, so the grid
  * stands still no matter where the player looks. On a floor or a ceiling there is no sky in it, so the
  * top of the grid is the direction the player faces and the whole grid turns with them - which is what
@@ -34,8 +40,71 @@ public final class FaceGrid {
     /** Amount of cells of the grid. */
     public static final int CELLS = SIZE * SIZE;
 
+    /**
+     * Shares of a side of the grid it is cut into, one for a narrow cell and two for the middle one.
+     * <p>
+     * {@code 4} is what makes the middle cell of a row twice as wide as the cell beside it: the strips of a
+     * side take one share, two shares and one share of it, see {@link #fromOf(int)}.
+     */
+    public static final int SHARES = 4;
+
     private FaceGrid() {
         // Utility class: never instantiated.
+    }
+
+    /**
+     * Where a strip of the grid starts along its side.
+     * <p>
+     * The share is counted from the left of the grid or from the bottom of it - the way
+     * {@link #stripOf(float)} counts, which is the direction {@code FaceOverlay} draws the grid in.
+     *
+     * @param strip number of the strip, {@code 0} to {@link #SIZE} minus one
+     * @return the share it starts at, {@code 0} for the first strip and {@code 3} for the last one
+     * @throws IllegalArgumentException when the strip lies outside the grid
+     */
+    public static int shareFrom(int strip) {
+        checkStrip(strip);
+        return strip == 0 ? 0 : 2 * strip - 1;
+    }
+
+    /**
+     * Where a strip of the grid ends along its side.
+     *
+     * @param strip number of the strip, {@code 0} to {@link #SIZE} minus one
+     * @return the share it ends at, one past the last share it takes
+     * @throws IllegalArgumentException when the strip lies outside the grid
+     */
+    public static int shareTo(int strip) {
+        // The middle strip takes two shares instead of one, which is what makes the grid a 1:2:1 cut.
+        return shareFrom(strip) + (strip == 1 ? 2 : 1);
+    }
+
+    /**
+     * Where a strip of the grid starts along its side, as a share of that side.
+     *
+     * @param strip number of the strip, {@code 0} to {@link #SIZE} minus one
+     * @return the place, {@code 0} to {@code 1}
+     */
+    public static float fromOf(int strip) {
+        return shareFrom(strip) / (float) SHARES;
+    }
+
+    /**
+     * Where a strip of the grid ends along its side, as a share of that side.
+     *
+     * @param strip number of the strip, {@code 0} to {@link #SIZE} minus one
+     * @return the place, {@code 0} to {@code 1}
+     */
+    public static float toOf(int strip) {
+        return shareTo(strip) / (float) SHARES;
+    }
+
+    /** Checks the number of a strip, so a broken caller fails where it is written. */
+    private static void checkStrip(int strip) {
+        if (strip < 0 || strip >= SIZE) {
+            throw new IllegalArgumentException("Strip " + strip + " lies outside a grid of " + SIZE
+                    + " strips");
+        }
     }
 
     /**
@@ -176,9 +245,21 @@ public final class FaceGrid {
         return direction.x() > 0 ? x : 1.0f - x;
     }
 
-    /** Third of a face a position falls into, brought back onto the grid at both ends. */
+    /**
+     * Strip of the grid a place on a face falls into, brought back onto the grid at both ends.
+     * <p>
+     * The strips are cut one to two to one and not into thirds, so the middle one is twice as wide as the
+     * two beside it, see {@link #toOf(int)}. A place a hair outside the face - the arithmetic of a ray may
+     * land one there - is brought back onto the first or the last strip instead of leaving a player without
+     * a cell of the grid.
+     */
     private static int stripOf(float position) {
-        return Math.min(SIZE - 1, Math.max(0, (int) (position * SIZE)));
+        for (int strip = 0; strip < SIZE - 1; strip++) {
+            if (position < toOf(strip)) {
+                return strip;
+            }
+        }
+        return SIZE - 1;
     }
 
     /** Face whose normal is a direction, which the six faces of a block are. */

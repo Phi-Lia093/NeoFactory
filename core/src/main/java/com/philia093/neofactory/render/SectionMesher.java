@@ -123,7 +123,16 @@ public final class SectionMesher {
     }
 
     /**
-     * Meshes the cells of a section, every state of a block at its first value.
+     * Meshes the cells of a section, with the state every one of them carries.
+     * <p>
+     * <b>The states come from the section itself.</b> A section stores the number beside the id of every
+     * cell, and that number is what decides the direction a furnace looks in or the shape a pipe is drawn
+     * with, see {@link com.philia093.neofactory.block.state.BlockStateTable}. Reading them here - instead
+     * of meshing every cell as state zero, which this overload used to do - is what makes the item of a
+     * shaped block the piece of it a player holds: the cube a slot, a hand and a drop are drawn from is
+     * meshed from the very state {@code Block#itemState} names, and a pipe comes out as the straight length
+     * of itself and not as the bare stub of state zero, see {@code ItemCubeMeshes} and
+     * {@code PipeIconMeshTest}.
      *
      * @param section section to mesh
      * @param originX world X coordinate of the column of the section
@@ -135,7 +144,7 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, Pictures pictures) {
-        return build(section, originX, originY, originZ, blocks, (x, y, z) -> 0, pictures);
+        return build(section, originX, originY, originZ, blocks, section::state, pictures);
     }
 
     /**

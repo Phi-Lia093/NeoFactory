@@ -91,52 +91,102 @@ stored on disk so that a session can be continued later.
   boiler itself is handed back. A boiler that boils dry while it is hot is marked as well, and water that
   reaches it while it is still that hot cracks the metal: filling a red hot boiler by hand is as dangerous
   as leaving it alone, while one that had time to cool down below the boiling point takes water again. Its
-  mouth glows while it burns, which is the state of the cell and therefore part of the saved world. Water
-  is meant to arrive through a pipe and the steam to leave the same way: a machine will take fluid on the
-  one face its art shows - the mouth or the hatch of its front - and give it on every other face. Until
-  those pipes are in the game a boiler is filled and emptied by clicking its tanks with a cell, and a
-  boiler that cannot let its steam out is a boiler that ruins itself.
-- **Pipes** - the fluid system of the industry, four materials in seven sizes: wood, copper, bronze and
-  steel, each as a tiny, small, medium, large and huge tube and as a quadruple and a nonuple bundle of
-  tubes, which is twenty eight pipes. A pipe decides one thing and nothing else: **which of its six sides
-  it joins.** Those six sides are the six properties of its block and the number of its state is the mask
-  of the connections, so the game knows every way a pipe can run without a line of code per case. **A pipe
-  joins nothing by itself**: it is placed with its six sides closed and stays that way, and the wrench of
-  the game opens a side and closes it again, see the tools below. **Any side may be turned**, whatever it
-  faces: a side that is opened towards nothing shows the open ending of the tube with the plate of its size
-  on it, and a side that faces a wall may be opened as well, because the wall may be gone a moment later.
-  A side that was joined stays joined when the block behind it is taken away.
-  Nothing of the world is read and no mask heals itself, so a
-  player gets exactly the lines they built: two lines that meet at a wall stay apart, and a line that runs
-  past a machine does not take from it by accident. Two pipes always join, whatever their material and
-  their size; a machine will join on the faces that carry a tank of fluid as well - the mouth of its front
-  takes fluid in and every other face gives it - which arrives with the transport of fluids. A pipe is not
-  a wall: it is walked through like a torch, it is drawn from the eight grey scale pictures of the pack
-  that every metal shares (its colour is painted over them, so a new metal needs no art at all), and its
-  geometry is a thin tube that ends at the border of its cell in the plate of its own size. That plate is
-  what a joined side shows: two tubes of one size put the very same plate against each other and the seam
-  between them disappears, so a line reads as one tube, while two tubes of different sizes cover one plate
-  with the other - the plate of the wider tube is the collar of a reducer, and it is the only place the art
-  of a pipe is seen from its end. A bundle is the other way round: it fills its cell and is read by its
-  cross section from wherever a player looks at it, so all six of its sides carry the plate of the bundle -
-  the picture with four or nine tubes on it - and none of them is left out, because a side that is left out
+  mouth glows while it burns, which is the state of the cell and therefore part of the saved world. **Water
+  arrives through a pipe and the steam leaves the same way**: the machine names the tanks behind its sides,
+  so a line may be built towards it - the mouth of its front is where water runs in and every other side is
+  a hatch that gives the steam away, see `FluidNode`. A machine is the pump of that exchange: every tick it
+  pours its kettle into the pipes around it, and a pipe pours what it holds into the mouth. A boiler is still
+  filled and emptied by clicking its tanks with a cell as well, and a
+  boiler that cannot let its steam out is a boiler that ruins itself - a wooden pipe at its hatch bursts
+  with the steam of three hundred and seventy three kelvin.
+- **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
+  comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
+  medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
+  medium and a large pipe and as no bundle at all** - which is a hundred and forty five pipes of twenty five
+  materials: wood, clay, copper, bronze, wrought iron, lead, steel, polyethylene, stainless steel, titanium,
+  polytetrafluoroethylene, tungsten steel, polybenzimidazole, niobium titanium, tungsten, the two tantalum
+  tungsten alloys, europium, depleted uranium, maraging steel of both grades, Inconel of both grades,
+  Hastelloy X and Incoloy 903. Their blocks take the block ids 29 to 173 and their items the ids 100 to
+  244: `DATA_VERSION` is 12 and a world of version 11 is refused. In the creative inventory the pipes have a
+  tab of their own. A pipe decides one thing
+  and nothing else: **which of its six sides it joins.** Those six sides are the six properties of its
+  block and the number of its state is the mask of the connections, so the game knows every way a pipe can
+  run without a line of code per case. **A pipe is joined where a player joined it.** The one connection
+  that comes for free is the one a player asks for while building: a pipe that is put down while the eyes
+  name a pipe **of the same material** is joined to that very pipe on both sides at once, so a line of one
+  metal grows by itself while it is laid. Everything else waits for the wrench: a pipe of another material,
+  a line that runs the other way, and a pipe that was put down without aiming at anything. The size is free
+  - a line may step from a small pipe into a huge one, and which of the two limits the flow is the question
+  of the transport. **Any side may be turned**, whatever it faces: a side that is opened towards nothing
+  shows the open ending of the tube with the plate of its size on it, and a side that faces a wall may be
+  opened as well, because the wall may be gone a moment later. A side that was joined stays joined when the
+  block behind it is taken away. Nothing of the world is read and no mask heals itself, so a player gets
+  exactly the lines they built: two lines that meet at a wall stay apart, and a line that runs past a
+  machine does not take from it by accident. Two pipes always join, whatever their material and their size;
+  a machine joins as well, because it names the tanks behind its sides - the mouth of its front takes fluid
+  in and every other side gives it - which is what a line is built towards, see `FluidNode`. A pipe is not a wall: it is
+  walked through like a torch, it is drawn from the eight grey scale pictures of the pack that every metal
+  shares (its colour is painted over them, so a new metal needs no art at all), and its geometry is a thin
+  tube that ends at the border of its cell in the plate of its own size. That plate is what a joined side
+  shows: two tubes of one size put the very same plate against each other and the seam between them
+  disappears, so a line reads as one tube, while two tubes of different sizes cover one plate with the other
+  - the plate of the wider tube is the collar of a reducer, and it is the only place the art of a pipe is
+  seen from its end. A bundle fills its cell and is capped by its own plate, so which picture a side of it
+  carries says whether the column of tubes runs on there: the side a tube runs towards shows the plate of
+  the bundle with its four or nine tubes on it, and every other side shows the plain flank, which reads as
+  the plate a player capped the block with. None of the six is left out, because a side that is left out
   would be a hole in a block that fills its cell. In a slot a pipe is drawn as a straight length of itself,
-  the way a hand and the ground show it, and the frame of that icon follows the shape of the pipe: a tiny
+  the way a hand and the ground show it, and the frame of that icon follows the shape of the pipe: a small
   pipe is a thin bar across the slot, a huge one a fat bar and a bundle the block it is, so a player can
-  tell the sizes apart in the inventory, see `BlockIconRenderer`. Its twenty eight
-  blocks take the block ids 29 to 56 and the item ids 100 to 127, so bronze and steel joined the materials
-  as well and every item of every material stands twenty eight numbers higher than before: `DATA_VERSION`
-  is 10 and a world of version 9 is refused. The heat a material takes and what it moves are placeholders
-  for now - a larger pipe carries more than a smaller one and a better metal takes more heat - and the
-  transport, the flow rates, the temperature a pipe bursts at and the fluids it carries are the next step.
-  In the creative inventory the pipes have a tab of their own.
+  tell the sizes apart in the inventory, see `BlockIconRenderer`. The window the pipes are given holds their
+  items from 100 to 244, and the materials of the game stand behind them, see `Pipes` and `SaveFormat`.
+- **What a pipe carries** - a pipe is a tube with a little fluid of its own and no pump, and every tick it
+  offers what it holds to the pipes it is joined to. **The tube of a pipe is as large as what the pipe
+  moves a second** - the rate of the table of its material - and it offers a twentieth of that a tick, so a
+  line moves its rate and no more. **A junction divides what it has the way the rates of the pipes behind it
+  stand to each other**: where a small copper pipe of a hundred and twenty millibuckets a second and a huge
+  one of sixteen hundred meet, the huge one takes the larger part and not an equal half, and the odd
+  millibucket rounding leaves over goes to the last neighbour, so nothing is lost between two ticks.
+  **Nothing runs uphill**: a pipe gives only to sides that stand under less pressure than it does itself -
+  the share of a pipe that is filled is its pressure - so a line fills up from the end it is fed at and
+  stops where the fluid stands as high as the pipe that feeds it. Without that rule two pipes would hand
+  the same fluid back and forth for ever, because a pipe that was just given something is as willing to
+  give as the one that gave it. A pipe that is filled faster than it can pass the fluid on holds what it
+  has, so a line backs up instead of losing fluid.
+- **A pipe bursts and a pipe has a valve** - a fluid hotter than the material of a pipe takes bursts it:
+  the pipe is replaced by air, the fluid in it is lost with it and no item is dropped, because a tube that
+  gave way is a tube a player has to build again. Wood gives way at three hundred and fifty kelvin, so the
+  steam of a boiler of 373 K bursts it while it carries the water of 300 K without trouble; copper takes
+  1000 K, bronze 2000 K and steel 2500 K, so lava of 1300 K runs in bronze and in steel and bursts a copper
+  pipe. The rates run from 60 millibuckets a second for a tiny copper pipe to 19200 for a huge steel one,
+  and a bundle moves no more than the single pipe of its cell - nine tubes through one cell are narrow and
+  no bargain. Every number of the table is the table of the industry and is checked, see `PipeMaterials` and
+  `PipeTableTest`. **The valve of a side is set with the wrench and the modifier key**: a click with the key
+  held walks that side through both ways, in only, out only and back again, so a player may make a mouth
+  that only takes, an outlet that only gives, or a loop that runs one way round, and a click without the key
+  turns the join as it always did. **The wrench is held in one of two hands**: the right button turns a face - the
+  join, or the valve with the modifier key held - and the left button takes the block apart, which is why a
+  pipe and a machine name the wrench as the tool they are broken with: a player who holds a wrench mines
+  them faster than with a bare hand and always gets the item. **The modifier key builds against a machine
+  instead of opening it**: a player who aims at a boiler with a pipe in hand and the key held lays the pipe
+  instead of seeing the slots of the boiler. **A machine and a line meet in the two directions of
+  `FluidNode`**: the pipe pours what it holds into the mouth of the machine, the machine pours what it made
+  into every pipe at its hatches, and a machine weighs one at a junction, because it names no rate of its
+  own - a boiler empties its kettle at the rate of the widest line that stands at it.
+
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
 - **Faces and tools** - a block is worked on from the face it is looked at, and the faces a player
   cannot reach from there are reached through a grid of nine cells drawn on that face: the middle cell
   is the face itself, the four beside it are the faces around it, and all four corners lead behind the
   block - which is how a pipe is told to let go of the line that runs behind a block, see `FaceGrid`.
-  The grid appears while a tool is held - a wrench, a wire cutter, a crowbar or a screwdriver - or while
+  **The cells are cut one to two to one**, so the middle cell of a row is twice as wide as the two beside
+  it and the face a player looks at is the largest target of the nine. **Every cell says what its side
+  does**: a side that is not joined is crossed out by the two diagonals of its cell, a side that carries
+  the valve of a one way line carries the small arrow of it - out of the block or into it, the head of
+  the arrow sitting at the far end of the shaft or at the face itself - and a side that runs both ways
+  stays plain, see `FaceMark`. The grid appears while a tool is held - a wrench, a wire cutter, a crowbar
+  or a screwdriver - or while
   a crouching player holds nothing at all, and a click on a cell does what the tool is good for on the
   face that cell stands for, see `FaceOperable`. **A grid changes nothing about the shape of a block**: it
   is an overlay a player works through, so a pipe is walked through with a wrench in hand exactly as it is
@@ -259,8 +309,8 @@ stored on disk so that a session can be continued later.
 
 | Package | Contents |
 | --- | --- |
-| `fluid` | what a fluid is: the kinds, the colour a tank and a cell paint it in, and the containers that carry it |
-| `pipe` | the pipes of the industry: the materials and sizes a pipe comes in, the mask of the sides it joins, and the table of the twenty eight blocks - a side is turned with the wrench of the game, see `blockentity` and `world.interaction` |
+| `fluid` | what a fluid is: the kinds, the temperature it carries, the colour a tank and a cell paint it in, the containers that carry it and the tank a machine offers a pipe on a side (`FluidNode`) |
+| `pipe` | the pipes of the industry: the materials and the sizes each of them comes in, what one of them moves a second and how hot a fluid may be in it, the mask of the sides it joins, the valve of every side and the arithmetic that divides a junction between pipes - a side is turned with the wrench of the game, see `blockentity` and `world.interaction` |
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
@@ -327,7 +377,11 @@ one that turned the two flat layers of a chunk into the column of sections a wor
 cubes needs, so a world of version 1 is refused instead of being read into a shape it
 never had, version 3 names the spawn and the player of the level file by X and Z, and
 version 10 gave the pipes the item ids 100 to 127 and bronze and steel their items, so
-every item of every material moved twenty eight numbers up. The wrench took item id 88
+every item of every material moved twenty eight numbers up, and version 11 took four of
+those numbers back: not every material is made in every size any more - wood comes as a
+small, a medium and a large pipe and as no bundle - so the run of the pipes holds twenty
+four of them and the pipes behind wood moved four numbers down, while the items of the
+materials kept the numbers they had. The wrench took item id 88
 when it arrived, a number of the window that stood free next to the pipes, which costs
 no version: no stored inventory can hold it.
 
@@ -378,14 +432,18 @@ files than a hand writes, so `tools/gen_pipe_models.ps1` writes them: one model 
 canonical mask (a turn of a pipe is the same pipe, so a size needs twenty four models and not sixty four),
 one blockstate per pipe block naming the model and the quarter turn of every one of its states, and one
 short model per pipe block that points at a straight length of it, which is the shape a pipe is drawn from
-where a block is shown as itself. The script reads the art of the pack - the grey scale `pipeSide` and one
+where a block is shown as itself. A family is written in every size of the table - the art of a size is the
+art of every material of that family - while a material is written in the sizes the table of the materials
+gives it: wood, which comes as three tubes and as no bundle, has a blockstate for each of those three and
+the four it is not made in are removed by the run, so the files of the project name the pipes the game
+really holds. The script reads the art of the pack - the grey scale `pipeSide` and one
 plate per size, the same eight files for every metal, see `PipeTexture` - and writes nothing a hand has to
 keep in step, because `PipeModelTest` opens every file again and checks the boxes against the very mask
 `Pipes` computes, including that no box of a pipe is wider than the tube of its size - a collar that ran
 around every block boundary is gone, a joined side shows the end face of the arm and nothing else - and
 that no side of a pipe is ever left out: a bundle that fills its cell carries a face on all six of its
-sides (the flank where the line goes on, the plate of the bundle where its tubes end) and a pipe that is
-joined on every side keeps its core as the joint the arms meet in, because a side that is left out is a
+sides (the plate of the bundle where the line goes on, the plain flank where its tubes end) and a pipe that
+is joined on every side keeps its core as the joint the arms meet in, because a side that is left out is a
 hole a player looks straight through.
 `PipePreviewTest` paints every size and five ways of being joined into
 `core/build/reports/pipe-preview.png` and the places where two tubes meet into

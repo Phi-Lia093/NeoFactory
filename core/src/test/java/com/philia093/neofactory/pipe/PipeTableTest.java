@@ -3,6 +3,7 @@ package com.philia093.neofactory.pipe;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.material.Materials;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -21,11 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Checks the table of the pipes: four materials in seven sizes, their ids, their masks and their turns.
+ * Checks the table of the pipes: the materials, the sizes each of them is made in, their ids and their masks.
  * <p>
- * The numbers of the table - the heat a material takes and what it moves - are placeholders, so what is
- * checked here is their order and not their value: a larger pipe carries more than a smaller one, a better
- * material takes more heat than a worse one, and every one of them carries something at all.
+ * The numbers of the table - the heat a material takes and what it moves - are the table of the industry,
+ * so what is checked here is their order and their shape: a single tube carries more the larger it is, a
+ * bundle moves no more than the single pipe of its cell, a better material takes more heat than a worse
+ * one, and a handful of cells is pinned down as they are written down, see
+ * {@link #theNumbersOfTheTableAreTheNumbersOfTheIndustry()}.
  */
 class PipeTableTest {
 
@@ -36,16 +40,26 @@ class PipeTableTest {
 
     @Test
     void theTableHoldsOnePipeOfEveryMaterialAndSize() {
-        assertEquals(4, PipeMaterials.all().size(), "wood, copper, bronze and steel");
+        assertEquals(25, PipeMaterials.all().size(), "the materials of the line of the industry");
         assertEquals(7, PipeSize.values().length, "tiny to nonuple");
-        assertEquals(28, Pipes.all().size());
+        // Wood is made of three tubes and of no bundle, so the game holds twenty four pipes and not the
+        // twenty eight a material of every size would come to, see PipeMaterial#hasSize.
+        assertEquals(List.of(PipeSize.SMALL, PipeSize.MEDIUM, PipeSize.LARGE),
+                PipeMaterials.WOOD.sizes(), "the three sizes of wood");
+        assertEquals(145, Pipes.all().size());
         assertEquals(Pipes.all().size(), Pipes.COUNT);
         for (PipeMaterial material : PipeMaterials.all()) {
             for (PipeSize size : PipeSize.values()) {
                 Pipes.Pipe pipe = Pipes.of(material, size);
+                if (!material.hasSize(size)) {
+                    assertNull(pipe, material + " is not made in " + size);
+                    continue;
+                }
                 assertNotNull(pipe, material + " " + size);
                 assertEquals(material, pipe.material());
                 assertEquals(size, pipe.size());
+                assertEquals(material.flow(size), pipe.flow(), "the rate of the table");
+                assertEquals(material.maxTemperature(), pipe.maxTemperature());
                 assertEquals(material.name() + "_pipe_" + size.fileName(), pipe.name());
                 assertEquals(material.displayName() + " " + size.displayName() + " Pipe",
                         pipe.displayName());
@@ -58,9 +72,12 @@ class PipeTableTest {
 
     @Test
     void onlyThePipesOfTheTableArePipes() {
-        for (Block block : new Block[] {Blocks.STONE, Blocks.DIRT, Blocks.BRONZE_BOILER, Blocks.AIR}) {
+        for (Block block : new Block[] {Blocks.STONE, Blocks.DIRT, Blocks.FURNACE, Blocks.AIR}) {
             assertFalse(Pipes.connects(block), block.name() + " joins a pipe");
         }
+        // A machine names the tanks behind its sides, so a line may be built towards it as well, see
+        // Block#carriesFluid.
+        assertTrue(Pipes.connects(Blocks.BRONZE_BOILER), "a machine joins a pipe");
         for (Pipes.Pipe pipe : Pipes.all()) {
             assertTrue(Pipes.connects(pipe.block()), pipe + " is no pipe");
         }
@@ -86,10 +103,15 @@ class PipeTableTest {
         }
         assertEquals(Pipes.COUNT, blockIds.size());
         assertEquals(Pipes.COUNT, itemIds.size());
-        assertEquals(Pipes.FIRST_BLOCK_ID + Pipes.COUNT, Blocks.NEXT_FREE_ID,
-                "the pipe blocks are a run the next block follows");
-        assertEquals(Pipes.FIRST_ITEM_ID + Pipes.COUNT, Items.NEXT_FREE_ID,
-                "the pipe items are a run the items of the materials follow");
+        // The runs of the pipes are given a little more room than the pipes of today need - a material that
+        // gains a size is appended without moving a block behind it - so the run is checked against the ids
+        // of the blocks and items behind it and not against their exact value.
+        assertEquals(Pipes.FIRST_BLOCK_ID + Pipes.COUNT - 1,
+                Pipes.all().get(Pipes.COUNT - 1).block().id(), "the last pipe block ends the run");
+        assertTrue(Pipes.FIRST_BLOCK_ID + Pipes.COUNT <= Blocks.NEXT_FREE_ID,
+                "the run of the pipe blocks reaches into the blocks behind it");
+        assertTrue(Pipes.FIRST_ITEM_ID + Pipes.COUNT <= Items.NEXT_FREE_ID,
+                "the run of the pipe items reaches into the items behind it");
     }
 
     @Test
@@ -132,13 +154,19 @@ class PipeTableTest {
     void everyPipeCarriesMoreTheBiggerItIsAndEveryMaterialTakesSomeHeat() {
         for (PipeMaterial material : PipeMaterials.all()) {
             assertTrue(material.maxTemperature() > 273.0f, material + " freezes");
-            assertTrue(material.maxTemperature() < 3000.0f, material + " takes more than a furnace");
             int smaller = 0;
             for (PipeSize size : PipeSize.values()) {
+                if (!material.hasSize(size) || size.isBundle()) {
+                    continue;
+                }
                 int flow = material.flow(size);
                 assertTrue(flow > smaller, material + " " + size + " carries no more than the size below it");
                 smaller = flow;
             }
+            assertTrue(material.flow(PipeSize.QUADRUPLE) <= material.flow(PipeSize.MEDIUM),
+                    material + " bundle moves more than the single pipe of its cell");
+            assertTrue(material.flow(PipeSize.NONUPLE) <= material.flow(PipeSize.QUADRUPLE),
+                    material + " nine tubes move more than its four");
         }
         assertTrue(PipeMaterials.WOOD.maxTemperature() < PipeMaterials.COPPER.maxTemperature(),
                 "wood takes less heat than copper");
@@ -146,6 +174,47 @@ class PipeTableTest {
                 "copper takes less heat than bronze");
         assertTrue(PipeMaterials.BRONZE.maxTemperature() < PipeMaterials.STEEL.maxTemperature(),
                 "bronze takes less heat than steel");
+    }
+
+    /**
+     * Checks the numbers of the table itself.
+     * <p>
+     * The rates and the temperatures are the table of the industry and no placeholder any more, so a handful
+     * of cells of it is pinned down here: a line that changes one of them changes this test as well, which
+     * is the point.
+     */
+    @Test
+    void theNumbersOfTheTableAreTheNumbersOfTheIndustry() {
+        assertEquals(350.0f, PipeMaterials.WOOD.maxTemperature());
+        assertEquals(200, PipeMaterials.WOOD.flow(PipeSize.SMALL));
+        assertEquals(600, PipeMaterials.WOOD.flow(PipeSize.MEDIUM));
+        assertEquals(1200, PipeMaterials.WOOD.flow(PipeSize.LARGE));
+
+        assertEquals(1000.0f, PipeMaterials.COPPER.maxTemperature());
+        assertEquals(60, PipeMaterials.COPPER.flow(PipeSize.TINY));
+        assertEquals(400, PipeMaterials.COPPER.flow(PipeSize.MEDIUM));
+        assertEquals(1600, PipeMaterials.COPPER.flow(PipeSize.HUGE));
+        assertEquals(120, PipeMaterials.COPPER.flow(PipeSize.NONUPLE));
+
+        assertEquals(2000.0f, PipeMaterials.BRONZE.maxTemperature());
+        assertEquals(9600, PipeMaterials.BRONZE.flow(PipeSize.HUGE));
+
+        assertEquals(2500.0f, PipeMaterials.STEEL.maxTemperature());
+        assertEquals(800, PipeMaterials.STEEL.flow(PipeSize.TINY));
+        assertEquals(19200, PipeMaterials.STEEL.flow(PipeSize.HUGE));
+
+        // A fluid of the game and the heat every one of them arrives with.
+        assertEquals(300.0f, Fluids.WATER.temperature());
+        assertEquals(373.0f, Fluids.STEAM.temperature());
+        assertEquals(1300.0f, Fluids.LAVA.temperature());
+        assertTrue(Fluids.STEAM.hotterThan(PipeMaterials.WOOD.maxTemperature()),
+                "the steam of a boiler bursts a wooden pipe");
+        assertFalse(Fluids.STEAM.hotterThan(PipeMaterials.COPPER.maxTemperature()),
+                "and runs in a copper one");
+        assertTrue(Fluids.LAVA.hotterThan(PipeMaterials.COPPER.maxTemperature()),
+                "lava bursts a copper pipe");
+        assertFalse(Fluids.LAVA.hotterThan(PipeMaterials.BRONZE.maxTemperature()),
+                "and runs in a bronze one");
     }
 
     @Test

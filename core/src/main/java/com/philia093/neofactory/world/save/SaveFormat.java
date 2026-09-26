@@ -62,8 +62,21 @@ public final class SaveFormat {
      * is more than the window of the industry had kept free, and bronze and steel joined the materials as
      * well, so every item of every material moved another twenty eight numbers up: what version 8 said
      * about a stored inventory holds here word for word, see {@code Items#PIPE_ID_FROM}.
+     * <p>
+     * <b>What version 11 changed.</b> Not every material is made in every size any more: wood comes as a
+     * small, a medium and a large pipe and as no bundle, so the run of the pipes holds twenty four of them
+     * instead of twenty eight and the pipes behind wood moved four numbers down - what stood for a wooden
+     * tiny pipe in an older save game names a copper one there. The items of the materials stand behind the
+     * window the pipes are given and kept their numbers, see {@code PipeMaterials} and
+     * {@code Items#PIPE_ID_FROM}.
+     * <b>What version 12 changed.</b> The line of the industry grew from four materials to twenty five: the
+     * pipes of wood, copper, bronze and steel kept their numbers, every other material was appended after
+     * them, and the materials themselves came with their items - a hundred and twenty one pipes more than
+     * version 11 held, so the window the pipes are given reaches from 100 to 244 and every item of every
+     * material stands a hundred and seventeen numbers higher than before, see {@code PipeMaterials} and
+     * {@code Materials}.
      */
-    public static final int DATA_VERSION = 10;
+    public static final int DATA_VERSION = 12;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

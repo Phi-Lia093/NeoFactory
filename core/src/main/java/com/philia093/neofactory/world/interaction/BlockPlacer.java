@@ -11,6 +11,7 @@ import com.philia093.neofactory.blockentity.BlockEntityType;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.World;
@@ -144,6 +145,10 @@ public final class BlockPlacer {
             return false;
         }
         world.setState(cell.x(), cell.y(), cell.z(), placedState(block, player, cell));
+        // A pipe that was built while the eyes named a pipe of its own material is joined to it on both sides
+        // at once, see Pipes#connectOnPlacement: that is the one connection a player is given for free, and
+        // everything else waits for the wrench.
+        Pipes.connectOnPlacement(world, cell.x(), cell.y(), cell.z(), cell.face());
 
         placeBlockEntity(world, cell, block);
         if (costs) {
