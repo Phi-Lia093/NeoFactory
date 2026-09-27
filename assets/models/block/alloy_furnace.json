@@ -5,8 +5,8 @@
       "to": [16, 16, 16],
       "faces": {
         "down": { "texture": "bronze_casing/bronze_casing_bottom", "cullface": "down" },
-        "up": { "texture": "bronze_casing/bronze_casing_top", "overlay": "alloy_furnace/alloy_furnace_top", "cullface": "up" },
-        "north": { "texture": "bronze_casing/bronze_casing_side", "overlay": "alloy_furnace/alloy_furnace_front", "cullface": "north" },
+        "up": { "texture": "alloy_furnace/alloy_furnace_top", "cullface": "up" },
+        "north": { "texture": "alloy_furnace/alloy_furnace_front", "cullface": "north" },
         "south": { "texture": "bronze_casing/bronze_casing_side", "cullface": "south" },
         "west": { "texture": "bronze_casing/bronze_casing_side", "cullface": "west" },
         "east": { "texture": "bronze_casing/bronze_casing_side", "cullface": "east" }
