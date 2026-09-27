@@ -124,8 +124,18 @@ public final class Blocks {
     /** The forge hammer of steel. */
     public static final int STEEL_FORGE_HAMMER_ID = 186;
 
+    /**
+     * The chest, the first block that holds a bag of items of its own.
+     * <p>
+     * It stands behind the machines, so nothing that a stored world holds moved, and it is the
+     * first block whose content is not a work of its own but what a player put in: a machine
+     * changes what it holds, a container only keeps it, see
+     * {@link com.philia093.neofactory.blockentity.ContainerBlockEntity}.
+     */
+    public static final int CHEST_ID = 187;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 187;
+    public static final int NEXT_FREE_ID = 188;
 
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
@@ -262,6 +272,14 @@ public final class Blocks {
 
     /** The forge hammer of steel. */
     public static Block STEEL_FORGE_HAMMER;
+
+    /**
+     * The chest, the block a player keeps things in.
+     * <p>
+     * A whole cube of one picture that stands like a wall and carries the entity holding what is
+     * inside it, see {@link com.philia093.neofactory.blockentity.ChestBlockEntity}.
+     */
+    public static Block CHEST;
 
     private Blocks() {
         // Utility class: never instantiated.
@@ -613,6 +631,24 @@ public final class Blocks {
         // because there are twenty eight of them: the table of the pipes builds them, see Pipes.
         // ------------------------------------------------------------------
         Pipes.registerBlocks();
+
+        // ------------------------------------------------------------------
+        // The chest: the block a player keeps things in. It is a whole cube of one picture like the
+        // blocks of the landscape, and it is the first of them that names a block entity - not a
+        // machine that works, but a container that holds what somebody put in, see
+        // ContainerBlockEntity. It is taken apart with an axe like the table of the workshop.
+        // ------------------------------------------------------------------
+        CHEST = Block.builder(CHEST_ID, "chest")
+                .texture("chest")
+                .solid(true)
+                .ground(true)
+                .hardness(2.5f)
+                .harvestLevel(0)
+                .toolType(ToolType.AXE)
+                .blockEntity("chest")
+                .container()
+                .build();
+        BlockRegistry.register(CHEST);
 
         BlockRegistry.freeze();
     }

@@ -39,6 +39,14 @@ stored on disk so that a session can be continued later.
   dropped items that are thrown where the player looks, fall on the ground and are
   picked up by walking over them; any kind of item is drawn, a block as the cube of
   its block and a tool as a board of its picture one pixel thick.
+- **Chests** - the first container of the game: a block that holds twenty seven slots of
+  what a player puts in, kept in a block entity that travels with its chunk and handed
+  over when the block is broken, so nothing that was put into one is ever lost. Using a
+  chest with the build button opens its screen: three rows of its own above the three
+  storage rows and the hotbar of the player, drawn with the very panel, slots and clicks
+  the inventory screen is drawn with, see `ContainerBlockEntity` and `ContainerGui`.
+  A container works on nothing - the tick of the world passes it by - which is what tells
+  it from a machine.
 - **Save games** - one folder per world, a level file plus one file per chunk the
   player changed, written while playing and when leaving.
 - **Chunk streaming** - the terrain around the player is kept in memory and the
@@ -329,7 +337,7 @@ stored on disk so that a session can be continued later.
 | `fluid` | what a fluid is: the kinds, the temperature it carries, the colour a tank and a cell paint it in, the containers that carry it and the tank a machine offers a pipe on a side (`FluidNode`) |
 | `pipe` | the pipes of the industry: the materials and the sizes each of them comes in, what one of them moves a second and how hot a fluid may be in it, the mask of the sides it joins, the valve of every side and the arithmetic that divides a junction between pipes - a side is turned with the wrench of the game, see `blockentity` and `world.interaction` |
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
-| `blockentity` | what a block carries beyond its id and its state: the base class, the type registry and the machine behind a block |
+| `blockentity` | what a block carries beyond its id and its state: the base class, the type registry, the machine behind a block and the container that keeps items |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |
@@ -400,7 +408,12 @@ small, a medium and a large pipe and as no bundle - so the run of the pipes hold
 four of them and the pipes behind wood moved four numbers down, while the items of the
 materials kept the numbers they had. The wrench took item id 88
 when it arrived, a number of the window that stood free next to the pipes, which costs
-no version: no stored inventory can hold it.
+no version: no stored inventory can hold it. Version 13 is the one the containers arrived in: a chest is a
+block that keeps what a player puts in it, at block id 187 and item id 258, and it names the block entity
+`chest` that a build without it would report and skip - a chest would open empty while the items in it were
+still written down. Its item took the number the run of the materials used to start at, so every item of
+every material stands one number higher than it did, and a stored inventory of version 12 names the wrong
+items for every one of them.
 
 ## Build and run
 

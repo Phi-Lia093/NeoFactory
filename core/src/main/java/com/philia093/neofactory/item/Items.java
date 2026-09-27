@@ -290,6 +290,17 @@ public final class Items {
     /** Id of the forge hammer of steel. */
     public static final int STEEL_FORGE_HAMMER_ID = 257;
 
+    /**
+     * Id of the chest, the first item of a block that holds items of its own.
+     * <p>
+     * It takes the number 258, which is the number the run of the materials was given until now, so the
+     * materials start one number higher and every item of every material moved up by one, see
+     * {@link #NEXT_FREE_ID} and
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}. The block behind it, 187, was
+     * free: block ids are written down one by one and never handed out by a run that grows in the middle.
+     */
+    public static final int CHEST_ID = 258;
+
     // ------------------------------------------------------------------
     // The block items of the blocks that came with the third axis. They are appended above every
     // number that was written down before them, so no id that a world already holds changes its
@@ -340,8 +351,14 @@ public final class Items {
      * <p>
      * <b>What the age of steel added.</b> The seven machines of that age took the numbers 251 to 257, right
      * behind the machines of bronze, so no item that a stored world holds moved again.
+     * <p>
+     * <b>What the containers added.</b> The chest took the number 258, which was the first number the run of
+     * the materials was given, so that run starts at 259 now and every item of every material stands one
+     * number higher than it did. A stored inventory of version 12 therefore names the wrong items, which is
+     * one of the two reasons that version is refused, see
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
      */
-    public static final int NEXT_FREE_ID = 258;
+    public static final int NEXT_FREE_ID = 259;
 
     /**
      * Amount an empty container stacks to.
@@ -564,6 +581,14 @@ public final class Items {
 
     /** The forge hammer of steel. */
     public static Item STEEL_FORGE_HAMMER;
+
+    /**
+     * The chest, the first item of a block that keeps what a player puts in it.
+     * <p>
+     * A block item like every other one: it borrows the picture of its block, and the block names
+     * the entity that holds its slots.
+     */
+    public static Item CHEST;
 
     /**
      * Creates and registers every item.
@@ -907,6 +932,13 @@ public final class Items {
         STEEL_FORGE_HAMMER = register(Item.builder(STEEL_FORGE_HAMMER_ID, "steel_forge_hammer")
                 .displayName("High Pressure Forge Hammer")
                 .buildBlock(Blocks.STEEL_FORGE_HAMMER));
+
+        // The chest, the first container of the game. It is a block item like the machines: it borrows
+        // the picture of its block, and the block names the block entity that holds its twenty seven
+        // slots, see ContainerBlockEntity.
+        CHEST = register(Item.builder(CHEST_ID, "chest")
+                .displayName("Chest")
+                .buildBlock(Blocks.CHEST));
 
         // The pipes of the industry: one item per material and size, the blocks of them were built while
         // the blocks were registered, see Pipes. They take the numbers 100 to 127, a run of their own:

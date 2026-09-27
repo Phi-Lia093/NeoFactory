@@ -40,6 +40,7 @@ public final class Block {
     private final ToolType toolType;
     private final String blockEntityTypeName;
     private final boolean carriesFluid;
+    private final boolean container;
     private final Animation animation;
     private final int itemState;
 
@@ -58,6 +59,7 @@ public final class Block {
         this.toolType = builder.toolType;
         this.blockEntityTypeName = builder.blockEntityTypeName;
         this.carriesFluid = builder.carriesFluid;
+        this.container = builder.container;
         this.animation = builder.animation;
         this.itemState = builder.itemState;
     }
@@ -225,6 +227,20 @@ public final class Block {
     /** {@code true} when this block carries a block entity. */
     public boolean hasBlockEntity() {
         return !blockEntityTypeName.isEmpty();
+    }
+
+    /**
+     * {@code true} when this block keeps items for a player and does no work with them.
+     * <p>
+     * A machine carries a block entity as well, but it changes what it holds: it smelts, it boils, it
+     * beats. A container only keeps what somebody put in, which is the difference between the two of
+     * them and the reason a container is listed with the blocks while a machine has a group of its own,
+     * see {@link com.philia093.neofactory.gui.creative.CreativeRegistry}.
+     *
+     * @return {@code true} for a block that holds a bag of items
+     */
+    public boolean isContainer() {
+        return container;
     }
 
     /**
@@ -458,6 +474,10 @@ public final class Block {
 
         /** {@code true} for a block that carries a tank of fluid, see {@link Block#carriesFluid()}. */
         private boolean carriesFluid = false;
+
+        /** {@code true} for a block that keeps items for a player, see {@link Block#isContainer()}. */
+        private boolean container = false;
+
         private Animation animation;
         private int itemState;
 
@@ -602,6 +622,22 @@ public final class Block {
          */
         public Builder carriesFluid() {
             this.carriesFluid = true;
+            return this;
+        }
+
+        /**
+         * Declares that this block keeps items for a player and does no work with them.
+         * <p>
+         * The block names the entity that holds its slots like a machine does, see
+         * {@link #blockEntity(String)}; the flag only says that nothing works in it, which is what
+         * keeps a chest in the group of the blocks instead of the group of the machines, see
+         * {@link Block#isContainer()} and
+         * {@link com.philia093.neofactory.gui.creative.CreativeRegistry}.
+         *
+         * @return this builder, so the calls chain
+         */
+        public Builder container() {
+            this.container = true;
             return this;
         }
 

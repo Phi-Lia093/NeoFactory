@@ -16,6 +16,8 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.blockentity.BlockEntity;
+import com.philia093.neofactory.blockentity.ChestBlockEntity;
+import com.philia093.neofactory.blockentity.ContainerBlockEntity;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.entity.EntityTypes;
 import com.philia093.neofactory.entity.Player;
@@ -26,6 +28,8 @@ import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.chat.command.CommandRegistry;
 import com.philia093.neofactory.gui.ChatOverlay;
+import com.philia093.neofactory.gui.ChestLayout;
+import com.philia093.neofactory.gui.ContainerGui;
 import com.philia093.neofactory.gui.CreativeInventoryGui;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
@@ -254,8 +258,19 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Screen of a machine, opened by using a machine with the build button. */
     private final MachineGui machineGui;
 
-    /** Machine the screen is up for, {@code null} while no machine screen is open. */
-    private MachineBlockEntity openMachine;
+    /** Screen of a container, opened by using a chest with the build button. */
+    private final ContainerGui containerGui;
+
+    /**
+     * Block entity the screen of a container is up for, {@code null} while none is open.
+     * <p>
+     * A machine and a chest are shown by two screens, but only one of them is ever open, so one field
+     * remembers what the player walked up to and what has to be watched while the world runs: a chunk
+     * that is unloaded takes the block with it, see {@link #closeContainerIfGone()}. The field holds
+     * the base type because all it is asked for is where it lies and whether it is still the very
+     * entity of that cell.
+     */
+    private BlockEntity openContainer;
 
     /**
      * Chat and command line of this world.
@@ -352,6 +367,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (machineGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
+            if (containerGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
             if (button == Input.Buttons.LEFT) {
                 int slot = hotbarGui.slotAt(interfaceMouse.x, interfaceMouse.y);
                 if (slot >= 0) {
@@ -381,6 +399,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             creativeGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             inventoryGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             machineGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
+            containerGui.touchDragged(interfaceMouse.x, interfaceMouse.y);
             return false;
         }
 
@@ -397,6 +416,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 return true;
             }
             if (machineGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
+            if (containerGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
             return false;
@@ -532,8 +554,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         this.hotbarGui = new HotbarGui(textures, font, uiViewport);
         this.inventoryGui = new InventoryGui(textures, font, player.inventory(), uiViewport);
         this.creativeGui = new CreativeInventoryGui(textures, font, player.inventory(), uiViewport);
-        // The screen of a machine is opened by using a machine, see #openMachine().
+        // The screen of a machine and the screen of a container are opened by using a block, see
+        // #openContainer().
         this.machineGui = new MachineGui(textures, font, uiViewport);
+        this.containerGui = new ContainerGui(textures, font, uiViewport);
         // The chat is the only place a player types, and its commands work on this very
         // screen: it is its own command context. Handing "this" out while the
         // constructor still runs is safe here, because the chat only stores it and
@@ -559,6 +583,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // A stack that a creative player drags out of the grid is thrown away instead of going back into an
         // inventory that refills itself anyway.
         creativeGui.setDropper(stack -> drops.throwFrom(player, stack));
+        // A container is opened by using a block, and what a work field of it holds is dropped where the
+        // player stands the moment its screen closes, exactly like the field of the player.
+        containerGui.setDropper(stack -> drops.throwFrom(player, stack));
 
         if (fresh) {
             // A new world starts at its spawn point and gets a starter kit, because
@@ -919,6 +946,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         creativeGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+        containerGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
         drawCrosshair();
         drawPerformance();
@@ -1093,6 +1121,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (machineGui.isOpen()) {
                 // The escape key closes whatever is on top first.
                 machineGui.close();
+            } else if (containerGui.isOpen()) {
+                // The escape key closes whatever is on top first.
+                containerGui.close();
             } else if (creativeGui.isOpen()) {
                 // The escape key closes whatever is on top first.
                 creativeGui.close();
@@ -1147,31 +1178,38 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             float step = Math.min(delta, LONGEST_PHYSICS_STEP);
             world.entities().update(world, step, player.blockX(), player.blockZ());
         tickWorld(delta);
-        closeMachineIfUnloaded();
+        closeContainerIfGone();
         streamChunks(false);
     }
 
     /**
-     * Closes the screen of a machine that is no longer where it was.
+     * Closes the screen of a container that is no longer where it was.
      * <p>
-     * A chunk the player walked away from is dropped from memory, and its machines leave
-     * with it. A screen that stayed open would belong to a block nobody can reach: what a
-     * player put into it would go into an entity that is written as soon as the chunk is
-     * loaded again at best, and into nothing at all at worst. Closing it hands the stack
-     * on the mouse back to the player, see
-     * {@link com.philia093.neofactory.gui.container.ContainerMenu#close()}.
+     * A chunk the player walked away from is dropped from memory, and its machines and chests leave
+     * with it. A screen that stayed open would belong to a block nobody can reach: what a player put
+     * into it would go into an entity that is written as soon as the chunk is loaded again at best,
+     * and into nothing at all at worst. Closing it hands the stack on the mouse back to the player,
+     * see {@link com.philia093.neofactory.gui.container.ContainerMenu#close()}.
+     * <p>
+     * A screen the player closed itself leaves nothing to watch, so the field is cleared without
+     * asking the world.
      */
-    private void closeMachineIfUnloaded() {
-        if (openMachine == null || !machineGui.isOpen()) {
+    private void closeContainerIfGone() {
+        if (openContainer == null) {
             return;
         }
-        BlockEntity current = world.blockEntity(openMachine.x(), openMachine.y(),
-                openMachine.z());
-        if (current != openMachine) {
-            LOGGER.info("Machine at block ({}, {}) is gone, its screen is closed",
-                    openMachine.x(), openMachine.y());
+        if (!machineGui.isOpen() && !containerGui.isOpen()) {
+            openContainer = null;
+            return;
+        }
+        BlockEntity current = world.blockEntity(openContainer.x(), openContainer.y(),
+                openContainer.z());
+        if (current != openContainer) {
+            LOGGER.info("The container at block ({}, {}) is gone, its screen is closed",
+                    openContainer.x(), openContainer.y());
             machineGui.close();
-            openMachine = null;
+            containerGui.close();
+            openContainer = null;
         }
     }
 
@@ -1196,8 +1234,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * {@code true} while something of the interface covers the world.
      * <p>
      * These are the screens that take the input while the world keeps running: the
-     * inventory of the player, the creative inventory and the chat. The pause menu is a
-     * screen of its own and stops the simulation by not drawing the game screen at all.
+     * inventory of the player, the creative inventory, the screen of a machine, the screen of a
+     * container and the chat. The pause menu is a screen of its own and stops the simulation by not
+     * drawing the game screen at all.
      * <p>
      * A screen listed here also keeps the chat closed, because the keys that open it
      * belong to the panel as long as anything is up - so a command can never be typed
@@ -1208,7 +1247,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     private boolean isInterfaceOpen() {
         return inventoryGui.isOpen() || creativeGui.isOpen() || machineGui.isOpen()
-                || chat.isOpen();
+                || containerGui.isOpen() || chat.isOpen();
     }
 
     /**
@@ -1355,7 +1394,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (workOnFace()) {
             return true;
         }
-        if (!InputHandler.isShiftHeld() && openMachine()) {
+        if (!InputHandler.isShiftHeld() && openContainer()) {
             return true;
         }
         String itemName = player.inventory().heldStack().item().displayName();
@@ -1373,25 +1412,39 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     }
 
     /**
-     * Opens the screen of the machine the player aims at.
+     * Opens the screen of the container the player aims at.
      * <p>
-     * Using a block that carries a machine shows it instead of building the held block: a
-     * machine holds slots, a buffer and tanks, and all of it belongs to the block that was
-     * placed. A cell that carries no machine reports {@code false}, so the build button
-     * keeps building wherever the player aims at.
+     * Using a block that keeps something shows it instead of building the held block: a machine holds
+     * slots, a buffer and tanks and a chest holds a bag of items, and all of it belongs to the block
+     * that was placed. A cell that carries neither reports {@code false}, so the build button keeps
+     * building wherever the player aims at.
+     * <p>
+     * <b>Every container is opened here and nowhere else.</b> A screen of its own is all a new kind of
+     * container needs: the machine screen shows the machine behind the block, the container screen shows
+     * the slots a block entity holds and asks {@link ChestLayout} where they lie, see
+     * {@link ContainerGui}.
      *
-     * @return {@code true} when a machine stood there and its screen is up now
+     * @return {@code true} when a container stood there and its screen is up now
      */
-    private boolean openMachine() {
+    private boolean openContainer() {
         BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
-        if (!(entity instanceof MachineBlockEntity machine)) {
-            return false;
+        if (entity instanceof MachineBlockEntity machine) {
+            machineGui.open(machine.machine(), player.inventory());
+            openContainer = machine;
+            LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
+                    target.x(), target.y(), target.z());
+            return true;
         }
-        machineGui.open(machine.machine(), player.inventory());
-        openMachine = machine;
-        LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
-                target.x(), target.y(), target.z());
-        return true;
+        if (entity instanceof ChestBlockEntity chest) {
+            // The name a player reads in the panel is the name the item of the block carries: a chest
+            // says "Chest" here and would say anything else in the inventory of a player as well.
+            containerGui.open(chest, ChestLayout.of(chest.contents(), player.inventory()),
+                    player.inventory(), Items.CHEST.displayName());
+            openContainer = chest;
+            LOGGER.info("Opened a chest at block ({}, {}, {})", target.x(), target.y(), target.z());
+            return true;
+        }
+        return false;
     }
 
     /** Applies the keys that belong to the interface instead of the world. */
@@ -1597,16 +1650,20 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /**
      * Drops what the drop key points at.
      * <p>
-     * While the inventory screen is open the slot under the mouse is dropped, which lets
-     * the key work on whatever the player points at. During play the selected hotbar slot
-     * is thrown in front of the player, along the line of sight, a single item or the whole
-     * stack.
+     * While the inventory screen or the screen of a container is open the slot under the mouse is
+     * dropped, which lets the key work on whatever the player points at. During play the selected
+     * hotbar slot is thrown in front of the player, along the line of sight, a single item or the
+     * whole stack.
      *
      * @param wholeStack {@code true} to drop the whole stack, {@code false} for one item
      */
     private void dropRequested(boolean wholeStack) {
         if (inventoryGui.isOpen()) {
             inventoryGui.dropAt(interfaceMouse.x, interfaceMouse.y, wholeStack);
+            return;
+        }
+        if (containerGui.isOpen()) {
+            containerGui.dropAt(interfaceMouse.x, interfaceMouse.y, wholeStack);
             return;
         }
         PlayerInventory inventory = player.inventory();

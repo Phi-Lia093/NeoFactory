@@ -139,6 +139,17 @@ class CreativeInventoryTest {
     }
 
     @Test
+    void theChestIsListedWithTheBlocksAndNotWithTheMachines() {
+        CreativeInventory creative = new CreativeInventory();
+        creative.select(indexOfTab("blocks"));
+
+        assertTrue(tab("blocks").matches(Items.CHEST), "a chest is a block a player builds");
+        assertFalse(tab("machines").matches(Items.CHEST),
+                "and no machine, because a container works on nothing");
+        assertTrue(creative.matches().contains(Items.CHEST), "the chest is listed with the blocks");
+    }
+
+    @Test
     void aStackTakenFromTheGridIsThereAgainRightAway() {
         CreativeInventory creative = new CreativeInventory();
 

@@ -94,6 +94,15 @@ public final class BlockEntityTypes {
     public static final BlockEntityType PIPE = new BlockEntityType("pipe",
             type -> new PipeBlockEntity(type));
 
+    /**
+     * A chest, the first block that keeps what a player puts in it.
+     * <p>
+     * Not a machine: it holds a bag of items and does no work with them, so it carries the
+     * container entity and not the one a machine is built on, see {@link ChestBlockEntity}.
+     */
+    public static final BlockEntityType CHEST = new BlockEntityType("chest",
+            type -> new ChestBlockEntity(type));
+
     private static boolean registered;
 
     private BlockEntityTypes() {
@@ -121,6 +130,7 @@ public final class BlockEntityTypes {
         BlockEntityRegistry.register(STEEL_EXTRACTOR);
         BlockEntityRegistry.register(STEEL_FORGE_HAMMER);
         BlockEntityRegistry.register(PIPE);
+        BlockEntityRegistry.register(CHEST);
         registered = true;
     }
 }

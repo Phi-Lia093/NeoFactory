@@ -75,8 +75,16 @@ public final class SaveFormat {
      * version 11 held, so the window the pipes are given reaches from 100 to 244 and every item of every
      * material stands a hundred and seventeen numbers higher than before, see {@code PipeMaterials} and
      * {@code Materials}.
+     * <p>
+     * <b>What version 13 changed.</b> The game has containers. A chest is a block that keeps what a player
+     * puts in it - block id 187, item id 258 - and it names a block entity, {@code chest}, that no older
+     * build knows: such a build would report and skip the entry and open a chest empty while the items in it
+     * were still written down. <b>Its item took the number the run of the materials used to start at</b>, so
+     * that run begins one number higher and every stored inventory of version 12 names the wrong items for
+     * every material - which is the second reason this version refuses it. The block id cost nothing: block
+     * ids are written down one by one and no run of them grows in the middle, see {@code Blocks#CHEST_ID}.
      */
-    public static final int DATA_VERSION = 12;
+    public static final int DATA_VERSION = 13;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

@@ -65,3 +65,7 @@ Copy-Face 'MACHINE_BRONZE_BOTTOM.png' 'assets/blocks/bronze_casing/bronze_casing
 # The mouth of a boiler: the door it shows while it stands still and the door it glows with while it burns.
 Copy-Face 'BOILER_FRONT.png' 'assets/blocks/bronze_boiler/bronze_boiler_front.png'
 Copy-FirstFrame 'BOILER_FRONT_ACTIVE.png' 'assets/blocks/bronze_boiler/bronze_boiler_front_active.png' 4
+
+# The chest, the block a player keeps things in: the buffer of the automation age, a whole cube of one
+# picture like the blocks of the landscape, see Blocks#CHEST.
+Copy-Face 'AUTOMATION_CHESTBUFFER.png' 'assets/blocks/chest.png'

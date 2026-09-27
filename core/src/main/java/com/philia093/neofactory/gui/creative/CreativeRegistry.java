@@ -87,10 +87,14 @@ public final class CreativeRegistry {
      * {@link com.philia093.neofactory.blockentity.BlockEntityTypes}. The tab of the blocks
      * hands its machines over instead of listing them twice, so every item lands in
      * exactly one tab.
+     * <p>
+     * <b>A container is no machine.</b> A chest carries a block entity as well, but it works on
+     * nothing: it only keeps what somebody put in, so it is listed with the blocks it is built
+     * from, see {@link com.philia093.neofactory.block.Block#isContainer()}.
      */
     private static boolean isMachine(Item item) {
         return item.isBlockItem() && item.block() != null && item.block().hasBlockEntity()
-                && !isPipe(item);
+                && !item.block().isContainer() && !isPipe(item);
     }
 
     /** {@code true} when an item is a raw material the game has no other group for. */
