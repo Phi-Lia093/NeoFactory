@@ -10,6 +10,7 @@ import com.philia093.neofactory.gui.GuiViewport;
 import com.philia093.neofactory.gui.MenuLayout;
 import com.philia093.neofactory.gui.container.ContainerView;
 import com.philia093.neofactory.gui.container.Slot;
+import com.philia093.neofactory.gui.panel.NeiTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemSearch;
@@ -89,6 +90,16 @@ public final class RecipeBrowserGui {
     private final ContainerView view;
     private final GuiItemRenderer items;
     private final PanelTextures panel;
+
+    /**
+     * Art of NEI, which the panel and the slots of a recipe are drawn with.
+     * <p>
+     * A screen that shows a recipe is the screen of NEI and reads as one: its panel is the panel of that
+     * screen and not the panel of a chest, and a cell an item goes into is the cell of that screen. The art
+     * of the game's own interface stands in for it while a picture of the pack is missing, see
+     * {@link NeiTextures#isComplete()}.
+     */
+    private final NeiTextures nei;
     private final TextureRegion pixel;
     private final List<RecipeCategory> groups;
 
@@ -156,6 +167,7 @@ public final class RecipeBrowserGui {
         this.view = new ContainerView(textures, font, viewport);
         this.items = new GuiItemRenderer(textures, font);
         this.panel = view.panelTextures();
+        this.nei = new NeiTextures(textures);
         this.pixel = textures.whitePixel();
         this.groups = RecipeCategory.of(index);
     }
@@ -617,7 +629,13 @@ public final class RecipeBrowserGui {
             hovered = hoveredPageCell(mouseX, mouseY);
         }
         batch.setColor(Color.WHITE);
-        panel.drawPanel(batch, x, y, RecipeBrowserLayout.WIDTH, height);
+        // A recipe is shown in the art of NEI, so a player reads the panel as the screen of recipes and not as
+        // the panel of a chest; the art of the game stands in while a picture of the pack is missing.
+        if (nei.background() != null) {
+            nei.drawPanel(batch, x, y, RecipeBrowserLayout.WIDTH, height);
+        } else {
+            panel.drawPanel(batch, x, y, RecipeBrowserLayout.WIDTH, height);
+        }
         if (list) {
             renderList(batch, x, y, height);
         } else {
@@ -715,7 +733,11 @@ public final class RecipeBrowserGui {
             ItemStack stack, int index) {
         float slotX = x + cellX;
         float slotY = y + height - cellY - RecipeBrowserLayout.CELL;
-        panel.drawSlot(batch, slotX, slotY, Slot.DEFAULT_ICON, Slot.DEFAULT_ICON);
+        if (nei.slot() != null) {
+            nei.drawSlot(batch, slotX, slotY);
+        } else {
+            panel.drawSlot(batch, slotX, slotY, Slot.DEFAULT_ICON, Slot.DEFAULT_ICON);
+        }
         if (index == hovered && pixel != null) {
             batch.setColor(HOVER_COLOR);
             batch.draw(pixel, slotX, slotY, RecipeBrowserLayout.CELL, RecipeBrowserLayout.CELL);
