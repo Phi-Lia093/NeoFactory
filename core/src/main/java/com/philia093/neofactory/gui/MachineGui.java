@@ -25,6 +25,8 @@ import com.philia093.neofactory.machine.SlotKind;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 
+import java.util.List;
+
 /**
  * The screen of a machine.
  * <p>
@@ -33,6 +35,11 @@ import com.philia093.neofactory.render.PixelFont;
  * icons come from {@code gui/machine_icons.png}, see {@link MachineTextures}: its panel is
  * empty where a machine stands its own slots and carries the slots of the player inventory
  * in its lower half.
+ * <p>
+ * <b>The screen writes no word of its own.</b> The name of the machine stands behind the
+ * mark of the upper left corner and what its fire reports stands behind the flame under the
+ * slot of a fuel, both as a tooltip while the mouse rests on them, so a screen of every
+ * machine looks the same whatever a machine has to say.
  * <p>
  * What a machine burns is written next to it instead of being drawn as a flame - the game
  * has no fire in its screens - so the screen writes the seconds of fuel that are left, see
@@ -50,20 +57,16 @@ import com.philia093.neofactory.render.PixelFont;
  */
 public final class MachineGui {
 
-    /**
-     * Colour of the two lines of text in the upper corners.
-     * <p>
-     * White with the shadow {@link PixelFont#drawShadowed} adds: the panel is a light grey,
-     * so the dark edge of the shadow is what makes the text read. A dark grey of its own was
-     * tried first and turned out muddy.
-     */
-    private static final Color TEXT_COLOR = new Color(Color.WHITE);
-
     /** Colour the cell of energy is filled with, the red of the bars of the age of power. */
     private static final Color ENERGY_COLOR = new Color(0.72f, 0.12f, 0.12f, 1.0f);
 
-    /** Pixels between the error icon and the status line next to it. */
-    private static final int ERROR_GAP = 2;
+    /** Seconds of one blink of a flame that is over its top, half a hertz. */
+    private static final float BLINK_PERIOD = 2.0f;
+
+    /** Seconds this screen has been open, which is what the blink of a flame is timed by. */
+    private float elapsed;
+
+    /** Pixels between the mark of the pack and the mark beside it. */
 
     private final BlockTextureCache textures;
     private final GuiViewport viewport;
@@ -223,8 +226,10 @@ public final class MachineGui {
         }
         // The arrow and the fuel line are decorations of the container: they are drawn with
         // the slots and below the items, so they never cover the name of an item.
+        elapsed += Gdx.graphics.getDeltaTime();
         view.render(batch, menu.container(), panelX(), panelY(), mouseX, mouseY, this::drawMachine);
         drawTankTooltip(batch, mouseX, mouseY);
+        drawMarkTooltips(batch, mouseX, mouseY);
     }
 
     /**
@@ -283,52 +288,117 @@ public final class MachineGui {
      */
     private void drawMachine(SpriteBatch batch, float panelX, float panelY, int panelWidth,
             int panelHeight) {
-        drawTitle(batch, panelX, panelY, panelHeight);
-        drawStatus(batch, panelX, panelY, panelHeight);
         drawProgress(batch, panelX, panelY, panelHeight);
         drawFluidSlots(batch, panelX, panelY, panelHeight);
         drawEnergy(batch, panelX, panelY, panelHeight);
+        drawFlame(batch, panelX, panelY, panelHeight);
+        drawMarks(batch, panelX, panelY, panelHeight);
     }
 
     /** Writes the name of the machine on the label in the upper left corner of the panel. */
-    private void drawTitle(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
-        String title = menu.title();
-        TextureRegion label = textures.region(NeiTextures.TAB_UNSELECTED);
-        if (label != null) {
-            // The label is the tab of the pack stretched to the name: the name of a machine stands on a band
-            // of its own and never on the frame of the picture of its panel, so what a panel of the workshop
-            // looks like at the top can never move a letter of the screen, see MachineMenu#LABEL_HEIGHT.
-            batch.draw(label, panelX + MachineMenu.LABEL_LEFT,
-                    panelY + panelHeight - MachineMenu.LABEL_TOP - MachineMenu.LABEL_HEIGHT,
-                    font.width(title) + 2 * MachineMenu.LABEL_PAD, MachineMenu.LABEL_HEIGHT);
-        }
-        font.setColor(TEXT_COLOR);
-        font.drawShadowed(batch, title, panelX + MachineMenu.TEXT_LEFT, lineY(panelY, panelHeight));
-        font.setColor(Color.WHITE);
-    }
-
-    /**
-     * Writes what the machine reports in the upper right corner of the panel.
-     * <p>
-     * The icon of an error stands next to the text, so a machine that waits for energy says
-     * why it waits, see {@link com.philia093.neofactory.machine.MachineError}.
-     */
-    private void drawStatus(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
-        float lineY = lineY(panelY, panelHeight);
-        float x = panelX + menu.statusRight();
-        String status = menu.statusText();
-        if (!status.isEmpty()) {
-            x -= font.width(status);
-            font.setColor(TEXT_COLOR);
-            font.drawShadowed(batch, status, x, lineY);
-            font.setColor(Color.WHITE);
-            x -= ERROR_GAP;
+    private void drawMarks(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        // Nothing of the state of a machine is written in words any more: the mark of the pack stands in the
+        // upper left corner and names the machine while the mouse rests on it, and the mark of what is wrong
+        // with the machine stands beside it, see MachineMenu#infoTooltip and #flameTooltip.
+        float top = panelY + panelHeight - MachineMenu.INFO_TOP - MachineMenu.INFO_SIZE;
+        TextureRegion info = textures.region(NeiTextures.INFO);
+        if (info != null) {
+            batch.draw(info, panelX + MachineMenu.INFO_LEFT, top, MachineMenu.INFO_SIZE,
+                    MachineMenu.INFO_SIZE);
         }
         TextureRegion error = panel.icon(menu.error());
         if (error != null) {
-            batch.draw(error, x - MachineTextures.ICON_CELL,
-                    lineY + font.glyphHeight() + 1 - MachineTextures.ICON_CELL);
+            batch.draw(error, panelX + MachineMenu.INFO_LEFT + MachineMenu.INFO_SIZE
+                    + MachineMenu.MARK_GAP, top, MachineMenu.INFO_SIZE, MachineMenu.INFO_SIZE);
         }
+    }
+
+    /**
+     * Draws the flame under the slot a machine burns in.
+     * <p>
+     * A furnace shows what is left of the item it burns and a boiler how hot it is; both are a share between
+     * nothing and everything, and the flame is drawn as the part of its picture the share fills, from the
+     * bottom up, the way a tank shows the fluid it holds. A boiler over its boiling point blinks at half a
+     * hertz, which is what tells a player that the water is gone and the machine is being ruined.
+     */
+    private void drawFlame(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        if (!menu.hasFlame() || !isBlinkVisible()) {
+            return;
+        }
+        Slot fuel = menu.fuelCell();
+        int size = MachineTextures.ICON_CELL;
+        float x = panelX + fuel.x();
+        float y = panelY + panelHeight - fuel.y() - ContainerLayout.SLOT_SIZE - MachineMenu.FLAME_GAP
+                - size;
+        int row = menu.flameIsLit() ? MachineMenu.FLAME_LIT_ROW : MachineMenu.FLAME_OUT_ROW;
+        TextureRegion flame = panel.icon(menu.flameColumn(), row);
+        if (flame == null) {
+            return;
+        }
+        if (!menu.flameIsLit()) {
+            batch.draw(flame, x, y, size, size);
+            return;
+        }
+        // The part that is filled is cut out of the picture from its lower edge, like the bright part of a
+        // progress bar is cut out of the track.
+        int full = flame.getRegionHeight();
+        int filled = Math.max(1, Math.round(full * menu.flameShare()));
+        flame.setRegionHeight(filled);
+        flame.setRegionY(flame.getRegionY() + full - filled);
+        batch.draw(flame, x, y, size, filled);
+        flame.setRegionY(flame.getRegionY() - full + filled);
+        flame.setRegionHeight(full);
+    }
+
+    /** {@code true} while a flame is in the half of its blink that shows. */
+    private boolean isBlinkVisible() {
+        return !menu.flameBlinks() || elapsed % BLINK_PERIOD < BLINK_PERIOD * 0.5f;
+    }
+
+    /**
+     * Draws what the mark under the mouse names.
+     * <p>
+     * Nothing of the screen is written in words, so the two marks are what a player asks: the mark of the
+     * upper left corner names the machine and the flame says what is left of the fire or how hot a boiler is,
+     * see {@link MachineMenu#infoTooltip} and {@link MachineMenu#flameTooltip}.
+     *
+     * @param batch batch switched to the projection of the interface viewport
+     * @param mouseX X coordinate of the mouse inside the interface
+     * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
+     */
+    private void drawMarkTooltips(SpriteBatch batch, float mouseX, float mouseY) {
+        int localX = localX(mouseX);
+        int localY = localY(mouseY);
+        List<String> lines;
+        if (isOnInfo(localX, localY)) {
+            lines = menu.infoTooltip();
+        } else if (menu.hasFlame() && isOnFlame(localX, localY)) {
+            lines = menu.flameTooltip();
+        } else {
+            return;
+        }
+        if (lines.isEmpty()) {
+            return;
+        }
+        ItemTooltip.draw(batch, font, textures.whitePixel(), lines, mouseX, mouseY, viewport.guiWidth(),
+                viewport.guiHeight());
+    }
+
+    /** {@code true} while a point of the panel lies on the mark that names the machine. */
+    private static boolean isOnInfo(int localX, int localY) {
+        return localX >= MachineMenu.INFO_LEFT && localX < MachineMenu.INFO_LEFT + MachineMenu.INFO_SIZE
+                && localY >= MachineMenu.INFO_TOP && localY < MachineMenu.INFO_TOP + MachineMenu.INFO_SIZE;
+    }
+
+    /** {@code true} while a point of the panel lies on the flame of the machine, if it has one. */
+    private boolean isOnFlame(int localX, int localY) {
+        if (!menu.hasFlame()) {
+            return false;
+        }
+        Slot fuel = menu.fuelCell();
+        int top = fuel.y() + ContainerLayout.SLOT_SIZE + MachineMenu.FLAME_GAP;
+        return localX >= fuel.x() && localX < fuel.x() + MachineTextures.ICON_CELL && localY >= top
+                && localY < top + MachineTextures.ICON_CELL;
     }
 
     /**
@@ -414,13 +484,6 @@ public final class MachineGui {
         batch.setColor(tank.fluid().color());
         batch.draw(pixel, x + 1, y + 1, inside, filled);
         batch.setColor(Color.WHITE);
-    }
-
-    /** Y of the upper edge of a line of text in one of the upper corners. */
-    private float lineY(float panelY, int panelHeight) {
-        // The top of the glyph and not the top of the line: the name of a machine lies TEXT_TOP pixels below
-        // the upper edge of its panel and not one pixel lower, where the box of the line would put it.
-        return panelY + panelHeight - MachineMenu.TEXT_TOP - font.glyphHeight();
     }
 
     /** X coordinate of the mouse inside the panel. */

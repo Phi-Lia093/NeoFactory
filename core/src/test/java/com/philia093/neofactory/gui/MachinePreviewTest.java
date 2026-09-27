@@ -126,8 +126,8 @@ class MachinePreviewTest {
         drawContents(picture, layout);
         drawArrow(picture, machine, CRAFT_PROGRESS);
         BufferedImage font = read(FONT_SHEET);
-        drawTitle(picture, font, menu.title());
-        drawStatus(picture, font, "Remain fuel: " + FUEL_SECONDS + "s");
+        drawInfo(picture);
+        drawFlame(picture, menu);
 
         // The slots of the player inventory sit on the rows the panel carries: the picture
         // and the sheet hold the same pixel where such a slot begins.
@@ -167,8 +167,8 @@ class MachinePreviewTest {
         drawSlots(picture, machine, layout);
         drawFluidSlots(picture, machine, menu, layout);
         drawArrow(picture, machine, CRAFT_PROGRESS);
-        drawTitle(picture, font, menu.title());
-        drawStatus(picture, font, "Remain fuel: " + FUEL_SECONDS + "s");
+        drawInfo(picture);
+        drawFlame(picture, menu);
 
         ImageIO.write(picture, "png", FULL_PREVIEW.toFile());
         assertTrue(FULL_PREVIEW.toFile().isFile(), "the preview was not written");
@@ -255,14 +255,24 @@ class MachinePreviewTest {
                 MachineTextures.iconY(kind.fullRow()), filled, cell, arrowX, arrowY);
     }
 
-    /** Writes the name of the machine on the label in the upper left corner of the panel. */
-    private static void drawTitle(BufferedImage picture, BufferedImage font, String text) {
-        // The label is the tab of the pack stretched to the name, and the preview paints the band it covers:
-        // a name that would reach out of its label shows up in the picture, see MachineGui#drawTitle.
+    /** Draws the mark of the pack in the upper left corner, which names the machine when it is asked. */
+    private static void drawInfo(BufferedImage picture) {
         int fill = 0xFF8B8B8B;
-        fillBox(picture, MARGIN + MachineMenu.LABEL_LEFT, MARGIN + MachineMenu.LABEL_TOP,
-                textWidth(font, text) + 2 * MachineMenu.LABEL_PAD, MachineMenu.LABEL_HEIGHT, fill);
-        drawText(picture, font, text, MARGIN + MachineMenu.TEXT_LEFT, MARGIN + MachineMenu.TEXT_TOP);
+        fillBox(picture, MARGIN + MachineMenu.INFO_LEFT, MARGIN + MachineMenu.INFO_TOP,
+                MachineMenu.INFO_SIZE, MachineMenu.INFO_SIZE, fill);
+    }
+
+    /** Draws the flame under the slot a machine burns in, filled by the share the screen reports. */
+    private static void drawFlame(BufferedImage picture, MachineMenu menu) {
+        if (!menu.hasFlame()) {
+            return;
+        }
+        Slot fuel = menu.fuelCell();
+        int size = MachineTextures.ICON_CELL;
+        int x = MARGIN + fuel.x();
+        int y = MARGIN + fuel.y() + ContainerLayout.SLOT_SIZE + MachineMenu.FLAME_GAP;
+        int filled = Math.max(1, Math.round(size * menu.flameShare()));
+        fillBox(picture, x, y + size - filled, size, filled, 0xFFD08020);
     }
 
     /** Paints one box of the picture, the band the label of a machine covers. */
@@ -275,13 +285,6 @@ class MachinePreviewTest {
                 }
             }
         }
-    }
-
-    /** Writes what the machine reports in the upper right corner of the panel. */
-    private static void drawStatus(BufferedImage picture, BufferedImage font, String text) {
-        int width = textWidth(font, text);
-        drawText(picture, font, text, MARGIN + MachineMenu.TEXT_RIGHT - width,
-                MARGIN + MachineMenu.TEXT_TOP);
     }
 
     /** Width a line takes in pixels of the interface. */

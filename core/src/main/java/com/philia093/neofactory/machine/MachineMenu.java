@@ -17,8 +17,10 @@ import java.util.Objects;
  * The class turns what a machine registered, see {@link MachineScreen}, into the layout of a
  * container, so a new machine never mentions a pixel:
  * <ul>
- *     <li>the title stands on the label in the upper left corner of the panel and the status
- *         of the machine in the upper right one;</li>
+ *     <li>nothing of the state of a machine is written in words: the mark of the pack stands in the upper
+ *         left corner of the panel and names the machine while the mouse rests on it, a flame under the slot
+ *         of a fuel shows what is left of the fire or how hot a boiler is, and both say the exact number in a
+ *         tooltip. What a machine reports, see {@link MachineMenu#flameTooltip};</li>
  *     <li>the input slots and the output slots form a block each, on the left and on the
  *         right of the progress bar. The shape of a block follows its size: one slot stands
  *         alone, two stand beside each other, four form a square and six fill two rows of
@@ -69,33 +71,41 @@ public final class MachineMenu {
     /** X of the cell of energy at the foot, between the two pairs of tanks. */
     public static final int ENERGY_X = 79;
 
-    /** Left edge of the label the name of a machine is written on, in the upper left corner. */
-    public static final int LABEL_LEFT = 1;
+    /** Left edge of the info mark in the upper left corner of the panel, where the name used to stand. */
+    public static final int INFO_LEFT = 2;
 
-    /** Upper edge of that label, measured from the upper edge of the panel. */
-    public static final int LABEL_TOP = 1;
+    /** Upper edge of that mark, measured from the upper edge of the panel. */
+    public static final int INFO_TOP = 2;
 
-    /** Height of that label, the picture of a tab stretched to it. */
-    public static final int LABEL_HEIGHT = 12;
+    /** Side of the info mark in pixels, the size of the mark of the pack. */
+    public static final int INFO_SIZE = 16;
 
-    /** Pixels between the edge of the label and the name written on it. */
-    public static final int LABEL_PAD = 4;
+    /** Pixels between the mark of a state and the next mark beside it. */
+    public static final int MARK_GAP = 2;
 
-    /** X of the title, written on the label and not on the frame of the panel. */
-    public static final int TEXT_LEFT = 5;
+    /** Pixels between the slot a fuel lies in and the flame under it. */
+    public static final int FLAME_GAP = 4;
 
-    /**
-     * Y of the title and of the status line, measured from the upper edge of the panel.
-     * <p>
-     * The name stands on the label of {@link #LABEL_TOP} and {@link #LABEL_HEIGHT} and not on the frame of
-     * the panel: the label carries the name, so what the picture of a panel looks like below it can never
-     * move a letter of the screen. Both numbers are written out for the same reason - moving the label
-     * moves the name, and nothing else moves with either of them.
-     */
-    public static final int TEXT_TOP = 3;
+    /** Kelvin a flame of a boiler is empty at, twenty five degrees Celsius. */
+    public static final float FLAME_COLD_TEMPERATURE = 298.0f;
 
-    /** X the status line of the upper right corner is aligned to. */
-    public static final int TEXT_RIGHT = WIDTH - TEXT_LEFT;
+    /** Kelvin a flame of a boiler is full at, a hundred degrees Celsius. */
+    public static final float FLAME_HOT_TEMPERATURE = 373.0f;
+
+    /** Column of the flame of the bronze age in the icon sheet, the first of its three flavours. */
+    public static final int FLAME_BRONZE_COLUMN = 6;
+
+    /** Column of the flame of the age of steel in the icon sheet, the second of the three. */
+    public static final int FLAME_STEEL_COLUMN = 7;
+
+    /** Column of the flame of the grey age in the icon sheet, the third of the three. */
+    public static final int FLAME_NORMAL_COLUMN = 8;
+
+    /** Row of the flames that are alight in the icon sheet. */
+    public static final int FLAME_LIT_ROW = 2;
+
+    /** Row of the flames that are out in the icon sheet. */
+    public static final int FLAME_OUT_ROW = 3;
 
     /** Unit the tooltip of a tank writes behind an amount of fluid, one cell being a thousand of them. */
     public static final String FLUID_UNIT = "mB";
@@ -351,15 +361,11 @@ public final class MachineMenu {
     }
 
     /**
-     * X the status line of the upper right corner is aligned to, the right frame of the panel.
+     * Name of the machine, which its screen asks for while the mouse rests on the mark of the upper left
+     * corner of the panel.
      *
-     * @return the coordinate in pixels of the panel
+     * @return the name
      */
-    public int statusRight() {
-        return TEXT_RIGHT;
-    }
-
-    /** Title of the machine, written in the upper left corner of the panel. */
     public String title() {
         return machine.screen().title();
     }
@@ -401,6 +407,78 @@ public final class MachineMenu {
     /** Seconds of fuel the machine has left, {@code 0} for a machine that burns nothing. */
     public float fuelSeconds() {
         return machine instanceof FuelMachine fuel ? fuel.fuelSeconds() : 0.0f;
+    }
+
+    /** X of the flame of this machine in the icon sheet, one of the three flavours the sheet carries. */
+    public int flameColumn() {
+        return style() == MachineStyle.BRONZE ? FLAME_BRONZE_COLUMN : FLAME_NORMAL_COLUMN;
+    }
+
+    /**
+     * Cell of the slot the machine burns in, {@code null} for a machine that burns nothing.
+     * <p>
+     * The slots of the machine stand at the head of the layout in the order its inventory declares them, so
+     * the cell of a role is the entry of the very index the role has, see {@link MachineInventory#slotOf}.
+     *
+     * @return the cell of the fuel, or {@code null} for a machine without such a slot
+     */
+    public Slot fuelCell() {
+        int index = machine.inventory().slotOf(MachineInventory.Role.FUEL);
+        if (index < 0 || index >= container.layout().slots().size()) {
+            return null;
+        }
+        return container.layout().slots().get(index);
+    }
+
+    /** {@code true} for a machine whose screen draws a flame under the slot it burns in. */
+    public boolean hasFlame() {
+        return fuelCell() != null;
+    }
+
+    /**
+     * Share of the flame of this machine, from nothing to everything.
+     * <p>
+     * A boiler is read by its temperature, which runs from the cold of the room to its boiling point, and a
+     * machine that burns an item is read by what is left of that item. What a share means to a player is in
+     * the tooltip, see {@link #flameTooltip}.
+     *
+     * @return a value between {@code 0} and {@code 1}
+     */
+    public float flameShare() {
+        if (machine instanceof SteamBoilerMachine boiler) {
+            float share = (boiler.temperature() - FLAME_COLD_TEMPERATURE)
+                    / (FLAME_HOT_TEMPERATURE - FLAME_COLD_TEMPERATURE);
+            return Math.max(0.0f, Math.min(1.0f, share));
+        }
+        if (machine instanceof FuelMachine fuel) {
+            return Math.max(0.0f, Math.min(1.0f, fuel.burnProgress()));
+        }
+        return 0.0f;
+    }
+
+    /** {@code true} while there is a fire at all, which is what picks between the two flames of the sheet. */
+    public boolean flameIsLit() {
+        if (machine instanceof SteamBoilerMachine boiler) {
+            return boiler.temperature() > FLAME_COLD_TEMPERATURE;
+        }
+        return flameShare() > 0.0f;
+    }
+
+    /** {@code true} while a flame over its top blinks, which a boiler over a hundred degrees does. */
+    public boolean flameBlinks() {
+        return machine instanceof SteamBoilerMachine boiler
+                && boiler.temperature() > FLAME_HOT_TEMPERATURE;
+    }
+
+    /** Lines the flame is named with, empty for a machine that reports nothing about its fire. */
+    public List<String> flameTooltip() {
+        String status = statusText();
+        return status.isEmpty() ? List.of() : List.of(status);
+    }
+
+    /** Lines the info mark of the upper left corner is named with, which is the name of the machine. */
+    public List<String> infoTooltip() {
+        return List.of(title());
     }
 
     /**

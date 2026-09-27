@@ -17,4 +17,17 @@ public interface FuelMachine {
      * @return the time in seconds, {@code 0} while nothing burns
      */
     float fuelSeconds();
+
+    /**
+     * Share of the current piece of fuel that is left, {@code 1} right after it was lit.
+     * <p>
+     * It is what the flame under the slot of a fuel shows: a machine that burns a whole item at a time knows
+     * how long that item lasts and answers here. A machine that has no such number returns {@code 0}, which
+     * draws an empty flame.
+     *
+     * @return a value between {@code 0} and {@code 1}
+     */
+    default float burnProgress() {
+        return 0.0f;
+    }
 }

@@ -324,7 +324,6 @@ class MachineMenuTest {
             assertFalse(overlaps(energy, other),
                     "the cell of energy is covered by " + Arrays.toString(other));
         }
-        assertEquals(MachineMenu.TEXT_RIGHT, menu.statusRight(), "the status line ends at the frame");
     }
 
     /** The box the picture of a cell covers, its bevel included. */
