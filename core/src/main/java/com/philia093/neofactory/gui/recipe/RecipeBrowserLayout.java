@@ -136,7 +136,7 @@ public final class RecipeBrowserLayout {
      * machine stands them, and the two lines of the head are the ones a machine screen writes its name and
      * its status on, so the screen of recipes reads as the screen of the machine that makes the item.
      */
-    public static final int TEMPLATE_NAME_Y = MachineMenu.TEXT_TOP;
+    public static final int TEMPLATE_NAME_Y = 0;
 
     /** Height of the panel of a machine, the height a template is laid out in. */
     public static final int TEMPLATE_HEIGHT = MachineMenu.HEIGHT;

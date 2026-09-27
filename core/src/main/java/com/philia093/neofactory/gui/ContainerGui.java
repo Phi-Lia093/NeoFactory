@@ -382,7 +382,10 @@ public final class ContainerGui {
         if (title.isEmpty()) {
             return;
         }
-        float y = panelY + panelHeight - TITLE_TOP - font.lineHeight();
+        // The line of a font is one pixel taller than a glyph, so the glyph itself is what the name is placed
+        // by: the top of the name lies exactly TITLE_TOP pixels below the upper edge of the panel, which is
+        // where the preview of the screen puts it, see ChestPreviewTest and GuiPreview.
+        float y = panelY + panelHeight - TITLE_TOP - font.glyphHeight();
         font.setColor(TEXT_COLOR);
         font.drawShadowed(batch, title, panelX + TITLE_LEFT, y);
         font.setColor(Color.WHITE);

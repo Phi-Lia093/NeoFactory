@@ -1050,7 +1050,7 @@ public final class RecipeBrowserGui {
             return;
         }
         font.setColor(colour);
-        font.draw(batch, text, x + left, y + height - top - font.lineHeight());
+        font.draw(batch, text, x + left, y + height - top - font.glyphHeight());
         font.setColor(Color.WHITE);
     }
 
@@ -1081,7 +1081,7 @@ public final class RecipeBrowserGui {
             return;
         }
         font.setColor(colour);
-        font.draw(batch, text, x + left, y + height - TITLE_TOP - font.lineHeight());
+        font.draw(batch, text, x + left, y + height - TITLE_TOP - font.glyphHeight());
         font.setColor(Color.WHITE);
     }
 

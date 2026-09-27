@@ -312,7 +312,7 @@ public final class MachineGui {
         TextureRegion error = panel.icon(menu.error());
         if (error != null) {
             batch.draw(error, x - MachineTextures.ICON_CELL,
-                    lineY + font.lineHeight() - MachineTextures.ICON_CELL);
+                    lineY + font.glyphHeight() + 1 - MachineTextures.ICON_CELL);
         }
     }
 
@@ -376,7 +376,9 @@ public final class MachineGui {
 
     /** Y of the upper edge of a line of text in one of the upper corners. */
     private float lineY(float panelY, int panelHeight) {
-        return panelY + panelHeight - MachineMenu.TEXT_TOP - font.lineHeight();
+        // The top of the glyph and not the top of the line: the name of a machine lies TEXT_TOP pixels below
+        // the upper edge of its panel and not one pixel lower, where the box of the line would put it.
+        return panelY + panelHeight - MachineMenu.TEXT_TOP - font.glyphHeight();
     }
 
     /** X coordinate of the mouse inside the panel. */
