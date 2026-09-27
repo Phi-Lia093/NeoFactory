@@ -418,6 +418,26 @@ screens of a machine and of the player, the entity layer, and the pictures of th
 project. Everything that draws is checked by running the game, and every screen also
 writes a picture of itself into `core/build/reports`.
 
+## Tools
+
+The scripts that write the art and the models of the game live in `tools/` and are part of the
+repository, so a picture or a model can always be written again from what the pack holds:
+
+```
+tools/gen_pipe_models.ps1            models and blockstates of every pipe of the industry
+tools/verify/extract_3d_assets.ps1   the faces, the colormaps and the sky an art pack is asked for
+tools/verify/extract_creative.ps1    the panels, the tabs and the thumbs of the creative inventory
+tools/verify/material_forms.ps1      one grey scale picture per shape a material comes in
+tools/verify/import_gregtech_assets.ps1  the casing, the fronts and the tops of the machines
+tools/verify/restore_assets.ps1      fetches back whatever an editor emptied out of assets/
+tools/verify/grayscale_fluid.ps1     turns a picture of the pack into a fluid window
+tools/verify/smoke.ps1               starts the shipped jar and walks the menus with a real mouse
+```
+
+Only the pictures they write are read only: everything a script produces lands in `assets/` or in
+`core/build/reports`, while what a smoke run captures goes into `build/verify`. Both build folders
+are ignored by git, which is why the scripts themselves live in `tools/` and never in `build/`.
+
 ## Art
 
 The world is seen from every side, so a block is drawn from a model: `assets/models/block` names the
@@ -446,7 +466,7 @@ side a block draws its picture on - the mouth of a furnace, the front of a machi
 so a slot shows the top, that front and the flank beside it, and the machines of an age, built of one
 casing, are told apart by what stands on their front, see `BlockIconRenderer#DIRECTION`.
 
-**The art of a machine and the gear that turns while it works.** `tools/import_machine_art.ps1` takes the
+**The art of a machine and the gear that turns while it works.** `tools/verify/import_gregtech_assets.ps1` takes the
 pictures of the machines of the industry out of the pack: the casing of their age - bronze or steel, plain and
 in bricks for the two that hold a fire - and the front and the top that stand on it, one picture for a machine
 at rest and one for a machine that works. **A picture that is a strip of frames moves.** The array of the world
@@ -523,7 +543,7 @@ while the sheet existed; the preview of the fluids is gone with it.)
 Every shape a material comes in is drawn from one grey scale picture as well, and the colour of the
 material reaches it the same way: `assets/items/generic_ingot.png`, `generic_plate.png`,
 `generic_gear.png` and the seventeen others hold brightness only, and `MaterialForm` names the one
-the item of a shape is drawn from. `build/verify/material_forms.ps1` copies them out of the art pack
+the item of a shape is drawn from. `tools/verify/material_forms.ps1` copies them out of the art pack
 the shapes were cut from, so the names the game asks for and the files that exist are written down
 in exactly one script and a shape that is renamed or lost fails the tests instead of showing up as a
 missing icon. One shape covers something: a fine wire is drawn from two layers, the bright metal
@@ -535,7 +555,7 @@ shape, which is how the colours of twelve metals are reviewed without starting t
 The flat engine only ever needed the view from above, so the side, the bottom and the front of every
 block had been deleted: `assets/blocks` held 271 pictures of the art pack instead of 356, and a test
 even failed the build when one of them came back. A world of cubes shows six faces, so
-`build/verify/extract_3d_assets.ps1` fetches the missing ones home - the faces of the blocks that are
+`tools/verify/extract_3d_assets.ps1` fetches the missing ones home - the faces of the blocks that are
 more than one picture, and the metadata of the sheets whose animation is written outside of them -
 together with the three sets a rounder world needs: `colormap` holds the two pictures the grass and
 the leaves are painted through, `environment` the sun, the moon and its phases, the clouds, the rain
@@ -548,15 +568,15 @@ while the pack is replaced or mistyped in the script is a failed build and never
 from. Every picture that was let go is one call of git away, and the script above fetches it from the
 pack again. An editor that empties a file of the art - which happens, the resource root of an
 IntelliJ project is not a safe place for a picture - is repaired by
-`build/verify/restore_assets.ps1`, which reads the list of what was removed on purpose from
-`build/verify/removed_assets.txt` and fetches everything else back out of the last commit.
+`tools/verify/restore_assets.ps1`, which reads the list of what was removed on purpose from
+`tools/verify/removed_assets.txt` and fetches everything else back out of the last commit.
 `BlockFace` names the six faces of a cube - with the way each
 one lies in space and the light it catches - and `FaceSet` gives every one of them a picture, one
 fallback at a time, so a block of six pictures stays three lines.
 
 `gui/inventory_icons.png` holds every panel of the interface. Since the creative
 inventory arrived it also carries that screen's art - the two panels, the tab in its two
-states and the two thumbs of the scroll bar - which `build/verify/extract_creative.ps1`
+states and the two thumbs of the scroll bar - which `tools/verify/extract_creative.ps1`
 copies out of the art pack next to it. The thumbs are the pair the original game keeps
 for a list that fits into the panel and for one that goes on, and the tabs are the empty
 shapes it draws: the icon on a tab is the item of its group, drawn at run time the same
