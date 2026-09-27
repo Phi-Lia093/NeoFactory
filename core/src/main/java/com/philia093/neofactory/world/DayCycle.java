@@ -60,18 +60,6 @@ public final class DayCycle {
     /** Brightness of the light of the sky at noon. */
     public static final float NOON_BRIGHTNESS = 1.0f;
 
-    /** Brightness a cloud of the darkest night keeps, a grey that is hardly there. */
-    public static final float CLOUD_NIGHT_BRIGHTNESS = 0.12f;
-
-    /** Red share of the grey a cloud of the night is drawn in. */
-    public static final float CLOUD_NIGHT_RED = 0.68f;
-
-    /** Green share of the grey a cloud of the night is drawn in. */
-    public static final float CLOUD_NIGHT_GREEN = 0.80f;
-
-    /** Blue share of the grey a cloud of the night is drawn in, the blue the night sky carries. */
-    public static final float CLOUD_NIGHT_BLUE = 1.0f;
-
     /** Red share of the colour of the night sky, a deep blue that is almost black. */
     public static final float NIGHT_RED = 0.02f;
 
@@ -256,39 +244,6 @@ public final class DayCycle {
                 MathUtils.lerp(green, TWILIGHT_GREEN, twilight),
                 MathUtils.lerp(blue, TWILIGHT_BLUE, twilight), 1.0f);
         return out;
-    }
-
-    /**
-     * How bright a cloud is drawn, which is the day with a floor.
-     * <p>
-     * A cloud is lit by the sun and by nothing else, so it fades with it and is hardly there at all at
-     * night: the floor is a little above black, which is what keeps a night sky from carrying white
-     * clouds that no sun could light.
-     *
-     * @param worldTime time of the world in ticks
-     * @return brightness of a cloud, between {@code 0.12} and {@code 1}
-     */
-    public static float cloudBrightness(long worldTime) {
-        return Math.max(CLOUD_NIGHT_BRIGHTNESS, brightness(worldTime));
-    }
-
-    /**
-     * The colour a cloud is drawn in, which is the grey of its picture tinted by the hour.
-     * <p>
-     * A cloud of the day is white and one of the night takes the blue of the sky it stands in, so the sky
-     * of a night is not a white layer that happens to stand in the dark but a grey-blue one.
-     *
-     * @param worldTime time of the world in ticks
-     * @param out colour to write into
-     * @return the colour, for chaining
-     */
-    public static Color cloudTint(long worldTime, Color out) {
-        float brightness = cloudBrightness(worldTime);
-        float night = 1.0f - Math.min(1.0f, Math.max(0.0f, (brightness - NIGHT_BRIGHTNESS)
-                / (NOON_BRIGHTNESS - NIGHT_BRIGHTNESS)));
-        return out.set(brightness * MathUtils.lerp(1.0f, CLOUD_NIGHT_RED, night),
-                brightness * MathUtils.lerp(1.0f, CLOUD_NIGHT_GREEN, night),
-                brightness * MathUtils.lerp(1.0f, CLOUD_NIGHT_BLUE, night), 1.0f);
     }
 
     /**

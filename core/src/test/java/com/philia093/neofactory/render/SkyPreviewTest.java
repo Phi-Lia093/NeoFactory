@@ -19,10 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The picture is a time lapse: one column of it is one moment of the day, its ground is the colour a frame is
  * cleared with at that moment, see {@link DayCycle#skyColor(long, com.badlogic.gdx.graphics.Color)}, and over
  * it stand the sun and the moon of {@code environment/sun.png} and {@code environment/moon_phases.png} and
- * the layer of {@code environment/clouds.png}, blended the way the pass blends them - a body by adding it to
- * the sky and a cloud through its transparency. A look at the picture therefore says whether the art is read
- * the way the pass reads it: a sun that is a warm body and no white square, a moon that stands in the sky of
- * the night, and clouds that are grey at night and white at noon.
+ * the sky, drawn through its own brightness. A look at the picture therefore says whether the art is read the
+ * way the pass reads it: a sun that is a warm body and no white square and a moon that stands in the sky of
+ * the night.
  * <p>
  * The result lies in {@code core/build/reports/sky-preview.png} and is meant to be looked at.
  */
@@ -51,12 +50,6 @@ class SkyPreviewTest {
 
     /** Rows the band of an arc of the day is painted with. */
     private static final int ARC_ROWS = 8;
-
-    /** Row the layer of clouds is painted at. */
-    private static final int CLOUD_ROW = 30;
-
-    /** Height of the band of clouds. */
-    private static final int CLOUD_BAND = 24;
 
     @Test
     void aWholeDayOfTheSkyIsWrittenToAPicture() throws IOException {
@@ -133,17 +126,6 @@ class SkyPreviewTest {
         return brightest;
     }
 
-    /** Clouds are bright at noon and almost gone at night. */
-    private static void assertTheCloudsAreBrightAtNoonAndDarkAtNight(BufferedImage sky,
-            BufferedImage clouds) {
-        int noon = brightestCloudOf(sky, clouds, DayCycle.NOON);
-        int midnight = brightestCloudOf(sky, clouds, DayCycle.MIDNIGHT);
-
-        assertTrue(noon > 0 && midnight > 0, "the picture carries clouds at all");
-        assertTrue(noon > midnight, "the cloud of the noon is brighter than the one of the night, they were "
-                + noon + " and " + midnight);
-    }
-
     /** Paints the arc of one column: the band a body of that hour would stand in. */
     private static void paintArcs(BufferedImage sky, int column, long worldTime) {
         float height = DayCycle.sunHeight(worldTime);
@@ -158,21 +140,6 @@ class SkyPreviewTest {
                         sun ? DayCycle.SUN_RED : DayCycle.MOON_RED,
                         sun ? DayCycle.SUN_GREEN : DayCycle.MOON_GREEN,
                         sun ? DayCycle.SUN_BLUE : DayCycle.MOON_BLUE));
-    }
-
-    /** Paints the clouds of one column out of the picture of the layer. */
-    private static void paintClouds(BufferedImage sky, int column, long worldTime, BufferedImage clouds) {
-        Color tint = DayCycle.cloudTint(worldTime, new Color());
-        for (int row = 0; row < CLOUD_BAND; row++) {
-            int texel = clouds.getRGB(column * clouds.getWidth() / WIDTH,
-                    row * clouds.getHeight() / CLOUD_BAND);
-            float alpha = (texel >>> 24) / 255.0f;
-            if (alpha <= 0.0f) {
-                continue;
-            }
-            int under = sky.getRGB(column, CLOUD_ROW + row);
-            sky.setRGB(column, CLOUD_ROW + row, mix(under, texel, alpha, tint.r, tint.g, tint.b));
-        }
     }
 
     /**
@@ -205,31 +172,13 @@ class SkyPreviewTest {
         return Math.max(Math.max(red(argb), green(argb)), blue(argb)) / 255.0f;
     }
 
-    /** Lays a texel over the colour that stands there, the way the pass blends a cloud. */
+    /** Lays a texel over the colour that stands there. */
     private static int mix(int under, int texel, float alpha, float red, float green, float blue) {
         int share = Math.round(alpha * 255.0f);
         return 0xFF000000
                 | (red(under) * (255 - share) + Math.round(red(texel) * red) * share) / 255 << 16
                 | (green(under) * (255 - share) + Math.round(green(texel) * green) * share) / 255 << 8
                 | (blue(under) * (255 - share) + Math.round(blue(texel) * blue) * share) / 255;
-    }
-
-    /** Brightest clouded pixel of the band near a moment, {@code 0} when no cloud stands there at all. */
-    private static int brightestCloudOf(BufferedImage sky, BufferedImage clouds, long worldTime) {
-        int centre = columnOf(worldTime);
-        int brightest = 0;
-        for (int column = centre - 30; column <= centre + 30; column++) {
-            if (column < 0 || column >= WIDTH) {
-                continue;
-            }
-            for (int row = 0; row < CLOUD_BAND; row++) {
-                if ((clouds.getRGB(column * clouds.getWidth() / WIDTH,
-                        row * clouds.getHeight() / CLOUD_BAND) >>> 24) > 128) {
-                    brightest = Math.max(brightest, brightness(sky.getRGB(column, CLOUD_ROW + row)));
-                }
-            }
-        }
-        return brightest;
     }
 
     /** Column of the picture a moment of the day falls on. */

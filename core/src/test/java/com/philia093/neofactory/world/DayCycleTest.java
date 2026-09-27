@@ -97,8 +97,6 @@ class DayCycleTest {
         assertEquals(1.0f, DayCycle.twilight(DayCycle.SUNRISE), 0.0001f);
         assertEquals(0.0f, DayCycle.twilight(DayCycle.NOON), 0.0001f);
         assertEquals(0.0f, DayCycle.twilight(DayCycle.MIDNIGHT), 0.0001f);
-        assertTrue(DayCycle.cloudBrightness(DayCycle.MIDNIGHT) > DayCycle.brightness(DayCycle.MIDNIGHT),
-                "a cloud of the night keeps the pale grey of the moon");
     }
 
     @Test

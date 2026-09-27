@@ -17,12 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Checks the art the sky is drawn with and the two numbers that place it.
  * <p>
- * The sky has no drawing of its own: the sun, the phases of the moon and the layer of clouds are the pictures
- * of the asset pack, and a pass that draws them has to know three things about them - that the ground of a
- * body is black, which is what adding it to the sky needs, that the ground of the layer is transparent, which
- * is what makes the gaps between the clouds, and how many blocks one pixel of it covers. All three are read
- * out of the files themselves here, so a pack that ships other art fails in this test instead of in a frame of
- * the game.
+ * The sky has no drawing of its own: the sun and the phases of the moon are the pictures of the asset pack,
+ * and a pass that draws them has to know two things about them - that the ground of a body is black, which is
+ * what leaves the square of its picture out of the sky, and how the sheet of the phases is laid out. Both are
+ * read out of the files themselves here, so a pack that ships other art fails in this test instead of in a
+ * frame of the game.
  */
 class SkyRendererTest {
 
