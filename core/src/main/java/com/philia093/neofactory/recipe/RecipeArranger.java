@@ -249,27 +249,6 @@ public final class RecipeArranger {
         return taken;
     }
 
-    /** Takes one item of an ingredient out of an inventory, {@code null} when it holds none. */
-    private static Item take(Inventory source, Ingredient ingredient) {
-        if (source == null) {
-            return null;
-        }
-        for (int slot = 0; slot < source.size(); slot++) {
-            ItemStack stack = source.get(slot);
-            if (stack.isEmpty() || !ingredient.matches(stack)) {
-                continue;
-            }
-            Item item = stack.item();
-            if (stack.count() <= 1) {
-                source.set(slot, ItemStack.EMPTY);
-            } else {
-                stack.setCount(stack.count() - 1);
-            }
-            return item;
-        }
-        return null;
-    }
-
     /** An item that satisfies an ingredient, {@code null} for an ingredient that asks for nothing. */
     private static Item representative(Ingredient ingredient) {
         return ingredient.isEmpty() ? null : ingredient.items().iterator().next();
