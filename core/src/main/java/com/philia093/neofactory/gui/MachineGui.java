@@ -331,6 +331,12 @@ public final class MachineGui {
         float y = panelY + panelHeight - fuel.y() - ContainerLayout.SLOT_SIZE - MachineMenu.FLAME_GAP
                 - size;
         int row = menu.flameIsLit() ? MachineMenu.FLAME_LIT_ROW : MachineMenu.FLAME_OUT_ROW;
+        if (!menu.flameIsLit() && menu.flameIsTemperature() && menu.flameShare() <= 0.0f) {
+            // The flame of a boiler is its temperature and a cold boiler has no fire at all: the picture of a
+            // flame that is out is what a machine that burns an item shows when its fire went out, and a
+            // boiler that is at the temperature of the room shows nothing.
+            return;
+        }
         TextureRegion flame = panel.icon(menu.flameColumn(), row);
         if (flame == null) {
             return;

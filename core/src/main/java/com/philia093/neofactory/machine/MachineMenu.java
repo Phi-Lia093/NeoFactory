@@ -93,19 +93,19 @@ public final class MachineMenu {
     public static final float FLAME_HOT_TEMPERATURE = 373.0f;
 
     /** Column of the flame of the bronze age in the icon sheet, the first of its three flavours. */
-    public static final int FLAME_BRONZE_COLUMN = 6;
+    public static final int FLAME_BRONZE_COLUMN = 5;
 
     /** Column of the flame of the age of steel in the icon sheet, the second of the three. */
-    public static final int FLAME_STEEL_COLUMN = 7;
+    public static final int FLAME_STEEL_COLUMN = 6;
 
     /** Column of the flame of the grey age in the icon sheet, the third of the three. */
-    public static final int FLAME_NORMAL_COLUMN = 8;
+    public static final int FLAME_NORMAL_COLUMN = 7;
 
     /** Row of the flames that are alight in the icon sheet. */
-    public static final int FLAME_LIT_ROW = 2;
+    public static final int FLAME_LIT_ROW = 0;
 
     /** Row of the flames that are out in the icon sheet. */
-    public static final int FLAME_OUT_ROW = 3;
+    public static final int FLAME_OUT_ROW = 1;
 
     /** Unit the tooltip of a tank writes behind an amount of fluid, one cell being a thousand of them. */
     public static final String FLUID_UNIT = "mB";
@@ -468,6 +468,11 @@ public final class MachineMenu {
     public boolean flameBlinks() {
         return machine instanceof SteamBoilerMachine boiler
                 && boiler.temperature() > FLAME_HOT_TEMPERATURE;
+    }
+
+    /** {@code true} for a machine whose flame is a temperature and not the rest of an item. */
+    public boolean flameIsTemperature() {
+        return machine instanceof SteamBoilerMachine;
     }
 
     /** Lines the flame is named with, empty for a machine that reports nothing about its fire. */
