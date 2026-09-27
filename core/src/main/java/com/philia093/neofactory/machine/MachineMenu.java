@@ -113,11 +113,11 @@ public final class MachineMenu {
     /** Row of the plain flame while its fire is out. */
     public static final int FLAME_NORMAL_OUT_ROW = 7;
 
-    /** Cells the flame stands left of the slot it belongs to. */
-    public static final int FLAME_LEFT_CELLS = 1;
+    /** Pixels the flame stands left of the slot it belongs to. */
+    public static final int FLAME_LEFT_PIXELS = 1;
 
-    /** Cells the flame stands above the slot it belongs to, the gap below it counted. */
-    public static final int FLAME_UP_CELLS = 2;
+    /** Pixels the flame is lifted towards the slot it belongs to, the gap below it counted. */
+    public static final int FLAME_UP_PIXELS = 2;
 
     /** Unit the tooltip of a tank writes behind an amount of fluid, one cell being a thousand of them. */
     public static final String FLUID_UNIT = "mB";
@@ -478,11 +478,13 @@ public final class MachineMenu {
         return 0.0f;
     }
 
-    /** {@code true} while there is a fire at all, which is what picks between the two flames of the sheet. */
+    /**
+     * {@code true} while there is a fire at all, which is what picks between the two flames of the sheet.
+     * <p>
+     * A machine that has run out of fuel and a boiler at the temperature of the room both have no fire, and
+     * both show the picture of a flame that is out, see {@link #flameOutRow}.
+     */
     public boolean flameIsLit() {
-        if (machine instanceof SteamBoilerMachine boiler) {
-            return boiler.temperature() > FLAME_COLD_TEMPERATURE;
-        }
         return flameShare() > 0.0f;
     }
 
@@ -490,11 +492,6 @@ public final class MachineMenu {
     public boolean flameBlinks() {
         return machine instanceof SteamBoilerMachine boiler
                 && boiler.temperature() > FLAME_HOT_TEMPERATURE;
-    }
-
-    /** {@code true} for a machine whose flame is a temperature and not the rest of an item. */
-    public boolean flameIsTemperature() {
-        return machine instanceof SteamBoilerMachine;
     }
 
     /** Lines the flame is named with, empty for a machine that reports nothing about its fire. */

@@ -269,13 +269,9 @@ class MachinePreviewTest {
         }
         Slot fuel = menu.fuelCell();
         int size = MachineTextures.ICON_CELL;
-        int x = MARGIN + fuel.x() - MachineMenu.FLAME_LEFT_CELLS * size;
+        int x = MARGIN + fuel.x() - MachineMenu.FLAME_LEFT_PIXELS;
         int y = MARGIN + fuel.y() + ContainerLayout.SLOT_SIZE + MachineMenu.FLAME_GAP
-                - MachineMenu.FLAME_UP_CELLS * size;
-        if (!menu.flameIsLit() && menu.flameIsTemperature() && menu.flameShare() <= 0.0f) {
-            // A boiler at the temperature of the room shows no fire at all.
-            return;
-        }
+                - MachineMenu.FLAME_UP_PIXELS;
         int filled = Math.max(1, Math.round(size * menu.flameShare()));
         fillBox(picture, x, y + size - filled, size, filled, 0xFFD08020);
     }

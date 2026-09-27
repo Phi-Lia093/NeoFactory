@@ -66,6 +66,9 @@ public final class MachineGui {
     /** Seconds this screen has been open, which is what the blink of a flame is timed by. */
     private float elapsed;
 
+    /** One cut out piece of a picture, reused instead of filling the heap with regions. */
+    private final TextureRegion scratch = new TextureRegion();
+
     /** Pixels between the mark of the pack and the mark beside it. */
 
     private final BlockTextureCache textures;
@@ -329,30 +332,22 @@ public final class MachineGui {
         int size = MachineTextures.ICON_CELL;
         float x = panelX + flameX(fuel);
         float y = panelY + panelHeight - flameTop(fuel) - size;
-        if (!menu.flameIsLit() && menu.flameIsTemperature() && menu.flameShare() <= 0.0f) {
-            // The flame of a boiler is its temperature and a cold boiler has no fire at all: the picture of a
-            // flame that is out is what a machine that burns an item shows when its fire went out, and a
-            // boiler that is at the temperature of the room shows nothing.
-            return;
-        }
-        int row = menu.flameIsLit() ? menu.flameRow() : menu.flameOutRow();
-        TextureRegion flame = panel.icon(menu.flameColumn(), row);
+        boolean lit = menu.flameIsLit();
+        TextureRegion flame = panel.icon(menu.flameColumn(), lit ? menu.flameRow() : menu.flameOutRow());
         if (flame == null) {
             return;
         }
-        if (!menu.flameIsLit()) {
+        if (!lit) {
             batch.draw(flame, x, y, size, size);
             return;
         }
-        // The part that is filled is cut out of the picture from its lower edge, like the bright part of a
-        // progress bar is cut out of the track.
+        // The part of the flame that is left is cut out of its lower edge and drawn as it is, one pixel for
+        // one pixel and never stretched, the way the furnace of the original game shows what it burns: the
+        // flame shrinks towards its own bottom instead of being squeezed into a shorter picture.
         int full = flame.getRegionHeight();
         int filled = Math.max(1, Math.round(full * menu.flameShare()));
-        flame.setRegionHeight(filled);
-        flame.setRegionY(flame.getRegionY() + full - filled);
-        batch.draw(flame, x, y, size, filled);
-        flame.setRegionY(flame.getRegionY() - full + filled);
-        flame.setRegionHeight(full);
+        scratch.setRegion(flame, 0, full - filled, size, filled);
+        batch.draw(scratch, x, y, size, filled);
     }
 
     /** {@code true} while a flame is in the half of its blink that shows. */
@@ -406,15 +401,15 @@ public final class MachineGui {
                 && localY >= top && localY < top + MachineTextures.ICON_CELL;
     }
 
-    /** X of the flame of a machine, which stands one cell left of the slot it belongs to. */
+    /** X of the flame of a machine, which stands one pixel left of the slot it belongs to. */
     private static float flameX(Slot fuel) {
-        return fuel.x() - MachineMenu.FLAME_LEFT_CELLS * MachineTextures.ICON_CELL;
+        return fuel.x() - MachineMenu.FLAME_LEFT_PIXELS;
     }
 
-    /** Row of the upper edge of the flame of a machine, which stands two cells above that slot. */
+    /** Row of the upper edge of the flame of a machine, two pixels closer to that slot than the gap. */
     private static int flameTop(Slot fuel) {
         return fuel.y() + ContainerLayout.SLOT_SIZE + MachineMenu.FLAME_GAP
-                - MachineMenu.FLAME_UP_CELLS * MachineTextures.ICON_CELL;
+                - MachineMenu.FLAME_UP_PIXELS;
     }
 
     /**
