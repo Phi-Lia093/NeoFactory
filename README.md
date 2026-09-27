@@ -19,7 +19,12 @@ stored on disk so that a session can be continued later.
   light in again and the light of a torch that is taken away is taken back, see `LightEngine`. The
   clock of the world runs from the sunrise through the noon into the night in twenty minutes:
   `DayCycle` names the hour, brightens and dims the light of the sky, paints the colour a frame is
-  cleared with and tells the sun, the moon and the layer of clouds of `SkyRenderer` where to stand.
+  cleared with and tells the sun, the moon and the layer of clouds of `SkyRenderer` where to stand. The
+  three of them are the art of `assets/environment` - a glowing body on a black ground and white clouds
+  on a transparent one - and the pass of the sky reads a texel through its own brightness, which is what
+  leaves the black ground out of the picture, keeps the sun warm on a blue sky and keeps the gaps between
+  the clouds. The moon walks through its eight phases, one to a day, and the layer of clouds drifts over
+  the world, so a player who turns around finds the same clouds behind them.
   The hour travels with a save game and `/time` moves it. A level of light is stored in the vertices
   of a section and not a brightness, so the sun moving across the sky costs the world no mesh at all:
   the shader scales the light of the sky once per frame.

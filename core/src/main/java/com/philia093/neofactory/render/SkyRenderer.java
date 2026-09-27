@@ -4,32 +4,77 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.glutils.ImmediateModeRenderer20;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Disposable;
 import com.philia093.neofactory.world.DayCycle;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Draws the sky of a world: the sun, the moon and the layer of clouds over the terrain.
  * <p>
- * Nothing here needs a picture of its own. A body of the sky is a square of colour that stands where the
- * clock of the world says it stands - the sun in the east in the morning and in the west in the evening,
- * the moon always opposite it - and the layer of clouds is a field of flat squares at one height that
- * drifts with the day, so a player watches the hours pass without a single mesh of the world being built
- * again, see {@link DayCycle}.
+ * The three of them are the art of the asset pack and no drawing of this class: the sun and the moon of
+ * {@code environment/sun.png} and {@code environment/moon_phases.png} are pictures of a glowing body on a
+ * black ground and the clouds of {@code environment/clouds.png} are white shapes on a transparent one. The
+ * program of the pass therefore reads a texel as <b>its own alpha times how bright it is</b>: the black ground
+ * of a body is left out of the picture, which is what makes the body itself the only thing that is drawn, and
+ * a cloud keeps the gaps its own transparency gives it. Nothing of the ground of a picture is ever drawn into
+ * the sky, and nothing of the sky washes the colour of a body out the way adding it would.
  * <p>
- * The sky is drawn <b>before</b> the world and writes no depth of its own: a block drawn afterwards covers
- * whatever stood behind it, so the sun goes down behind a mountain without anything here knowing about the
- * terrain. A body fades out as it reaches the horizon, which is what keeps the sun of the night - the one
- * below the ground - out of the picture, and what is left of the sky at night is the moon and the pale grey
- * of a cloud.
+ * Everything here is anchored to the world and not to the eye. A body stands in the direction the clock of
+ * the world points at, at a distance of the view, and the layer of clouds is a field of tiles of
+ * {@link #CLOUD_TILE} blocks that drifts with the day, so a player who walks under it walks under the same
+ * clouds and a player who turns around does not turn the sky with them.
  * <p>
- * The state the pass draws with is set up here and not inherited - blending on, no depth test and no culling,
- * the depth test handed back when it is done - so it runs before the passes of the world set up their own
- * state and never between them, see {@code GameScreen#renderCubes}.
+ * The sky is drawn <b>before</b> the world, without a depth test and without writing depth, so a block drawn
+ * afterwards covers whatever stood behind it and the sun goes down behind a mountain without anything here
+ * knowing about the terrain. A body fades out as it reaches the horizon, which is what keeps the sun of the
+ * night - the one below the ground - out of the picture. The state the pass draws with is set up here and not
+ * inherited, so it runs before the passes of the world set up their own, see {@code GameScreen#renderCubes}.
  */
 public final class SkyRenderer implements Disposable {
+
+    private static final Logger LOGGER = LogManager.getLogger();
+
+    /** Sun of the sky, a glowing body on a black ground. */
+    public static final String SUN_PICTURE = "environment/sun.png";
+
+    /** The phases of the moon, {@link #MOON_COLUMNS} to a row, each on a black ground. */
+    public static final String MOON_PICTURES = "environment/moon_phases.png";
+
+    /** The layer of clouds, white shapes on a transparent ground. */
+    public static final String CLOUD_PICTURE = "environment/clouds.png";
+
+    /** Side of one phase of the moon inside {@link #MOON_PICTURES}, in pixels. */
+    public static final int MOON_CELL = 32;
+
+    /** Phases in a row of {@link #MOON_PICTURES}. */
+    public static final int MOON_COLUMNS = 4;
+
+    /** Phases of the moon, one to a day, so a world sees a whole moon every eight days. */
+    public static final int MOON_PHASES = 8;
+
+    /** Blocks one pixel of {@link #CLOUD_PICTURE} is drawn as. */
+    public static final int CLOUD_BLOCKS_PER_PIXEL = 2;
+
+    /** Blocks one copy of the layer of clouds covers, a square of the picture of the same name. */
+    public static final int CLOUD_TILE = 256 * CLOUD_BLOCKS_PER_PIXEL;
+
+    /** Tiles of the layer of clouds drawn around the camera, on either side of it. */
+    public static final int CLOUD_RADIUS = 1;
+
+    /** Height the layer of clouds is drawn at, above the terrain a player walks on. */
+    public static final int CLOUD_Y = 180;
+
+    /** How far the layer of clouds drifts per tick, in blocks. */
+    public static final float CLOUD_DRIFT = 0.012f;
 
     /** Share of the view distance a body of the sky is drawn at, far enough to stand behind anything. */
     private static final float BODY_DISTANCE_SHARE = 0.9f;
@@ -37,54 +82,92 @@ public final class SkyRenderer implements Disposable {
     /** How quickly a body fades away as it reaches the horizon. */
     private static final float BODY_FADE = 6.0f;
 
-    /** Vertices one triangle of the sky is written with. */
-    public static final int VERTICES_PER_TRIANGLE = 3;
+    /** Quads the batch of the sky is built for, which is the bodies and the tiles of the clouds. */
+    private static final int SKY_SPRITES = 4 * 4 + 2;
 
-    /** Triangles one square of the sky is written with. */
-    public static final int TRIANGLES_PER_SQUARE = 2;
+    /** Vertex program of the sky, the one a batch of libGDX asks for. */
+    private static final String VERTEX_SHADER = """
+            #version 150
+            in vec2 a_position;
+            in vec2 a_texCoord0;
+            in vec4 a_color;
 
-    /** Vertices one square of the sky is written with. */
-    public static final int VERTICES_PER_SQUARE = TRIANGLES_PER_SQUARE * VERTICES_PER_TRIANGLE;
+            uniform mat4 u_projTrans;
 
-    /** Vertices one cell of the layer of clouds is written with, which is the square of one cloud. */
-    public static final int VERTICES_PER_CELL = VERTICES_PER_SQUARE;
+            out vec2 v_texCoords;
+            out vec4 v_color;
 
-    /**
-     * Vertices the pass of a sky may write into one frame.
-     * <p>
-     * How much a sky costs is a number of this class and not of the world: the layer of clouds is drawn
-     * around the camera and not over a whole world, see {@link #cloudLayerVertices()} and
-     * {@link #bodyVertices()}. The buffer is a little larger than the two of them together, and a pass that
-     * would run past its end is cut short instead of breaking the frame, see {@link #triangle}.
-     */
-    public static final int MAX_VERTICES = 2048;
-
-    /** Height the layer of clouds is drawn at, above the terrain a player walks on. */
-    public static final int CLOUD_Y = 180;
-
-    /** Side of one cell of the layer of clouds, in blocks. */
-    public static final float CLOUD_CELL = 24.0f;
-
-    /** Cells of the layer of clouds drawn around the camera, on either side of it. */
-    public static final int CLOUD_RADIUS = 6;
-
-    /** How far the layer of clouds drifts per tick, in blocks. */
-    public static final float CLOUD_DRIFT = 0.012f;
-
-    /** How solid a cloud is drawn. */
-    public static final float CLOUD_ALPHA = 0.55f;
+            void main() {
+                v_texCoords = a_texCoord0;
+                v_color = a_color;
+                gl_Position = u_projTrans * vec4(a_position, 0.0, 1.0);
+            }
+            """;
 
     /**
-     * The triangles of the sky.
+     * Fragment program of the sky.
      * <p>
-     * A sky is written as it is drawn and kept nowhere: a body of it is one square of two triangles and the
-     * layer of clouds is a few hundred of them, so the frames of this pass cost what they draw and no buffer
-     * of the game is touched. Every vertex carries its own colour, which is how the sun fades away as it
-     * reaches the horizon, see {@link #drawBody}, and the buffer holds the whole sky of a frame, see
-     * {@link #MAX_VERTICES}.
+     * How much of a texel is drawn is its own alpha times how bright it is. That one line is what the art of
+     * the sky asks for: the sun and the moon are glowing bodies on a black ground and the layer of clouds is
+     * white shapes on a transparent one, so a black texel of a body has to leave the sky standing and a white
+     * one has to stand in it. The colour of a body is drawn at its own brightness and not added to the sky,
+     * because adding a warm body to a bright blue sky saturates three channels at once - which is a white
+     * square and not a sun.
      */
-    private final ImmediateModeRenderer20 triangles =
-            new ImmediateModeRenderer20(MAX_VERTICES, true, false, 0);
+    private static final String FRAGMENT_SHADER = """
+            #version 150
+            in vec2 v_texCoords;
+            in vec4 v_color;
+
+            uniform sampler2D u_texture;
+
+            out vec4 fragColor;
+
+            void main() {
+                vec4 texel = texture(u_texture, v_texCoords);
+                float lit = max(max(texel.r, texel.g), texel.b);
+                float share = lit * texel.a;
+                if (share <= 0.02) {
+                    discard;
+                }
+                fragColor = vec4(texel.rgb * v_color.rgb, share * v_color.a);
+            }
+            """;
+
+    /** The batch of the three passes of the sky, owned by this renderer. */
+    private final SpriteBatch batch;
+
+    /**
+     * Program of the pass, {@code null} when it did not compile.
+     * <p>
+     * A sky the driver refuses to compile is no sky at all rather than a broken frame: the pictures are left
+     * out with it and the world keeps its colour of the hour, see the constructor.
+     */
+    private final ShaderProgram program;
+
+    /** Picture of the sun, {@code null} when the asset pack does not carry it. */
+    private final Texture sunPicture;
+
+    /** Picture holding the phases of the moon, {@code null} when the asset pack does not carry it. */
+    private final Texture moonPictures;
+
+    /** Picture of the layer of clouds, {@code null} when the asset pack does not carry it. */
+    private final Texture cloudPicture;
+
+    /** The whole picture of the sun, {@code null} while there is none. */
+    private final TextureRegion sun;
+
+    /** The phases of the moon, cut once, {@code null} where the picture is missing. */
+    private final TextureRegion[] moonPhases = new TextureRegion[MOON_PHASES];
+
+    /** The whole picture of the clouds, {@code null} while there is none. */
+    private final TextureRegion clouds;
+
+    /** Matrix placing one quad, reused every frame instead of filling the heap with matrices. */
+    private final Matrix4 model = new Matrix4();
+
+    /** Placement of the layer of clouds, the flat plane of a tile lifted to {@link #CLOUD_Y}. */
+    private final Matrix4 flat = new Matrix4();
 
     /** Colour of the pass being written, reused every frame. */
     private final Color colour = new Color();
@@ -98,11 +181,30 @@ public final class SkyRenderer implements Disposable {
     /** Direction of the body being written, the way from the eye to it. */
     private final Vector3 direction = new Vector3();
 
-    /** First axis of the square a body is written as, reused every frame. */
-    private final Vector3 axisRight = new Vector3();
-
-    /** Second axis of the square a body is written as, reused every frame. */
-    private final Vector3 axisUp = new Vector3();
+    /**
+     * Loads the pictures of the sky.
+     * <p>
+     * A picture the asset pack does not carry leaves its part of the sky out instead of breaking the frame,
+     * so a world with a sun and no clouds can still be played, see {@link #load(String)}.
+     */
+    public SkyRenderer() {
+        this.program = program();
+        this.batch = new SpriteBatch(SKY_SPRITES, program);
+        this.sunPicture = program == null ? null : load(SUN_PICTURE);
+        this.moonPictures = program == null ? null : load(MOON_PICTURES);
+        this.cloudPicture = program == null ? null : load(CLOUD_PICTURE);
+        this.sun = region(sunPicture);
+        this.clouds = region(cloudPicture);
+        for (int phase = 0; phase < MOON_PHASES; phase++) {
+            moonPhases[phase] = moonPictures == null ? null
+                    : new TextureRegion(moonPictures, phase % MOON_COLUMNS * MOON_CELL,
+                            phase / MOON_COLUMNS * MOON_CELL, MOON_CELL, MOON_CELL);
+        }
+        // A tile of the clouds is the flat plane of the batch turned into the ground of the sky and lifted
+        // to the height of the layer: the first axis of a tile runs along the world, the second one runs into
+        // it, see #drawClouds.
+        this.flat.translate(0.0f, CLOUD_Y, 0.0f).rotate(Vector3.X, -90.0f);
+    }
 
     /**
      * Draws the sky of a world.
@@ -114,27 +216,25 @@ public final class SkyRenderer implements Disposable {
         Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
         Gdx.gl.glDepthMask(false);
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         Gdx.gl.glDisable(GL20.GL_CULL_FACE);
+        batch.setProjectionMatrix(camera.combined);
 
         float distance = camera.far * BODY_DISTANCE_SHARE;
+        float height = DayCycle.sunHeight(worldTime);
         DayCycle.sunDirection(worldTime, direction);
         sunPosition.set(camera.position).mulAdd(direction, distance);
         DayCycle.moonDirection(worldTime, direction);
         moonPosition.set(camera.position).mulAdd(direction, distance);
         // The sun fades away as it reaches the horizon and the moon fades in on the other side, so a body
-        // that stands below the ground is never drawn over the terrain.
-        float height = DayCycle.sunHeight(worldTime);
-        float sunFade = MathUtils.clamp(height * BODY_FADE, 0.0f, 1.0f);
-        float moonFade = MathUtils.clamp(-height * BODY_FADE, 0.0f, 1.0f);
-
-        triangles.begin(camera.combined, GL20.GL_TRIANGLES);
-        drawBody(camera, sunPosition, DayCycle.SUN_SIZE, sunFade,
+        // that stands below the ground is never drawn over the terrain. The moon keeps its own brightness:
+        // it is what lights the night, see DayCycle.
+        drawBody(camera, sun, sunPosition, DayCycle.SUN_SIZE,
+                MathUtils.clamp(height * BODY_FADE, 0.0f, 1.0f),
                 DayCycle.SUN_RED, DayCycle.SUN_GREEN, DayCycle.SUN_BLUE);
-        drawBody(camera, moonPosition, DayCycle.MOON_SIZE, moonFade,
+        drawBody(camera, moonPhases[moonPhase(worldTime)], moonPosition, DayCycle.MOON_SIZE,
+                MathUtils.clamp(-height * BODY_FADE, 0.0f, 1.0f),
                 DayCycle.MOON_RED, DayCycle.MOON_GREEN, DayCycle.MOON_BLUE);
         drawClouds(camera, worldTime);
-        triangles.end();
 
         Gdx.gl.glDepthMask(true);
         Gdx.gl.glDisable(GL20.GL_BLEND);
@@ -142,148 +242,167 @@ public final class SkyRenderer implements Disposable {
     }
 
     /**
-     * Draws one body of the sky as a square that always faces the eye.
+     * Draws one body of the sky: a quad that turns its face to the eye and stands where the clock puts it.
      * <p>
-     * The two axes of the square are taken from the view itself - across the line of sight and up it - so
-     * the body keeps its shape wherever a player looks.
+     * The body is drawn through its own brightness, see {@link #FRAGMENT_SHADER}: the ground of its picture is
+     * black and leaves the sky standing, which is what makes the body a body and not a square of a picture.
+     * The two axes of the quad are the axes of the camera, so the body keeps its face wherever a player looks.
      *
      * @param camera camera the sky is seen through
+     * @param picture art of the body, {@code null} draws nothing
      * @param position where the body stands, a point of the sphere of the sky
-     * @param size side of the square
+     * @param size side of the quad, the dark ground of the picture included
      * @param fade how solid the body is drawn, {@code 0} draws nothing
-     * @param red red share of its colour
-     * @param green green share of its colour
-     * @param blue blue share of its colour
+     * @param red red share of the tint of its art
+     * @param green green share of the tint of its art
+     * @param blue blue share of the tint of its art
      */
-    private void drawBody(Camera camera, Vector3 position, float size, float fade,
+    private void drawBody(Camera camera, TextureRegion picture, Vector3 position, float size, float fade,
             float red, float green, float blue) {
-        if (fade <= 0.0f) {
+        if (picture == null || fade <= 0.0f) {
             return;
         }
-        colour.set(red, green, blue, fade);
-        triangles.color(colour);
-        direction.set(position).sub(camera.position).nor();
-        axisRight.set(direction).crs(camera.up).nor().scl(size * 0.5f);
-        axisUp.set(axisRight).crs(direction).nor().scl(size * 0.5f);
-        float x = position.x;
-        float y = position.y;
-        float z = position.z;
-        float x1 = x - axisRight.x - axisUp.x;
-        float y1 = y - axisRight.y - axisUp.y;
-        float z1 = z - axisRight.z - axisUp.z;
-        float x2 = x + axisRight.x - axisUp.x;
-        float y2 = y + axisRight.y - axisUp.y;
-        float z2 = z + axisRight.z - axisUp.z;
-        float x3 = x + axisRight.x + axisUp.x;
-        float y3 = y + axisRight.y + axisUp.y;
-        float z3 = z + axisRight.z + axisUp.z;
-        float x4 = x - axisRight.x + axisUp.x;
-        float y4 = y - axisRight.y + axisUp.y;
-        float z4 = z - axisRight.z + axisUp.z;
-        triangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
-        triangle(x1, y1, z1, x3, y3, z3, x4, y4, z4);
-    }
-
-    /**
-     * Writes one triangle of the sky.
-     *
-     * @param x1 X coordinate of the first corner
-     * @param y1 Y coordinate of the first corner
-     * @param z1 Z coordinate of the first corner
-     * @param x2 X coordinate of the second corner
-     * @param y2 Y coordinate of the second corner
-     * @param z2 Z coordinate of the second corner
-     * @param x3 X coordinate of the third corner
-     * @param y3 Y coordinate of the third corner
-     * @param z3 Z coordinate of the third corner
-     */
-    private void triangle(float x1, float y1, float z1, float x2, float y2, float z2,
-            float x3, float y3, float z3) {
-        if (triangles.getNumVertices() + VERTICES_PER_TRIANGLE > MAX_VERTICES) {
-            // A frame is never broken by a sky: what does not fit into the buffer is dropped instead of
-            // written past its end. What fits is decided by the numbers above, see MAX_VERTICES.
-            return;
-        }
-        triangles.vertex(x1, y1, z1);
-        triangles.vertex(x2, y2, z2);
-        triangles.vertex(x3, y3, z3);
-    }
-
-    /**
-     * Vertices one whole layer of clouds is written with, every cell of it drawn.
-     *
-     * @return the worst case of the pass over the clouds
-     */
-    public static int cloudLayerVertices() {
-        return (CLOUD_RADIUS * 2 + 1) * (CLOUD_RADIUS * 2 + 1) * VERTICES_PER_CELL;
-    }
-
-    /**
-     * Vertices the two bodies of the sky are written with, the sun and the moon.
-     *
-     * @return the worst case of the two squares of the sky
-     */
-    public static int bodyVertices() {
-        return 2 * VERTICES_PER_SQUARE;
+        model.set(camera.view).inv().setTranslation(position);
+        batch.setTransformMatrix(model);
+        batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        batch.begin();
+        batch.setColor(red, green, blue, fade);
+        batch.draw(picture, -size * 0.5f, -size * 0.5f, size, size);
+        batch.end();
     }
 
     /**
      * Draws the layer of clouds over the camera.
      * <p>
-     * The field of clouds is anchored to the world and not to the player: the drift of the layer is a value
-     * of the day, so a player who walks on sees the same cloud from the other side and a player who stands
-     * still watches it travel. Only the cells around the camera are drawn, which is what keeps a frame at
-     * the clouds it can see instead of a layer of a whole world.
+     * The layer is the picture of the clouds laid on the ground of the sky, one copy of it every
+     * {@link #CLOUD_TILE} blocks, and the copies around the camera are drawn. <b>The layer stands in the world
+     * and not in the view</b>: which copy of it a player walks under is a question of the world they are in
+     * and of the drift of the day, so a player who turns around finds the same clouds behind them and one who
+     * walks on walks under them.
      *
      * @param camera camera the sky is seen through
      * @param worldTime time of the day in ticks, see {@link DayCycle}
      */
     private void drawClouds(Camera camera, long worldTime) {
-        float drift = worldTime * CLOUD_DRIFT;
-        float brightness = DayCycle.cloudBrightness(worldTime);
-        colour.set(brightness, brightness, brightness, CLOUD_ALPHA * brightness);
-        triangles.color(colour);
-        int cellX = MathUtils.floor((camera.position.x - drift) / CLOUD_CELL);
-        int cellZ = MathUtils.floor(camera.position.z / CLOUD_CELL);
+        if (clouds == null) {
+            return;
+        }
+        float drift = cloudDrift(worldTime);
+        float tileX = MathUtils.floor((camera.position.x - drift) / CLOUD_TILE) * (float) CLOUD_TILE
+                + drift;
+        float tileZ = MathUtils.floor(camera.position.z / CLOUD_TILE) * (float) CLOUD_TILE;
+        DayCycle.cloudTint(worldTime, colour);
+        batch.setTransformMatrix(flat);
+        batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        batch.begin();
+        batch.setColor(colour);
         for (int aroundX = -CLOUD_RADIUS; aroundX <= CLOUD_RADIUS; aroundX++) {
             for (int aroundZ = -CLOUD_RADIUS; aroundZ <= CLOUD_RADIUS; aroundZ++) {
-                if (!cloudAt(cellX + aroundX, cellZ + aroundZ)) {
-                    continue;
-                }
-                float x = (cellX + aroundX) * CLOUD_CELL + drift;
-                float z = (cellZ + aroundZ) * CLOUD_CELL;
-                float x2 = x + CLOUD_CELL;
-                float z2 = z + CLOUD_CELL;
-                triangle(x, CLOUD_Y, z, x, CLOUD_Y, z2, x2, CLOUD_Y, z2);
-                triangle(x, CLOUD_Y, z, x2, CLOUD_Y, z2, x2, CLOUD_Y, z);
+                float x = tileX + aroundX * (float) CLOUD_TILE;
+                float z = tileZ + aroundZ * (float) CLOUD_TILE;
+                // The second axis of a tile of the batch runs backwards in the world, so a tile covering the
+                // blocks between z and z + CLOUD_TILE is laid at the negative of them, see the flat matrix.
+                batch.draw(clouds, x, -z - CLOUD_TILE, CLOUD_TILE, CLOUD_TILE);
             }
         }
+        batch.end();
     }
 
     /**
-     * Whether the layer of clouds carries a cloud in one cell of it.
+     * Phase the moon stands in, one phase to a day.
      * <p>
-     * The pattern is a hash of the cell of the layer and not a random number, so the same cells carry clouds
-     * in every frame and in every session: the gaps of the layer are the shape of the clouds, and a player
-     * who walks back finds them where they were.
+     * The picture of the phases is a sheet of {@link #MOON_PHASES} of them and the day a world is in decides
+     * which one is drawn, so the moon of a world walks through a whole moon every eight days the way a moon
+     * does.
      *
-     * @param cellX cell of the layer along the first horizontal axis
-     * @param cellZ cell of the layer along the second horizontal axis
-     * @return {@code true} when that cell has a cloud
+     * @param worldTime time of the world in ticks, see {@link DayCycle}
+     * @return the phase, {@code 0} for the first of the sheet and up to {@code MOON_PHASES - 1}
      */
-    public static boolean cloudAt(int cellX, int cellZ) {
-        int hash = cellX * 374761393 + cellZ * 668265263;
-        hash = (hash ^ (hash >>> 13)) * 1274126177;
-        return ((hash ^ (hash >>> 16)) & 3) != 0;
+    public static int moonPhase(long worldTime) {
+        return (int) Math.floorMod(worldTime / DayCycle.DAY_TICKS, (long) MOON_PHASES);
+    }
+
+    /**
+     * How far the layer of clouds has drifted at a moment, wrapped into one tile.
+     * <p>
+     * The drift is a value of the day and never of the player: the field of clouds moves over the world while
+     * nobody walks anywhere. It is wrapped into the size of one tile, because only the place of the fields
+     * matters and not how many of them have passed: without that, a world played for hours would have drifted
+     * thousands of blocks away and the arithmetic of a float would start to step in whole blocks.
+     *
+     * @param worldTime time of the world in ticks, see {@link DayCycle}
+     * @return the drift, between {@code 0} and {@code CLOUD_TILE}
+     */
+    public static float cloudDrift(long worldTime) {
+        float drift = worldTime * CLOUD_DRIFT;
+        return drift - MathUtils.floor(drift / CLOUD_TILE) * (float) CLOUD_TILE;
+    }
+
+    /**
+     * Builds the program of the sky.
+     *
+     * @return the program, or {@code null} when the driver refused it
+     */
+    private static ShaderProgram program() {
+        ShaderProgram shader = new ShaderProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+        if (!shader.isCompiled()) {
+            LOGGER.error("The sky cannot be drawn, its program was refused: {}", shader.getLog());
+            shader.dispose();
+            return null;
+        }
+        return shader;
+    }
+
+    /**
+     * Loads one picture of the sky.
+     *
+     * @param path path of the picture relative to the asset root
+     * @return the picture, or {@code null} when the asset pack does not carry it
+     */
+    private static Texture load(String path) {
+        if (!Gdx.files.internal(path).exists()) {
+            LOGGER.warn("The picture {} is missing, that part of the sky is not drawn", path);
+            return null;
+        }
+        Texture texture = new Texture(Gdx.files.internal(path));
+        // Pixel art: one texel of a picture is there to be seen, so nothing is interpolated between two.
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        return texture;
+    }
+
+    /**
+     * Wraps a picture into a region.
+     *
+     * @param texture picture, may be {@code null}
+     * @return the region, or {@code null} when there is no picture
+     */
+    private static TextureRegion region(Texture texture) {
+        return texture == null ? null : new TextureRegion(texture);
     }
 
     @Override
     public void dispose() {
-        triangles.dispose();
+        batch.dispose();
+        // The program was handed to the batch, which does not own it, so it is released here.
+        if (program != null) {
+            program.dispose();
+        }
+        // The pictures of the sky are read by this renderer and are not handed out by the cache of the game,
+        // so they belong to it.
+        if (sunPicture != null) {
+            sunPicture.dispose();
+        }
+        if (moonPictures != null) {
+            moonPictures.dispose();
+        }
+        if (cloudPicture != null) {
+            cloudPicture.dispose();
+        }
     }
 
     @Override
     public String toString() {
-        return "SkyRenderer(" + (CLOUD_RADIUS * 2 + 1) + " by " + (CLOUD_RADIUS * 2 + 1) + " cloud cells)";
+        return "SkyRenderer(" + (CLOUD_RADIUS * 2 + 1) + " by " + (CLOUD_RADIUS * 2 + 1)
+                + " tiles of clouds)";
     }
 }
