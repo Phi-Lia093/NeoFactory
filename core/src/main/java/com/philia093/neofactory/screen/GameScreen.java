@@ -398,9 +398,15 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
-            // A container that is hidden behind the screen of recipes takes no click either, or a player
-            // would move an item in a panel they cannot see, see #renderInterface.
+            // A screen that is hidden behind the screen of recipes takes no click either, or a player would
+            // move an item in a panel they cannot see, see #renderInterface.
             if (!recipeBrowser.isOpen()) {
+                if (creativeGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                    return true;
+                }
+                if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                    return true;
+                }
                 if (machineGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                     return true;
                 }
@@ -1058,10 +1064,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 interfaceMouse.x, interfaceMouse.y, !isInterfaceOpen());
         creativeGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
-        // The screen of recipes stands <b>in the place</b> of the container it was opened from and not on top
-        // of it: while it is up the container is not drawn at all, so no two panels ever stand on each other,
-        // and closing the screen of recipes gives the container back, see #closeContainers.
+        // The screen of recipes stands <b>in the place</b> of the screen it was opened from and not on top of
+        // it: while it is up, neither the container nor the inventory of the player is drawn, so no two
+        // panels ever stand on each other, and closing it gives them back, see #closeContainers.
         if (!recipeBrowser.isOpen()) {
+            creativeGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+            inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
             machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
             containerGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         }

@@ -36,7 +36,10 @@ import com.philia093.neofactory.render.PixelFont;
 public final class ContainerGui {
 
     /** Pixels between the upper edge of the panel and the top of the name. */
-    public static final int TITLE_TOP = 6;
+    public static final int TITLE_TOP = 2;
+
+    /** Pixels between the frame of the panel and the name of the container, which is written flush left. */
+    public static final int TITLE_LEFT = 2;
 
     /**
      * Colour of the name of the container.
@@ -381,7 +384,7 @@ public final class ContainerGui {
         }
         float y = panelY + panelHeight - TITLE_TOP - font.lineHeight();
         font.setColor(TEXT_COLOR);
-        font.drawShadowed(batch, title, panelX + ContainerLayout.PADDING, y);
+        font.drawShadowed(batch, title, panelX + TITLE_LEFT, y);
         font.setColor(Color.WHITE);
     }
 

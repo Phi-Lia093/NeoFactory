@@ -56,7 +56,7 @@ public final class MachineMenu {
     public static final int UPGRADE_LEFT = 152;
 
     /** Upper edge of the first machine slot. */
-    public static final int MACHINE_TOP = 20;
+    public static final int MACHINE_TOP = 12;
 
     /** Y the column of the upgrade slots grows up from, its lower right corner. */
     public static final int UPGRADE_BOTTOM = 58;
@@ -88,7 +88,7 @@ public final class MachineMenu {
     public static final int CONFIGURE_LEFT = 96;
 
     /** X of the title in the upper left corner, at the frame of the panel. */
-    public static final int TEXT_LEFT = 4;
+    public static final int TEXT_LEFT = 2;
 
     /**
      * Y of the title and of the status line, at the frame of the panel.
@@ -97,7 +97,7 @@ public final class MachineMenu {
      * to hold it: two pixels more than the frame, a line of {@code PixelFont.ASCII_CELL_SIZE} pixels and the
      * air under it, so nothing the screen writes ever reaches the first row of slots.
      */
-    public static final int TEXT_TOP = 6;
+    public static final int TEXT_TOP = 2;
 
     /** X the status line is aligned to when no upgrade slot stands at the right edge. */
     public static final int TEXT_RIGHT = WIDTH - TEXT_LEFT;

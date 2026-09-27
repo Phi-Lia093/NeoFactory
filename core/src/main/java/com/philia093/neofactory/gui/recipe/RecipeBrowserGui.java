@@ -353,20 +353,14 @@ public final class RecipeBrowserGui {
         return RecipeBrowserLayout.height(list);
     }
 
-    /** X coordinate of the left edge of the panel, beside the slot it was opened at. */
+    /** X coordinate of the left edge of the panel, in the middle of the interface. */
     public float panelX() {
-        float right = anchorX + anchorWidth + 4;
-        if (right + RecipeBrowserLayout.WIDTH > viewport.guiWidth()) {
-            // No room beside the slot on the right: the panel stands on its left.
-            return Math.max(2, anchorX - 4 - RecipeBrowserLayout.WIDTH);
-        }
-        return right;
+        return Math.round((viewport.guiWidth() - RecipeBrowserLayout.WIDTH) * 0.5f);
     }
 
-    /** Y coordinate of the lower edge of the panel, level with the slot it was opened at. */
+    /** Y coordinate of the lower edge of the panel, in the middle of the interface. */
     public float panelY() {
-        return Math.round(Math.max(2, Math.min(anchorY, viewport.guiHeight()
-                - RecipeBrowserLayout.height(list) - 2)));
+        return Math.round((viewport.guiHeight() - RecipeBrowserLayout.height(list)) * 0.5f);
     }
 
     /** {@code true} when a point of the interface lies on the panel. */
