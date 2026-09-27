@@ -145,6 +145,12 @@ public final class RecipeBrowserGui {
     /** Cell of the panel the mouse points at, {@code -1} while it points beside every cell. */
     private int hovered = -1;
 
+    /** X coordinate of the mouse of the frame that is being drawn, for the buttons of the panel. */
+    private float mouseX;
+
+    /** Y coordinate of that mouse, from the bottom of the interface. */
+    private float mouseY;
+
     /** Rectangle of the slot the screen was opened at, used to place the panel beside it. */
     private float anchorX;
     private float anchorY;
@@ -620,6 +626,8 @@ public final class RecipeBrowserGui {
         if (!open) {
             return;
         }
+        this.mouseX = mouseX;
+        this.mouseY = mouseY;
         float x = panelX();
         float y = panelY();
         int height = panelHeight();
@@ -827,9 +835,12 @@ public final class RecipeBrowserGui {
      */
     private void drawFooter(SpriteBatch batch, float x, float y, int height, String line) {
         drawPageButton(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_PREV_X, page > 0,
+                RecipeBrowserLayout.isOnPrevious(localX(mouseX), localY(mouseY), false),
                 nei.arrowPrevious(), "<");
         drawPageButton(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_NEXT_X,
-                page + 1 < pageCount(), nei.arrowNext(), ">");
+                page + 1 < pageCount(),
+                RecipeBrowserLayout.isOnNext(localX(mouseX), localY(mouseY), false),
+                nei.arrowNext(), ">");
         drawLine(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_PAGE_TEXT_X,
                 RecipeBrowserLayout.TEMPLATE_PAGE_Y, (page + 1) + "/" + pageCount(), TEXT_COLOR);
         if (!line.isEmpty()) {
@@ -838,15 +849,18 @@ public final class RecipeBrowserGui {
         }
     }
 
-    /** Draws one button of the page: the ground of NEI with the arrow of NEI on top of it. */
+    /**
+     * Draws one button of the page: the ground of NEI with the arrow of NEI on top of it.
+     * <p>
+     * The ground of the pack is named the other way round from what it looks like:
+     * {@code button_enabled} is the button the mouse is <b>not</b> over and {@code button_highlight} the one
+     * it is, so the two are chosen by what the mouse points at and not by what the button can do.
+     */
     private void drawPageButton(SpriteBatch batch, float x, float y, int height, int left, boolean usable,
-            TextureRegion arrow, String fallback) {
+            boolean pointed, TextureRegion arrow, String fallback) {
         int size = RecipeBrowserLayout.TEMPLATE_BUTTON_SIZE;
         float bottom = y + height - RecipeBrowserLayout.TEMPLATE_PAGE_Y - size;
-        TextureRegion ground = usable ? nei.buttonHighlight() : nei.buttonDisabled();
-        if (ground == null) {
-            ground = usable ? nei.button() : null;
-        }
+        TextureRegion ground = groundOf(usable, pointed, size);
         if (ground != null) {
             batch.draw(ground, x + left, bottom, size, size);
         }
@@ -858,6 +872,23 @@ public final class RecipeBrowserGui {
             drawLine(batch, x, y, height, left, RecipeBrowserLayout.TEMPLATE_PAGE_Y
                     + (size - PixelFont.ASCII_CELL_SIZE) / 2, fallback, TEXT_COLOR);
         }
+    }
+
+    /**
+     * The ground of a button: the art of the pack, cut down to the size the button is drawn in.
+     * <p>
+     * The button of NEI is {@code NeiTextures.BUTTON_SIZE} pixels wide and a small button is
+     * {@link RecipeBrowserLayout#SMALL_BUTTON} of them: the picture is <b>cut</b> and not scaled, so the
+     * bevel of the button keeps its pixels the way the frame of a panel keeps its own, see
+     * {@link NeiTextures#smallButton(boolean, boolean)}.
+     *
+     * @param usable {@code true} when the button can be used
+     * @param pointed {@code true} while the mouse points at it
+     * @param size side the button is drawn in
+     * @return the picture, {@code null} when the pack carries none
+     */
+    private TextureRegion groundOf(boolean usable, boolean pointed, int size) {
+        return usable ? (pointed ? nei.buttonHighlight() : nei.button()) : nei.buttonDisabled();
     }
 
     /**

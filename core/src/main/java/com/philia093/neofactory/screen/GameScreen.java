@@ -1641,6 +1641,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private void openRecipeBrowser(boolean uses) {
         Slot slot = slotUnderMouse();
         ItemStack hovered = slot == null ? ItemStack.EMPTY : slot.stack();
+        if (hovered.isEmpty()) {
+            // The screen of recipes answers a question about an item, and the question is asked by pointing at
+            // one: a key pressed with the mouse beside every slot asks nothing and opens nothing.
+            LOGGER.info("No item under the mouse, the screen of recipes stays closed");
+            return;
+        }
         // The panel is placed beside the cursor, which is the slot the item lies in.
         recipeBrowser.open(hovered, uses, interfaceMouse.x - Constants.ITEM_ICON_SIZE * 0.5f,
                 interfaceMouse.y - Constants.ITEM_ICON_SIZE * 0.5f, Constants.ITEM_ICON_SIZE,
