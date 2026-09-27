@@ -437,12 +437,20 @@ public final class MachineMenu {
 
     /** Row of the flame of this machine while it burns, which is the one of its style. */
     public int flameRow() {
-        return style() == MachineStyle.BRONZE ? FLAME_COPPER_ROW : FLAME_NORMAL_ROW;
+        return switch (style()) {
+            case BRONZE -> FLAME_COPPER_ROW;
+            case STEEL -> FLAME_STEEL_ROW;
+            case NORMAL -> FLAME_NORMAL_ROW;
+        };
     }
 
     /** Row of the flame of this machine while its fire is out, which is the one of its style. */
     public int flameOutRow() {
-        return style() == MachineStyle.BRONZE ? FLAME_COPPER_OUT_ROW : FLAME_NORMAL_OUT_ROW;
+        return switch (style()) {
+            case BRONZE -> FLAME_COPPER_OUT_ROW;
+            case STEEL -> FLAME_STEEL_OUT_ROW;
+            case NORMAL -> FLAME_NORMAL_OUT_ROW;
+        };
     }
 
     /**

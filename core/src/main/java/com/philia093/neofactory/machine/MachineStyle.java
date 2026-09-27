@@ -36,7 +36,16 @@ public enum MachineStyle {
      * Its plain slot is the first slot of its own inventory - the same cell of the panel the grey style takes
      * its slot from, only one panel lower in the sheet.
      */
-    BRONZE(166, 7, 249);
+    BRONZE(166, 7, 249),
+
+    /**
+     * The age of steel: the dark panel below the bronze one, with the steel slots and bars of the sheet.
+     * <p>
+     * The sheet carries one panel per age and every panel is laid out the same way, so this one is two panels
+     * below the grey one and its plain slot stands in the very cell of its own panel the plain slot of bronze
+     * stands in - two panels lower in the sheet, which is the panel below the bronze one.
+     */
+    STEEL(332, 7, 415);
 
     private final int panelY;
     private final int slotX;
