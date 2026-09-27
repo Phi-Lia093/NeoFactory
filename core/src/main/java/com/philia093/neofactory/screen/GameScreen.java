@@ -1694,16 +1694,28 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * Lays a recipe the player clicked out into the field that is open.
      *
      * @param recipe recipe that was clicked
+     * @param many {@code true} when the shift key asked for as many copies as the field of a player takes
      * @return the line the screen of recipes writes in its foot
      */
-    private String layOut(Recipe recipe) {
+    private String layOut(Recipe recipe, boolean many) {
+        return layOut(recipe, many ? RecipeArranger.FULL_STACK : 1);
+    }
+
+    /**
+     * Lays a recipe the player clicked out into the field that is open, a stack of it to a cell at most.
+     *
+     * @param recipe recipe that was clicked
+     * @param copies how many items of an ingredient one cell of the field takes at most
+     * @return the line the screen of recipes writes in its foot
+     */
+    private String layOut(Recipe recipe, int copies) {
         RecipeGridWriter field = openField();
         if (field == null) {
             return "open a table first";
         }
         boolean creative = gameMode() == GameMode.CREATIVE;
         RecipeArranger.Arrangement arrangement = RecipeArranger.arrange(recipe, field,
-                player.inventory(), creative);
+                player.inventory(), creative, copies);
         if (arrangement.isComplete()) {
             return arrangement.placed() + " cells laid out";
         }

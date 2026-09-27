@@ -67,6 +67,9 @@ public final class RecipeArranger {
         // Utility class: never instantiated.
     }
 
+    /** How many items of one kind fit into a single cell of a field, which is the size of a stack. */
+    public static final int FULL_STACK = 64;
+
     /**
      * Lays a recipe into a grid.
      *
@@ -84,7 +87,42 @@ public final class RecipeArranger {
         List<Item> missing = new ArrayList<>();
         int placed = 0;
         for (Place place : placesOf(recipe, into)) {
-            if (lay(place.ingredient(), into, place.x(), place.y(), source, conjure)) {
+            if (lay(place.ingredient(), into, place.x(), place.y(), source, conjure, 1)) {
+                placed++;
+            } else {
+                missing.add(representative(place.ingredient()));
+            }
+        }
+        return new Arrangement(recipe, placed, missing);
+    }
+
+    /**
+     * Lays a recipe into a grid, with as many items of an ingredient in a cell as the request asks for.
+     * <p>
+     * A cell of a field holds a stack and not a lone item, and a player who holds a stack of planks means to
+     * craft as often as that stack lasts them, which is what the shift key asks for. Items of one kind only
+     * are gathered into a cell: an ingredient of a tag is satisfied by several items, and a stack of two
+     * kinds is not a stack.
+     *
+     * @param recipe recipe to lay out
+     * @param into grid that is filled
+     * @param source inventory the items are taken from, {@code null} for a grid that is filled from nowhere
+     * @param conjure {@code true} in creative mode, where a missing item is put into the cell anyway
+     * @param copies how many items of an ingredient one cell takes at most
+     * @return what was placed and what is missing
+     */
+    public static Arrangement arrange(Recipe recipe, RecipeGridWriter into, Inventory source,
+            boolean conjure, int copies) {
+        if (copies <= 1) {
+            return arrange(recipe, into, source, conjure);
+        }
+        Objects.requireNonNull(recipe, "recipe");
+        Objects.requireNonNull(into, "into");
+
+        List<Item> missing = new ArrayList<>();
+        int placed = 0;
+        for (Place place : placesOf(recipe, into)) {
+            if (lay(place.ingredient(), into, place.x(), place.y(), source, conjure, copies)) {
                 placed++;
             } else {
                 missing.add(representative(place.ingredient()));
@@ -140,9 +178,13 @@ public final class RecipeArranger {
         return places;
     }
 
-    /** Fills one cell, {@code true} when it holds an item of the ingredient afterwards. */
+    /**
+     * Fills one cell, {@code true} when it holds an item of the ingredient afterwards.
+     *
+     * @param copies how many items of the ingredient the cell takes at most
+     */
     private static boolean lay(Ingredient ingredient, RecipeGridWriter into, int x, int y,
-            Inventory source, boolean conjure) {
+            Inventory source, boolean conjure, int copies) {
         if (x >= into.width() || y >= into.height()) {
             // The recipe is wider than the grid: the rest of it is reported as missing, see #fits.
             return false;
@@ -150,15 +192,61 @@ public final class RecipeArranger {
         if (ingredient.matches(into.get(x, y))) {
             return true;
         }
-        Item item = take(source, ingredient);
+        int limit = Math.max(1, copies);
+        Item item = kindIn(source, ingredient);
         if (item == null && conjure) {
             item = representative(ingredient);
+            if (item != null) {
+                into.place(x, y, ItemStack.of(item, limit));
+                return true;
+            }
         }
         if (item == null) {
             return false;
         }
-        into.place(x, y, ItemStack.of(item, 1));
+        int taken = takeMany(source, ingredient, item, limit);
+        if (taken == 0) {
+            return false;
+        }
+        into.place(x, y, ItemStack.of(item, taken));
         return true;
+    }
+
+    /** The item an inventory holds for an ingredient, {@code null} when it holds none of it. */
+    private static Item kindIn(Inventory source, Ingredient ingredient) {
+        if (source == null) {
+            return null;
+        }
+        for (int slot = 0; slot < source.size(); slot++) {
+            ItemStack stack = source.get(slot);
+            if (!stack.isEmpty() && ingredient.matches(stack)) {
+                return stack.item();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Takes up to {@code limit} items of one kind out of an inventory, {@code 0} when it holds none of it.
+     * <p>
+     * Only the kind that was picked is taken, even when another item of the same ingredient lies in an
+     * earlier slot: a cell is filled with a stack of one kind and the rest of the inventory is left alone.
+     */
+    private static int takeMany(Inventory source, Ingredient ingredient, Item item, int limit) {
+        int taken = 0;
+        for (int slot = 0; slot < source.size() && taken < limit; slot++) {
+            ItemStack stack = source.get(slot);
+            if (stack.isEmpty() || !ingredient.matches(stack) || !item.equals(stack.item())) {
+                continue;
+            }
+            int want = Math.min(limit - taken, stack.count());
+            stack.setCount(stack.count() - want);
+            if (stack.count() <= 0) {
+                source.set(slot, ItemStack.EMPTY);
+            }
+            taken += want;
+        }
+        return taken;
     }
 
     /** Takes one item of an ingredient out of an inventory, {@code null} when it holds none. */

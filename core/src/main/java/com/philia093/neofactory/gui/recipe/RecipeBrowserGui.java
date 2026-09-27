@@ -54,21 +54,27 @@ public final class RecipeBrowserGui {
          * @param recipe recipe that was clicked
          * @return the line to write in the foot of the panel
          */
-        String arrange(Recipe recipe);
+        /**
+         * Lays a recipe out once, which is what a plain click on the button of a page asks for.
+         *
+         * @param recipe recipe to lay out
+         * @return the line the screen reports
+         */
+        default String arrange(Recipe recipe) {
+            return arrange(recipe, false);
+        }
 
         /**
          * Lays a recipe out, as many times as the field of the player takes.
          * <p>
          * The shift key asks for as many copies as the field holds and not for the one copy a plain click
-         * asks for. A field that cannot tell the two apart lays one copy out, which is what the default does.
+         * asks for, which for a field of a table means a whole stack of every ingredient in its cell.
          *
          * @param recipe recipe to lay out
          * @param many {@code true} for as many copies as the field takes
          * @return the line the screen reports
          */
-        default String arrange(Recipe recipe, boolean many) {
-            return arrange(recipe);
-        }
+        String arrange(Recipe recipe, boolean many);
     }
 
     /** Colour of the titles and of the numbers of the screen. */
