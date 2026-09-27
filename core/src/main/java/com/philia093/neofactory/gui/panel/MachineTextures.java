@@ -57,7 +57,7 @@ public final class MachineTextures implements ContainerAppearance {
     public static final int ICON_COLUMNS = 10;
 
     /** Amount of rows of the icon grid. */
-    public static final int ICON_ROWS = 8;
+    public static final int ICON_ROWS = 14;
 
     /** Column of the icon that is a slot, the bevel a machine slot is drawn with. */
     public static final int SLOT_COLUMN = 0;

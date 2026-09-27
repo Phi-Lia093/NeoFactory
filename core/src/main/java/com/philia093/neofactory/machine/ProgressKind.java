@@ -57,7 +57,10 @@ public enum ProgressKind {
     private final boolean vertical;
 
     /** Rows the bars of the age of steel stand below the ones of bronze. */
-    public static final int STEEL_ROW_SHIFT = 4;
+    public static final int STEEL_ROW_SHIFT = 5;
+
+    /** Row the bright part of a tall bar stands in for the age of steel, the plain arrow of that age. */
+    public static final int HAMMER_BRIGHT_ROW = 6;
 
     /** Column the bars of the age of steam start at, the first of the pair. */
     private static final int STEAM_COLUMN = 7;
@@ -111,7 +114,7 @@ public enum ProgressKind {
         // The bright part of the tall bar of a hammer is the plain arrow of its own age: it stands in the same
         // row as the bar of a machine that works on items, and the heavy picture of its own age stands behind
         // it, see MachineTextures#heavyTrackOf.
-        return vertical ? BRONZE.fullRow + STEEL_ROW_SHIFT : fullRow + STEEL_ROW_SHIFT;
+        return vertical ? HAMMER_BRIGHT_ROW : fullRow + STEEL_ROW_SHIFT;
     }
 
     /** Row of the dark track in a style. */
