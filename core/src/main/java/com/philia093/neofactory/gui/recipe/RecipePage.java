@@ -25,6 +25,17 @@ public final class RecipePage {
     /** Amount of columns a recipe without a shape is laid out in, at most. */
     public static final int BAG_COLUMNS = 3;
 
+    /**
+     * Amount of columns a recipe of a machine is laid out in, at most.
+     * <p>
+     * A machine takes its ingredients beside each other and not above each other: the input slots of a
+     * machine of this workshop lie in a row, the second one right of the first, so a recipe of a machine is
+     * read the way the machine is filled. The width of the page is what the number is, which is why the
+     * layout of the panel is asked for it; a recipe that asks for more than that many ingredients is the
+     * only one that wraps, and it wraps onto a second row.
+     */
+    public static final int MACHINE_COLUMNS = RecipeBrowserLayout.PAGE_COLUMNS;
+
     private final Recipe recipe;
     private final int columns;
     private final int rows;
@@ -55,7 +66,11 @@ public final class RecipePage {
             return new RecipePage(recipe, shaped.width(), shaped.height(), cells);
         }
         List<Ingredient> ingredients = recipe.ingredients();
-        int columns = Math.max(1, Math.min(BAG_COLUMNS, ingredients.size()));
+        // A bag of ingredients is filled row by row and wraps for the sake of the page; a machine takes its
+        // ingredients in one row, because its slots lie in one, see #MACHINE_COLUMNS.
+        boolean craft = recipe.type().name().startsWith("crafting_");
+        int columns = Math.max(1,
+                Math.min(craft ? BAG_COLUMNS : MACHINE_COLUMNS, ingredients.size()));
         int rows = Math.max(1, (ingredients.size() + columns - 1) / columns);
         List<ItemStack> cells = new ArrayList<>();
         for (int cell = 0; cell < columns * rows; cell++) {
