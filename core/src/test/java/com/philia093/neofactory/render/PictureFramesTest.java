@@ -81,7 +81,8 @@ class PictureFramesTest {
         assertEquals(10, MeshData.FRAMES,
                 "the frames are the last number of a corner, which is where the attribute of the "
                         + "shader reads them");
-        assertEquals(11, MeshData.FLOATS_PER_VERTEX, "a corner is position, picture, colour and frames");
+        assertEquals(13, MeshData.FLOATS_PER_VERTEX,
+                "a corner is position, picture, colour, frames and the light it is seen in");
         assertEquals(6, MeshData.RED, "the colour did not move, so the meshes of the past still fit");
     }
 }

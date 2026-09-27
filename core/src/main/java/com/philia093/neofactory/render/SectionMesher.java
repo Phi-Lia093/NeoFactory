@@ -291,8 +291,9 @@ public final class SectionMesher {
                             if (picture == null) {
                                 continue;
                             }
+                            BlockFace against = turned(face, shown.rotateY());
                             if (shadow != null && picture.isCulled()
-                                    && hiding(hiding, x + face.x(), y + face.y(), z + face.z())) {
+                                    && hiding(hiding, x + against.x(), y + against.y(), z + against.z())) {
                                 continue;
                             }
                             int layer = pictures.layer(picture.picture());
@@ -327,6 +328,44 @@ public final class SectionMesher {
             meshes.add(mesh);
         }
         return meshes;
+    }
+
+    /**
+     * Direction a face of a model looks in once the quarter turn of its state is applied.
+     * <p>
+     * The turn of a state moves the corners of every face of the model, see {@link #addFace}, and the side
+     * of the block a face lies against moves with them. The neighbour that hides a face is therefore the one
+     * on the side the face ends up looking at and not the one the model was written with: a machine that
+     * faces north and is turned a quarter turn has to check the side its front really turned to, or a front
+     * that faces a solid block stays and a front that faces the open air is dropped.
+     * <p>
+     * The sum is written the way the corners are turned, so a direction and the face it belongs to never
+     * drift apart: X takes the turn of Z and Z takes the opposite turn of X.
+     *
+     * @param face face as the model writes it
+     * @param rotateY turn of the state in degrees, a multiple of ninety
+     * @return the direction of that face in the world
+     */
+    private static BlockFace turned(BlockFace face, int rotateY) {
+        int turn = Math.floorMod(Math.round(rotateY / 90.0f), 4);
+        if (turn == 0 || face.y() != 0) {
+            // A face that looks up or down is not moved by a turn around the vertical axis of the block.
+            return face;
+        }
+        int dx = face.x();
+        int dz = face.z();
+        for (int index = 0; index < turn; index++) {
+            int nextX = dz;
+            int nextZ = -dx;
+            dx = nextX;
+            dz = nextZ;
+        }
+        for (BlockFace candidate : BlockFace.ALL) {
+            if (candidate.y() == 0 && candidate.x() == dx && candidate.z() == dz) {
+                return candidate;
+            }
+        }
+        return face;
     }
 
     /**
