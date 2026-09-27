@@ -105,7 +105,13 @@ public enum ProgressKind {
      * @return the row of the cell of that style
      */
     public int fullRow(MachineStyle style) {
-        return style == MachineStyle.STEEL && isSteam() ? fullRow + STEEL_ROW_SHIFT : fullRow;
+        if (style != MachineStyle.STEEL || !isSteam()) {
+            return fullRow;
+        }
+        // The bright part of the tall bar of a hammer is the plain arrow of its own age: it stands in the same
+        // row as the bar of a machine that works on items, and the heavy picture of its own age stands behind
+        // it, see MachineTextures#heavyTrackOf.
+        return vertical ? BRONZE.fullRow + STEEL_ROW_SHIFT : fullRow + STEEL_ROW_SHIFT;
     }
 
     /** Row of the dark track in a style. */

@@ -78,10 +78,13 @@ public final class MachineTextures implements ContainerAppearance {
      * than a cell of the icons: the track of the bar of a forge hammer, see {@link ProgressKind#BRONZE_HAMMER}
      * and {@link #heavyTrack()}.
      */
-    private static final int HEAVY_TRACK_X = GRID_X + ICON_COLUMNS * ICON_CELL;
+    private static final int HEAVY_TRACK_X = 338;
 
     /** Upper edge of the heavy track of the sheet. */
     private static final int HEAVY_TRACK_Y = GRID_Y;
+
+    /** Upper edge of the heavy track of the age of steel, which stands right below the one of bronze. */
+    private static final int HEAVY_TRACK_STEEL_Y = 24;
 
     /** Width of the heavy track of the sheet in pixels. */
     private static final int HEAVY_TRACK_WIDTH = 20;
@@ -129,6 +132,9 @@ public final class MachineTextures implements ContainerAppearance {
     /** The heavy track of a bar that stands on its side, see {@link ProgressKind#vertical()}. */
     private final TextureRegion heavyTrack;
 
+    /** The same track for a machine of the age of steel, which the sheet carries below the one of bronze. */
+    private final TextureRegion steelHeavyTrack;
+
     /**
      * Cuts the pictures of the sheet out.
      *
@@ -142,6 +148,7 @@ public final class MachineTextures implements ContainerAppearance {
         if (sheet == null) {
             plainSlot = null;
             heavyTrack = null;
+            steelHeavyTrack = null;
             return;
         }
         int middleWidth = WIDTH - 2 * BORDER;
@@ -185,6 +192,14 @@ public final class MachineTextures implements ContainerAppearance {
         }
         else {
             heavyTrack = null;
+        }
+        if (HEAVY_TRACK_X + HEAVY_TRACK_WIDTH <= sheet.getRegionWidth()
+                && HEAVY_TRACK_STEEL_Y + HEAVY_TRACK_HEIGHT <= sheet.getRegionHeight()) {
+            steelHeavyTrack = new TextureRegion(sheet, HEAVY_TRACK_X, HEAVY_TRACK_STEEL_Y,
+                    HEAVY_TRACK_WIDTH, HEAVY_TRACK_HEIGHT);
+        }
+        else {
+            steelHeavyTrack = null;
         }
     }
 
@@ -293,9 +308,19 @@ public final class MachineTextures implements ContainerAppearance {
      */
     public ArrowElement arrows(ProgressKind kind) {
         TextureRegion bright = icon(kind.fullColumn(), kind.fullRow(style));
-        TextureRegion track = kind.vertical() ? heavyTrack
+        TextureRegion track = kind.vertical() ? heavyTrackOf(style)
                 : icon(kind.emptyColumn(), kind.emptyRow(style));
         return new ArrowElement(bright, track, kind.vertical());
+    }
+
+    /**
+     * The heavy track of a bar that stands on its side, which is the one of the age the machine belongs to.
+     *
+     * @param style style the machine is drawn in
+     * @return the picture, or {@code null} when the sheet is missing it
+     */
+    private TextureRegion heavyTrackOf(MachineStyle style) {
+        return style == MachineStyle.STEEL && steelHeavyTrack != null ? steelHeavyTrack : heavyTrack;
     }
 
     /**
