@@ -57,7 +57,7 @@ public enum ProgressKind {
     private final boolean vertical;
 
     /** Rows the bars of the age of steel stand below the ones of bronze. */
-    public static final int STEEL_ROW_SHIFT = 5;
+    public static final int STEEL_ROW_SHIFT = 4;
 
     /** Column the bars of the age of steam start at, the first of the pair. */
     private static final int STEAM_COLUMN = 7;

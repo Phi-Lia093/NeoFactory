@@ -117,7 +117,7 @@ public final class MachineMenu {
     public static final int FLAME_LEFT_PIXELS = 1;
 
     /** X of the mark of an error, in the spot the flame of a furnace and of a boiler stands in. */
-    public static final int ERROR_LEFT = 32;
+    public static final int ERROR_LEFT = 50;
 
     /** Upper edge of that mark, which is the row of the flame of those two machines. */
     public static final int ERROR_TOP = 41;
