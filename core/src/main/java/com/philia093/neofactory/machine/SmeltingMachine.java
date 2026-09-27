@@ -92,22 +92,32 @@ public final class SmeltingMachine extends Machine implements ProgressMachine, F
 
     @Override
     protected void update(float delta) {
+        // The flame comes first in a furnace: a fuel that was put in burns down whether or not there is work
+        // for it, so a furnace with nothing to smelt still spends what a player gave it.
         if (craft == null) {
+            // Nothing new is lit without work: a furnace with no recipe for what lies in its slot waits with
+            // the ore in it and takes no fuel, see #startCraft.
             startCraft();
             if (craft == null) {
+                if (burnSeconds > 0.0f) {
+                    burn(delta);
+                }
                 coolDown(delta);
                 return;
             }
         } else if (burnSeconds <= 0.0f && !consumeFuel()) {
             // The flame is out and there is nothing left to light: the work done so far is kept for a
             // while, and the craft carries on as soon as fuel arrives.
+            if (burnSeconds > 0.0f) {
+                burn(delta);
+            }
             coolDown(delta);
             return;
         }
-        // Only the time a flame covers counts as work, so a furnace that runs out of
-        // fuel stops right where the flame ended.
         float burning = Math.min(delta, burnSeconds);
         burn(delta);
+        // Only the time a flame covers counts as work, so a furnace that runs out of
+        // fuel stops right where the flame ended.
         craftSeconds += burning;
         if (craftSeconds >= craftTotal) {
             craft.produce(outputs());

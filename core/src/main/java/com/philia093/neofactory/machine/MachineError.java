@@ -72,6 +72,25 @@ public enum MachineError {
         return row;
     }
 
+    /**
+     * Line a tooltip names this error with.
+     * <p>
+     * The two kinds a machine of the age of steam reports read the same in the corner of the screen, so the
+     * wording is what tells a player what to do: a machine without steam waits for a boiler, and a machine
+     * that cannot vent has to have the face its exhaust looks through cleared.
+     *
+     * @return the line a player reads, empty for {@link #NONE}
+     */
+    public String text() {
+        return switch (this) {
+            case NONE -> "";
+            case NO_POWER -> "No power";
+            case NO_STEAM -> "No steam";
+            case NO_WATER -> "No water";
+            case NO_EXHAUST -> "Cannot vent";
+        };
+    }
+
     @Override
     public String toString() {
         return name().toLowerCase(java.util.Locale.ROOT);

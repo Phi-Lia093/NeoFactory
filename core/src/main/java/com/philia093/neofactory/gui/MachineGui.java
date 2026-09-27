@@ -293,26 +293,38 @@ public final class MachineGui {
             int panelHeight) {
         drawProgress(batch, panelX, panelY, panelHeight);
         drawFluidSlots(batch, panelX, panelY, panelHeight);
-        drawEnergy(batch, panelX, panelY, panelHeight);
         drawFlame(batch, panelX, panelY, panelHeight);
+        drawError(batch, panelX, panelY, panelHeight);
         drawMarks(batch, panelX, panelY, panelHeight);
+    }
+
+    /**
+     * Draws the mark of what is wrong with the machine, in the spot a flame stands in.
+     * <p>
+     * A machine that runs on steam has no slot of fuel and therefore no flame, so the mark of its error
+     * stands where the flame of a furnace and of a boiler stands: a machine that waits for steam or that
+     * cannot blow its steam out says so there, see {@link MachineMenu#errorTooltip}.
+     */
+    private void drawError(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        TextureRegion mark = panel.icon(menu.error());
+        if (mark == null) {
+            return;
+        }
+        batch.draw(mark, panelX + MachineMenu.ERROR_LEFT,
+                panelY + panelHeight - MachineMenu.ERROR_TOP - MachineMenu.MARK_SIZE,
+                MachineMenu.MARK_SIZE, MachineMenu.MARK_SIZE);
     }
 
     /** Writes the name of the machine on the label in the upper left corner of the panel. */
     private void drawMarks(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
-        // Nothing of the state of a machine is written in words any more: the mark of the pack stands in the
+        // Nothing of the state of a machine is written in words anymore: the mark of the pack stands in the
         // upper left corner and names the machine while the mouse rests on it, and the mark of what is wrong
-        // with the machine stands beside it, see MachineMenu#infoTooltip and #flameTooltip.
+        // with the machine stands where its fire would be, see MachineMenu#infoTooltip and #errorTooltip.
         float top = panelY + panelHeight - MachineMenu.INFO_TOP - MachineMenu.INFO_SIZE;
         TextureRegion info = textures.region(NeiTextures.INFO);
         if (info != null) {
             batch.draw(info, panelX + MachineMenu.INFO_LEFT, top, MachineMenu.INFO_SIZE,
                     MachineMenu.INFO_SIZE);
-        }
-        TextureRegion error = panel.icon(menu.error());
-        if (error != null) {
-            batch.draw(error, panelX + MachineMenu.INFO_LEFT + MachineMenu.INFO_SIZE
-                    + MachineMenu.MARK_GAP, top, MachineMenu.INFO_SIZE, MachineMenu.INFO_SIZE);
         }
     }
 
@@ -336,6 +348,15 @@ public final class MachineGui {
         TextureRegion flame = panel.icon(menu.flameColumn(), lit ? menu.flameRow() : menu.flameOutRow());
         if (flame == null) {
             return;
+        }
+        if (menu.flameHasBase()) {
+            // The flame of a boiler stands on the picture of a flame that is out and never replaces it: the
+            // picture at the back is what a cold boiler shows, so a player always reads a flame and the part
+            // in front of it is how hot the machine is, see MachineMenu#flameHasBase.
+            TextureRegion out = panel.icon(menu.flameColumn(), menu.flameOutRow());
+            if (out != null) {
+                batch.draw(out, x, y, size, size);
+            }
         }
         if (!lit) {
             batch.draw(flame, x, y, size, size);
@@ -374,6 +395,8 @@ public final class MachineGui {
             lines = menu.infoTooltip();
         } else if (menu.hasFlame() && isOnFlame(localX, localY)) {
             lines = menu.flameTooltip();
+        } else if (isOnError(localX, localY)) {
+            lines = menu.errorTooltip();
         } else {
             return;
         }
@@ -399,6 +422,16 @@ public final class MachineGui {
         int top = flameTop(fuel);
         return localX >= flameX(fuel) && localX < flameX(fuel) + MachineTextures.ICON_CELL
                 && localY >= top && localY < top + MachineTextures.ICON_CELL;
+    }
+
+    /** {@code true} while a point of the panel lies on the mark of an error. */
+    private boolean isOnError(int localX, int localY) {
+        if (!menu.error().isError()) {
+            return false;
+        }
+        return localX >= MachineMenu.ERROR_LEFT && localX < MachineMenu.ERROR_LEFT + MachineMenu.MARK_SIZE
+                && localY >= MachineMenu.ERROR_TOP
+                && localY < MachineMenu.ERROR_TOP + MachineMenu.MARK_SIZE;
     }
 
     /** X of the flame of a machine, which stands one pixel left of the slot it belongs to. */

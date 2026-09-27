@@ -116,6 +116,15 @@ public final class MachineMenu {
     /** Pixels the flame stands left of the slot it belongs to. */
     public static final int FLAME_LEFT_PIXELS = 1;
 
+    /** X of the mark of an error, in the spot the flame of a furnace and of a boiler stands in. */
+    public static final int ERROR_LEFT = 32;
+
+    /** Upper edge of that mark, which is the row of the flame of those two machines. */
+    public static final int ERROR_TOP = 41;
+
+    /** Side of a mark of state in pixels, the side of a cell of the icon grid. */
+    public static final int MARK_SIZE = 18;
+
     /** Pixels the flame is lifted towards the slot it belongs to, the gap below it counted. */
     public static final int FLAME_UP_PIXELS = 2;
 
@@ -492,6 +501,17 @@ public final class MachineMenu {
     public boolean flameBlinks() {
         return machine instanceof SteamBoilerMachine boiler
                 && boiler.temperature() > FLAME_HOT_TEMPERATURE;
+    }
+
+    /** {@code true} for a flame that is drawn on the picture of a flame that is out, which a boiler is. */
+    public boolean flameHasBase() {
+        return machine instanceof SteamBoilerMachine;
+    }
+
+    /** Lines the mark of an error is named with, empty while nothing is wrong. */
+    public List<String> errorTooltip() {
+        String text = error().text();
+        return text.isEmpty() ? List.of() : List.of(text);
     }
 
     /** Lines the flame is named with, empty for a machine that reports nothing about its fire. */
