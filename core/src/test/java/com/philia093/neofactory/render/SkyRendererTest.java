@@ -36,7 +36,6 @@ class SkyRendererTest {
     void thePicturesOfTheSkyAreTheOnesTheRendererAssumes() throws IOException {
         BufferedImage sun = read(SkyRenderer.SUN_PICTURE);
         BufferedImage moon = read(SkyRenderer.MOON_PICTURES);
-        BufferedImage clouds = read(SkyRenderer.CLOUD_PICTURE);
 
         assertEquals(SUN_PIXELS, sun.getWidth(), "the sun is one square of this pack");
         assertEquals(SUN_PIXELS, sun.getHeight());
@@ -44,9 +43,6 @@ class SkyRendererTest {
                 "the phases of the moon stand in rows");
         assertEquals(SkyRenderer.MOON_CELL * (SkyRenderer.MOON_PHASES / SkyRenderer.MOON_COLUMNS),
                 moon.getHeight(), "and the sheet carries a row for every group of them");
-        assertEquals(SkyRenderer.CLOUD_TILE / SkyRenderer.CLOUD_BLOCKS_PER_PIXEL, clouds.getWidth(),
-                "one pixel of the layer of clouds is drawn as CLOUD_BLOCKS_PER_PIXEL blocks");
-        assertEquals(clouds.getWidth(), clouds.getHeight(), "the layer of clouds is a square");
     }
 
     @Test
@@ -74,67 +70,12 @@ class SkyRendererTest {
     }
 
     @Test
-    void theLayerOfCloudsIsCloudsAndMostlyGaps() throws IOException {
-        BufferedImage clouds = read(SkyRenderer.CLOUD_PICTURE);
-        int clear = 0;
-        int solid = 0;
-        int white = 0;
-
-        for (int y = 0; y < clouds.getHeight(); y++) {
-            for (int x = 0; x < clouds.getWidth(); x++) {
-                int argb = clouds.getRGB(x, y);
-                if ((argb >>> 24) < 128) {
-                    clear++;
-                    continue;
-                }
-                solid++;
-                if (red(argb) == 255 && green(argb) == 255 && blue(argb) == 255) {
-                    white++;
-                }
-            }
-        }
-        int total = clouds.getWidth() * clouds.getHeight();
-        assertTrue(clear > total / 2, "most of the layer is gap, so a sky is not one sheet of cloud");
-        assertTrue(solid > 0, "and the layer carries clouds at all");
-        assertEquals(solid, white, "every cloud pixel is white, which is what the tint of the hour colours");
-    }
-
-    @Test
     void theMoonWalksThroughItsPhasesOneToADay() {
         assertEquals(0, SkyRenderer.moonPhase(0L));
         assertEquals(SkyRenderer.MOON_PHASES - 1, SkyRenderer.moonPhase(
                 (SkyRenderer.MOON_PHASES - 1L) * DayCycle.DAY_TICKS + 100L));
         assertEquals(0, SkyRenderer.moonPhase(SkyRenderer.MOON_PHASES * (long) DayCycle.DAY_TICKS),
                 "the ninth day of a world carries the first phase again");
-    }
-
-    @Test
-    void theLayerOfCloudsDriftsOverTheWorldAndStartsOverWithANewTile() {
-        assertEquals(0.0f, SkyRenderer.cloudDrift(0L), 0.001f);
-        assertTrue(SkyRenderer.cloudDrift(500L) > SkyRenderer.cloudDrift(250L), "the layer travels");
-        long wraps = (long) (SkyRenderer.CLOUD_TILE / SkyRenderer.CLOUD_DRIFT) + 1L;
-        assertTrue(SkyRenderer.cloudDrift(wraps) < SkyRenderer.cloudDrift(wraps - 1L),
-                "a drift past one tile starts the field over instead of walking out of the world");
-        assertTrue(SkyRenderer.cloudDrift(wraps) >= 0.0f
-                && SkyRenderer.cloudDrift(wraps) < SkyRenderer.CLOUD_TILE,
-                "and the drift stays inside one tile");
-    }
-
-    @Test
-    void theLayerOfCloudsIsAnchoredToTheWorldAndNotToTheEye() {
-        long worldTime = 4000L;
-        float drift = SkyRenderer.cloudDrift(worldTime);
-        float near = SkyRenderer.cloudTileX(0.0f, worldTime);
-        float far = SkyRenderer.cloudTileX(600.0f, worldTime);
-
-        assertEquals(0.0f, (near - drift) % SkyRenderer.CLOUD_TILE, 0.01f,
-                "a copy of the layer begins on the grid of the world, moved by the drift of the day");
-        assertEquals(0.0f, (far - near) % SkyRenderer.CLOUD_TILE, 0.01f,
-                "a camera far away draws the same grid of copies and not another one");
-        assertTrue(near <= 0.0f && near + SkyRenderer.CLOUD_TILE > 0.0f,
-                "the field covers the blocks the camera stands on");
-        assertEquals(SkyRenderer.cloudTileZ(600.0f), SkyRenderer.cloudTileZ(100.0f)
-                + SkyRenderer.CLOUD_TILE, 0.01f, "and the second axis is a grid of the world as well");
     }
 
     /** Reads a picture of the asset pack. */

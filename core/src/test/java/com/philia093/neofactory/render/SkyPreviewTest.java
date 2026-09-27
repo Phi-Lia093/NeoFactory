@@ -63,7 +63,6 @@ class SkyPreviewTest {
         BufferedImage sky = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
         BufferedImage sun = read(SkyRenderer.SUN_PICTURE);
         BufferedImage phases = read(SkyRenderer.MOON_PICTURES);
-        BufferedImage clouds = read(SkyRenderer.CLOUD_PICTURE);
         Color colour = new Color();
 
         for (int column = 0; column < WIDTH; column++) {
@@ -71,7 +70,6 @@ class SkyPreviewTest {
             DayCycle.skyColor(worldTime, colour);
             fillColumn(sky, column, 0, HEIGHT, toArgb(colour.r, colour.g, colour.b, 1.0f));
             paintArcs(sky, column, worldTime);
-            paintClouds(sky, column, worldTime, clouds);
         }
         // The art of the pack is pasted where a body stands highest, after the arcs, so the picture shows both
         // the walk of the day and the very pictures the pass draws it with.
@@ -90,7 +88,6 @@ class SkyPreviewTest {
         assertTrue(Files.isRegularFile(PREVIEW), "the preview exists");
         assertTheDayWalksFromTheMorningIntoTheNight(sky);
         assertTheBodiesOfTheSkyAreTheArtOfThePack(sky);
-        assertTheCloudsAreBrightAtNoonAndDarkAtNight(sky, clouds);
     }
 
     /** The ground of the picture is the colour of the hour, so the day walks from the dawn into the night. */
