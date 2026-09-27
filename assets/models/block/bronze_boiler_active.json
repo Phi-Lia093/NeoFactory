@@ -6,7 +6,7 @@
       "faces": {
         "down": { "texture": "bronze_bricks_casing/bronze_bricks_casing_bottom", "cullface": "down" },
         "up": { "texture": "bronze_bricks_casing/bronze_bricks_casing_top", "cullface": "up" },
-        "north": { "texture": "bronze_boiler/bronze_boiler_front_active", "cullface": "north" },
+        "north": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "overlay": "bronze_boiler/bronze_boiler_front_active", "cullface": "north" },
         "south": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "south" },
         "west": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "west" },
         "east": { "texture": "bronze_bricks_casing/bronze_bricks_casing_side", "cullface": "east" }
