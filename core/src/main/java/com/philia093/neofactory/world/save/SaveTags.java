@@ -50,6 +50,14 @@ public final class SaveTags {
     /** Time played in this world. */
     public static final String PLAYED_MILLIS = "PlayedMillis";
 
+    /**
+     * Time of the day of the world, in ticks.
+     * <p>
+     * A world stored before the day cycle existed carries none and is read as the morning, see
+     * {@link com.philia093.neofactory.world.DayCycle#NEW_WORLD_TIME}.
+     */
+    public static final String WORLD_TIME = "Time";
+
     /** Group holding everything about the player. */
     public static final String PLAYER = "Player";
 
@@ -220,7 +228,7 @@ public final class SaveTags {
     /** Group of the world rules. */
     public static final String GAME_RULES = "GameRules";
 
-    /** Whether the day cycle runs, unused so far. */
+    /** Whether the day cycle runs, see {@link com.philia093.neofactory.world.World#setDaylightCycle(boolean)}. */
     public static final String RULE_DAYLIGHT = "doDaylightCycle";
 
     /** Whether the weather changes, unused so far. */

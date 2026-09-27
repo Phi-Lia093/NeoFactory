@@ -162,11 +162,13 @@ public class BlockShader implements Disposable {
     }
 
     /**
-     * Brightness of the light of the sky of the next pass.
+     * Sets how bright the light of the sky is drawn, which is what moves the day.
      * <p>
      * This is how the hour of the day reaches the picture: a cell that sees the whole sky is drawn with the
      * brightness of the moment, so every mesh of the world follows the sun without being built again when it
-     * moves, see {@code DayCycle} and {@link MeshData#LIGHT}.
+     * moves. The brightness belongs to the frame and not to a mesh - a level of a light map is stored in the
+     * vertices of a section, see {@link MeshData#LIGHT} - so a sun that has moved costs the world no single
+     * triangle, see {@link com.philia093.neofactory.world.DayCycle#brightness(long)}.
      *
      * @param skyBrightness brightness, {@code 0} for the darkest night and {@code 1} for noon
      */

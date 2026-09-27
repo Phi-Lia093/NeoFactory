@@ -31,8 +31,8 @@ public final class CommandRegistry {
     /**
      * Creates a registry holding the commands of the game.
      *
-     * @return a registry with {@code /help}, {@code /give}, {@code /tp}, {@code /seed}
-     *         and {@code /gamemode}
+     * @return a registry with {@code /help}, {@code /give}, {@code /tp}, {@code /seed},
+     *         {@code /gamemode} and {@code /time}
      */
     public static CommandRegistry withDefaults() {
         CommandRegistry registry = new CommandRegistry();
@@ -41,6 +41,7 @@ public final class CommandRegistry {
         registry.register(new TpCommand());
         registry.register(new SeedCommand());
         registry.register(new GamemodeCommand());
+        registry.register(new TimeCommand());
         return registry;
     }
 

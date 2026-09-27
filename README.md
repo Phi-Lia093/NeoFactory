@@ -13,6 +13,16 @@ stored on disk so that a session can be continued later.
 - **Terrain** - noise based biomes (plains, forest, desert, snow and a rocky one)
   with grass, trees and ore clusters, all generated from the
   world seed.
+- **Light and the day** - every cell of the world carries two levels of light: what reaches it from
+  the sky and what the torches and the furnaces around it give away. A cave is dark because the sky
+  cannot reach it, a roof casts a shadow that moves as the sun does, a hole that is dug lets the
+  light in again and the light of a torch that is taken away is taken back, see `LightEngine`. The
+  clock of the world runs from the sunrise through the noon into the night in twenty minutes:
+  `DayCycle` names the hour, brightens and dims the light of the sky, paints the colour a frame is
+  cleared with and tells the sun, the moon and the layer of clouds of `SkyRenderer` where to stand.
+  The hour travels with a save game and `/time` moves it. A level of light is stored in the vertices
+  of a section and not a brightness, so the sun moving across the sky costs the world no mesh at all:
+  the shader scales the light of the sky once per frame.
 - **View from inside the body** - the world is seen through the eyes of the player: the pointer turns the
   view, `W`, `A`, `S`, `D` walk and `SPACE` jumps. The arm of the body is drawn in the lower right of the
   picture, it sways with every step and it is thrown forward when a block is broken or built, and the
@@ -268,7 +278,7 @@ stored on disk so that a session can be continued later.
   and shows the whole figure, which is where the walk of the limbs is visible.
 - **Chat and commands** - one input line at the lower left for messages and for
   commands: a line behind a slash is a command (`/help`, `/give`, `/tp`, `/seed`,
-  `/gamemode`), anything else is a chat message. The recent conversation stays visible
+  `/gamemode`, `/time`), anything else is a chat message. The recent conversation stays visible
   for a few seconds and comes back while something is typed.
 - **Creative mode** - `/gamemode creative` hands out every item of the game: the
   inventory key then opens a grid of everything the game owns, with a tab for each
@@ -366,7 +376,8 @@ stored on disk so that a session can be continued later.
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |
 | `loot` | what a broken block leaves behind: the tables, the files below `assets/loot_tables` and the rule that a block without a table drops itself |
-| `world` | chunks, the world, the game mode, the chunk store interface and the generator |
+| `world` | chunks, the world, the game mode, the clock of the day (`DayCycle`), the chunk store interface and the generator |
+| `world.light` | the light of the world: the sky that fills every column, the light sources that spread and fade, and what is taken away when a source is removed (`LightEngine`) |
 | `world.decoration` | the trees and plants planted on a finished chunk |
 | `world.interaction` | aiming, breaking and building, and the grid of nine cells a tool works a face of a block with (`FaceGrid`, `FaceOperable`) |
 | `world.save` | the save format, the level file, the chunk files and the entity tags |
@@ -374,7 +385,7 @@ stored on disk so that a session can be continued later.
 | `chat` | the input line, the messages and the commands a line behind a slash is looked up in |
 | `gui` | hotbar, inventory, creative inventory, the screen of a container and of the table of the workshop, and chat rendering, layout and widgets |
 | `gui.recipe` | the screen of recipes: its groups of items, the page of a recipe and the layout of both |
-| `render` | world, entity, selection and font rendering |
+| `render` | world, sky, entity, selection and font rendering |
 | `screen` | the screens and the manager that switches between them |
 | `input` | keyboard and mouse state |
 | `util` | constants, the box a world of cubes is measured against, and the NBT layer the save format is built on |
@@ -384,7 +395,7 @@ stored on disk so that a session can be continued later.
 The game writes into its working directory:
 
 ```
-run/saves/<id>/level.dat              world fields, entities, game rules
+run/saves/<id>/level.dat              world fields, the hour of the day, entities, game rules
 run/saves/<id>/chunks/c.<x>.<y>.dat   one file per chunk the player changed
 run/logs/neofactory.log               the log of the running game
 ```
@@ -400,6 +411,12 @@ generated from the seed again, exactly as it was, because every cell and every
 decoration depends on nothing but the seed and its coordinates. That split is what
 makes a save cost what was built instead of what is loaded, and it is what allows a
 distant chunk to be written and dropped from memory in one step.
+
+The light of a cell is written into neither file. It is what the sky and the light sources around a
+cell make of it, so it is computed again the moment a chunk arrives - whether the generator made it
+or the save game brought it back - and the hour of the day travels with the level file, which is what
+tells the sky how bright to be. Nothing of that changes the format: a file written before the day
+existed carries no hour and is read as the morning.
 
 A stored chunk is a column of sections, and it holds the cell of every section that
 carries something: the block id of a cell and its state travel as full 32 bit numbers,

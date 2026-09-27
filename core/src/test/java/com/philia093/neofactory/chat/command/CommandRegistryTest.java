@@ -109,15 +109,16 @@ class CommandRegistryTest {
     }
 
     @Test
-    void theRegistryOfTheGameHoldsTheFiveCommands() {
+    void theRegistryOfTheGameHoldsTheSixCommands() {
         CommandRegistry commands = CommandRegistry.withDefaults();
 
-        assertEquals(5, commands.size());
+        assertEquals(6, commands.size());
         assertNotNull(commands.byName("help"));
         assertNotNull(commands.byName("/give"));
         assertNotNull(commands.byName("tp"));
         assertNotNull(commands.byName("seed"));
         assertNotNull(commands.byName("gamemode"));
+        assertNotNull(commands.byName("time"));
     }
 
     /** A command that only counts how often it was called. */

@@ -61,10 +61,12 @@ import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.EntityRendererRegistry;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.render.SectionMeshCache;
+import com.philia093.neofactory.render.SkyRenderer;
 import com.philia093.neofactory.render.WorldRenderer3D;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.ChunkStreamer;
+import com.philia093.neofactory.world.DayCycle;
 import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
@@ -224,6 +226,18 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     private final PerspectiveCamera cubeCamera;
     /** Draws the icon of a block by drawing the block, {@code null} while the flat view is used. */
     private final BlockIconRenderer blockIconRenderer;
+
+    /**
+     * The sun, the moon and the clouds above the world, {@code null} while the world cannot be drawn as
+     * cubes.
+     * <p>
+     * The sky stands behind everything the world holds, so it is drawn first and without depth, and what it
+     * draws is read from the clock of the world alone, see {@link SkyRenderer} and {@link DayCycle}.
+     */
+    private final SkyRenderer skyRenderer;
+
+    /** Colour of the sky of the frame being drawn, read from the clock of the world every frame. */
+    private final Color frameSky = new Color(SKY);
 
     /**
      * The body of the player, drawn from the skin of the assets, {@code null} while the world cannot
@@ -539,6 +553,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         this.worldViewport = new ExtendViewport(visibleUnits, visibleUnits, camera);
 
         this.player = preparePlayer(world, data, fresh);
+        // A world comes back at the hour it was left at, and the day of a world whose cycle was switched
+        // off keeps standing still: the clock belongs to the world, the rules belong to the save game, see
+        // #save and World#tick.
+        world.setWorldTime(data.worldTime());
+        world.setDaylightCycle(data.daylightCycle());
         this.inputHandler = new InputHandler();
 
         // The world is drawn as cubes wherever the driver holds a texture array, which is what the
@@ -551,6 +570,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.blockShader = new BlockShader();
             this.sectionMeshes = new SectionMeshCache(pictures);
             this.cubeRenderer = new WorldRenderer3D(sectionMeshes, blockShader, pictures);
+            this.skyRenderer = new SkyRenderer();
             this.cubeCamera = new PerspectiveCamera(CUBE_FIELD_OF_VIEW, 1.0f, 1.0f);
             cubeCamera.near = CUBE_NEAR;
             cubeCamera.far = CUBE_VIEW_DISTANCE;
@@ -567,6 +587,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             this.blockShader = null;
             this.sectionMeshes = null;
             this.cubeRenderer = null;
+            this.skyRenderer = null;
             this.cubeCamera = null;
             this.blockIconRenderer = null;
             this.humanoid = null;
@@ -709,6 +730,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         data.setLastPlayed(System.currentTimeMillis());
         data.capturePlayer(player.position().x, player.position().z,
                 player.yaw(), player.pitch(), player.inventory());
+        // The hour of the world and whether its day keeps moving travel with the file, so a world that is
+        // opened in the evening stands in the evening, see the constructor.
+        data.setWorldTime(world.worldTime());
+        data.setDaylightCycle(world.daylightCycle());
         int chunks = WorldSaver.save(game.screens().storage(), summary, data, world,
                 player.inventory());
         autosaveTimer = 0.0f;
@@ -769,6 +794,34 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         LOGGER.info("Game mode of '{}' switched to {}", summary.displayName(), mode.modeName());
     }
 
+    /**
+     * Tick of the day the world stands at, see {@link DayCycle}.
+     *
+     * @return the time of the world in ticks
+     */
+    @Override
+    public long worldTime() {
+        return world.worldTime();
+    }
+
+    /**
+     * Sets the hour of the world, which is what {@code /time} does.
+     * <p>
+     * Only the clock is moved: the hour is what the sun, the colours of the sky and the brightness of the
+     * light of the sky are read from - and that brightness is a value of the frame and not of a mesh - so
+     * jumping to another hour of the day rebuilds nothing and costs no frame of the game.
+     *
+     * @param worldTime tick of the day to switch to
+     */
+    @Override
+    public void setWorldTime(long worldTime) {
+        if (worldTime == world.worldTime()) {
+            return;
+        }
+        world.setWorldTime(worldTime);
+        LOGGER.info("Time of '{}' set to {}", summary.displayName(), DayCycle.describe(worldTime));
+    }
+
     /** Current camera zoom, {@code 1} is the neutral view. */
     public float zoom() {
         return zoom;
@@ -809,6 +862,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * one behind it.
      */
     private void renderCubes() {
+        // The hour of the world decides the colour of the sky and how bright its light is drawn, and both
+        // are read right here, once a frame: the hour is a value of the frame and never of a mesh, so the
+        // sun travels across the sky and not across the meshes of the world, see BlockShader#skyBrightness.
+        long worldTime = world.worldTime();
+        DayCycle.skyColor(worldTime, frameSky);
+        cubeRenderer.skyBrightness(DayCycle.brightness(worldTime));
+
         cubeCamera.viewportWidth = Gdx.graphics.getWidth();
         cubeCamera.viewportHeight = Gdx.graphics.getHeight();
         player.lookDirection(lookDirection);
@@ -835,8 +895,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         cubeCamera.fieldOfView = CUBE_FIELD_OF_VIEW / zoom;
         cubeCamera.update();
 
-        Gdx.gl.glClearColor(SKY.r, SKY.g, SKY.b, 1.0f);
+        Gdx.gl.glClearColor(frameSky.r, frameSky.g, frameSky.b, 1.0f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        if (skyRenderer != null) {
+            // The sky stands behind everything the world holds, so it goes down first and the faces of the
+            // blocks cover it wherever the terrain reaches. It runs before the state of the world is set up
+            // below, because the pass of a sky leaves the state its way, see SkyRenderer.
+            skyRenderer.render(cubeCamera, worldTime);
+        }
         // The state the world is drawn with is set up here and never inherited, the way the interface does
         // it for its own sprites, see #renderInterface. The batch of the interface switches the depth mask
         // off while it draws, and the passes of the world leave the culling the way the last of them wanted
@@ -847,8 +913,8 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glDepthMask(true);
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         Gdx.gl.glEnable(GL20.GL_CULL_FACE);
-        cubeRenderer.render(world, cubeCamera, SKY);
-        cubeRenderer.renderBreaking(cubeCamera, target, mining.progress(), SKY);
+        cubeRenderer.render(world, cubeCamera, frameSky);
+        cubeRenderer.renderBreaking(cubeCamera, target, mining.progress(), frameSky);
         if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL) {
             // The grid of faces stands between the cracks of a break and the frame of the cell, so the
             // frame stays the outermost mark of what an action would touch.
@@ -897,7 +963,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (cubeRenderer == null || humanoid == null || !humanoid.isReady()) {
             return;
         }
-        blockShader.begin(cubeCamera, pictures, SKY, cubeCamera.far * FOG_START_SHARE,
+        blockShader.begin(cubeCamera, pictures, frameSky, cubeCamera.far * FOG_START_SHARE,
                 cubeCamera.far);
         Gdx.gl.glEnable(GL20.GL_CULL_FACE);
         entityRenderers.render(world.entities().all());
@@ -1143,6 +1209,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
         if (cubeRenderer != null) {
             cubeRenderer.dispose();
+        }
+        if (skyRenderer != null) {
+            skyRenderer.dispose();
         }
         super.dispose();
     }

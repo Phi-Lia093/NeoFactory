@@ -92,6 +92,21 @@ public class WorldRenderer3D implements Disposable {
     }
 
     /**
+     * Sets how bright the light of the sky is drawn, which is what moves the day.
+     * <p>
+     * The hour of a world reaches the picture here and nowhere else: the level of the light of a cell travels
+     * with the vertices of a mesh, see {@link MeshData#LIGHT}, while how bright that level is drawn is a
+     * value of the frame, see {@link com.philia093.neofactory.world.DayCycle#brightness(long)}. A sun that
+     * has moved across the sky therefore costs the world no mesh.
+     *
+     * @param brightness brightness of the light of the sky, {@code 0} for the darkest night and {@code 1}
+     *                   for noon
+     */
+    public void skyBrightness(float brightness) {
+        shader.skyBrightness(brightness);
+    }
+
+    /**
      * Draws the world.
      *
      * @param world world to draw

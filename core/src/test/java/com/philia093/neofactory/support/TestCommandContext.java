@@ -4,6 +4,7 @@ import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.chat.ChatMessage;
 import com.philia093.neofactory.chat.command.CommandContext;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.world.DayCycle;
 import com.philia093.neofactory.world.GameMode;
 
 import java.util.List;
@@ -29,6 +30,9 @@ public final class TestCommandContext implements CommandContext {
 
     /** Mode the world of this context is played in. */
     private GameMode gameMode = GameMode.SURVIVAL;
+
+    /** Time of the day of this context, the morning a new world starts at. */
+    private long worldTime = DayCycle.NEW_WORLD_TIME;
 
     /** Creates a context with the seed {@code 1234}. */
     public TestCommandContext() {
@@ -67,6 +71,16 @@ public final class TestCommandContext implements CommandContext {
     @Override
     public void setGameMode(GameMode mode) {
         gameMode = mode == null ? GameMode.SURVIVAL : mode;
+    }
+
+    @Override
+    public long worldTime() {
+        return worldTime;
+    }
+
+    @Override
+    public void setWorldTime(long worldTime) {
+        this.worldTime = worldTime;
     }
 
     /** The answer of the command that ran last. */

@@ -95,6 +95,12 @@ public final class World implements BlockAccess {
     /** Ticks this world has run, the clock of everything that works on a schedule. */
     private long tickCount;
 
+    /** Tick of the day this world stands at, the clock of the sun and of the sky, see {@link DayCycle}. */
+    private long worldTime = DayCycle.NEW_WORLD_TIME;
+
+    /** Whether the day of this world keeps moving, the {@code doDaylightCycle} rule. */
+    private boolean daylightCycle = true;
+
     /**
      * Block whose grid of faces is open right now, {@code null} while none is.
      * <p>
@@ -844,6 +850,11 @@ public final class World implements BlockAccess {
             return 0;
         }
         tickCount++;
+        if (daylightCycle) {
+            // The day of a world moves with the ticks of the world and not with its frames, so two
+            // sessions of the same length end at the same hour.
+            worldTime++;
+        }
         ticking.clear();
         for (Chunk chunk : chunks.values()) {
             if (chunk.hasBlockEntities()) {
@@ -872,6 +883,56 @@ public final class World implements BlockAccess {
      */
     public long tickCount() {
         return tickCount;
+    }
+
+    /**
+     * Tick of the day this world stands at, the clock of the sun, of the moon and of the sky.
+     * <p>
+     * The time is counted from the sunrise: tick zero is the moment the sun touches the horizon in the
+     * east, see {@link DayCycle}. It advances once per {@link #tick(float)} while the day cycle runs and it
+     * is stored with the world, so a world that is opened again stands at the hour it was left at.
+     *
+     * @return the time of the day in ticks
+     */
+    public long worldTime() {
+        return worldTime;
+    }
+
+    /**
+     * Sets the time of the day, which is what {@code /time set} does.
+     *
+     * @param worldTime tick of the day to switch to
+     */
+    public void setWorldTime(long worldTime) {
+        this.worldTime = worldTime;
+    }
+
+    /**
+     * Moves the time of the day on, which is what {@code /time add} does.
+     *
+     * @param ticks ticks to add, ignored when not positive
+     */
+    public void addWorldTime(long ticks) {
+        if (ticks > 0) {
+            worldTime += ticks;
+        }
+    }
+
+    /** Whether the day of this world keeps moving, the {@code doDaylightCycle} rule. */
+    public boolean daylightCycle() {
+        return daylightCycle;
+    }
+
+    /**
+     * Switches the day cycle of this world.
+     * <p>
+     * A world whose day cycle is off keeps its hour: the sun stands still and the night a player worked
+     * through lasts until they switch it back on.
+     *
+     * @param daylightCycle {@code false} for a world whose hour stands still
+     */
+    public void setDaylightCycle(boolean daylightCycle) {
+        this.daylightCycle = daylightCycle;
     }
 
     /**

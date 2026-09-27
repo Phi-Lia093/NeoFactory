@@ -2,6 +2,7 @@ package com.philia093.neofactory.chat.command;
 
 import com.philia093.neofactory.chat.ChatLog;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.world.DayCycle;
 import com.philia093.neofactory.world.GameMode;
 
 /**
@@ -32,4 +33,18 @@ public interface CommandContext {
      * @param mode mode to switch to, {@code null} leaves the current one
      */
     void setGameMode(GameMode mode);
+
+    /**
+     * Tick of the day the world stands at, the clock the sun, the moon and the sky are read from.
+     *
+     * @return the time of the day in ticks, see {@link DayCycle}
+     */
+    long worldTime();
+
+    /**
+     * Sets the time of the day of the world, which is what moves the sun and the colours of the sky.
+     *
+     * @param worldTime tick of the day to switch to
+     */
+    void setWorldTime(long worldTime);
 }

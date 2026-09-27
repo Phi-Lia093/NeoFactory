@@ -4,6 +4,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.util.nbt.NbtList;
+import com.philia093.neofactory.world.DayCycle;
 import com.philia093.neofactory.world.GameMode;
 import com.philia093.neofactory.world.WorldType;
 
@@ -15,7 +16,7 @@ import com.philia093.neofactory.world.WorldType;
  * <pre>
  * NeoFactory
  *  +- DataVersion, WorldName, GameMode, WorldType, Seed, SpawnX, SpawnZ, Created, LastPlayed,
- *     PlayedMillis
+ *     PlayedMillis, Time
  *  +- Player
  *  |   +- PosX, PosY, RotationX, RotationY, SelectedSlot
  *  |   +- Inventory: [ {Slot, id, Count}, ... ]
@@ -47,6 +48,12 @@ public final class LevelData {
     private long created;
     private long lastPlayed;
     private long playedMillis;
+
+    /** Tick of the day the world stands at, see {@link DayCycle}. */
+    private long worldTime = DayCycle.NEW_WORLD_TIME;
+
+    /** Whether the day of the world keeps moving, the {@code doDaylightCycle} rule. */
+    private boolean daylightCycle = true;
 
     private float playerX;
     private float playerZ;
@@ -93,6 +100,11 @@ public final class LevelData {
         data.created = root.getLong(SaveTags.CREATED, System.currentTimeMillis());
         data.lastPlayed = root.getLong(SaveTags.LAST_PLAYED, data.created);
         data.playedMillis = root.getLong(SaveTags.PLAYED_MILLIS, 0L);
+        // A world that was stored before the day cycle existed is at no hour at all, so it is read as the
+        // morning of a fresh day instead of the middle of the night.
+        data.worldTime = root.getLong(SaveTags.WORLD_TIME, DayCycle.NEW_WORLD_TIME);
+        NbtCompound rules = root.getCompound(SaveTags.GAME_RULES);
+        data.daylightCycle = rules == null || rules.getBoolean(SaveTags.RULE_DAYLIGHT, true);
 
         NbtCompound player = root.getCompound(SaveTags.PLAYER);
         if (player != null) {
@@ -200,6 +212,7 @@ public final class LevelData {
         root.putLong(SaveTags.CREATED, created);
         root.putLong(SaveTags.LAST_PLAYED, lastPlayed);
         root.putLong(SaveTags.PLAYED_MILLIS, playedMillis);
+        root.putLong(SaveTags.WORLD_TIME, worldTime);
 
         NbtCompound player = new NbtCompound(SaveTags.PLAYER);
         player.putFloat(SaveTags.POS_X, playerX);
@@ -214,7 +227,7 @@ public final class LevelData {
         // change the day they arrive.
         root.put(new NbtList(SaveTags.ENTITIES));
         NbtCompound rules = new NbtCompound(SaveTags.GAME_RULES);
-        rules.putBoolean(SaveTags.RULE_DAYLIGHT, true);
+        rules.putBoolean(SaveTags.RULE_DAYLIGHT, daylightCycle);
         rules.putBoolean(SaveTags.RULE_WEATHER, true);
         rules.putBoolean(SaveTags.RULE_KEEP_INVENTORY, false);
         root.put(rules);
@@ -344,6 +357,38 @@ public final class LevelData {
         if (millis > 0) {
             playedMillis += millis;
         }
+    }
+
+    /**
+     * Tick of the day the world stands at, see {@link DayCycle}.
+     *
+     * @return the time of the world in ticks
+     */
+    public long worldTime() {
+        return worldTime;
+    }
+
+    /**
+     * Writes the time of the day of the world.
+     *
+     * @param worldTime tick of the day the world stands at
+     */
+    public void setWorldTime(long worldTime) {
+        this.worldTime = worldTime;
+    }
+
+    /** Whether the day of the world keeps moving, the {@code doDaylightCycle} rule. */
+    public boolean daylightCycle() {
+        return daylightCycle;
+    }
+
+    /**
+     * Writes whether the day of the world keeps moving.
+     *
+     * @param daylightCycle {@code false} for a world whose hour stands still
+     */
+    public void setDaylightCycle(boolean daylightCycle) {
+        this.daylightCycle = daylightCycle;
     }
 
     /** World X coordinate of the player. */
