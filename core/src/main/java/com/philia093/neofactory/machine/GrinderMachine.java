@@ -30,7 +30,7 @@ public class GrinderMachine extends SteamMachine {
      * @return the screen of that grinder
      */
     public static MachineScreen screen(MachinePressure pressure) {
-        return new MachineScreen(pressure.title("Grinder"), MachineStyle.BRONZE,
+        return new MachineScreen(pressure.title("Grinder"), pressure.style(),
                 ProgressKind.BRONZE_GRINDER, List.of(SlotKind.GRINDER_INPUT),
                 List.of(SlotKind.GRINDER_OUTPUT), 1, 0, false);
     }

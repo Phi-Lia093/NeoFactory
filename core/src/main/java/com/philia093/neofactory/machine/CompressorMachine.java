@@ -29,7 +29,7 @@ public class CompressorMachine extends SteamMachine {
      * @return the screen of that compressor
      */
     public static MachineScreen screen(MachinePressure pressure) {
-        return new MachineScreen(pressure.title("Compressor"), MachineStyle.BRONZE,
+        return new MachineScreen(pressure.title("Compressor"), pressure.style(),
                 ProgressKind.BRONZE_COMPRESSOR, List.of(SlotKind.COMPRESSOR_INPUT),
                 List.of(SlotKind.GENERIC), 1, 0, false);
     }

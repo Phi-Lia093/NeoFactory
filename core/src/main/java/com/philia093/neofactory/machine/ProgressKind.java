@@ -56,6 +56,12 @@ public enum ProgressKind {
     private final int emptyRow;
     private final boolean vertical;
 
+    /** Rows the bars of the age of steel stand below the ones of bronze. */
+    public static final int STEEL_ROW_SHIFT = 5;
+
+    /** Column the bars of the age of steam start at, the first of the pair. */
+    private static final int STEAM_COLUMN = 7;
+
     ProgressKind(int fullColumn, int fullRow, int emptyColumn, int emptyRow, boolean vertical) {
         this.fullColumn = fullColumn;
         this.fullRow = fullRow;
@@ -82,6 +88,29 @@ public enum ProgressKind {
     /** Row of the dark track. */
     public int emptyRow() {
         return emptyRow;
+    }
+
+    /** {@code true} for a bar of the age of steam, which stands in the seventh and eighth column. */
+    public boolean isSteam() {
+        return emptyColumn >= STEAM_COLUMN;
+    }
+
+    /**
+     * Row of the bright arrow in a style.
+     * <p>
+     * The two ages of steam draw their bars from the same two columns, one below the other: the bars of the
+     * age of steel stand {@link #STEEL_ROW_SHIFT} rows below the ones of bronze.
+     *
+     * @param style style the machine is drawn in
+     * @return the row of the cell of that style
+     */
+    public int fullRow(MachineStyle style) {
+        return style == MachineStyle.STEEL && isSteam() ? fullRow + STEEL_ROW_SHIFT : fullRow;
+    }
+
+    /** Row of the dark track in a style. */
+    public int emptyRow(MachineStyle style) {
+        return style == MachineStyle.STEEL && isSteam() ? emptyRow + STEEL_ROW_SHIFT : emptyRow;
     }
 
     /**

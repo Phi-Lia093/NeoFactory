@@ -30,7 +30,7 @@ public class ExtractorMachine extends SteamMachine {
      * @return the screen of that extractor
      */
     public static MachineScreen screen(MachinePressure pressure) {
-        return new MachineScreen(pressure.title("Extractor"), MachineStyle.BRONZE,
+        return new MachineScreen(pressure.title("Extractor"), pressure.style(),
                 ProgressKind.BRONZE_EXTRACTOR, List.of(SlotKind.EXTRACTOR_INPUT),
                 List.of(SlotKind.GENERIC), 1, 0, false);
     }

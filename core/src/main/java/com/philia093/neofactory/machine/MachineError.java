@@ -72,6 +72,27 @@ public enum MachineError {
         return row;
     }
 
+    /** Rows the alarms of the age of steel stand below the ones of bronze. */
+    public static final int STEEL_ROW_SHIFT = 1;
+
+    /** {@code true} for an alarm a machine that runs on steam reports. */
+    public boolean isSteamAlarm() {
+        return this == NO_STEAM || this == NO_EXHAUST;
+    }
+
+    /**
+     * Row of the cell this error is drawn from in a style.
+     * <p>
+     * The two alarms a machine of the age of steam reports stand one row below the bronze one in the age of
+     * steel, so a machine of steel shows the alarm of steel, see {@link #isSteamAlarm()}.
+     *
+     * @param style style the machine is drawn in
+     * @return the row of the cell of that style
+     */
+    public int row(MachineStyle style) {
+        return style == MachineStyle.STEEL && isSteamAlarm() ? row + STEEL_ROW_SHIFT : row;
+    }
+
     /**
      * Line a tooltip names this error with.
      * <p>

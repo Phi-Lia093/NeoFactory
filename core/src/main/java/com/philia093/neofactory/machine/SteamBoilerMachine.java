@@ -135,7 +135,7 @@ public class SteamBoilerMachine extends Machine implements StatusMachine, Progre
      */
     public static MachineScreen screen(MachinePressure pressure) {
         return new MachineScreen(pressure == MachinePressure.LOW ? "Bronze Boiler"
-                : pressure.title("Boiler"), MachineStyle.BRONZE, ProgressKind.BRONZE,
+                : pressure.title("Boiler"), pressure.style(), ProgressKind.BRONZE,
                 List.of(SlotKind.SMELTING), List.of(SlotKind.GENERIC), 1, 1, false);
     }
 

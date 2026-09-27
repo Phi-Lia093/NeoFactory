@@ -72,6 +72,19 @@ public enum MachinePressure {
         return this == HIGH;
     }
 
+    /**
+     * Style of panel a machine of this pressure is drawn in.
+     * <p>
+     * The two pressures are two ages: a machine of bronze is drawn with the bronze panel of the sheet and a
+     * machine driven harder with the dark panel of the age of steel, which carries the very same layout one
+     * panel lower, see {@link MachineStyle}.
+     *
+     * @return the style the screen of a machine of this pressure uses
+     */
+    public MachineStyle style() {
+        return isOfSteel() ? MachineStyle.STEEL : MachineStyle.BRONZE;
+    }
+
     @Override
     public String toString() {
         return name().toLowerCase(Locale.ROOT);

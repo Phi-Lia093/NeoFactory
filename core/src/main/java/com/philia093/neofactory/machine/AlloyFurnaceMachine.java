@@ -37,7 +37,7 @@ public class AlloyFurnaceMachine extends SteamMachine {
      * @return the screen of that furnace
      */
     public static MachineScreen screen(MachinePressure pressure) {
-        return new MachineScreen(pressure.title("Alloy Furnace"), MachineStyle.BRONZE,
+        return new MachineScreen(pressure.title("Alloy Furnace"), pressure.style(),
                 ProgressKind.BRONZE, List.of(SlotKind.SMELTING, SlotKind.SMELTING),
                 List.of(SlotKind.GENERIC), 1, 0, false);
     }

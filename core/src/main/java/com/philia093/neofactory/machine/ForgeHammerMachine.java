@@ -30,7 +30,7 @@ public class ForgeHammerMachine extends SteamMachine {
      * @return the screen of that hammer
      */
     public static MachineScreen screen(MachinePressure pressure) {
-        return new MachineScreen(pressure.title("Forge Hammer"), MachineStyle.BRONZE,
+        return new MachineScreen(pressure.title("Forge Hammer"), pressure.style(),
                 ProgressKind.BRONZE_HAMMER, List.of(SlotKind.HAMMER_INPUT), List.of(SlotKind.GENERIC),
                 1, 0, false);
     }

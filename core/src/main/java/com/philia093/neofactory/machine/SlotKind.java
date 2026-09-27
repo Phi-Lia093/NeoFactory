@@ -63,6 +63,9 @@ public enum SlotKind {
     private final int bronzeColumn;
     private final int bronzeRow;
 
+    /** Rows the pictures of the age of steel stand below the ones of bronze in the machine column. */
+    public static final int STEEL_ROW_SHIFT = 7;
+
     SlotKind(int column, int row, int bronzeColumn, int bronzeRow) {
         this.column = column;
         this.row = row;
@@ -77,17 +80,28 @@ public enum SlotKind {
      * @return the column of the cell of that style
      */
     public int column(MachineStyle style) {
-        return style == MachineStyle.BRONZE && bronzeColumn >= 0 ? bronzeColumn : column;
+        if (style == MachineStyle.NORMAL || !isBronze()) {
+            return column;
+        }
+        return bronzeColumn >= 0 ? bronzeColumn : column;
     }
 
     /**
      * Row of the cell this kind is drawn from in a style.
+     * <p>
+     * The two ages of steam draw their machines from the same column of the sheet, one below the other: the
+     * pictures of the age of steel stand {@link #STEEL_ROW_SHIFT} rows below the ones of bronze, so a machine
+     * of steel shows the gear of steel in the slot a machine of bronze shows the gear of bronze in.
      *
      * @param style style the machine is drawn in
      * @return the row of the cell of that style
      */
     public int row(MachineStyle style) {
-        return style == MachineStyle.BRONZE && bronzeColumn >= 0 ? bronzeRow : row;
+        int ofBronze = bronzeColumn >= 0 ? bronzeRow : row;
+        if (style == MachineStyle.NORMAL || !isBronze()) {
+            return row;
+        }
+        return style == MachineStyle.STEEL ? ofBronze + STEEL_ROW_SHIFT : ofBronze;
     }
 
     /** Column of the cell this kind is drawn from, the one every style borrows it from. */

@@ -54,7 +54,7 @@ public final class MachineTextures implements ContainerAppearance {
     public static final int ICON_CELL = 18;
 
     /** Amount of columns of the icon grid. */
-    public static final int ICON_COLUMNS = 9;
+    public static final int ICON_COLUMNS = 10;
 
     /** Amount of rows of the icon grid. */
     public static final int ICON_ROWS = 8;
@@ -278,7 +278,7 @@ public final class MachineTextures implements ContainerAppearance {
      *         missing
      */
     public TextureRegion icon(MachineError error) {
-        return error.isError() ? icon(error.column(), error.row()) : null;
+        return error.isError() ? icon(error.column(), error.row(style)) : null;
     }
 
     /**
@@ -292,9 +292,9 @@ public final class MachineTextures implements ContainerAppearance {
      * @return an element that draws the track and the part that is done
      */
     public ArrowElement arrows(ProgressKind kind) {
-        TextureRegion bright = icon(kind.fullColumn(), kind.fullRow());
+        TextureRegion bright = icon(kind.fullColumn(), kind.fullRow(style));
         TextureRegion track = kind.vertical() ? heavyTrack
-                : icon(kind.emptyColumn(), kind.emptyRow());
+                : icon(kind.emptyColumn(), kind.emptyRow(style));
         return new ArrowElement(bright, track, kind.vertical());
     }
 
