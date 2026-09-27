@@ -4,6 +4,7 @@ import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.render.PixelFont;
 
 /**
  * Geometry of the screen of a container: what lies where and how large its panel becomes.
@@ -30,8 +31,15 @@ public final class ChestLayout {
     /** Amount of rows of the slots the container itself holds. */
     public static final int ROWS = 3;
 
-    /** Height of the band at the top of the panel that holds the name of the container. */
-    public static final int TITLE_HEIGHT = 18;
+    /**
+     * Height of the band at the top of the panel that holds the name of the container.
+     * <p>
+     * The band has to hold the line of the font with the air above and below it and nothing of it may reach
+     * the first row of slots: the name begins {@link ContainerGui#TITLE_TOP} pixels below the upper edge of
+     * the panel and the line of the font is as tall as its cell, so the band is that much plus the air under
+     * the name, see {@link #CONTAINER_Y}.
+     */
+    public static final int TITLE_HEIGHT = ContainerGui.TITLE_TOP + PixelFont.ASCII_CELL_SIZE + 4;
 
     /** Y coordinate of the first row of the container, the upper edge of an icon. */
     public static final int CONTAINER_Y = TITLE_HEIGHT;
