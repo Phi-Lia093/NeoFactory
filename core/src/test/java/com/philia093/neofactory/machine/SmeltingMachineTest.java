@@ -143,7 +143,8 @@ class SmeltingMachineTest {
         assertFalse(fuel.isOutput(), "so does the fuel slot");
         assertTrue(output.isOutput(), "the result can only be taken out");
         assertTrue(output.x() > input.x(), "the result lies behind the input");
-        assertTrue(fuel.y() > input.y(), "the fuel lies below the input");
+        assertTrue(fuel.x() < input.x(), "the fuel lies beside the input, further from the bar");
+        assertTrue(fuel.y() == input.y(), "and on the row the machine stands on");
         assertTrue(layout.panelWidth() >= PanelTextures.PANEL_WIDTH,
                 "the panel is at least as wide as a standard one");
         assertEquals(0.0f, menu.craftProgress(), 0.001f);

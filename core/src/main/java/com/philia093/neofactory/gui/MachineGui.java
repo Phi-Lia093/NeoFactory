@@ -13,8 +13,10 @@ import com.philia093.neofactory.gui.container.ItemTooltip;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.ArrowElement;
 import com.philia093.neofactory.gui.panel.MachineTextures;
+import com.philia093.neofactory.gui.panel.NeiTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.machine.EnergyStorage;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.MachineMenu;
 import com.philia093.neofactory.machine.MachineStyle;
@@ -56,6 +58,9 @@ public final class MachineGui {
      * tried first and turned out muddy.
      */
     private static final Color TEXT_COLOR = new Color(Color.WHITE);
+
+    /** Colour the cell of energy is filled with, the red of the bars of the age of power. */
+    private static final Color ENERGY_COLOR = new Color(0.72f, 0.12f, 0.12f, 1.0f);
 
     /** Pixels between the error icon and the status line next to it. */
     private static final int ERROR_GAP = 2;
@@ -282,13 +287,23 @@ public final class MachineGui {
         drawStatus(batch, panelX, panelY, panelHeight);
         drawProgress(batch, panelX, panelY, panelHeight);
         drawFluidSlots(batch, panelX, panelY, panelHeight);
+        drawEnergy(batch, panelX, panelY, panelHeight);
     }
 
-    /** Writes the name of the machine in the upper left corner of the panel. */
+    /** Writes the name of the machine on the label in the upper left corner of the panel. */
     private void drawTitle(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        String title = menu.title();
+        TextureRegion label = textures.region(NeiTextures.TAB_UNSELECTED);
+        if (label != null) {
+            // The label is the tab of the pack stretched to the name: the name of a machine stands on a band
+            // of its own and never on the frame of the picture of its panel, so what a panel of the workshop
+            // looks like at the top can never move a letter of the screen, see MachineMenu#LABEL_HEIGHT.
+            batch.draw(label, panelX + MachineMenu.LABEL_LEFT,
+                    panelY + panelHeight - MachineMenu.LABEL_TOP - MachineMenu.LABEL_HEIGHT,
+                    font.width(title) + 2 * MachineMenu.LABEL_PAD, MachineMenu.LABEL_HEIGHT);
+        }
         font.setColor(TEXT_COLOR);
-        font.drawShadowed(batch, menu.title(), panelX + MachineMenu.TEXT_LEFT,
-                lineY(panelY, panelHeight));
+        font.drawShadowed(batch, title, panelX + MachineMenu.TEXT_LEFT, lineY(panelY, panelHeight));
         font.setColor(Color.WHITE);
     }
 
@@ -352,6 +367,33 @@ public final class MachineGui {
             }
             drawFluid(batch, x, y, menu.machine().tank(slot.tank()).storage());
         }
+    }
+
+    /**
+     * Draws the cell of energy at the foot of the panel, between the two pairs of tanks.
+     * <p>
+     * The cell is not a slot: no player ever puts anything into it. It shows how much of the buffer of the
+     * machine is filled, the way a tank shows the fluid it holds, so a machine that waits for power says so
+     * on the same row it waits on. A machine of the age of steam has no buffer and shows an empty cell.
+     */
+    private void drawEnergy(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        float x = panelX + MachineMenu.ENERGY_X;
+        float y = panelY + panelHeight - MachineMenu.FOOT_TOP - ContainerLayout.SLOT_SIZE;
+        TextureRegion cell = panel.icon(SlotKind.GENERIC);
+        if (cell != null) {
+            batch.draw(cell, x - PanelTextures.SLOT_BEVEL, y - PanelTextures.SLOT_BEVEL,
+                    MachineTextures.ICON_CELL, MachineTextures.ICON_CELL);
+        }
+        EnergyStorage buffer = menu.machine().energy();
+        TextureRegion pixel = textures.whitePixel();
+        if (pixel == null || buffer == null || buffer.capacity() <= 0 || buffer.amount() <= 0) {
+            return;
+        }
+        float inside = ContainerLayout.SLOT_SIZE - 2;
+        float filled = inside * Math.min(1.0f, (float) buffer.amount() / buffer.capacity());
+        batch.setColor(ENERGY_COLOR);
+        batch.draw(pixel, x + 1, y + 1, inside, filled);
+        batch.setColor(Color.WHITE);
     }
 
     /**

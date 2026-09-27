@@ -197,12 +197,10 @@ class MachinePreviewTest {
             roles.add(MachineInventory.Role.OUTPUT);
             outKinds.add(SlotKind.GENERIC);
         }
-        for (int slot = 0; slot < MachineMenu.MAX_UPGRADES; slot++) {
-            roles.add(MachineInventory.Role.UPGRADE);
-        }
-        roles.add(MachineInventory.Role.CONFIGURE);
+        // The panel of a machine carries two blocks of slots, two pairs of tanks and the cell of energy
+        // between them: there is no column of upgrades and no corner to configure, see MachineMenu.
         MachineScreen screen = new MachineScreen("Full machine", ProgressKind.CHEMICAL, inKinds,
-                outKinds, 2, 2, true);
+                outKinds, 2, 2, false);
         return new Machine(screen,
                 new MachineInventory(roles.toArray(new MachineInventory.Role[0])),
                 new SimpleEnergyStorage(1000), List.of(), MachineTank.of(1000, MachineTank.Role.INPUT),
@@ -257,9 +255,26 @@ class MachinePreviewTest {
                 MachineTextures.iconY(kind.fullRow()), filled, cell, arrowX, arrowY);
     }
 
-    /** Writes the name of the machine in the upper left corner of the panel. */
+    /** Writes the name of the machine on the label in the upper left corner of the panel. */
     private static void drawTitle(BufferedImage picture, BufferedImage font, String text) {
+        // The label is the tab of the pack stretched to the name, and the preview paints the band it covers:
+        // a name that would reach out of its label shows up in the picture, see MachineGui#drawTitle.
+        int fill = 0xFF8B8B8B;
+        fillBox(picture, MARGIN + MachineMenu.LABEL_LEFT, MARGIN + MachineMenu.LABEL_TOP,
+                textWidth(font, text) + 2 * MachineMenu.LABEL_PAD, MachineMenu.LABEL_HEIGHT, fill);
         drawText(picture, font, text, MARGIN + MachineMenu.TEXT_LEFT, MARGIN + MachineMenu.TEXT_TOP);
+    }
+
+    /** Paints one box of the picture, the band the label of a machine covers. */
+    private static void fillBox(BufferedImage picture, int x, int y, int width, int height, int argb) {
+        for (int row = 0; row < height; row++) {
+            for (int column = 0; column < width; column++) {
+                if (x + column >= 0 && x + column < picture.getWidth() && y + row >= 0
+                        && y + row < picture.getHeight()) {
+                    picture.setRGB(x + column, y + row, argb);
+                }
+            }
+        }
     }
 
     /** Writes what the machine reports in the upper right corner of the panel. */

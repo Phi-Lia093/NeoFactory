@@ -17,7 +17,7 @@ import java.util.Objects;
  *     <li>{@link #inputs()} and {@link #outputs()} name the kind of every slot a machine
  *         works with, one entry per slot. Their amount decides how the slots are arranged,
  *         see {@link #columns(int)} and {@link #rows(int)}: one slot stands alone, two
- *         stand above each other, four form a square and six fill two rows of three;</li>
+ *         stand beside each other, four form a square and six fill two rows of three;</li>
  *     <li>{@link #fluidInputs()} and {@link #fluidOutputs()} are the tanks at the foot of
  *         the panel, up to two of each, drawn in the lower left and next to it;</li>
  *     <li>{@link #configureSlot()} reserves the lower right corner for the slot that will
@@ -132,10 +132,12 @@ public record MachineScreen(String title, MachineStyle style, ProgressKind progr
      * @param slots amount of slots, {@code 0}, {@code 1}, {@code 2}, {@code 4} or {@code 6}
      * @return the amount of columns, {@code 0} for a machine that holds no slot of that side
      */
+    /** Amount of columns a block of slots of this size takes. */
     public static int columns(int slots) {
         return switch (slots) {
             case 0 -> 0;
-            case 1, 2 -> 1;
+            case 1 -> 1;
+            case 2 -> 2;
             case 4 -> 2;
             case 6 -> 3;
             default -> throw new IllegalArgumentException("No shape for " + slots + " slots");
@@ -151,8 +153,8 @@ public record MachineScreen(String title, MachineStyle style, ProgressKind progr
     public static int rows(int slots) {
         return switch (slots) {
             case 0 -> 0;
-            case 1 -> 1;
-            case 2, 4, 6 -> 2;
+            case 1, 2 -> 1;
+            case 4, 6 -> 2;
             default -> throw new IllegalArgumentException("No shape for " + slots + " slots");
         };
     }

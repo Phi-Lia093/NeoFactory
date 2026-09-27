@@ -17,15 +17,16 @@ import java.util.Objects;
  * The class turns what a machine registered, see {@link MachineScreen}, into the layout of a
  * container, so a new machine never mentions a pixel:
  * <ul>
- *     <li>the title stands in the upper left corner of the panel and the status of the
- *         machine in the upper right one;</li>
+ *     <li>the title stands on the label in the upper left corner of the panel and the status
+ *         of the machine in the upper right one;</li>
  *     <li>the input slots and the output slots form a block each, on the left and on the
  *         right of the progress bar. The shape of a block follows its size: one slot stands
- *         alone, two stand above each other, four form a square and six fill two rows of
+ *         alone, two stand beside each other, four form a square and six fill two rows of
  *         three, see {@link MachineScreen#columns(int)};</li>
- *     <li>the tanks of fluid stand at the foot of the panel - the ones a recipe drains in the
- *         lower left, the ones a machine fills next to them - with the configure slot in the
- *         lower right corner;</li>
+ *     <li>the tanks of fluid stand at the foot of the panel - the ones a recipe drains on the
+ *         left, the ones a machine fills on the right - with the cell of energy between the
+ *         two pairs of them. The panel of a machine of this workshop has no column for
+ *         upgrades and no corner to configure;</li>
  *     <li>the inventory of the player follows below, on the rows its own panel carries.</li>
  * </ul>
  * A window only has to hand the {@link #container()} to
@@ -41,69 +42,60 @@ public final class MachineMenu {
     /** Height of the panel of a machine in pixels. */
     public static final int HEIGHT = 166;
 
-    /** X of the rightmost column of the block of input slots. */
-    public static final int INPUT_RIGHT = 50;
+    /** X of the input slot nearest the progress bar: a second input stands one pitch to its left. */
+    public static final int INPUT_RIGHT = 51;
 
-    /** X of the leftmost column of the block of output slots. */
-    public static final int OUTPUT_LEFT = 93;
+    /** X of the output slot nearest the progress bar: a second output stands one pitch to its right. */
+    public static final int OUTPUT_LEFT = 106;
 
-    /**
-     * X of the column of the upgrade slots, the one at the right edge of the panel.
-     * <p>
-     * The column belongs to the upgrades alone, so the block of the products stops before it
-     * and the status line of the upper right corner stops beside it, see {@link #statusRight()}.
-     */
-    public static final int UPGRADE_LEFT = 152;
-
-    /** Upper edge of the first machine slot. */
-    public static final int MACHINE_TOP = 15;
-
-    /** Y the column of the upgrade slots grows up from, its lower right corner. */
-    public static final int UPGRADE_BOTTOM = 58;
-
-    /** Largest amount of upgrade slots that fit into the column at the right edge. */
-    public static final int MAX_UPGRADES = 4;
+    /** Upper edge of the first row of machine slots, the row every machine stands on. */
+    public static final int MACHINE_TOP = 23;
 
     /** X of the progress bar, which stands between the two blocks of slots. */
-    public static final int ARROW_X = 71;
+    public static final int ARROW_X = 79;
 
-    /** Y of the progress bar, centred on the two rows of machine slots. */
-    public static final int ARROW_Y = 27;
+    /** Y of the progress bar, on the row the slots of the machine stand on. */
+    public static final int ARROW_Y = 23;
 
-    /** Upper edge of the foot of the panel, where the tanks and the configure slot lie. */
-    public static final int FOOT_TOP = 58;
+    /** Upper edge of the foot of the panel, where the tanks and the cell of energy lie. */
+    public static final int FOOT_TOP = 62;
 
-    /** X of the first tank of the foot. */
-    public static final int FOOT_LEFT = ContainerLayout.PADDING;
+    /** X of the first tank a recipe drains: a second tank stands one pitch to its left. */
+    public static final int FLUID_INPUT_X = 51;
 
-    /** Pixels between the tanks a recipe drains and the tanks a machine fills. */
-    public static final int TANK_GAP = 8;
+    /** X of the first tank a machine fills: a second tank stands one pitch to its left. */
+    public static final int FLUID_OUTPUT_X = 125;
+
+    /** X of the cell of energy at the foot, between the two pairs of tanks. */
+    public static final int ENERGY_X = 79;
+
+    /** Left edge of the label the name of a machine is written on, in the upper left corner. */
+    public static final int LABEL_LEFT = 1;
+
+    /** Upper edge of that label, measured from the upper edge of the panel. */
+    public static final int LABEL_TOP = 1;
+
+    /** Height of that label, the picture of a tab stretched to it. */
+    public static final int LABEL_HEIGHT = 12;
+
+    /** Pixels between the edge of the label and the name written on it. */
+    public static final int LABEL_PAD = 4;
+
+    /** X of the title, written on the label and not on the frame of the panel. */
+    public static final int TEXT_LEFT = 5;
 
     /**
-     * X of the configure slot, in the foot of the panel behind the tanks.
+     * Y of the title and of the status line, measured from the upper edge of the panel.
      * <p>
-     * The corner of the panel itself belongs to the upgrade slots, see {@link #UPGRADE_LEFT},
-     * so the configure slot stands at the right of the foot instead.
+     * The name stands on the label of {@link #LABEL_TOP} and {@link #LABEL_HEIGHT} and not on the frame of
+     * the panel: the label carries the name, so what the picture of a panel looks like below it can never
+     * move a letter of the screen. Both numbers are written out for the same reason - moving the label
+     * moves the name, and nothing else moves with either of them.
      */
-    public static final int CONFIGURE_LEFT = 96;
+    public static final int TEXT_TOP = 3;
 
-    /** X of the title in the upper left corner, at the frame of the panel. */
-    public static final int TEXT_LEFT = 3;
-
-    /**
-     * Y of the title and of the status line, at the frame of the panel.
-     * <p>
-     * The line is written below the frame of the panel picture and the name band of {@link #MACHINE_TOP} has
-     * to hold it: two pixels more than the frame, a line of {@code PixelFont.ASCII_CELL_SIZE} pixels and the
-     * air under it, so nothing the screen writes ever reaches the first row of slots.
-     */
-    public static final int TEXT_TOP = 0;
-
-    /** X the status line is aligned to when no upgrade slot stands at the right edge. */
+    /** X the status line of the upper right corner is aligned to. */
     public static final int TEXT_RIGHT = WIDTH - TEXT_LEFT;
-
-    /** Pixels between the status line and the column of the upgrade slots. */
-    public static final int TEXT_GAP = 4;
 
     /** Unit the tooltip of a tank writes behind an amount of fluid, one cell being a thousand of them. */
     public static final String FLUID_UNIT = "mB";
@@ -166,22 +158,20 @@ public final class MachineMenu {
                 machine.tanksOf(MachineTank.Role.INPUT).size());
         require(machine, "output tanks", screen.fluidOutputs(),
                 machine.tanksOf(MachineTank.Role.OUTPUT).size());
-        if (upgrades.size() > MAX_UPGRADES) {
-            throw new IllegalArgumentException("The machine " + machine.name() + " holds "
-                    + upgrades.size() + " upgrade slots, but only " + MAX_UPGRADES
-                    + " fit into the column at its right edge");
+        if (!upgrades.isEmpty() || !configure.isEmpty() || screen.configureSlot()) {
+            // The panel of every machine of the workshop holds two blocks of slots, the tanks at its foot and
+            // the cell of energy between them - and no column for upgrades and no corner to configure. A
+            // machine that asks for one of those would have slots with no cell to be put in, which is a
+            // mistake of the machine and not something a player should ever see.
+            throw new IllegalArgumentException("The machine " + machine.name()
+                    + " asks for upgrade or configure slots, and the panel has no room for them");
         }
 
         ContainerLayout layout = new ContainerLayout();
         MachineStyle style = screen.style();
         addBlock(layout, inventory, inputs, screen.inputs(), true, style);
         addBlock(layout, inventory, outputs, screen.outputs(), false, style);
-        addUpgrades(layout, inventory, upgrades, style);
         this.fluidSlots = buildFluidSlots(machine, screen);
-        if (!configure.isEmpty()) {
-            layout.add(CONFIGURE_LEFT, FOOT_TOP, inventory, configure.get(0), Slot.Rule.NORMAL,
-                    iconColumn(SlotKind.GENERIC, style), iconRow(SlotKind.GENERIC, style));
-        }
         layout.addGrid(PLAYER_LEFT, PLAYER_STORAGE_TOP, PLAYER_COLUMNS, PLAYER_STORAGE_ROWS, player,
                 PlayerInventory.HOTBAR_SLOTS, Slot.Rule.NORMAL);
         layout.addGrid(PLAYER_LEFT, PLAYER_HOTBAR_TOP, PLAYER_COLUMNS, 1, player, 0,
@@ -253,22 +243,6 @@ public final class MachineMenu {
     }
 
     /**
-     * Adds the column of the upgrade slots at the right edge of the panel.
-     * <p>
-     * The column grows upwards: the first upgrade stands in its lower right corner and the
-     * next ones above it, so a machine with a single upgrade keeps the corner and a machine
-     * with four fills the column up to the status line, see {@link #statusRight()}.
-     */
-    private static void addUpgrades(ContainerLayout layout, MachineInventory inventory,
-            List<Integer> upgrades, MachineStyle style) {
-        for (int index = 0; index < upgrades.size(); index++) {
-            layout.add(UPGRADE_LEFT, UPGRADE_BOTTOM - index * ContainerLayout.SLOT_PITCH,
-                    inventory, upgrades.get(index), Slot.Rule.NORMAL,
-                    iconColumn(SlotKind.GENERIC, style), iconRow(SlotKind.GENERIC, style));
-        }
-    }
-
-    /**
      * Column of the cell a kind of slot is drawn from.
      * <p>
      * The plain kind names no cell of the sheet: it is the slot of the very panel the machine stands in, which
@@ -299,10 +273,10 @@ public final class MachineMenu {
     /**
      * Adds one block of slots.
      * <p>
-     * The block is filled row by row from its upper left corner, the order the kinds are
-     * listed in. The block of the inputs grows to the left of the progress bar and the block
-     * of the products to its right, so the bar stays where it is whichever shape a machine
-     * asks for.
+     * The block is read from the progress bar outwards: the first kind of the inputs stands against the bar
+     * and the next ones to its left, the products the other way round, so both blocks keep the same distance
+     * from the bar whichever shape a machine asks for. A block of one kind takes the row every machine stands
+     * on, and a block of four or six fills two rows of two or three, the second row one pitch below the first.
      */
     private static void addBlock(ContainerLayout layout, MachineInventory inventory,
             List<Integer> slots, List<SlotKind> kinds, boolean input, MachineStyle style) {
@@ -313,39 +287,39 @@ public final class MachineMenu {
         }
         int columns = MachineScreen.columns(slots.size());
         int rows = MachineScreen.rows(slots.size());
-        int left = input ? INPUT_RIGHT - (columns - 1) * ContainerLayout.SLOT_PITCH : OUTPUT_LEFT;
-        int top = MACHINE_TOP + (rows == 1 ? ContainerLayout.SLOT_PITCH / 2 : 0);
         for (int row = 0; row < rows; row++) {
             for (int column = 0; column < columns; column++) {
                 int index = row * columns + column;
                 if (index >= slots.size()) {
                     continue;
                 }
+                int x = input ? INPUT_RIGHT - column * ContainerLayout.SLOT_PITCH
+                        : OUTPUT_LEFT + column * ContainerLayout.SLOT_PITCH;
                 SlotKind kind = kinds.get(index);
-                layout.add(left + column * ContainerLayout.SLOT_PITCH,
-                        top + row * ContainerLayout.SLOT_PITCH, inventory, slots.get(index),
-                        input ? Slot.Rule.NORMAL : Slot.Rule.OUTPUT, iconColumn(kind, style),
-                        iconRow(kind, style));
+                layout.add(x, MACHINE_TOP + row * ContainerLayout.SLOT_PITCH, inventory,
+                        slots.get(index), input ? Slot.Rule.NORMAL : Slot.Rule.OUTPUT,
+                        iconColumn(kind, style), iconRow(kind, style));
             }
         }
     }
 
-    /** Places the tanks at the foot of the panel, the input tanks first. */
+    /**
+     * Places the tanks at the foot of the panel.
+     * <p>
+     * The tank a recipe is drained from stands at the left of the foot and the tank a machine fills at the
+     * right of it, and the cell of energy lies between the two pairs, see {@link #FLUID_INPUT_X},
+     * {@link #ENERGY_X} and {@link #FLUID_OUTPUT_X}. A second tank of a side stands one pitch further out,
+     * so an even number of tanks reads as a pair and never covers the cell of energy.
+     */
     private static List<FluidSlot> buildFluidSlots(Machine machine, MachineScreen screen) {
         List<FluidSlot> found = new ArrayList<>();
-        int x = FOOT_LEFT;
         for (int index = 0; index < screen.fluidInputs(); index++) {
-            found.add(new FluidSlot(x, FOOT_TOP,
+            found.add(new FluidSlot(FLUID_INPUT_X - index * ContainerLayout.SLOT_PITCH, FOOT_TOP,
                     tankIndex(machine, MachineTank.Role.INPUT, index), true));
-            x += ContainerLayout.SLOT_PITCH;
-        }
-        if (screen.fluidInputs() > 0 && screen.fluidOutputs() > 0) {
-            x += TANK_GAP;
         }
         for (int index = 0; index < screen.fluidOutputs(); index++) {
-            found.add(new FluidSlot(x, FOOT_TOP,
+            found.add(new FluidSlot(FLUID_OUTPUT_X - index * ContainerLayout.SLOT_PITCH, FOOT_TOP,
                     tankIndex(machine, MachineTank.Role.OUTPUT, index), false));
-            x += ContainerLayout.SLOT_PITCH;
         }
         return List.copyOf(found);
     }
@@ -376,28 +350,13 @@ public final class MachineMenu {
         return fluidSlots;
     }
 
-    /** {@code true} when the machine keeps the lower right corner for a configure slot. */
-    public boolean hasConfigureSlot() {
-        return machine.inventory().slotOf(MachineInventory.Role.CONFIGURE) >= 0;
-    }
-
-    /** {@code true} when the machine holds upgrade slots in the column at its right edge. */
-    public boolean hasUpgradeColumn() {
-        return machine.inventory().slotOf(MachineInventory.Role.UPGRADE) >= 0;
-    }
-
     /**
-     * X the status line of the upper right corner is aligned to.
-     * <p>
-     * The column at the right edge of the panel belongs to the upgrade slots, and a full
-     * column reaches up to the line of the title. A machine that holds upgrades therefore
-     * keeps its status line to their left instead of running under them, see
-     * {@link #UPGRADE_BOTTOM}.
+     * X the status line of the upper right corner is aligned to, the right frame of the panel.
      *
      * @return the coordinate in pixels of the panel
      */
     public int statusRight() {
-        return hasUpgradeColumn() ? UPGRADE_LEFT - TEXT_GAP : TEXT_RIGHT;
+        return TEXT_RIGHT;
     }
 
     /** Title of the machine, written in the upper left corner of the panel. */

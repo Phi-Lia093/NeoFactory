@@ -31,11 +31,12 @@ class MachineScreenTest {
     @Test
     void theShapesOfTheLayoutAreTheOnesThatFit() {
         assertEquals(1, MachineScreen.columns(1));
+        assertEquals(2, MachineScreen.columns(2));
         assertEquals(2, MachineScreen.columns(4));
         assertEquals(3, MachineScreen.columns(6));
 
         assertEquals(1, MachineScreen.rows(1));
-        assertEquals(2, MachineScreen.rows(2));
+        assertEquals(1, MachineScreen.rows(2));
         assertEquals(2, MachineScreen.rows(4));
         assertEquals(2, MachineScreen.rows(6));
     }

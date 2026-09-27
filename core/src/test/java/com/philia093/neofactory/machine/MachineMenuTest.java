@@ -60,13 +60,12 @@ class MachineMenuTest {
         Slot fuel = layout.slots().get(SmeltingMachine.FUEL);
         Slot output = layout.slots().get(SmeltingMachine.OUTPUT);
 
-        assertEquals(MachineMenu.INPUT_RIGHT, input.x());
+        assertEquals(MachineMenu.INPUT_RIGHT, input.x(), "the input stands against the progress bar");
         assertEquals(MachineMenu.MACHINE_TOP, input.y());
-        assertEquals(input.x(), fuel.x(), "fuel stands in the column of the input");
-        assertEquals(input.y() + ContainerLayout.SLOT_PITCH, fuel.y(), "fuel stands below it");
-        assertEquals(MachineMenu.OUTPUT_LEFT, output.x(), "the product stands beside them");
-        assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH / 2, output.y(),
-                "a block of one slot is centred on the two rows of the machine area");
+        assertEquals(input.x() - ContainerLayout.SLOT_PITCH, fuel.x(), "fuel stands to its left");
+        assertEquals(input.y(), fuel.y(), "and on the row the machine stands on");
+        assertEquals(MachineMenu.OUTPUT_LEFT, output.x(), "the product stands beside the bar");
+        assertEquals(MachineMenu.MACHINE_TOP, output.y(), "and on the same row");
         assertTrue(output.isOutput(), "the product can only be taken out");
         assertFalse(input.isOutput());
         assertFalse(fuel.isOutput(), "fuel is put in by the player");
@@ -99,26 +98,28 @@ class MachineMenuTest {
         MachineMenu menu = menu(1, 1, 0, 0, false);
         List<Slot> slots = menu.container().layout().slots();
 
-        // Centred on the two rows of machine slots the empty half of the panel offers.
+        // Every slot stands on the row a machine stands on, see MachineMenu#MACHINE_TOP.
         assertEquals(MachineMenu.INPUT_RIGHT, slots.get(0).x());
-        assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH / 2, slots.get(0).y());
+        assertEquals(MachineMenu.MACHINE_TOP, slots.get(0).y());
         assertEquals(MachineMenu.OUTPUT_LEFT, slots.get(1).x());
         assertEquals(slots.get(0).y(), slots.get(1).y(), "both stand on the same height");
     }
 
     @Test
-    void twoSlotsStandAboveEachOther() {
+    void twoSlotsStandBesideEachOther() {
         MachineMenu menu = menu(2, 2, 0, 0, false);
         List<Slot> slots = menu.container().layout().slots();
 
-        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(0).x());
+        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(0).x(), "the first input against the bar");
+        assertEquals(MachineMenu.INPUT_RIGHT - ContainerLayout.SLOT_PITCH, slots.get(1).x(),
+                "the second input to its left");
+        assertEquals(slots.get(0).y(), slots.get(1).y(), "one row");
         assertEquals(MachineMenu.MACHINE_TOP, slots.get(0).y());
-        assertEquals(slots.get(0).x(), slots.get(1).x(), "one column");
-        assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH, slots.get(1).y());
 
-        assertEquals(MachineMenu.OUTPUT_LEFT, slots.get(2).x());
-        assertEquals(MachineMenu.OUTPUT_LEFT, slots.get(3).x());
-        assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH, slots.get(3).y());
+        assertEquals(MachineMenu.OUTPUT_LEFT, slots.get(2).x(), "the first product beside the bar");
+        assertEquals(MachineMenu.OUTPUT_LEFT + ContainerLayout.SLOT_PITCH, slots.get(3).x(),
+                "the second product to its right");
+        assertEquals(MachineMenu.MACHINE_TOP, slots.get(3).y());
     }
 
     @Test
@@ -127,12 +128,12 @@ class MachineMenuTest {
         List<Slot> slots = menu.container().layout().slots();
         int left = MachineMenu.INPUT_RIGHT - ContainerLayout.SLOT_PITCH;
 
-        assertEquals(left, slots.get(0).x());
-        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(1).x(), "the first row is filled first");
+        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(0).x());
+        assertEquals(left, slots.get(1).x(), "the first row is filled towards the left");
         assertEquals(MachineMenu.MACHINE_TOP, slots.get(1).y());
-        assertEquals(left, slots.get(2).x(), "the second row starts at the left again");
+        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(2).x(), "the second row starts at the bar again");
         assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH, slots.get(2).y());
-        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(3).x());
+        assertEquals(left, slots.get(3).x());
     }
 
     @Test
@@ -142,10 +143,10 @@ class MachineMenuTest {
         int left = MachineMenu.INPUT_RIGHT - 2 * ContainerLayout.SLOT_PITCH;
         int secondRow = MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH;
 
-        assertEquals(left, slots.get(0).x());
-        assertEquals(left + ContainerLayout.SLOT_PITCH, slots.get(1).x());
-        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(2).x());
-        assertEquals(left, slots.get(3).x(), "the fourth slot opens the second row");
+        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(0).x());
+        assertEquals(MachineMenu.INPUT_RIGHT - ContainerLayout.SLOT_PITCH, slots.get(1).x());
+        assertEquals(left, slots.get(2).x(), "the third input is the leftmost one");
+        assertEquals(MachineMenu.INPUT_RIGHT, slots.get(3).x(), "the fourth slot opens the second row");
         assertEquals(secondRow, slots.get(3).y());
         assertEquals(MachineMenu.OUTPUT_LEFT, slots.get(6).x(), "the products follow the inputs");
         assertEquals(MachineMenu.OUTPUT_LEFT + 2 * ContainerLayout.SLOT_PITCH, slots.get(8).x(),
@@ -154,25 +155,21 @@ class MachineMenuTest {
     }
 
     @Test
-    void theTanksStandAtTheFootAndTheConfigureSlotInTheCorner() {
-        MachineMenu menu = menu(2, 1, 2, 2, true);
+    void theTanksStandAtTheFootOfThePanel() {
+        MachineMenu menu = menu(2, 1, 2, 2, false);
         List<MachineMenu.FluidSlot> tanks = menu.fluidSlots();
 
         assertEquals(4, tanks.size(), "two tanks in, two tanks out");
-        assertEquals(MachineMenu.FOOT_LEFT, tanks.get(0).x(), "the input tanks start at the left");
+        assertEquals(MachineMenu.FLUID_INPUT_X, tanks.get(0).x(), "the first tank at the left");
         assertEquals(MachineMenu.FOOT_TOP, tanks.get(0).y());
         assertTrue(tanks.get(0).input());
-        assertEquals(MachineMenu.FOOT_LEFT + ContainerLayout.SLOT_PITCH, tanks.get(1).x());
-        assertEquals(MachineMenu.FOOT_LEFT + 2 * ContainerLayout.SLOT_PITCH + MachineMenu.TANK_GAP,
-                tanks.get(2).x(), "the output tanks follow with a gap");
-        assertFalse(tanks.get(2).input());
+        assertEquals(MachineMenu.FLUID_INPUT_X - ContainerLayout.SLOT_PITCH, tanks.get(1).x(),
+                "a second tank of a side stands one pitch further out");
+        assertFalse(tanks.get(2).input(), "and the tanks a machine fills stand at the right");
+        assertEquals(MachineMenu.FLUID_OUTPUT_X, tanks.get(2).x());
+        assertEquals(MachineMenu.FLUID_OUTPUT_X - ContainerLayout.SLOT_PITCH, tanks.get(3).x());
         assertEquals(2, tanks.get(2).tank(), "the first tank of the output side, behind both inputs");
         assertEquals(3, tanks.get(3).tank());
-
-        assertTrue(menu.hasConfigureSlot(), "the corner was asked for");
-        Slot configure = menu.container().layout().slots().get(3);
-        assertEquals(MachineMenu.CONFIGURE_LEFT, configure.x());
-        assertEquals(MachineMenu.FOOT_TOP, configure.y());
     }
 
     @Test
@@ -180,7 +177,6 @@ class MachineMenuTest {
         MachineMenu menu = menu(1, 1, 0, 0, false);
 
         assertTrue(menu.fluidSlots().isEmpty());
-        assertFalse(menu.hasConfigureSlot());
     }
 
     @Test
@@ -277,30 +273,12 @@ class MachineMenuTest {
     }
 
     @Test
-    void theUpgradesFillTheColumnAtTheRightEdgeFromBelow() {
-        MachineMenu one = menu(1, 1, 1, 0, 0, false);
-        Slot only = one.container().layout().slots().get(2);
-
-        assertEquals(MachineMenu.UPGRADE_LEFT, only.x(), "the column at the right edge");
-        assertEquals(MachineMenu.UPGRADE_BOTTOM, only.y(), "a single upgrade keeps the corner");
-        assertFalse(only.isOutput(), "the player puts an upgrade in and takes it out");
-
-        MachineMenu four = menu(1, 1, MachineMenu.MAX_UPGRADES, 0, 0, false);
-        List<Slot> upgrades = four.container().layout().slots()
-                .subList(2, 2 + MachineMenu.MAX_UPGRADES);
-        for (int index = 0; index < MachineMenu.MAX_UPGRADES; index++) {
-            assertEquals(MachineMenu.UPGRADE_LEFT, upgrades.get(index).x());
-            assertEquals(MachineMenu.UPGRADE_BOTTOM - index * ContainerLayout.SLOT_PITCH,
-                    upgrades.get(index).y(), "upgrade " + index + " of the column");
-        }
-        assertEquals(MachineMenu.UPGRADE_LEFT - MachineMenu.TEXT_GAP, four.statusRight(),
-                "the status line stops beside the column");
-    }
-
-    @Test
-    void moreUpgradesThanTheColumnHoldsAreRefused() {
-        assertThrows(IllegalArgumentException.class,
-                () -> menu(1, 1, MachineMenu.MAX_UPGRADES + 1, 0, 0, false));
+    void aMachineThatAsksForSlotsThePanelHasNoRoomForIsRefused() {
+        // The panel of a machine carries two blocks of slots, two pairs of tanks and the cell of energy
+        // between them, and no column of upgrades and no corner to configure: a machine that asks for one of
+        // those would have slots with no cell to stand in.
+        assertThrows(IllegalArgumentException.class, () -> menu(1, 1, 1, 0, 0, false));
+        assertThrows(IllegalArgumentException.class, () -> menu(1, 1, 0, 0, 0, true));
     }
 
     @Test
@@ -314,7 +292,7 @@ class MachineMenuTest {
 
         Slot first = menu.container().layout().slots().get(0);
         assertEquals(MachineMenu.INPUT_RIGHT, first.x(), "the slot of the machine stands alone");
-        assertEquals(MachineMenu.MACHINE_TOP + ContainerLayout.SLOT_PITCH / 2, first.y());
+        assertEquals(MachineMenu.MACHINE_TOP, first.y());
 
         Slot player = menu.container().layout().slots().get(1);
         assertEquals(MachineMenu.PLAYER_LEFT, player.x(), "and the inventory follows below it");
@@ -323,7 +301,7 @@ class MachineMenuTest {
 
     @Test
     void aMachineWithEverythingItCanHoldHasNoOverlap() {
-        MachineMenu menu = menu(6, 6, MachineMenu.MAX_UPGRADES, 2, 2, true);
+        MachineMenu menu = menu(6, 6, 0, 2, 2, false);
         List<int[]> boxes = new ArrayList<>();
         for (Slot slot : menu.container().layout().slots()) {
             boxes.add(box(slot.x(), slot.y()));
@@ -339,8 +317,14 @@ class MachineMenuTest {
                                 + Arrays.toString(boxes.get(b)) + " overlap");
             }
         }
-        assertTrue(menu.statusRight() + MachineMenu.TEXT_GAP <= MachineMenu.UPGRADE_LEFT,
-                "the status line runs under the column of the upgrades");
+        // Nothing covers the cell of energy between the two pairs of tanks, which is what the two tanks of a
+        // side standing further out is for.
+        int[] energy = box(MachineMenu.ENERGY_X, MachineMenu.FOOT_TOP);
+        for (int[] other : boxes) {
+            assertFalse(overlaps(energy, other),
+                    "the cell of energy is covered by " + Arrays.toString(other));
+        }
+        assertEquals(MachineMenu.TEXT_RIGHT, menu.statusRight(), "the status line ends at the frame");
     }
 
     /** The box the picture of a cell covers, its bevel included. */
