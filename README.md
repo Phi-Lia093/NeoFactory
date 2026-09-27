@@ -30,11 +30,15 @@ stored on disk so that a session can be continued later.
   hands nothing over, see `assets/loot_tables/blocks`.
 - **Tools and wear** - a tool names the kind of work it is good for and the level of its
   material, which is exactly what a block asks for: a pickaxe is quick on stone and an axe
-  is no faster there than a hand, stone hands its item over only to a pickaxe of level 1 and
-  a trunk to an axe. Every block a tool harvests costs it one use, the slot shows what is
-  left as a bar under the icon, the tooltip names it, and a tool that is used up leaves the
-  hand. Iron lasts 250 blocks and diamond 1561. Any item may declare a life and not only a
-  tool, see `Damageable`.
+  is no faster there than a hand, stone hands its item over only to a pickaxe of the level it
+  asks for and a trunk to an axe. **The ladder runs hand, wood, stone, iron, diamond**: a hand
+  counts as level 0, wood as 1, stone as 2, iron as 2 and diamond as 3, so a pickaxe of wood
+  opens the stone and the coal of a landscape, one of stone opens the ore of iron and only one
+  of diamond opens obsidian - a world can be opened with nothing but a tree and a hole, see
+  `Items#WOOD_TOOL_LEVEL` and `ToolRecipesTest`. Every block a tool harvests costs it one use,
+  the slot shows what is left as a bar under the icon, the tooltip names it, and a tool that is
+  used up leaves the hand: wood lasts 59 blocks, stone 131, iron 250 and diamond 1561. Any item
+  may declare a life and not only a tool, see `Damageable`.
 - **Inventory and hotbar** - nine hotbar slots, a full inventory screen, and
   dropped items that are thrown where the player looks, fall on the ground and are
   picked up by walking over them; any kind of item is drawn, a block as the cube of
@@ -53,7 +57,9 @@ stored on disk so that a session can be continued later.
   belongs to the block: a pattern is still lying on the table when the player comes back, and
   it travels with the chunk. The result beside it is worked out from the cells and never
   stored, so a stored table can never hand out a product its own cells do not make, and taking
-  it gives up the ingredients the recipe was matched with, see `CraftingField`.
+  it gives up the ingredients the recipe was matched with, see `CraftingField`. Every tool of the
+  game is made on it - a pickaxe of three planks over two sticks is the first one - together with
+  the table itself, a chest, a furnace, a torch and a ladder, see `assets/recipes/crafting_shaped`.
 - **Save games** - one folder per world, a level file plus one file per chunk the
   player changed, written while playing and when leaving.
 - **Chunk streaming** - the terrain around the player is kept in memory and the

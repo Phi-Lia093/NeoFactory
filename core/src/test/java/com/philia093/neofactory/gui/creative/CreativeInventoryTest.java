@@ -194,7 +194,9 @@ class CreativeInventoryTest {
 
         creative.setQuery("pickaxe");
         assertTrue(creative.isSearching(), "typing stays on the search tab");
-        assertEquals(2, creative.matches().size(), "the iron and the diamond pickaxe");
+        assertEquals(4, creative.matches().size(), "the four pickaxes of the ladder");
+        assertTrue(creative.matches().contains(Items.WOOD_PICKAXE));
+        assertTrue(creative.matches().contains(Items.STONE_PICKAXE));
         assertTrue(creative.matches().contains(Items.IRON_PICKAXE));
         assertTrue(creative.matches().contains(Items.DIAMOND_PICKAXE));
 

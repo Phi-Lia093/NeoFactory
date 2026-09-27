@@ -1,0 +1,5 @@
+{
+  "pattern": ["M", "S", "S"],
+  "key": { "M": "iron_ingot", "S": "stick" },
+  "result": { "item": "iron_shovel", "count": 1 }
+}

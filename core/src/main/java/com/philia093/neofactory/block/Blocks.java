@@ -426,7 +426,10 @@ public final class Blocks {
                 .texture("iron_ore")
                 .ground(true)
                 .hardness(3.0f)
-                .harvestLevel(1)
+                // The ore of iron lies one rung above the stone: a pickaxe of wood opens the stone and the
+                // coal of a landscape and stops here, a pickaxe of stone opens it, see
+                // Items#WOOD_TOOL_LEVEL and Items#STONE_TOOL_LEVEL.
+                .harvestLevel(2)
                 .toolType(ToolType.PICKAXE)
                 .build();
         BlockRegistry.register(IRON_ORE);

@@ -119,15 +119,29 @@ public final class Items {
     // ------------------------------------------------------------------
 
     /**
+     * Mining level of the wooden tools, the level the game is opened through.
+     * <p>
+     * A level is compared with {@link com.philia093.neofactory.block.Block#harvestLevel()}, see
+     * {@code HardnessMining}: <b>a hand counts as {@code 0}, wood as {@code 1}, stone as {@code 2},
+     * iron as {@code 2} and diamond as {@code 3}</b>. A tool of wood therefore opens the stone and the
+     * coal of a landscape, a tool of stone reaches the ore of iron, and only diamond opens obsidian, see
+     * {@code Blocks#STONE}, {@code Blocks#IRON_ORE} and {@code Blocks#OBSIDIAN}.
+     */
+    public static final int WOOD_TOOL_LEVEL = 1;
+
+    /** Mining level of the stone tools. */
+    public static final int STONE_TOOL_LEVEL = 2;
+
+    /**
      * Mining level of the iron tools.
      * <p>
-     * Compared with {@link com.philia093.neofactory.block.Block#harvestLevel()},
-     * see {@code HardnessMining}. The levels are {@code 2} for iron and {@code 3}
-     * for diamond, a bare hand counts as {@code 0}.
+     * Iron opens the very blocks stone opens and opens them faster and for longer: what a player gains
+     * with the first ingot is the speed and the life of the tool, not another kind of block, see
+     * {@link #IRON_TOOL_SPEED} and {@link #IRON_TOOL_DURABILITY}.
      */
     public static final int IRON_TOOL_LEVEL = 2;
 
-    /** Mining level of the diamond tools. */
+    /** Mining level of the diamond tools, the level obsidian asks for. */
     public static final int DIAMOND_TOOL_LEVEL = 3;
 
     /**
@@ -143,6 +157,23 @@ public final class Items {
 
     /** Speed diamond tools break blocks with. */
     public static final float DIAMOND_TOOL_SPEED = 8.0f;
+
+    /** Speed wooden tools break blocks with, twice the pace of a bare hand. */
+    public static final float WOOD_TOOL_SPEED = 2.0f;
+
+    /** Speed stone tools break blocks with. */
+    public static final float STONE_TOOL_SPEED = 4.0f;
+
+    /**
+     * Amount of use a tool of wood takes before it is used up.
+     * <p>
+     * Beaten out of the original game, like the life of iron and of diamond: a wooden tool lasts
+     * fifty nine blocks and a stone tool a hundred and thirty one, see {@link Item#maxDamage()}.
+     */
+    public static final int WOOD_TOOL_DURABILITY = 59;
+
+    /** Amount of use a tool of stone takes before it is used up. */
+    public static final int STONE_TOOL_DURABILITY = 131;
 
     /**
      * Amount of use a tool of iron takes before it is used up.
@@ -163,6 +194,48 @@ public final class Items {
      * breaks a block with it in hand, see {@code GameScreen#wearHeldTool}.
      */
     public static final int WRENCH_DURABILITY = 250;
+
+    /**
+     * Ids of the five wooden tools, the first things a player makes for themselves.
+     * <p>
+     * They take the numbers 89 to 93, the window between the wrench and the first pipe that stood free
+     * since the industry was planned, see {@link #WRENCH_ID} and {@link #PIPE_ID_FROM}. A number no
+     * stored inventory can hold costs no version of the save game, which is why the tool that opens the
+     * game joins the ladder without moving anything: <b>a hand, wood, stone, iron, diamond</b>.
+     */
+    public static final int WOOD_PICKAXE_ID = 89;
+
+    /** Id of the wooden axe. */
+    public static final int WOOD_AXE_ID = 90;
+
+    /** Id of the wooden shovel. */
+    public static final int WOOD_SHOVEL_ID = 91;
+
+    /** Id of the wooden hoe. */
+    public static final int WOOD_HOE_ID = 92;
+
+    /** Id of the wooden sword. */
+    public static final int WOOD_SWORD_ID = 93;
+
+    /**
+     * Ids of the five stone tools, the ladder of a player who found their first cobblestone.
+     * <p>
+     * They stand right behind the wooden ones and reach the level of the ore of iron, see
+     * {@link #STONE_TOOL_LEVEL} and {@code Blocks#IRON_ORE}.
+     */
+    public static final int STONE_PICKAXE_ID = 94;
+
+    /** Id of the stone axe. */
+    public static final int STONE_AXE_ID = 95;
+
+    /** Id of the stone shovel. */
+    public static final int STONE_SHOVEL_ID = 96;
+
+    /** Id of the stone hoe. */
+    public static final int STONE_HOE_ID = 97;
+
+    /** Id of the stone sword. */
+    public static final int STONE_SWORD_ID = 98;
 
     public static final int IRON_PICKAXE_ID = 48;
     public static final int IRON_AXE_ID = 49;
@@ -528,6 +601,28 @@ public final class Items {
     /** Diamond sword. */
     public static Item DIAMOND_SWORD;
 
+    /** Wooden pickaxe, the tool the game is opened with. */
+    public static Item WOOD_PICKAXE;
+    /** Wooden axe. */
+    public static Item WOOD_AXE;
+    /** Wooden shovel. */
+    public static Item WOOD_SHOVEL;
+    /** Wooden hoe. */
+    public static Item WOOD_HOE;
+    /** Wooden sword. */
+    public static Item WOOD_SWORD;
+
+    /** Stone pickaxe, the first tool that reaches the ore of iron. */
+    public static Item STONE_PICKAXE;
+    /** Stone axe. */
+    public static Item STONE_AXE;
+    /** Stone shovel. */
+    public static Item STONE_SHOVEL;
+    /** Stone hoe. */
+    public static Item STONE_HOE;
+    /** Stone sword. */
+    public static Item STONE_SWORD;
+
     /** The empty cell, the container of the industry that takes any fluid. */
     public static Item FLUID_CELL;
 
@@ -826,6 +921,30 @@ public final class Items {
         // and HardnessMining; what it wears is the life of its own, see Item#maxDamage. A hoe and a
         // sword carry the level of a hand and the speed of one: they open no block of the game, and a
         // sword cuts what stands instead of what lies.
+        //
+        // The ladder a player climbs is the hand, wood, stone, iron and diamond: the two first rungs are
+        // built from what a landscape gives away, so a world can be opened without a starter kit, see
+        // Blocks#STONE and Blocks#IRON_ORE.
+        WOOD_PICKAXE = register(toolItem(WOOD_PICKAXE_ID, "wood_pickaxe", "Wooden Pickaxe",
+                ToolType.PICKAXE, WOOD_TOOL_LEVEL, WOOD_TOOL_SPEED, WOOD_TOOL_DURABILITY));
+        WOOD_AXE = register(toolItem(WOOD_AXE_ID, "wood_axe", "Wooden Axe",
+                ToolType.AXE, WOOD_TOOL_LEVEL, WOOD_TOOL_SPEED, WOOD_TOOL_DURABILITY));
+        WOOD_SHOVEL = register(toolItem(WOOD_SHOVEL_ID, "wood_shovel", "Wooden Shovel",
+                ToolType.SHOVEL, WOOD_TOOL_LEVEL, WOOD_TOOL_SPEED, WOOD_TOOL_DURABILITY));
+        WOOD_HOE = register(toolItem(WOOD_HOE_ID, "wood_hoe", "Wooden Hoe",
+                ToolType.HOE, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, WOOD_TOOL_DURABILITY));
+        WOOD_SWORD = register(toolItem(WOOD_SWORD_ID, "wood_sword", "Wooden Sword",
+                ToolType.SWORD, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, WOOD_TOOL_DURABILITY));
+        STONE_PICKAXE = register(toolItem(STONE_PICKAXE_ID, "stone_pickaxe", "Stone Pickaxe",
+                ToolType.PICKAXE, STONE_TOOL_LEVEL, STONE_TOOL_SPEED, STONE_TOOL_DURABILITY));
+        STONE_AXE = register(toolItem(STONE_AXE_ID, "stone_axe", "Stone Axe",
+                ToolType.AXE, STONE_TOOL_LEVEL, STONE_TOOL_SPEED, STONE_TOOL_DURABILITY));
+        STONE_SHOVEL = register(toolItem(STONE_SHOVEL_ID, "stone_shovel", "Stone Shovel",
+                ToolType.SHOVEL, STONE_TOOL_LEVEL, STONE_TOOL_SPEED, STONE_TOOL_DURABILITY));
+        STONE_HOE = register(toolItem(STONE_HOE_ID, "stone_hoe", "Stone Hoe",
+                ToolType.HOE, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, STONE_TOOL_DURABILITY));
+        STONE_SWORD = register(toolItem(STONE_SWORD_ID, "stone_sword", "Stone Sword",
+                ToolType.SWORD, HAND_TOOL_LEVEL, Item.HAND_MINING_SPEED, STONE_TOOL_DURABILITY));
         IRON_PICKAXE = register(toolItem(IRON_PICKAXE_ID, "iron_pickaxe", "Iron Pickaxe",
                 ToolType.PICKAXE, IRON_TOOL_LEVEL, IRON_TOOL_SPEED, IRON_TOOL_DURABILITY));
         IRON_AXE = register(toolItem(IRON_AXE_ID, "iron_axe", "Iron Axe",

@@ -1,0 +1,5 @@
+{
+  "pattern": ["PPP", "P P", "PPP"],
+  "key": { "P": "planks_oak" },
+  "result": { "item": "chest", "count": 1 }
+}

@@ -1,0 +1,5 @@
+{
+  "pattern": ["PP", "PP"],
+  "key": { "P": "planks_oak" },
+  "result": { "item": "crafting_table", "count": 1 }
+}
