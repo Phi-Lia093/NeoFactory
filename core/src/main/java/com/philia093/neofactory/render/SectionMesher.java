@@ -120,6 +120,55 @@ public final class SectionMesher {
     }
 
     /**
+     * The light of the cells of a section and of the shell around it.
+     * <p>
+     * <b>A face is drawn with the light of the cell it looks into</b>, which is the cell a player sees the face
+     * from: a block in a dark cave is drawn dark even where a torch behind it lights the stone, and a wall
+     * with a torch in front of it is drawn bright. The two levels of a cell come back in one number, the light
+     * of the sky in the upper four bits and the light of the sources in the lower four, see
+     * {@link #packLight(int, int)} and {@code Section#MAX_LIGHT}.
+     * <p>
+     * The caller adds the origin of the section, so the mesher never talks to a world, and it answers for the
+     * cells just outside the world as well - a mesh may not raise terrain, see {@code World#peekSkyLight}.
+     */
+    @FunctionalInterface
+    public interface Lighting {
+
+        /**
+         * Returns the light of a cell next to or inside the section.
+         *
+         * @param x local X coordinate, {@code -1} to {@link Section#SIZE}
+         * @param y local Y coordinate, {@code -1} to {@link Section#SIZE}
+         * @param z local Z coordinate, {@code -1} to {@link Section#SIZE}
+         * @return the two levels of that cell, packed, see {@link #packLight(int, int)}
+         */
+        int lightAt(int x, int y, int z);
+    }
+
+    /**
+     * The light a mesh is built with when nobody said anything about light: full sky, no source.
+     * <p>
+     * That is what an item, a hand and a drop are drawn with - they stand in no cave and in no window - and
+     * what the shader reads as a cell at noon.
+     */
+    public static final Lighting NO_LIGHT = (x, y, z) -> packLight(Block.MAX_LIGHT, 0);
+
+    /** Packs the two levels of a cell into the one number a {@link Lighting} answers with. */
+    public static int packLight(int skyLight, int blockLight) {
+        return (skyLight & 0xF) << 4 | blockLight & 0xF;
+    }
+
+    /** Light of the sky of a packed light, see {@link #packLight(int, int)}. */
+    public static int skyOf(int light) {
+        return light >> 4 & 0xF;
+    }
+
+    /** Light of the sources of a packed light, see {@link #packLight(int, int)}. */
+    public static int blockOf(int light) {
+        return light & 0xF;
+    }
+
+    /**
      * Tells the layer a picture lives in inside the texture array and how many frames it holds.
      * <p>
      * A picture that is a strip of frames lives in as many layers as it has frames, one below the
@@ -173,7 +222,7 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, Pictures pictures) {
-        return build(section, originX, originY, originZ, blocks, section::state, pictures);
+        return build(section, originX, originY, originZ, blocks, section::state, NO_LIGHT, pictures);
     }
 
     /**
@@ -190,6 +239,30 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, States states, Pictures pictures) {
+        return build(section, originX, originY, originZ, blocks, states, NO_LIGHT, pictures);
+    }
+
+    /**
+     * Meshes the cells of a section in the light that stands in it.
+     * <p>
+     * The light of a cell is what its faces are drawn with and it is part of the mesh and not of the frame: a
+     * torch that is put down, a hole that is dug and a wall that is raised all change the light of the cells
+     * around them and mark the sections they reach, see {@code Section#markDirty()} and {@code LightEngine}.
+     * The hour of the day does not - it scales the light of the sky in the shader, see
+     * {@link BlockShader#skyBrightness(float)}.
+     *
+     * @param section section to mesh
+     * @param originX world X coordinate of the column of the section
+     * @param originY world Y coordinate the section starts at
+     * @param originZ world Z coordinate of the column of the section
+     * @param blocks blocks of the section and of the shell around it
+     * @param states states of the cells of the section
+     * @param lighting light of the section and of the shell around it
+     * @param pictures layers the pictures live in
+     * @return the meshes to draw, empty when the section shows nothing
+     */
+    public static List<MeshData> build(Section section, int originX, int originY, int originZ,
+            Blocks blocks, States states, Lighting lighting, Pictures pictures) {
         // The blocks around the section are read once and kept as one flag per cell: whether that cell
         // hides the face of the block behind it. The mesher asks that question thousands of times - once
         // per face and three times per corner of a face - and every single ask used to be a read of the
@@ -232,7 +305,7 @@ public final class SectionMesher {
                             }
                             addFace(mesh, block, box, face, picture, layer,
                                     pictures.frames(picture.picture()), shown.rotateY(), x, y, z,
-                                    originX, originY, originZ, shadow, 0.0f);
+                                    originX, originY, originZ, shadow, 0.0f, lighting);
                             if (picture.hasOverlay()) {
                                 int overlay = pictures.layer(picture.overlay());
                                 if (overlay >= 0) {
@@ -242,7 +315,7 @@ public final class SectionMesher {
                                     }
                                     addFace(mesh, block, box, face, picture, overlay,
                                             pictures.frames(picture.overlay()), shown.rotateY(), x, y, z,
-                                            originX, originY, originZ, null, OVERLAY_OFFSET);
+                                            originX, originY, originZ, null, OVERLAY_OFFSET, lighting);
                                 }
                             }
                         }
@@ -279,11 +352,14 @@ public final class SectionMesher {
      * @param originZ world Z coordinate of the column of the section
      * @param shadow blocks around the face, {@code null} when this model is no whole cube
      * @param offset distance the face is lifted along its own direction, {@code 0} for the face itself
+     * @param lighting light of the section and of the shell around it
      */
     private static void addFace(MeshData mesh, Block block, ModelBox box, BlockFace face,
             ModelFace picture, int layer, int frames, int rotateY, int x, int y, int z, int originX,
-            int originY, int originZ, boolean[] shadow, float offset) {
+            int originY, int originZ, boolean[] shadow, float offset, Lighting lighting) {
         Color tint = picture.tinted() ? block.tint() : NO_TINT;
+        // The cell the face looks into is the cell it is seen from, and its light is the light of the face.
+        int seenFrom = lighting.lightAt(x + face.x(), y + face.y(), z + face.z());
         float pushX = face.x() * offset;
         float pushY = face.y() * offset;
         float pushZ = face.z() * offset;
@@ -335,7 +411,8 @@ public final class SectionMesher {
                     originY + y + localY + pushY,
                     originZ + z + localZ + pushZ,
                     window[0], window[1], layer,
-                    tint.r * light, tint.g * light, tint.b * light, frames);
+                    tint.r * light, tint.g * light, tint.b * light, frames,
+                    skyOf(seenFrom), blockOf(seenFrom));
         }
         // The corners are walked counter clockwise as seen from outside the block, so both triangles
         // face the viewer with the winding a graphics card keeps. A turn of the box or of the state

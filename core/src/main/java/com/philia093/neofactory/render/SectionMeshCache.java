@@ -129,8 +129,18 @@ public class SectionMeshCache implements Disposable {
         // looks in - so a change of a state has to reach the mesher as well, see World#setState.
         SectionMesher.States states =
                 (x, y, z) -> world.peekState(originX + x, originY + y, originZ + z);
+        // The light of a cell is part of its mesh, see SectionMesher#build. A cell that lies outside the
+        // world has no light of its own, so the block that stands at the edge is asked instead.
+        SectionMesher.Lighting lighting = (x, y, z) -> {
+            int worldY = originY + y;
+            if (World.outsideTheWorld(worldY)) {
+                worldY = originY + y + (y < 0 ? 1 : -1);
+            }
+            return SectionMesher.packLight(world.peekSkyLight(originX + x, worldY, originZ + z),
+                    world.peekBlockLight(originX + x, worldY, originZ + z));
+        };
         List<MeshData> data = SectionMesher.build(section, originX, originY, originZ, blocks, states,
-                pictures);
+                lighting, pictures);
         section.clearDirty();
 
         Array<Mesh> meshes = new Array<>();

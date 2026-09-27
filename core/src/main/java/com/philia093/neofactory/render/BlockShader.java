@@ -40,7 +40,8 @@ public class BlockShader implements Disposable {
             new VertexAttribute(VertexAttributes.Usage.TextureCoordinates, 2, "a_texCoords"),
             new VertexAttribute(VertexAttributes.Usage.Generic, 1, "a_layer"),
             VertexAttribute.ColorUnpacked(),
-            new VertexAttribute(VertexAttributes.Usage.Generic, 1, "a_frames"));
+            new VertexAttribute(VertexAttributes.Usage.Generic, 1, "a_frames"),
+            new VertexAttribute(VertexAttributes.Usage.Generic, 2, "a_light"));
 
     private static final String VERTEX_SHADER = """
             #version 150
@@ -49,6 +50,7 @@ public class BlockShader implements Disposable {
             in float a_layer;
             in vec4 a_color;
             in float a_frames;
+            in vec2 a_light;
 
             uniform mat4 u_projViewTrans;
             uniform mat4 u_modelTrans;
@@ -56,10 +58,13 @@ public class BlockShader implements Disposable {
             uniform float u_fogStart;
             uniform float u_fogEnd;
             uniform float u_frame;
+            uniform float u_skyBrightness;
+            uniform float u_blockLight;
 
             out vec2 v_texCoords;
             out float v_layer;
             out vec4 v_color;
+            out float v_light;
             out float v_fog;
 
             void main() {
@@ -70,6 +75,15 @@ public class BlockShader implements Disposable {
                 // and therefore always lands on the layer it was meshed with.
                 v_layer = a_layer + mod(u_frame, max(a_frames, 1.0));
                 v_color = a_color;
+                // A cell is drawn with the brighter of the two lights it carries: the light of the sky
+                // scaled by the brightness of the moment - noon is brighter than midnight - and the light
+                // of the sources of the industry at its own. Both are levels of the light map of a cell,
+                // see MeshData#LIGHT.
+                float sky = a_light.x / 15.0 * u_skyBrightness;
+                float sources = a_light.y / 15.0 * u_blockLight;
+                // The eye reads the steps of a light map as a curve and not as a line, and no cell is ever
+                // pitch black: a cave a player cannot see in is a cave nobody digs.
+                v_light = mix(0.08, 1.0, pow(clamp(max(sky, sources), 0.0, 1.0), 1.35));
                 // A mesh of a section already stands where it belongs, so its model matrix is the one
                 // that changes nothing; a mesh of an item or a body is moved and scaled by this one.
                 vec4 world = u_modelTrans * vec4(a_position, 1.0);
@@ -84,6 +98,7 @@ public class BlockShader implements Disposable {
             in vec2 v_texCoords;
             in float v_layer;
             in vec4 v_color;
+            in float v_light;
             in float v_fog;
 
             uniform sampler2DArray u_texture;
@@ -96,7 +111,7 @@ public class BlockShader implements Disposable {
                 if (texel.a < 0.1) {
                     discard;
                 }
-                fragColor = vec4(mix(texel.rgb * v_color.rgb, u_fogColor, v_fog), texel.a * v_color.a);
+                fragColor = vec4(mix(texel.rgb * v_color.rgb * v_light, u_fogColor, v_fog), texel.a * v_color.a);
             }
             """;
 
@@ -104,6 +119,18 @@ public class BlockShader implements Disposable {
 
     /** Frame of an animated picture the next pass shows, see {@link #animationFrame(int)}. */
     private float animationFrame;
+
+    /** Brightness of the light of the sky, {@code 1} at noon and lower at every other hour. */
+    private float skyBrightness = 1f;
+
+    /**
+     * Brightness of the light of the sources of the industry, the light of a torch and of a glowing rock.
+     * <p>
+     * The light of a source is drawn at its own brightness and not scaled by the moment - a torch burns as
+     * bright at midnight as at noon - and it is held a little below the light of a cell that sees the whole
+     * sky, so a cave is lit but the sun is still brighter than a flame.
+     */
+    private float blockLightBrightness = 0.9f;
 
     /** Model matrix that moves nothing, the one a mesh of a section is drawn with. */
     private static final Matrix4 NO_MOVE = new Matrix4();
@@ -132,6 +159,38 @@ public class BlockShader implements Disposable {
      */
     public void animationFrame(int frame) {
         this.animationFrame = Math.max(0, frame);
+    }
+
+    /**
+     * Brightness of the light of the sky of the next pass.
+     * <p>
+     * This is how the hour of the day reaches the picture: a cell that sees the whole sky is drawn with the
+     * brightness of the moment, so every mesh of the world follows the sun without being built again when it
+     * moves, see {@code DayCycle} and {@link MeshData#LIGHT}.
+     *
+     * @param skyBrightness brightness, {@code 0} for the darkest night and {@code 1} for noon
+     */
+    public void skyBrightness(float skyBrightness) {
+        this.skyBrightness = Math.max(0f, Math.min(1f, skyBrightness));
+    }
+
+    /** Brightness of the light of the sky the next pass is drawn with. */
+    public float skyBrightness() {
+        return skyBrightness;
+    }
+
+    /**
+     * Brightness of the light of the sources of the industry of the next pass.
+     *
+     * @param blockLightBrightness brightness, {@code 0} to {@code 1}
+     */
+    public void blockLightBrightness(float blockLightBrightness) {
+        this.blockLightBrightness = Math.max(0f, Math.min(1f, blockLightBrightness));
+    }
+
+    /** Brightness of the light of the sources of the industry the next pass is drawn with. */
+    public float blockLightBrightness() {
+        return blockLightBrightness;
     }
 
     /**
@@ -164,6 +223,8 @@ public class BlockShader implements Disposable {
         program.setUniformf("u_fogEnd", fogEnd);
         program.setUniformi("u_texture", TEXTURE_UNIT);
         program.setUniformf("u_frame", animationFrame);
+        program.setUniformf("u_skyBrightness", skyBrightness);
+        program.setUniformf("u_blockLight", blockLightBrightness);
         pictures.bind(TEXTURE_UNIT);
     }
 
