@@ -70,6 +70,25 @@ public final class SkyRenderer implements Disposable {
     /** Tiles of the layer of clouds drawn around the camera, on either side of it. */
     public static final int CLOUD_RADIUS = 1;
 
+    /**
+     * Quads one copy of the layer of clouds is drawn as, per side.
+     * <p>
+     * A copy is one square of the picture and is cut into a field of quads, because a cloud that stands far
+     * away has to fade into the colour of the sky the way the terrain does, and the amount of it that is
+     * drawn is a colour of the whole quad, see {@link #drawCloudTile}.
+     */
+    public static final int CLOUD_SPLIT = 8;
+
+    /** Blocks one quad of the layer of clouds covers. */
+    public static final float CLOUD_QUAD = (float) CLOUD_TILE / CLOUD_SPLIT;
+
+    /** Share of the view distance the layer of clouds starts to fade into the sky at. */
+    private static final float CLOUD_FADE_START_SHARE = 0.35f;
+
+    /** Quads the batch of the sky is built for: the bodies and the whole field of the clouds. */
+    private static final int SKY_SPRITES = (CLOUD_RADIUS * 2 + 1) * (CLOUD_RADIUS * 2 + 1)
+            * CLOUD_SPLIT * CLOUD_SPLIT + 2;
+
     /** Height the layer of clouds is drawn at, above the terrain a player walks on. */
     public static final int CLOUD_Y = 180;
 
@@ -81,9 +100,6 @@ public final class SkyRenderer implements Disposable {
 
     /** How quickly a body fades away as it reaches the horizon. */
     private static final float BODY_FADE = 6.0f;
-
-    /** Quads the batch of the sky is built for, which is the bodies and the tiles of the clouds. */
-    private static final int SKY_SPRITES = 4 * 4 + 2;
 
     /** Vertex program of the sky, the one a batch of libGDX asks for. */
     private static final String VERTEX_SHADER = """
@@ -287,25 +303,87 @@ public final class SkyRenderer implements Disposable {
         if (clouds == null) {
             return;
         }
-        float drift = cloudDrift(worldTime);
-        float tileX = MathUtils.floor((camera.position.x - drift) / CLOUD_TILE) * (float) CLOUD_TILE
-                + drift;
-        float tileZ = MathUtils.floor(camera.position.z / CLOUD_TILE) * (float) CLOUD_TILE;
-        DayCycle.cloudTint(worldTime, colour);
+        float tileX = cloudTileX(camera.position.x, worldTime);
+        float tileZ = cloudTileZ(camera.position.z);
+        float fadeStart = camera.far * CLOUD_FADE_START_SHARE;
         batch.setTransformMatrix(flat);
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         batch.begin();
-        batch.setColor(colour);
         for (int aroundX = -CLOUD_RADIUS; aroundX <= CLOUD_RADIUS; aroundX++) {
             for (int aroundZ = -CLOUD_RADIUS; aroundZ <= CLOUD_RADIUS; aroundZ++) {
-                float x = tileX + aroundX * (float) CLOUD_TILE;
-                float z = tileZ + aroundZ * (float) CLOUD_TILE;
-                // The second axis of a tile of the batch runs backwards in the world, so a tile covering the
-                // blocks between z and z + CLOUD_TILE is laid at the negative of them, see the flat matrix.
-                batch.draw(clouds, x, -z - CLOUD_TILE, CLOUD_TILE, CLOUD_TILE);
+                drawCloudTile(camera, worldTime, tileX + aroundX * (float) CLOUD_TILE,
+                        tileZ + aroundZ * (float) CLOUD_TILE, fadeStart);
             }
         }
         batch.end();
+    }
+
+    /**
+     * Draws one copy of the layer of clouds as a field of quads.
+     * <p>
+     * Every quad carries its own distance to the eye, and a cloud that stands far away is drawn fainter, so
+     * the layer meets the horizon the way the terrain does instead of reaching the edge of the view at full
+     * strength. <b>That fade is what makes the layer a layer of a world</b>: an unfaded field of the same
+     * brightness at every distance has no vanishing point, which reads as a sheet that hangs in front of the
+     * eye and turns with it.
+     *
+     * @param camera camera the sky is seen through
+     * @param worldTime time of the day in ticks, see {@link DayCycle}
+     * @param x world X coordinate of the corner of the copy
+     * @param z world Z coordinate of the corner of the copy
+     * @param fadeStart distance the fade of a cloud begins at
+     */
+    private void drawCloudTile(Camera camera, long worldTime, float x, float z, float fadeStart) {
+        for (int quadX = 0; quadX < CLOUD_SPLIT; quadX++) {
+            for (int quadZ = 0; quadZ < CLOUD_SPLIT; quadZ++) {
+                float quadX0 = x + quadX * CLOUD_QUAD;
+                float quadZ0 = z + quadZ * CLOUD_QUAD;
+                float fade = fadeOf(camera, quadX0 + CLOUD_QUAD * 0.5f, quadZ0 + CLOUD_QUAD * 0.5f,
+                        fadeStart);
+                if (fade >= 1.0f) {
+                    continue;
+                }
+                DayCycle.cloudTint(worldTime, colour);
+                batch.setColor(colour.r, colour.g, colour.b, 1.0f - fade);
+                // The second axis of a tile of the batch runs backwards in the world, so a quad covering the
+                // blocks between z and z + CLOUD_QUAD is laid at the negative of them, see the flat matrix.
+                batch.draw(clouds, quadX0, -quadZ0 - CLOUD_QUAD, CLOUD_QUAD, CLOUD_QUAD);
+            }
+        }
+    }
+
+    /** How much of a cloud of the layer is left at a distance, {@code 1} at the edge of the view. */
+    private static float fadeOf(Camera camera, float x, float z, float fadeStart) {
+        float dx = x - camera.position.x;
+        float dz = z - camera.position.z;
+        float dy = CLOUD_Y - camera.position.y;
+        float distance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return MathUtils.clamp((distance - fadeStart) / Math.max(camera.far - fadeStart, 1.0f), 0.0f, 1.0f);
+    }
+
+    /**
+     * World X coordinate of the corner of the copy of the layer of clouds a camera stands under.
+     * <p>
+     * The copy begins on the grid of the world and the drift of the day moves the whole grid, so the same
+     * blocks carry the same clouds however a player walks and wherever they look, see {@link #cloudDrift}.
+     *
+     * @param cameraX world X coordinate of the eye
+     * @param worldTime time of the world in ticks, see {@link DayCycle}
+     * @return the corner of the copy of the layer
+     */
+    public static float cloudTileX(float cameraX, long worldTime) {
+        float drift = cloudDrift(worldTime);
+        return MathUtils.floor((cameraX - drift) / CLOUD_TILE) * (float) CLOUD_TILE + drift;
+    }
+
+    /**
+     * World Z coordinate of the corner of the copy of the layer of clouds a camera stands under.
+     *
+     * @param cameraZ world Z coordinate of the eye
+     * @return the corner of the copy of the layer
+     */
+    public static float cloudTileZ(float cameraZ) {
+        return MathUtils.floor(cameraZ / CLOUD_TILE) * (float) CLOUD_TILE;
     }
 
     /**

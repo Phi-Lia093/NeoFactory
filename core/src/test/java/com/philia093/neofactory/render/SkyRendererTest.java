@@ -120,6 +120,23 @@ class SkyRendererTest {
                 "and the drift stays inside one tile");
     }
 
+    @Test
+    void theLayerOfCloudsIsAnchoredToTheWorldAndNotToTheEye() {
+        long worldTime = 4000L;
+        float drift = SkyRenderer.cloudDrift(worldTime);
+        float near = SkyRenderer.cloudTileX(0.0f, worldTime);
+        float far = SkyRenderer.cloudTileX(600.0f, worldTime);
+
+        assertEquals(0.0f, (near - drift) % SkyRenderer.CLOUD_TILE, 0.01f,
+                "a copy of the layer begins on the grid of the world, moved by the drift of the day");
+        assertEquals(0.0f, (far - near) % SkyRenderer.CLOUD_TILE, 0.01f,
+                "a camera far away draws the same grid of copies and not another one");
+        assertTrue(near <= 0.0f && near + SkyRenderer.CLOUD_TILE > 0.0f,
+                "the field covers the blocks the camera stands on");
+        assertEquals(SkyRenderer.cloudTileZ(600.0f), SkyRenderer.cloudTileZ(100.0f)
+                + SkyRenderer.CLOUD_TILE, 0.01f, "and the second axis is a grid of the world as well");
+    }
+
     /** Reads a picture of the asset pack. */
     private static BufferedImage read(String path) throws IOException {
         Path file = TestRegistries.ASSETS.resolve(path);
