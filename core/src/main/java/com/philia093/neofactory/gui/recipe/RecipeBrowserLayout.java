@@ -189,6 +189,40 @@ public final class RecipeBrowserLayout {
     }
 
     /**
+     * Width a line of the screen takes.
+     * <p>
+     * It is counted with the cell of the font, which is the widest a glyph of it can be and therefore the
+     * widest a line can be, so a line that fits by this measure fits where it is drawn. A screen of this game
+     * has to keep its lines inside its panel and no card is asked whether a line runs out of it, see
+     * {@code NeiPreviewTest}.
+     *
+     * @param text line of the screen
+     * @return the width in pixels
+     */
+    public static int textWidth(String text) {
+        return text.length() * PixelFont.ASCII_CELL_SIZE;
+    }
+
+    /**
+     * Amount of glyphs of a line that fit between the frames of the panel.
+     *
+     * @return the amount, at least one
+     */
+    public static int headGlyphs() {
+        return Math.max(1, (WIDTH - 2 * PADDING) / PixelFont.ASCII_CELL_SIZE);
+    }
+
+    /**
+     * Trims a line to what the panel holds.
+     *
+     * @param text line of the screen
+     * @return the line, its end left out when it would run out of the panel
+     */
+    public static String trimToPanel(String text) {
+        return text.length() <= headGlyphs() ? text : text.substring(0, headGlyphs());
+    }
+
+    /**
      * {@code true} when the report of a recipe fits the rows of the machine panel it is written in.
      *
      * @return {@code true} when every line of the report lies above the lower edge of the panel

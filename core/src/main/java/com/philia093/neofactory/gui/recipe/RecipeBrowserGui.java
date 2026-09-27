@@ -642,10 +642,22 @@ public final class RecipeBrowserGui {
     private void renderPage(SpriteBatch batch, float x, float y, int height) {
         RecipePage shown = page();
         String head = item == null ? "" : item.displayName();
-        if (shown != null) {
-            head = head + "  " + (uses ? "used by" : "made by") + "  " + shown.kind();
+        String kind = shown == null ? "" : shown.kind();
+        // The head of the panel is a line of the panel and nothing more: what a player reads there is the item
+        // and what is done with it, and what does not fit is left out instead of running out of the panel, see
+        // NeiPreviewTest, which measures every line of this screen against the panel it lies in.
+        if (width(head) + width(kind) + 4 > RecipeBrowserLayout.WIDTH - 2 * RecipeBrowserLayout.PADDING) {
+            kind = "";
+        }
+        if (width(head) > RecipeBrowserLayout.WIDTH - 2 * RecipeBrowserLayout.PADDING) {
+            head = RecipeBrowserLayout.trimToPanel(head);
         }
         drawHead(batch, x, y, height, head);
+        if (!kind.isEmpty()) {
+            drawLine(batch, x, y, height,
+                    RecipeBrowserLayout.WIDTH - RecipeBrowserLayout.PADDING - width(kind),
+                    RecipeBrowserLayout.TEMPLATE_NAME_Y, kind, TEXT_COLOR);
+        }
         if (shown == null) {
             drawFooter(batch, x, y, height, "nothing is known about it");
             return;
@@ -849,6 +861,11 @@ public final class RecipeBrowserGui {
             report.energy(energy);
         }
         return report;
+    }
+
+    /** Width a line of the panel takes, counted with the widest a glyph of the font of the game can be. */
+    private static int width(String text) {
+        return RecipeBrowserLayout.textWidth(text);
     }
 
     /** Writes a line into the panel, its upper edge lying that many pixels below the upper edge of it. */
