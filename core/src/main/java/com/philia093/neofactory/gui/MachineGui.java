@@ -10,6 +10,7 @@ import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerView;
 import com.philia093.neofactory.gui.container.ItemTooltip;
+import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.ArrowElement;
 import com.philia093.neofactory.gui.panel.MachineTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
@@ -313,6 +314,22 @@ public final class MachineGui {
             batch.draw(error, x - MachineTextures.ICON_CELL,
                     lineY + font.lineHeight() - MachineTextures.ICON_CELL);
         }
+    }
+
+    /**
+     * Slot under the mouse.
+     * <p>
+     * Read by the screen of recipes: what a player points at is the item it asks about.
+     *
+     * @param guiX X coordinate of the mouse inside the interface
+     * @param guiY Y coordinate of the mouse inside the interface, from the bottom
+     * @return the slot, or {@code null} while the screen is closed or the mouse is beside it
+     */
+    public Slot slotUnderMouse(float guiX, float guiY) {
+        if (!isOpen()) {
+            return null;
+        }
+        return menu.container().slotAt(localX(guiX), localY(guiY));
     }
 
     /** Draws the bar that shows how far the work of the machine has come. */

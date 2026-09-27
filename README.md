@@ -60,6 +60,14 @@ stored on disk so that a session can be continued later.
   it gives up the ingredients the recipe was matched with, see `CraftingField`. Every tool of the
   game is made on it - a pickaxe of three planks over two sticks is the first one - together with
   the table itself, a chest, a furnace, a torch and a ladder, see `assets/recipes/crafting_shaped`.
+- **The screen of recipes** - `R` on an item asks how it is made and `U` what it is used for: its recipes are
+  shown as pages - the ingredients, the arrow, the product and the number of the page - and **a click on a page
+  lays the recipe out** into the field the player has open, out of what they really carry: an ingredient nobody
+  has is named in the foot of the panel and the cells of a creative player are filled for nothing. A click on a
+  cell walks on to that item, the arrows of the head walk through the groups of the game - the blocks, the
+  machines and one group per kind of recipe - and the box at the foot of a list searches it by the name of an
+  item, the name it reads as and the chemical formula of its material, see `RecipeIndex`, `RecipeArranger` and
+  `RecipeBrowserGui`. The screen is drawn from the pictures of the interface and needs no art of its own.
 - **Save games** - one folder per world, a level file plus one file per chunk the
   player changed, written while playing and when leaving.
 - **Chunk streaming** - the terrain around the player is kept in memory and the
@@ -335,7 +343,9 @@ stored on disk so that a session can be continued later.
 | `/` | open the input line with the command slash, `T` opens it for a message |
 | `ENTER` | send the line: a command when it starts with a slash, a chat message otherwise |
 | `UP` / `DOWN` | walk through the lines that were sent before while the input line is open |
-| `ESC` | close the input line first, then the inventory, then open the pause menu |
+| `R` | ask how the item the mouse points at is made, while a container or the inventory is open |
+| `U` | ask what the item the mouse points at is used for; a click on the page of a recipe lays it out into the field that is open |
+| `ESC` | close the input line first, then the screen of recipes, then the inventory, then open the pause menu |
 | `F11` | switch to fullscreen |
 
 ## Modules
@@ -363,6 +373,7 @@ stored on disk so that a session can be continued later.
 | `entity` | entities: the base class, the type registry, the manager, the player and dropped items |
 | `chat` | the input line, the messages and the commands a line behind a slash is looked up in |
 | `gui` | hotbar, inventory, creative inventory, the screen of a container and of the table of the workshop, and chat rendering, layout and widgets |
+| `gui.recipe` | the screen of recipes: its groups of items, the page of a recipe and the layout of both |
 | `render` | world, entity, selection and font rendering |
 | `screen` | the screens and the manager that switches between them |
 | `input` | keyboard and mouse state |

@@ -262,6 +262,22 @@ public final class CreativeInventoryGui {
         return panelY() + CreativeLayout.PANEL_HEIGHT;
     }
 
+    /**
+     * Slot under the mouse.
+     * <p>
+     * Read by the screen of recipes: what a player points at is the item it asks about.
+     *
+     * @param guiX X coordinate of the mouse inside the interface
+     * @param guiY Y coordinate of the mouse inside the interface, from the bottom
+     * @return the slot, or {@code null} while the screen is closed or the mouse is beside it
+     */
+    public Slot slotUnderMouse(float guiX, float guiY) {
+        if (!menu.isOpen()) {
+            return null;
+        }
+        return menu.slotAt(localX(guiX), localY(guiY));
+    }
+
     /** X coordinate of the mouse inside the panel. */
     private int localX(float guiX) {
         return Math.round(guiX) - Math.round(panelX());

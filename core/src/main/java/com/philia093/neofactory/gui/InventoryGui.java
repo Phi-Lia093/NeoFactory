@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerMenu;
 import com.philia093.neofactory.gui.container.ContainerView;
+import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.ArrowElement;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
@@ -220,6 +221,34 @@ public final class InventoryGui {
             return menu.dropDragRemainder();
         }
         return menu.touchUp(localX(guiX), localY(guiY), button, isShiftHeld());
+    }
+
+    /**
+     * The two by two field of the player.
+     * <p>
+     * Read by the screen of recipes, which lays a recipe a player clicked into it, see
+     * {@link com.philia093.neofactory.recipe.RecipeArranger}.
+     *
+     * @return the grid of the field
+     */
+    public InventoryGrid craftingGrid() {
+        return craftingGrid;
+    }
+
+    /**
+     * Slot under the mouse.
+     * <p>
+     * Read by the screen of recipes: what a player points at is the item it asks about.
+     *
+     * @param guiX X coordinate of the mouse inside the interface
+     * @param guiY Y coordinate of the mouse inside the interface, from the bottom
+     * @return the slot, or {@code null} while the screen is closed or the mouse is beside it
+     */
+    public Slot slotUnderMouse(float guiX, float guiY) {
+        if (!menu.isOpen()) {
+            return null;
+        }
+        return menu.slotAt(localX(guiX), localY(guiY));
     }
 
     /** {@code true} when a point of the interface lies on the panel of the container. */

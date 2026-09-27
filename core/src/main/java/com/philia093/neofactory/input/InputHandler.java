@@ -139,6 +139,12 @@ public class InputHandler extends InputAdapter {
     /** Key that switches between the view from inside the body and the view of it from behind. */
     private static final int KEY_VIEW = Input.Keys.F5;
 
+    /** Key that asks how the item under the mouse is made. */
+    private static final int KEY_RECIPES = Input.Keys.R;
+
+    /** Key that asks what the item under the mouse is used for. */
+    private static final int KEY_USES = Input.Keys.U;
+
     /** Reused vector holding the unprojected mouse position. */
     private final Vector3 cursor = new Vector3();
 
@@ -175,6 +181,12 @@ public class InputHandler extends InputAdapter {
 
     /** Set when the view key was pressed, cleared by the consumer. */
     private boolean viewToggle;
+
+    /** Set when the key that asks for the recipes of an item was pressed, cleared by the consumer. */
+    private boolean recipesRequest;
+
+    /** Set when the key that asks what an item is used for was pressed, cleared by the consumer. */
+    private boolean usesRequest;
 
     /**
      * Reads the current input state and applies it to the player.
@@ -253,7 +265,37 @@ public class InputHandler extends InputAdapter {
             viewToggle = true;
             return true;
         }
+        if (keycode == KEY_RECIPES) {
+            recipesRequest = true;
+            return true;
+        }
+        if (keycode == KEY_USES) {
+            usesRequest = true;
+            return true;
+        }
         return false;
+    }
+
+    /**
+     * Returns and clears the request to see how the item under the mouse is made.
+     *
+     * @return {@code true} when the key was pressed since the last call
+     */
+    public boolean consumeRecipesRequest() {
+        boolean requested = recipesRequest;
+        recipesRequest = false;
+        return requested;
+    }
+
+    /**
+     * Returns and clears the request to see what the item under the mouse is used for.
+     *
+     * @return {@code true} when the key was pressed since the last call
+     */
+    public boolean consumeUsesRequest() {
+        boolean requested = usesRequest;
+        usesRequest = false;
+        return requested;
     }
 
     /**

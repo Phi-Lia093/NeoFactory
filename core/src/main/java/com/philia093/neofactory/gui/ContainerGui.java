@@ -225,6 +225,15 @@ public final class ContainerGui {
         title = "";
     }
 
+    /**
+     * What this screen adds to the container that is up.
+     *
+     * @return the part, {@code null} for a container that is shown by its slots alone
+     */
+    public Part part() {
+        return part;
+    }
+
     /** X coordinate of the left edge of the panel, centred in the interface. */
     public float panelX() {
         return MenuLayout.centeredX(viewport.guiWidth(), menu.layout().panelWidth());

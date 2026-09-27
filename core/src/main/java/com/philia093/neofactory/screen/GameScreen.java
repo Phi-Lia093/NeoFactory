@@ -34,6 +34,8 @@ import com.philia093.neofactory.gui.ContainerGui;
 import com.philia093.neofactory.gui.CraftingLayout;
 import com.philia093.neofactory.gui.CraftingPart;
 import com.philia093.neofactory.gui.CreativeInventoryGui;
+import com.philia093.neofactory.gui.container.Slot;
+import com.philia093.neofactory.gui.recipe.RecipeBrowserGui;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
 import com.philia093.neofactory.gui.MachineGui;
@@ -46,6 +48,11 @@ import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.loot.LootTableRegistry;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.recipe.CraftingField;
+import com.philia093.neofactory.recipe.Recipe;
+import com.philia093.neofactory.recipe.RecipeArranger;
+import com.philia093.neofactory.recipe.RecipeGrid;
+import com.philia093.neofactory.recipe.RecipeGridWriter;
+import com.philia093.neofactory.recipe.RecipeIndex;
 import com.philia093.neofactory.render.BlockIconRenderer;
 import com.philia093.neofactory.render.HumanoidRenderer;
 import com.philia093.neofactory.render.BlockPictures;
@@ -265,6 +272,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
     /** Screen of a container, opened by using a chest with the build button. */
     private final ContainerGui containerGui;
 
+    /** Screen of recipes, opened with R and U on the item the mouse points at. */
+    private final RecipeBrowserGui recipeBrowser;
+
+    /** What an item is made of and what it is used for, asked by the screen of recipes. */
+    private final RecipeIndex recipeIndex;
+
     /**
      * Block entity the screen of a container is up for, {@code null} while none is open.
      * <p>
@@ -362,6 +375,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 return true;
             }
             uiViewport.unproject(screenX, screenY, interfaceMouse);
+            if (recipeBrowser.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
             if (creativeGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
@@ -413,6 +429,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 return true;
             }
             uiViewport.unproject(screenX, screenY, interfaceMouse);
+            if (recipeBrowser.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
+                return true;
+            }
             if (creativeGui.touchUp(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
@@ -442,6 +461,15 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (chat.isOpen()) {
                 return chat.keyDown(keyCode);
             }
+            if (recipeBrowser.takesKey(keyCode)) {
+                // The screen of recipes owns the keyboard while its box is searched, so a letter belongs
+                // into the box and not into the hotkeys below.
+                recipeBrowser.keyDown(keyCode);
+                return true;
+            }
+            if (recipeBrowser.keyDown(keyCode)) {
+                return true;
+            }
             if (creativeGui.takesKey(keyCode)) {
                 // The search box owns the keyboard, so the letter belongs into it and not
                 // into the hotkeys below: a typed E closes nothing while the player types.
@@ -462,6 +490,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
 
         @Override
         public boolean keyTyped(char character) {
+            if (recipeBrowser.keyTyped(character)) {
+                return true;
+            }
             if (creativeGui.keyTyped(character)) {
                 return true;
             }
@@ -590,6 +621,12 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // A container is opened by using a block, and what a work field of it holds is dropped where the
         // player stands the moment its screen closes, exactly like the field of the player.
         containerGui.setDropper(stack -> drops.throwFrom(player, stack));
+        // The recipes of the game, indexed by what they make and by what they take: the screen of recipes
+        // asks which recipes belong to the item under the mouse, see RecipeIndex.
+        this.recipeIndex = new RecipeIndex();
+        this.recipeBrowser = new RecipeBrowserGui(recipeIndex, textures, font, uiViewport);
+        // A click on a page of that screen lays the recipe out into the field the player has open.
+        recipeBrowser.setArranger(this::layOut);
 
         if (fresh) {
             // A new world starts at its spawn point and gets a starter kit, so a world can be tried out
@@ -943,6 +980,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.gl.glDisable(GL20.GL_CULL_FACE);
         updateInterfaceMouse();
         creativeGui.update(delta);
+        recipeBrowser.update(delta);
 
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
@@ -952,6 +990,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         containerGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+        // The screen of recipes stands on top of every container: it is opened from the item under the
+        // mouse and its panel lies beside the slot it belongs to.
+        recipeBrowser.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
         drawCrosshair();
         drawPerformance();
@@ -1123,7 +1164,11 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         chatOverlay.update(delta);
 
         if (inputHandler.consumePauseToggle()) {
-            if (machineGui.isOpen()) {
+            if (recipeBrowser.isOpen()) {
+                // The escape key closes whatever is on top first, and the screen of recipes stands above
+                // the screens of the containers it was opened from.
+                recipeBrowser.close();
+            } else if (machineGui.isOpen()) {
                 // The escape key closes whatever is on top first.
                 machineGui.close();
             } else if (containerGui.isOpen()) {
@@ -1153,7 +1198,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         Gdx.input.setCursorCatched(captured);
         inputHandler.setFirstPerson(cubeRenderer != null);
         inputHandler.setLookCaptured(captured);
-        if (creativeGui.isOpen()) {
+        if (recipeBrowser.isOpen()) {
+            // While the screen of recipes is up the wheel walks through its pages or its list.
+            recipeBrowser.scrolled(zoomSteps);
+        } else if (creativeGui.isOpen()) {
             // While the creative inventory is up the wheel walks through its list
             // instead of zooming the camera.
             creativeGui.scrolled(zoomSteps);
@@ -1252,7 +1300,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      */
     private boolean isInterfaceOpen() {
         return inventoryGui.isOpen() || creativeGui.isOpen() || machineGui.isOpen()
-                || containerGui.isOpen() || chat.isOpen();
+                || containerGui.isOpen() || recipeBrowser.isOpen() || chat.isOpen();
     }
 
     /**
@@ -1465,8 +1513,94 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         return false;
     }
 
+    /**
+     * Opens the screen of recipes on the item the mouse points at.
+     * <p>
+     * An item that lies in a slot of an open container is what the screen is asked about; a mouse that
+     * points at no slot opens the list of the groups instead, so a player who pressed the key without
+     * aiming at anything still has something to browse, see {@code RecipeBrowserGui#openList()}.
+     *
+     * @param uses {@code true} for the recipes that take the item, {@code false} for the ones that make it
+     */
+    private void openRecipeBrowser(boolean uses) {
+        Slot slot = slotUnderMouse();
+        ItemStack hovered = slot == null ? ItemStack.EMPTY : slot.stack();
+        // The panel is placed beside the cursor, which is the slot the item lies in.
+        recipeBrowser.open(hovered, uses, interfaceMouse.x - Constants.ITEM_ICON_SIZE * 0.5f,
+                interfaceMouse.y - Constants.ITEM_ICON_SIZE * 0.5f, Constants.ITEM_ICON_SIZE,
+                Constants.ITEM_ICON_SIZE);
+    }
+
+    /** The slot of an open container under the mouse, {@code null} while no slot lies there. */
+    private Slot slotUnderMouse() {
+        Slot slot = inventoryGui.slotUnderMouse(interfaceMouse.x, interfaceMouse.y);
+        if (slot == null) {
+            slot = machineGui.slotUnderMouse(interfaceMouse.x, interfaceMouse.y);
+        }
+        if (slot == null) {
+            slot = containerGui.slotUnderMouse(interfaceMouse.x, interfaceMouse.y);
+        }
+        if (slot == null) {
+            slot = creativeGui.slotUnderMouse(interfaceMouse.x, interfaceMouse.y);
+        }
+        return slot;
+    }
+
+    /**
+     * The field a recipe is laid into.
+     * <p>
+     * It is the field a player has open: the nine cells of a table of the workshop, the two by two field of
+     * their own screen, or the input of a machine they are looking at.
+     *
+     * @return the field, or {@code null} while nothing of the sort is open
+     */
+    private RecipeGridWriter openField() {
+        if (containerGui.isOpen() && containerGui.part() instanceof CraftingPart part) {
+            return part.field().grid();
+        }
+        if (inventoryGui.isOpen()) {
+            return inventoryGui.craftingGrid();
+        }
+        if (machineGui.isOpen() && machineGui.machine() != null) {
+            RecipeGrid grid = machineGui.machine().inputs().items();
+            return grid instanceof RecipeGridWriter writer ? writer : null;
+        }
+        return null;
+    }
+
+    /**
+     * Lays a recipe the player clicked out into the field that is open.
+     *
+     * @param recipe recipe that was clicked
+     * @return the line the screen of recipes writes in its foot
+     */
+    private String layOut(Recipe recipe) {
+        RecipeGridWriter field = openField();
+        if (field == null) {
+            return "open a table first";
+        }
+        boolean creative = gameMode() == GameMode.CREATIVE;
+        RecipeArranger.Arrangement arrangement = RecipeArranger.arrange(recipe, field,
+                player.inventory(), creative);
+        if (arrangement.isComplete()) {
+            return arrangement.placed() + " cells laid out";
+        }
+        StringBuilder missing = new StringBuilder("missing ");
+        for (int index = 0; index < arrangement.missing().size(); index++) {
+            missing.append(index == 0 ? "" : ", ");
+            missing.append(arrangement.missing().get(index).displayName());
+        }
+        return missing.toString();
+    }
+
     /** Applies the keys that belong to the interface instead of the world. */
     private void handleInterfaceKeys() {
+        if (inputHandler.consumeRecipesRequest()) {
+            openRecipeBrowser(false);
+        }
+        if (inputHandler.consumeUsesRequest()) {
+            openRecipeBrowser(true);
+        }
         if (inputHandler.consumeViewToggle()) {
             // The view of a world is either the one from inside the body or the one of it from behind,
             // see renderEntities: only the second shows a player themselves.
