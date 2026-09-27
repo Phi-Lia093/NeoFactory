@@ -398,11 +398,15 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             if (inventoryGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
                 return true;
             }
-            if (machineGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
-                return true;
-            }
-            if (containerGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
-                return true;
+            // A container that is hidden behind the screen of recipes takes no click either, or a player
+            // would move an item in a panel they cannot see, see #renderInterface.
+            if (!recipeBrowser.isOpen()) {
+                if (machineGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                    return true;
+                }
+                if (containerGui.touchDown(interfaceMouse.x, interfaceMouse.y, button)) {
+                    return true;
+                }
             }
             if (button == Input.Buttons.LEFT) {
                 int slot = hotbarGui.slotAt(interfaceMouse.x, interfaceMouse.y);
@@ -1054,10 +1058,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                 interfaceMouse.x, interfaceMouse.y, !isInterfaceOpen());
         creativeGui.render(batch, interfaceMouse.x, interfaceMouse.y);
         inventoryGui.render(batch, interfaceMouse.x, interfaceMouse.y);
-        machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
-        containerGui.render(batch, interfaceMouse.x, interfaceMouse.y);
-        // The screen of recipes stands on top of every container: it is opened from the item under the
-        // mouse and its panel lies beside the slot it belongs to.
+        // The screen of recipes stands <b>in the place</b> of the container it was opened from and not on top
+        // of it: while it is up the container is not drawn at all, so no two panels ever stand on each other,
+        // and closing the screen of recipes gives the container back, see #closeContainers.
+        if (!recipeBrowser.isOpen()) {
+            machineGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+            containerGui.render(batch, interfaceMouse.x, interfaceMouse.y);
+        }
         recipeBrowser.render(batch, interfaceMouse.x, interfaceMouse.y);
         chatOverlay.render(batch, chat, uiViewport);
         drawCrosshair();
