@@ -397,11 +397,15 @@ public final class SectionMesher {
             ModelFace picture, int layer, int frames, int rotateY, int x, int y, int z, int originX,
             int originY, int originZ, boolean[] shadow, float offset, Lighting lighting) {
         Color tint = picture.tinted() ? block.tint() : NO_TINT;
-        // The cell the face looks into is the cell it is seen from, and its light is the light of the face.
-        int seenFrom = lighting.lightAt(x + face.x(), y + face.y(), z + face.z());
-        float pushX = face.x() * offset;
-        float pushY = face.y() * offset;
-        float pushZ = face.z() * offset;
+        // The turn of a state moves the face, so every direction read from it is the direction it faces once
+        // the turn is applied: the cell it looks into, the light of that cell, the way a second layer is
+        // lifted off it and the shading it takes. The corners and the window stay as the model writes them,
+        // because they belong to the picture and the picture turns with the model, see #turned.
+        BlockFace away = turned(face, rotateY);
+        int seenFrom = lighting.lightAt(x + away.x(), y + away.y(), z + away.z());
+        float pushX = away.x() * offset;
+        float pushY = away.y() * offset;
+        float pushZ = away.z() * offset;
         float[] window = new float[2];
         int[] corners = new int[4];
         for (int corner = 0; corner < 4; corner++) {
@@ -443,7 +447,7 @@ public final class SectionMesher {
                 localX = 0.5f + px * cos + pz * sin;
                 localZ = 0.5f - px * sin + pz * cos;
             }
-            float light = light(box, face, shadow, x, y, z, corner);
+            float light = light(box, away, shadow, x, y, z, corner);
             uv(picture, box, face, corner, window);
             corners[corner] = mesh.addVertex(
                     originX + x + localX + pushX,
