@@ -1548,8 +1548,40 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      *
      * @return {@code true} when a container stood there and its screen is up now
      */
+    /** Closes the screens of the player themselves, which a container takes the interface back from. */
+    private void closePlayerScreens() {
+        if (recipeBrowser.isOpen()) {
+            recipeBrowser.close();
+        }
+        if (creativeGui.isOpen()) {
+            creativeGui.close();
+        }
+        if (inventoryGui.isOpen()) {
+            inventoryGui.close();
+        }
+    }
+
+    /**
+     * Closes the container that is up.
+     * <p>
+     * This is what the inventory key does first while a container is open: a container owns the interface,
+     * so the key closes it instead of laying the inventory of the player over it, see {@link #openContainer()}
+     * and {@link #isInterfaceOpen()}.
+     */
+    private void closeContainers() {
+        if (machineGui.isOpen()) {
+            machineGui.close();
+        } else if (containerGui.isOpen()) {
+            containerGui.close();
+        }
+    }
+
     private boolean openContainer() {
         BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
+        // A container takes the interface for itself: the screens of the player - the inventory, the list of
+        // the creative mode and the screen of recipes - are closed before it opens, so a container and one of
+        // them are never up at the same time.
+        closePlayerScreens();
         if (entity instanceof MachineBlockEntity machine) {
             machineGui.open(machine.machine(), player.inventory());
             openContainer = machine;
@@ -1678,7 +1710,16 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                     ? "of the body from behind" : "from inside the body");
         }
         if (inputHandler.consumeInventoryToggle()) {
-            if (gameMode() == GameMode.CREATIVE) {
+            if (machineGui.isOpen() || containerGui.isOpen()) {
+                // A container owns the interface while it is open: the inventory key closes it instead of
+                // laying the inventory of the player over it, so a container and the inventory are never up
+                // at once, see #isInterfaceOpen.
+                closeContainers();
+            } else if (recipeBrowser.isOpen()) {
+                // The screen of recipes stands above the container it was opened from, so it is the one that
+                // goes away first, see #openRecipeBrowser.
+                recipeBrowser.close();
+            } else if (gameMode() == GameMode.CREATIVE) {
                 // In creative mode the inventory key opens the list of every item, see
                 // CreativeInventoryGui.
                 creativeGui.toggle();
