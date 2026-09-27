@@ -2,6 +2,7 @@ package com.philia093.neofactory.gui.recipe;
 
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.Slot;
+import com.philia093.neofactory.gui.panel.NeiTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
 import com.philia093.neofactory.machine.MachineMenu;
 import com.philia093.neofactory.render.PixelFont;
@@ -173,6 +174,28 @@ public final class RecipeBrowserLayout {
 
     /** Distance between the left edges of the two buttons that turn a page. */
     public static final int TEMPLATE_HINT_BUTTONS = 20;
+
+    /** Side of the square a button of the page is drawn in, the art of NEI. */
+    public static final int TEMPLATE_BUTTON_SIZE = NeiTextures.BUTTON_SIZE;
+
+    /**
+     * Y coordinate of the row that carries the page and its two buttons.
+     * <p>
+     * It lies below the report and not beside it, which is what keeps the two from standing on each other
+     * however long a line of the report turns out to be: the report takes the rows the inventory of a machine
+     * stands in and the row under them carries {@code < X/Y >}.
+     */
+    public static final int TEMPLATE_PAGE_Y = TEMPLATE_INFO_Y
+            + TEMPLATE_INFO_LINES * TEMPLATE_LINE_HEIGHT;
+
+    /** X coordinate of the button that walks on one page, on the right edge of the panel. */
+    public static final int TEMPLATE_NEXT_X = WIDTH - PADDING - TEMPLATE_BUTTON_SIZE;
+
+    /** X coordinate of the number of the page, between the two buttons. */
+    public static final int TEMPLATE_PAGE_TEXT_X = TEMPLATE_NEXT_X - 4 - 3 * PixelFont.ASCII_CELL_SIZE;
+
+    /** X coordinate of the button that walks one page back, left of the number of the page. */
+    public static final int TEMPLATE_PREV_X = TEMPLATE_PAGE_TEXT_X - 2 - TEMPLATE_BUTTON_SIZE;
 
     private RecipeBrowserLayout() {
         // Utility class: never instantiated.

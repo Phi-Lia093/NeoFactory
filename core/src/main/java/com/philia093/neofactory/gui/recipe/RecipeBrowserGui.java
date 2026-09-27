@@ -100,6 +100,9 @@ public final class RecipeBrowserGui {
      * {@link NeiTextures#isComplete()}.
      */
     private final NeiTextures nei;
+
+    /** Bar of the arrow of a page, which walks while the screen is up, see {@link ProgressAnimation}. */
+    private final ProgressAnimation progress = new ProgressAnimation();
     private final TextureRegion pixel;
     private final List<RecipeCategory> groups;
 
@@ -340,6 +343,9 @@ public final class RecipeBrowserGui {
     public void update(float delta) {
         if (open) {
             elapsed += delta;
+            // The bar of the arrow walks while a recipe is shown, at one speed for every recipe, see
+            // ProgressAnimation.
+            progress.update(delta);
         }
     }
 
@@ -671,8 +677,18 @@ public final class RecipeBrowserGui {
         }
         TextureRegion arrow = panel.arrowFull();
         if (arrow != null) {
+            int full = arrow.getRegionWidth();
+            // The bright part grows from the left of the track, so the picture of the arrow is cut at the
+            // width the bar has walked to, see ProgressAnimation.
+            arrow.setRegionWidth(Math.max(1, Math.round(full * progress.share())));
             batch.draw(arrow, x + RecipeBrowserLayout.ARROW_X,
                     y + height - RecipeBrowserLayout.ARROW_Y - arrow.getRegionHeight());
+            arrow.setRegionWidth(full);
+        }
+        TextureRegion track = panel.arrowEmpty();
+        if (track != null) {
+            batch.draw(track, x + RecipeBrowserLayout.ARROW_X,
+                    y + height - RecipeBrowserLayout.ARROW_Y - track.getRegionHeight());
         }
         drawCell(batch, x, y, height, RecipeBrowserLayout.RESULT_X, RecipeBrowserLayout.RESULT_Y,
                 shown.result(), RESULT_CELL);
@@ -802,21 +818,45 @@ public final class RecipeBrowserGui {
         font.setColor(Color.WHITE);
     }
 
-    /** Draws the page and its two buttons in the column right of the report, and a line of news. */
+    /**
+     * Draws the page and its two buttons, the three of them in one row on the last row of the report.
+     * <p>
+     * The row carries {@code < X/Y >} and nothing else: the two buttons are the ground of NEI with the arrow
+     * of NEI on top of it, the number of the page stands between them, and the row lies below the report, so
+     * neither the buttons nor the number can ever stand on a line of it.
+     */
     private void drawFooter(SpriteBatch batch, float x, float y, int height, String line) {
-        drawButton(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_HINT_X,
-                RecipeBrowserLayout.TEMPLATE_INFO_Y, "<", page > 0);
-        drawButton(batch, x, y, height,
-                RecipeBrowserLayout.TEMPLATE_HINT_X + RecipeBrowserLayout.TEMPLATE_HINT_BUTTONS,
-                RecipeBrowserLayout.TEMPLATE_INFO_Y, ">", page + 1 < pageCount());
-        drawLine(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_HINT_X,
-                RecipeBrowserLayout.TEMPLATE_INFO_Y + RecipeBrowserLayout.TEMPLATE_LINE_HEIGHT,
-                (page + 1) + "/" + pageCount(), TEXT_COLOR);
+        drawPageButton(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_PREV_X, page > 0,
+                nei.arrowPrevious(), "<");
+        drawPageButton(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_NEXT_X,
+                page + 1 < pageCount(), nei.arrowNext(), ">");
+        drawLine(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_PAGE_TEXT_X,
+                RecipeBrowserLayout.TEMPLATE_PAGE_Y, (page + 1) + "/" + pageCount(), TEXT_COLOR);
         if (!line.isEmpty()) {
-            font.setColor(MESSAGE_COLOR);
-            font.draw(batch, line, x + RecipeBrowserLayout.TEMPLATE_HINT_X,
-                    y + height - RecipeBrowserLayout.templateLineY(3) - 2);
-            font.setColor(Color.WHITE);
+            drawLine(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_INFO_X,
+                    RecipeBrowserLayout.TEMPLATE_PAGE_Y, line, MESSAGE_COLOR);
+        }
+    }
+
+    /** Draws one button of the page: the ground of NEI with the arrow of NEI on top of it. */
+    private void drawPageButton(SpriteBatch batch, float x, float y, int height, int left, boolean usable,
+            TextureRegion arrow, String fallback) {
+        int size = RecipeBrowserLayout.TEMPLATE_BUTTON_SIZE;
+        float bottom = y + height - RecipeBrowserLayout.TEMPLATE_PAGE_Y - size;
+        TextureRegion ground = usable ? nei.buttonHighlight() : nei.buttonDisabled();
+        if (ground == null) {
+            ground = usable ? nei.button() : null;
+        }
+        if (ground != null) {
+            batch.draw(ground, x + left, bottom, size, size);
+        }
+        if (arrow != null) {
+            float inset = (size - arrow.getRegionWidth()) * 0.5f;
+            batch.draw(arrow, x + left + inset, bottom + inset);
+        } else {
+            // The pack carries no arrow: the sign of the button is written where the arrow would lie.
+            drawLine(batch, x, y, height, left, RecipeBrowserLayout.TEMPLATE_PAGE_Y
+                    + (size - PixelFont.ASCII_CELL_SIZE) / 2, fallback, TEXT_COLOR);
         }
     }
 

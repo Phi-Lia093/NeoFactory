@@ -36,10 +36,10 @@ import com.philia093.neofactory.render.PixelFont;
 public final class ContainerGui {
 
     /** Pixels between the upper edge of the panel and the top of the name. */
-    public static final int TITLE_TOP = 2;
+    public static final int TITLE_TOP = 3;
 
     /** Pixels between the frame of the panel and the name of the container, which is written flush left. */
-    public static final int TITLE_LEFT = 2;
+    public static final int TITLE_LEFT = 3;
 
     /**
      * Colour of the name of the container.
