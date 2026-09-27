@@ -139,6 +139,27 @@ public final class Chunk {
         return sections[sectionY];
     }
 
+    /**
+     * The section of this chunk that covers a height, brought into being when it is empty.
+     * <p>
+     * The light engine asks for this and not for {@link #section(int)}: the air above a landscape holds no
+     * block and still carries the light of the sky, so the section a light map is written into has to exist,
+     * while a section nobody wrote a block to is {@code null}, see {@link #isEmptySection(int)}. A section
+     * that was made this way stays empty - {@link Section#isEmpty()} is about blocks - so it is still left
+     * out of a saved chunk and still costs no mesh.
+     *
+     * @param sectionY index of the section along the vertical axis
+     * @return the section, never {@code null}
+     */
+    public Section sectionForLight(int sectionY) {
+        Section section = sections[sectionY];
+        if (section == null) {
+            section = new Section(sectionY);
+            sections[sectionY] = section;
+        }
+        return section;
+    }
+
     /** Amount of sections of this chunk that hold at least one block. */
     public int sectionCount() {
         int count = 0;
@@ -366,6 +387,39 @@ public final class Chunk {
     }
 
     /** {@code true} when the chunk changed since the last call to {@link #clearDirty()}. */
+    /**
+     * Set once the light of this chunk was computed.
+     * <p>
+     * A chunk arrives dark - the save format leaves the two light maps out on purpose, see
+     * {@code ChunkCodec} - so the light engine is asked for a chunk the first time it is complete, see
+     * {@link com.philia093.neofactory.world.light.LightEngine}.
+     */
+    private boolean lighted;
+
+    /**
+     * {@code true} once the light of this chunk was computed.
+     *
+     * @return {@code true} while the light maps of this chunk hold the light of its cells
+     */
+    public boolean isLighted() {
+        return lighted;
+    }
+
+    /** Remembers that the light of this chunk was computed. */
+    public void markLighted() {
+        lighted = true;
+    }
+
+    /** Forgets the light of every section, so the next computation starts from the dark. */
+    public void clearLight() {
+        for (Section section : sections) {
+            if (section != null) {
+                section.clearLight();
+            }
+        }
+        lighted = false;
+    }
+
     public boolean isDirty() {
         return dirty;
     }

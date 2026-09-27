@@ -220,6 +220,11 @@ public final class Section {
 
     /**
      * Sets the sky light of one cell.
+     * <p>
+     * <b>A light change is a mesh change.</b> The light of a cell is what its faces are drawn with, so a
+     * section whose light was written is marked as needing a new mesh, exactly like a section whose
+     * blocks changed, see {@link #markDirty()}. Writing the level that already stands there changes
+     * nothing and costs no mesh, which is what lets a light engine offer the same level again and again.
      *
      * @param x local X, {@code 0} to {@code 15}
      * @param y local Y, {@code 0} to {@code 15}
@@ -227,7 +232,11 @@ public final class Section {
      * @param level level between {@code 0} and {@link #MAX_LIGHT}
      */
     public void setSkyLight(int x, int y, int z, int level) {
+        if (skyLight(x, y, z) == level) {
+            return;
+        }
         skyLight = put(skyLight, index(x, y, z), level);
+        markDirty();
     }
 
     /**
@@ -244,6 +253,8 @@ public final class Section {
 
     /**
      * Sets the block light of one cell.
+     * <p>
+     * A change is marked the way the sky light of a cell is, see {@link #setSkyLight(int, int, int, int)}.
      *
      * @param x local X, {@code 0} to {@code 15}
      * @param y local Y, {@code 0} to {@code 15}
@@ -251,7 +262,11 @@ public final class Section {
      * @param level level between {@code 0} and {@link #MAX_LIGHT}
      */
     public void setBlockLight(int x, int y, int z, int level) {
+        if (blockLight(x, y, z) == level) {
+            return;
+        }
         blockLight = put(blockLight, index(x, y, z), level);
+        markDirty();
     }
 
     /** {@code true} once a light of this section was computed, either one. */

@@ -10,6 +10,7 @@ import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.util.Aabb;
 import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.interaction.FaceOperable;
+import com.philia093.neofactory.world.light.LightEngine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -80,6 +81,9 @@ public final class World implements BlockAccess {
 
     /** Everything in this world that is not a block. */
     private final EntityManager entities = new EntityManager();
+
+    /** Light of the cells of the loaded chunks, see {@link LightEngine}. */
+    private final LightEngine light = new LightEngine();
 
     /** Chunks currently being generated, used to detect re-entrant loading. */
     private final Set<Long> generating = new HashSet<>();
@@ -478,6 +482,9 @@ public final class World implements BlockAccess {
         // This is the public write path of the world: everything reaching it is a
         // player change and has to survive unloading and saving.
         chunk.markModified();
+        // A cell that changed its block is a cell that changed its light: a wall that was raised casts a
+        // shadow, a hole that was dug lets the sky in and a torch that was built lights its cave.
+        light.relight(this, x, y, z);
     }
 
     /**
@@ -537,6 +544,99 @@ public final class World implements BlockAccess {
         }
         chunk.setState(localX, y, localZ, state);
         chunk.markModified();
+    }
+
+    /**
+     * Level of sky light of a cell.
+     * <p>
+     * <b>Nothing is generated here.</b> The mesher asks about the cells just outside a section, which may
+     * lie in a chunk nobody has loaded yet - and a mesh may not raise terrain. Such a cell reports the dark
+     * it has, and the light engine lights it the moment its chunk arrives.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @return the level, {@code 0} to {@link Block#MAX_LIGHT}, {@code 0} for a cell that is not loaded
+     */
+    public int peekSkyLight(int x, int y, int z) {
+        Section section = loadedSection(x, y, z);
+        return section == null ? 0
+                : section.skyLight(Chunk.localOf(x), Chunk.localOf(y), Chunk.localOf(z));
+    }
+
+    /**
+     * Level of block light of a cell, the light of the torches and machines around it.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @return the level, {@code 0} to {@link Block#MAX_LIGHT}, {@code 0} for a cell that is not loaded
+     */
+    public int peekBlockLight(int x, int y, int z) {
+        Section section = loadedSection(x, y, z);
+        return section == null ? 0
+                : section.blockLight(Chunk.localOf(x), Chunk.localOf(y), Chunk.localOf(z));
+    }
+
+    /**
+     * Writes the sky light of a cell, the light engine is the only caller.
+     * <p>
+     * The section is marked as needing a new mesh and the chunk as changed by a player: light is what the
+     * faces of a cell are drawn with and a chunk that was lit has to reach the save game - not because the
+     * light itself is stored, but because a chunk the generator made is written for its light as well.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param level level to store
+     * @return {@code true} when a section took the level
+     */
+    public boolean setSkyLight(int x, int y, int z, int level) {
+        Chunk chunk = loadedChunk(x, y, z);
+        if (chunk == null) {
+            return false;
+        }
+        chunk.sectionForLight(y / Section.SIZE)
+                .setSkyLight(Chunk.localOf(x), Chunk.localOf(y), Chunk.localOf(z), level);
+        return true;
+    }
+
+    /**
+     * Writes the block light of a cell, the light engine is the only caller.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param level level to store
+     * @return {@code true} when a section took the level
+     */
+    public boolean setBlockLight(int x, int y, int z, int level) {
+        Chunk chunk = loadedChunk(x, y, z);
+        if (chunk == null) {
+            return false;
+        }
+        chunk.sectionForLight(y / Section.SIZE)
+                .setBlockLight(Chunk.localOf(x), Chunk.localOf(y), Chunk.localOf(z), level);
+        return true;
+    }
+
+    /** Light of the loaded world, asked for its budget and its statistics. */
+    public LightEngine light() {
+        return light;
+    }
+
+    /** The section a cell lies in, {@code null} while its chunk is not loaded. */
+    private Section loadedSection(int x, int y, int z) {
+        Chunk chunk = loadedChunk(x, y, z);
+        return chunk == null ? null : chunk.section(y / Section.SIZE);
+    }
+
+    /** The chunk a cell lies in, {@code null} while it is not loaded. */
+    private Chunk loadedChunk(int x, int y, int z) {
+        if (outsideTheWorld(y)) {
+            return null;
+        }
+        return chunks.get(chunkKey(Chunk.chunkOf(x), Chunk.chunkOf(z)));
     }
 
     /**
@@ -927,11 +1027,19 @@ public final class World implements BlockAccess {
      * @param chunk chunk that may have just finished generating
      */
     private void completeGeneration(Chunk chunk) {
-        if (!chunk.isFullyGenerated() || chunk.isDecorated()) {
+        if (!chunk.isFullyGenerated()) {
             return;
         }
-        chunk.markDecorated();
-        generator.decorate(this, chunk);
+        if (!chunk.isDecorated()) {
+            chunk.markDecorated();
+            generator.decorate(this, chunk);
+        }
+        if (!chunk.isLighted()) {
+            // The light of a chunk is computed once it is complete, whether the generator made it or the
+            // save game brought it back: a chunk arrives dark, see ChunkCodec.
+            light.lightChunk(this, chunk);
+            chunk.markLighted();
+        }
     }
 
     /** Packs two chunk coordinates into the map key of the chunk table. */
