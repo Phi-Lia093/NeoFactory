@@ -22,8 +22,9 @@ class RecipeBrowserLayoutTest {
         assertEquals(PanelTextures.PANEL_WIDTH, RecipeBrowserLayout.WIDTH,
                 "the panel is as wide as the art of the interface");
         assertTrue(RecipeBrowserLayout.height(false) > 0);
-        assertTrue(RecipeBrowserLayout.height(false) < RecipeBrowserLayout.height(true),
-                "a list is taller than a page, because it carries the search box");
+        assertEquals(RecipeBrowserLayout.TEMPLATE_HEIGHT, RecipeBrowserLayout.height(false),
+                "a page is as tall as the panel of a machine, because it is laid out as one: its own rows "
+                        + "carry what the recipe costs, see TEMPLATE_INFO_Y");
 
         int pageRight = RecipeBrowserLayout.RESULT_X + RecipeBrowserLayout.CELL
                 + RecipeBrowserLayout.PADDING;

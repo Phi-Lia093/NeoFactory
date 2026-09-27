@@ -652,6 +652,9 @@ public final class RecipeBrowserGui {
         }
         drawCell(batch, x, y, height, RecipeBrowserLayout.RESULT_X, RecipeBrowserLayout.RESULT_Y,
                 shown.result(), RESULT_CELL);
+        // What the recipe costs stands in the rows the inventory of a machine stands in, and the page with
+        // its two buttons stands right of it, see RecipeBrowserLayout#TEMPLATE_INFO_X.
+        drawReport(batch, x, y, height, shown.recipe());
         drawFooter(batch, x, y, height, footLine());
     }
 
@@ -771,20 +774,76 @@ public final class RecipeBrowserGui {
         font.setColor(Color.WHITE);
     }
 
-    /** Draws the foot of a page: the two arrows, the number of the page and a line of news. */
+    /** Draws the page and its two buttons in the column right of the report, and a line of news. */
     private void drawFooter(SpriteBatch batch, float x, float y, int height, String line) {
-        drawButton(batch, x, y, height, RecipeBrowserLayout.PREV_X, RecipeBrowserLayout.FOOTER_Y, "<",
-                page > 0);
-        drawButton(batch, x, y, height, RecipeBrowserLayout.NEXT_X, RecipeBrowserLayout.FOOTER_Y, ">",
-                page + 1 < pageCount());
-        drawText(batch, x, y, height, RecipeBrowserLayout.PAGE_TEXT_X,
+        drawButton(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_HINT_X,
+                RecipeBrowserLayout.TEMPLATE_INFO_Y, "<", page > 0);
+        drawButton(batch, x, y, height,
+                RecipeBrowserLayout.TEMPLATE_HINT_X + RecipeBrowserLayout.TEMPLATE_HINT_BUTTONS,
+                RecipeBrowserLayout.TEMPLATE_INFO_Y, ">", page + 1 < pageCount());
+        drawLine(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_HINT_X,
+                RecipeBrowserLayout.TEMPLATE_INFO_Y + RecipeBrowserLayout.TEMPLATE_LINE_HEIGHT,
                 (page + 1) + "/" + pageCount(), TEXT_COLOR);
         if (!line.isEmpty()) {
             font.setColor(MESSAGE_COLOR);
-            font.draw(batch, line, x + RecipeBrowserLayout.PAGE_TEXT_X + 34,
-                    y + height - RecipeBrowserLayout.FOOTER_Y - 4);
+            font.draw(batch, line, x + RecipeBrowserLayout.TEMPLATE_HINT_X,
+                    y + height - RecipeBrowserLayout.templateLineY(3) - 2);
             font.setColor(Color.WHITE);
         }
+    }
+
+    /**
+     * Writes what a recipe costs into the rows the inventory of a machine would stand in.
+     * <p>
+     * A screen that only looks at a recipe has no inventory of a player to show, so those rows carry the
+     * report of the recipe instead, see {@link RecipeReport} and {@link RecipeBrowserLayout#TEMPLATE_INFO_Y}.
+     *
+     * @param batch batch switched to the projection of the interface viewport
+     * @param x left edge of the panel
+     * @param y lower edge of the panel
+     * @param height height of the panel
+     * @param recipe recipe the page shows
+     */
+    private void drawReport(SpriteBatch batch, float x, float y, int height, Recipe recipe) {
+        List<String> lines = reportOf(recipe).lines();
+        for (int line = 0; line < lines.size(); line++) {
+            drawLine(batch, x, y, height, RecipeBrowserLayout.TEMPLATE_INFO_X,
+                    RecipeBrowserLayout.templateLineY(line), lines.get(line), TEXT_COLOR);
+        }
+    }
+
+    /**
+     * What a recipe reports about itself.
+     * <p>
+     * An age that says nothing about energy reports none: the machines of this game burn fuel and steam, so
+     * a recipe that is not an {@code EnergyRecipe} writes no volts at all, see {@link RecipeReport}.
+     *
+     * @param recipe recipe the page shows
+     * @return the report of that recipe
+     */
+    private static RecipeReport reportOf(Recipe recipe) {
+        RecipeReport report = new RecipeReport();
+        if (recipe instanceof com.philia093.neofactory.recipe.SmeltingRecipe smelting) {
+            report.time(smelting.seconds());
+        }
+        if (recipe instanceof com.philia093.neofactory.recipe.SteamRecipe steam) {
+            report.time(steam.seconds()).steam(steam.steam());
+        }
+        if (recipe instanceof com.philia093.neofactory.recipe.EnergyRecipe energy) {
+            report.energy(energy);
+        }
+        return report;
+    }
+
+    /** Writes a line into the panel, its upper edge lying that many pixels below the upper edge of it. */
+    private void drawLine(SpriteBatch batch, float x, float y, int height, int left, int top, String text,
+            Color colour) {
+        if (text.isEmpty()) {
+            return;
+        }
+        font.setColor(colour);
+        font.draw(batch, text, x + left, y + height - top - font.lineHeight());
+        font.setColor(Color.WHITE);
     }
 
     /** The line of the foot: what a click did, or the name of the item under the mouse. */

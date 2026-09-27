@@ -171,6 +171,9 @@ public final class RecipeBrowserLayout {
     /** Width the report of a recipe may take, so it never runs into the column of the page. */
     public static final int TEMPLATE_INFO_WIDTH = TEMPLATE_HINT_X - TEMPLATE_INFO_X - 4;
 
+    /** Distance between the left edges of the two buttons that turn a page. */
+    public static final int TEMPLATE_HINT_BUTTONS = 20;
+
     private RecipeBrowserLayout() {
         // Utility class: never instantiated.
     }
@@ -202,7 +205,7 @@ public final class RecipeBrowserLayout {
      * @return the height in pixels
      */
     public static int height(boolean list) {
-        return list ? SEARCH_Y + SEARCH_HEIGHT + PADDING : FOOTER_Y + FOOTER_HEIGHT + PADDING;
+        return list ? SEARCH_Y + SEARCH_HEIGHT + PADDING : TEMPLATE_HEIGHT;
     }
 
     /** X coordinate of one column of a page. */
