@@ -14,7 +14,7 @@ import java.util.Objects;
  * {@link com.philia093.neofactory.gui.container.ContainerLayout#addGrid} places them
  * in.
  */
-public final class InventoryGrid implements RecipeGrid {
+public final class InventoryGrid implements RecipeGridWriter {
 
     private final Inventory inventory;
     private final int firstIndex;
@@ -79,6 +79,18 @@ public final class InventoryGrid implements RecipeGrid {
             return;
         }
         stack.setCount(stack.count() - 1);
+    }
+
+    /**
+     * Puts a stack into one place of the grid.
+     *
+     * @param x column, counted from the left
+     * @param y row, counted from the top
+     * @param stack stack to store, an empty stack clears the place
+     */
+    @Override
+    public void place(int x, int y, ItemStack stack) {
+        inventory.set(indexOf(x, y), stack);
     }
 
     @Override

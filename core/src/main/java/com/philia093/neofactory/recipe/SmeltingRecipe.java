@@ -59,6 +59,17 @@ public final class SmeltingRecipe implements MachineRecipe {
         return input;
     }
 
+    /**
+     * What this recipe is made of, the one item it takes.
+     * <p>
+     * A screen of recipes shows the input of a smelting recipe as a single cell, which is the shape of
+     * the recipe itself, see {@link Recipe#ingredients()}.
+     */
+    @Override
+    public java.util.List<Ingredient> ingredients() {
+        return java.util.List.of(input);
+    }
+
     /** Seconds one craft takes. */
     public float seconds() {
         return seconds;

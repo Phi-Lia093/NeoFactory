@@ -4,6 +4,7 @@ import com.badlogic.gdx.Input;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
+import com.philia093.neofactory.item.ItemSearch;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 
@@ -293,21 +294,11 @@ public final class CreativeInventory {
             return found;
         }
         if (tab.kind() == CreativeTab.Kind.SEARCH) {
-            String needle = query.trim().toLowerCase(Locale.ROOT);
-            for (Item item : ItemRegistry.all()) {
-                if (item == Items.AIR) {
-                    continue;
-                }
-                // An empty box shows everything, which is what a player sees first when
-                // the search tab is opened. The chemical formula is searched as well, so a
-                // player who types "Fe" finds every shape of iron, see Item#chemicalFormula.
-                if (needle.isEmpty() || item.name().toLowerCase(Locale.ROOT).contains(needle)
-                        || item.displayName().toLowerCase(Locale.ROOT).contains(needle)
-                        || item.chemicalFormula().toLowerCase(Locale.ROOT).contains(needle)) {
-                    found.add(item);
-                }
-            }
-            return found;
+            // An empty box shows everything, which is what a player sees first when the search tab
+            // is opened. Which names are searched - the name of an item, the name it reads as and
+            // the chemical formula of its material - is the business of ItemSearch, so the box here
+            // and the box of the screen of recipes find the same items.
+            return ItemSearch.all(query);
         }
         for (Item item : ItemRegistry.all()) {
             if (tab.matches(item)) {

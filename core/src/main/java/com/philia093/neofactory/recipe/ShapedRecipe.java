@@ -2,6 +2,8 @@ package com.philia093.neofactory.recipe;
 
 import com.philia093.neofactory.item.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -44,6 +46,25 @@ public final class ShapedRecipe implements Recipe {
     @Override
     public RecipeType type() {
         return RecipeType.CRAFTING_SHAPED;
+    }
+
+    /**
+     * What this pattern is made of, one entry per place that is not empty.
+     * <p>
+     * Read row by row from the upper left corner, the order the file lays the pattern out in, see
+     * {@link Recipe#ingredients()}.
+     */
+    @Override
+    public List<Ingredient> ingredients() {
+        List<Ingredient> found = new ArrayList<>();
+        for (Ingredient[] row : pattern) {
+            for (Ingredient ingredient : row) {
+                if (!ingredient.isEmpty()) {
+                    found.add(ingredient);
+                }
+            }
+        }
+        return List.copyOf(found);
     }
 
     @Override

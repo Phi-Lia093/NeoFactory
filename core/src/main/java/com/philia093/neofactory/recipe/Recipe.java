@@ -2,6 +2,8 @@ package com.philia093.neofactory.recipe;
 
 import com.philia093.neofactory.item.ItemStack;
 
+import java.util.List;
+
 /**
  * A recipe the game can perform on a grid of items.
  * <p>
@@ -44,4 +46,17 @@ public interface Recipe {
      * @param grid grid the ingredients are taken from
      */
     void consume(RecipeGrid grid);
+
+    /**
+     * What this recipe is made of.
+     * <p>
+     * One entry per ingredient, in the order the file names them, which is also the order a screen of
+     * recipes lays them out in, see {@link RecipeIndex}. A recipe that takes no item at all - one that
+     * only fills a tank - answers with an empty list.
+     *
+     * @return the ingredients, empty when this recipe is made of no item
+     */
+    default List<Ingredient> ingredients() {
+        return List.of();
+    }
 }

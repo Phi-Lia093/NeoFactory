@@ -19,7 +19,7 @@ import java.util.Objects;
  * bag of items rather than a pattern; {@link #SlotGrid(Inventory, List, int)} builds a
  * wider one for a machine that really does work on a pattern.
  */
-public final class SlotGrid implements RecipeGrid {
+public final class SlotGrid implements RecipeGridWriter {
 
     private final Inventory inventory;
     private final int[] slots;
@@ -95,6 +95,18 @@ public final class SlotGrid implements RecipeGrid {
     /** Inventory this grid shows. */
     public Inventory inventory() {
         return inventory;
+    }
+
+    /**
+     * Puts a stack into the slot one place of the grid points at.
+     *
+     * @param x column, counted from the left
+     * @param y row, counted from the top
+     * @param stack stack to store, an empty stack clears the slot
+     */
+    @Override
+    public void place(int x, int y, ItemStack stack) {
+        inventory.set(slotIndex(x, y), stack);
     }
 
     @Override
