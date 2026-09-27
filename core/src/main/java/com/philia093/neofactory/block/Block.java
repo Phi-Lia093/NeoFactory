@@ -26,6 +26,15 @@ public final class Block {
     /** Id of the empty block, see {@code Blocks.AIR_ID}. */
     public static final int AIR_ID = 0;
 
+    /**
+     * Highest light level a block may emit, the value of a cell that sees the whole sky.
+     * <p>
+     * The number is the ceiling of the light map of a section, see
+     * {@link com.philia093.neofactory.world.Section#MAX_LIGHT}: what a block emits and what a light
+     * engine spreads are the same scale, so a torch may be as bright as noon.
+     */
+    public static final int MAX_LIGHT = 15;
+
     private final int id;
     private final String name;
     private final String texture;
@@ -41,6 +50,7 @@ public final class Block {
     private final String blockEntityTypeName;
     private final boolean carriesFluid;
     private final boolean container;
+    private final int lightEmission;
     private final Animation animation;
     private final int itemState;
 
@@ -60,6 +70,7 @@ public final class Block {
         this.blockEntityTypeName = builder.blockEntityTypeName;
         this.carriesFluid = builder.carriesFluid;
         this.container = builder.container;
+        this.lightEmission = builder.lightEmission;
         this.animation = builder.animation;
         this.itemState = builder.itemState;
     }
@@ -241,6 +252,27 @@ public final class Block {
      */
     public boolean isContainer() {
         return container;
+    }
+
+    /**
+     * How much light this block gives away, {@code 0} for a block that gives none.
+     * <p>
+     * It is the level a light engine starts from when it spreads the light of the sources in a chunk:
+     * {@link #MAX_LIGHT} is the light of a cell that sees the whole sky, so a torch of {@code 14} lights
+     * its neighbourhood but is dimmer than noon, see
+     * {@link com.philia093.neofactory.world.light.LightEngine}. <b>A block that emits light is drawn with
+     * the light of the cells around it and not with the level it emits</b> - the bright picture of a
+     * glowing block comes from its art and not from the light map.
+     *
+     * @return the level, {@code 0} to {@link #MAX_LIGHT}
+     */
+    public int lightEmission() {
+        return lightEmission;
+    }
+
+    /** {@code true} when this block is a source of light. */
+    public boolean emitsLight() {
+        return lightEmission > 0;
     }
 
     /**
@@ -478,6 +510,9 @@ public final class Block {
         /** {@code true} for a block that keeps items for a player, see {@link Block#isContainer()}. */
         private boolean container = false;
 
+        /** Level of light this block gives away, see {@link Block#lightEmission()}. */
+        private int lightEmission;
+
         private Animation animation;
         private int itemState;
 
@@ -638,6 +673,25 @@ public final class Block {
          */
         public Builder container() {
             this.container = true;
+            return this;
+        }
+
+        /**
+         * Makes this block a source of light.
+         * <p>
+         * The level is the light the engine spreads from this cell: a torch is 14 and glowstone 15, the
+         * light of a cell that sees the whole sky, see {@link Block#lightEmission()}. A level outside
+         * {@code 0} to {@link Block#MAX_LIGHT} is refused here, where it is written.
+         *
+         * @param lightEmission level of light, {@code 0} to {@link Block#MAX_LIGHT}
+         * @return this builder, so the calls chain
+         * @throws IllegalArgumentException when the level is outside the scale of the light map
+         */
+        public Builder light(int lightEmission) {
+            if (lightEmission < 0 || lightEmission > Block.MAX_LIGHT) {
+                throw new IllegalArgumentException("Light out of range: " + lightEmission);
+            }
+            this.lightEmission = lightEmission;
             return this;
         }
 

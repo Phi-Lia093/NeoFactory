@@ -137,6 +137,15 @@ public final class Blocks {
     /** Next unused block id, used to verify that a new block got a fresh id. */
     public static final int NEXT_FREE_ID = 188;
 
+    /**
+     * Light the torch gives away, the first source of light of the game.
+     * <p>
+     * One level below the light of a cell that sees the whole sky, so a cave is lit but the sun is
+     * brighter than a flame, see {@link Block#lightEmission()} and
+     * {@link com.philia093.neofactory.world.light.LightEngine}.
+     */
+    public static final int TORCH_LIGHT = Block.MAX_LIGHT - 1;
+
     // ------------------------------------------------------------------
     // Block instances. They are filled by registerAll().
     // ------------------------------------------------------------------
@@ -503,6 +512,7 @@ public final class Blocks {
 
         GLOWSTONE = Block.builder(GLOWSTONE_ID, "glowstone")
                 .texture("glowstone")
+                .light(Block.MAX_LIGHT)
                 .ground(true)
                 .hardness(0.3f)
                 .build();
@@ -566,6 +576,9 @@ public final class Blocks {
 
         TORCH = Block.builder(TORCH_ID, "torch")
                 .texture("torch_on")
+                // A torch is the light a player carries into a cave: one level below the light of a cell
+                // that sees the whole sky, see Block#lightEmission.
+                .light(TORCH_LIGHT)
                 .solid(false)
                 .ground(true)
                 .transparent(true)
