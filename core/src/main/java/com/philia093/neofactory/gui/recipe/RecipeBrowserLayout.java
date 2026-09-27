@@ -3,6 +3,8 @@ package com.philia093.neofactory.gui.recipe;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.PanelTextures;
+import com.philia093.neofactory.machine.MachineMenu;
+import com.philia093.neofactory.render.PixelFont;
 
 /**
  * Geometry of the screen of recipes: what lies where and what a click hits.
@@ -126,8 +128,71 @@ public final class RecipeBrowserLayout {
     /** X coordinate of the arrow that walks on one group. */
     public static final int GROUP_NEXT_X = WIDTH - PADDING - ARROW_SIZE;
 
+    /**
+     * Y coordinate of the name of a machine, the line the recipe writes the machine into.
+     * <p>
+     * A recipe of a machine is shown <b>in the panel of that machine</b>: its own slots stand where the
+     * machine stands them, and the two lines of the head are the ones a machine screen writes its name and
+     * its status on, so the screen of recipes reads as the screen of the machine that makes the item.
+     */
+    public static final int TEMPLATE_NAME_Y = MachineMenu.TEXT_TOP;
+
+    /** Height of the panel of a machine, the height a template is laid out in. */
+    public static final int TEMPLATE_HEIGHT = MachineMenu.HEIGHT;
+
+    /**
+     * Y coordinate of the first line of what a recipe reports.
+     * <p>
+     * The report takes the rows the player inventory of a machine screen stands in: a recipe that is being
+     * <b>looked at</b> has no inventory of a player to show, so those rows carry what the recipe costs -
+     * how much energy it takes, how much of it a tick, at which voltage and how long it runs.
+     */
+    public static final int TEMPLATE_INFO_Y = MachineMenu.PLAYER_STORAGE_TOP;
+
+    /** X coordinate of the column the report of a recipe stands in. */
+    public static final int TEMPLATE_INFO_X = MachineMenu.PLAYER_LEFT;
+
+    /** Height of one line of the report. */
+    public static final int TEMPLATE_LINE_HEIGHT = PixelFont.ASCII_CELL_SIZE + 2;
+
+    /** Amount of lines the report of a recipe holds. */
+    public static final int TEMPLATE_INFO_LINES = 5;
+
+    /** Width of the column the page and the two buttons are named in, on the right edge of the report. */
+    public static final int TEMPLATE_HINT_WIDTH = 46;
+
+    /**
+     * X coordinate of the column that names the page and the two buttons.
+     * <p>
+     * It stands right of the report and never over it, which is what {@link #TEMPLATE_INFO_WIDTH} keeps.
+     */
+    public static final int TEMPLATE_HINT_X = WIDTH - PADDING - TEMPLATE_HINT_WIDTH;
+
+    /** Width the report of a recipe may take, so it never runs into the column of the page. */
+    public static final int TEMPLATE_INFO_WIDTH = TEMPLATE_HINT_X - TEMPLATE_INFO_X - 4;
+
     private RecipeBrowserLayout() {
         // Utility class: never instantiated.
+    }
+
+    /**
+     * Y coordinate of one line of the report of a recipe.
+     *
+     * @param line line index, {@code 0} for the first one
+     * @return the upper edge of that line in pixels
+     */
+    public static int templateLineY(int line) {
+        return TEMPLATE_INFO_Y + line * TEMPLATE_LINE_HEIGHT;
+    }
+
+    /**
+     * {@code true} when the report of a recipe fits the rows of the machine panel it is written in.
+     *
+     * @return {@code true} when every line of the report lies above the lower edge of the panel
+     */
+    public static boolean templateReportFits() {
+        return templateLineY(TEMPLATE_INFO_LINES - 1) + TEMPLATE_LINE_HEIGHT
+                <= TEMPLATE_HEIGHT - PADDING;
     }
 
     /**

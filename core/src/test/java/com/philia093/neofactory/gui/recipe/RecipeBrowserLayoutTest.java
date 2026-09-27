@@ -1,6 +1,7 @@
 package com.philia093.neofactory.gui.recipe;
 
 import com.philia093.neofactory.gui.panel.PanelTextures;
+import com.philia093.neofactory.machine.MachineMenu;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -95,5 +96,30 @@ class RecipeBrowserLayoutTest {
         assertEquals(8, RecipeBrowserLayout.rowAtScrollY(
                 RecipeBrowserLayout.SCROLL_Y + RecipeBrowserLayout.SCROLL_HEIGHT, 8),
                 "a click at the lower end asks for the last row");
+    }
+
+    @Test
+    void theReportOfARecipeStandsInTheRowsTheInventoryOfAMachineStandsIn() {
+        assertTrue(RecipeBrowserLayout.TEMPLATE_INFO_Y >= MachineMenu.FOOT_TOP,
+                "the report begins below the body of the machine and not over its own slots");
+        assertTrue(RecipeBrowserLayout.TEMPLATE_INFO_Y >= MachineMenu.MACHINE_TOP,
+                "and below the band the name of the machine is written in");
+        assertTrue(RecipeBrowserLayout.templateReportFits(),
+                "every line of the report lies inside the panel of the machine");
+        assertEquals(RecipeBrowserLayout.TEMPLATE_LINE_HEIGHT,
+                RecipeBrowserLayout.templateLineY(1) - RecipeBrowserLayout.templateLineY(0),
+                "the lines of the report are laid out one after the other");
+    }
+
+    @Test
+    void thePageAndTheTwoButtonsAreNamedRightOfTheReportAndNeverOverIt() {
+        assertTrue(RecipeBrowserLayout.TEMPLATE_INFO_X + RecipeBrowserLayout.TEMPLATE_INFO_WIDTH
+                        <= RecipeBrowserLayout.TEMPLATE_HINT_X,
+                "the report ends before the column of the page");
+        assertTrue(RecipeBrowserLayout.TEMPLATE_HINT_X + RecipeBrowserLayout.TEMPLATE_HINT_WIDTH
+                        + RecipeBrowserLayout.PADDING <= RecipeBrowserLayout.WIDTH,
+                "the column of the page ends inside the panel");
+        assertTrue(RecipeBrowserLayout.TEMPLATE_HINT_X > RecipeBrowserLayout.TEMPLATE_INFO_X,
+                "the page is named to the right of the report");
     }
 }
