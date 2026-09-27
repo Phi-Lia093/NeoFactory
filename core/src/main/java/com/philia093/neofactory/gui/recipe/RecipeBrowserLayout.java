@@ -197,6 +197,27 @@ public final class RecipeBrowserLayout {
     /** X coordinate of the button that walks one page back, left of the number of the page. */
     public static final int TEMPLATE_PREV_X = TEMPLATE_PAGE_TEXT_X - 2 - TEMPLATE_BUTTON_SIZE;
 
+    /** Side of the square the transfer of a recipe is marked with, in the corner of the field of a page. */
+    public static final int TRANSFER_SIZE = NeiTextures.SMALL_BUTTON;
+
+    /** X coordinate of the button that lays the recipe of the page out, lower right of the field. */
+    public static final int TRANSFER_X = cellX(PAGE_COLUMNS - 1) + CELL - TRANSFER_SIZE;
+
+    /** Y coordinate of that button, in the same corner as its X coordinate. */
+    public static final int TRANSFER_Y = cellY(PAGE_ROWS - 1) + CELL - TRANSFER_SIZE;
+
+    /**
+     * {@code true} while a point of the panel lies on the button that lays the recipe out.
+     *
+     * @param localX X coordinate inside the panel
+     * @param localY Y coordinate inside the panel, measured from its upper edge
+     * @return {@code true} when that point lies on the button
+     */
+    public static boolean isOnTransfer(int localX, int localY) {
+        return localX >= TRANSFER_X && localX < TRANSFER_X + TRANSFER_SIZE
+                && localY >= TRANSFER_Y && localY < TRANSFER_Y + TRANSFER_SIZE;
+    }
+
     private RecipeBrowserLayout() {
         // Utility class: never instantiated.
     }

@@ -55,6 +55,20 @@ public final class RecipeBrowserGui {
          * @return the line to write in the foot of the panel
          */
         String arrange(Recipe recipe);
+
+        /**
+         * Lays a recipe out, as many times as the field of the player takes.
+         * <p>
+         * The shift key asks for as many copies as the field holds and not for the one copy a plain click
+         * asks for. A field that cannot tell the two apart lays one copy out, which is what the default does.
+         *
+         * @param recipe recipe to lay out
+         * @param many {@code true} for as many copies as the field takes
+         * @return the line the screen reports
+         */
+        default String arrange(Recipe recipe, boolean many) {
+            return arrange(recipe);
+        }
     }
 
     /** Colour of the titles and of the numbers of the screen. */
@@ -442,6 +456,16 @@ public final class RecipeBrowserGui {
             searchFocused = false;
             return true;
         }
+        RecipePage shown = page();
+        if (shown != null && transfers(shown.recipe())
+                && RecipeBrowserLayout.isOnTransfer(localX, localY)) {
+            // The button in the corner of the field lays the recipe out into the field a player has open, and
+            // the screen of recipes is done with then: it closes, and the field it was opened from is what a
+            // player works in again. The shift key asks for as many copies as that field takes.
+            layOut(com.philia093.neofactory.input.InputHandler.isShiftHeld());
+            close();
+            return true;
+        }
         ItemStack cell = cellUnder(localX, localY);
         if (cell != null && !cell.isEmpty()) {
             open(cell, button == Input.Buttons.RIGHT, guiX, guiY, 0, 0);
@@ -449,7 +473,8 @@ public final class RecipeBrowserGui {
             this.anchorHeight = RecipeBrowserLayout.CELL;
             return true;
         }
-        layOut();
+        // A click on the panel that is neither a cell nor the button of the field does nothing at all: laying
+        // a recipe out is a decision a player makes by hitting that button.
         return true;
     }
 
@@ -601,8 +626,12 @@ public final class RecipeBrowserGui {
                 && localY < y + RecipeBrowserLayout.CELL;
     }
 
-    /** Lays the recipe of the page out for the player and reports what came of it. */
-    private void layOut() {
+    /**
+     * Lays the recipe of the page out for the player and reports what came of it.
+     *
+     * @param many {@code true} for as many copies as the field of the player takes, {@code false} for one
+     */
+    private void layOut(boolean many) {
         RecipePage shown = page();
         if (shown == null) {
             message = "nothing makes it";
@@ -612,7 +641,23 @@ public final class RecipeBrowserGui {
             message = "no field is open";
             return;
         }
-        message = arranger.arrange(shown.recipe());
+        message = arranger.arrange(shown.recipe(), many);
+    }
+
+    /**
+     * {@code true} when a field of the player can take the recipe, which is a recipe of the workbench.
+     * <p>
+     * A pattern and a bag of ingredients are what a table of the workshop works with, and that table is the
+     * field a player has open in front of them; a recipe of a machine is run by a machine and is not laid out
+     * into anything, so its page carries no button that would pretend otherwise. The kind of a recipe is the
+     * name of the folder its file lies in, see {@code RecipeType}.
+     *
+     * @param recipe recipe of the page
+     * @return {@code true} for a recipe the field of a table takes
+     */
+    private static boolean transfers(Recipe recipe) {
+        String kind = recipe.type().name();
+        return kind.equals("crafting_shaped") || kind.equals("crafting_shapeless");
     }
 
     /**
@@ -700,6 +745,20 @@ public final class RecipeBrowserGui {
         }
         drawCell(batch, x, y, height, RecipeBrowserLayout.RESULT_X, RecipeBrowserLayout.RESULT_Y,
                 shown.result(), RESULT_CELL);
+        // The button that lays the recipe out stands in the lower right corner of the field, and only a recipe
+        // a field of the player can take has one, see #transfers.
+        if (transfers(shown.recipe())) {
+            boolean pointed = RecipeBrowserLayout.isOnTransfer(localX(mouseX), localY(mouseY));
+            nei.drawButton(batch, x + RecipeBrowserLayout.TRANSFER_X,
+                    y + height - RecipeBrowserLayout.TRANSFER_Y - RecipeBrowserLayout.TRANSFER_SIZE,
+                    RecipeBrowserLayout.TRANSFER_SIZE, true, pointed);
+            TextureRegion mark = nei.transfer();
+            if (mark != null) {
+                batch.draw(mark, x + RecipeBrowserLayout.TRANSFER_X + 2,
+                        y + height - RecipeBrowserLayout.TRANSFER_Y
+                                - RecipeBrowserLayout.TRANSFER_SIZE + 2);
+            }
+        }
         // What the recipe costs stands in the rows the inventory of a machine stands in, and the page with
         // its two buttons stands right of it, see RecipeBrowserLayout#TEMPLATE_INFO_X.
         drawReport(batch, x, y, height, shown.recipe());

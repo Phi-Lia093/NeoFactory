@@ -94,6 +94,9 @@ public final class NeiTextures {
     /** Side length of a button in pixels. */
     public static final int BUTTON_SIZE = 20;
 
+    /** Side length of a small button, the one the transfer of a recipe is marked with. */
+    public static final int SMALL_BUTTON = 10;
+
     /** Width and height of an arrow in pixels. */
     public static final int ARROW_SIZE = 9;
 
@@ -127,6 +130,9 @@ public final class NeiTextures {
     private final TextureRegion info;
     private final TextureRegion transfer;
     private final TextureRegion shapeless;
+
+    /** One piece of a button that is cut down, reused instead of filling the heap with regions. */
+    private final TextureRegion scratch = new TextureRegion();
 
     /**
      * Reads the pictures of the screen of recipes.
@@ -217,6 +223,44 @@ public final class NeiTextures {
     /** Panel of a recipe, {@code null} when the art is missing. */
     public TextureRegion background() {
         return panel[0];
+    }
+
+    /**
+     * Draws the ground of a button.
+     * <p>
+     * The ground of the pack is named the other way round from what it looks like:
+     * {@code button_enabled} is the button the mouse is <b>not</b> over and {@code button_highlight} the one
+     * it is. A button smaller than {@link #BUTTON_SIZE} is the big one <b>cut</b> and not scaled: the four
+     * corners of the picture keep their pixels and the middle of it is left out, which is what keeps the bevel
+     * of a button a bevel however small the button is drawn, the way the frame of a panel keeps its own.
+     *
+     * @param batch batch switched to the projection of the interface viewport
+     * @param x left edge of the button
+     * @param y lower edge of the button
+     * @param size side the button is drawn in
+     * @param usable {@code true} when the button can be used
+     * @param pointed {@code true} while the mouse points at it
+     */
+    public void drawButton(SpriteBatch batch, float x, float y, int size, boolean usable, boolean pointed) {
+        TextureRegion art = usable ? (pointed ? buttonHighlight : button) : buttonDisabled;
+        if (art == null || size <= 0) {
+            return;
+        }
+        if (size >= BUTTON_SIZE) {
+            batch.draw(art, x, y, size, size);
+            return;
+        }
+        int cut = Math.max(1, (BUTTON_SIZE - size) / 2);
+        for (int column = 0; column < 2; column++) {
+            for (int row = 0; row < 2; row++) {
+                int sourceX = column == 0 ? 0 : BUTTON_SIZE - cut;
+                int sourceY = row == 0 ? 0 : BUTTON_SIZE - cut;
+                int targetX = column == 0 ? 0 : size - cut;
+                int targetY = row == 0 ? 0 : size - cut;
+                scratch.setRegion(art, sourceX, sourceY, cut, cut);
+                batch.draw(scratch, x + targetX, y + targetY, cut, cut);
+            }
+        }
     }
 
     /** Frame of the one recipe that is laid out, {@code null} when the art is missing. */
