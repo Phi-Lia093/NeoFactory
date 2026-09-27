@@ -37,6 +37,28 @@ public final class SkyRenderer implements Disposable {
     /** How quickly a body fades away as it reaches the horizon. */
     private static final float BODY_FADE = 6.0f;
 
+    /** Vertices one triangle of the sky is written with. */
+    public static final int VERTICES_PER_TRIANGLE = 3;
+
+    /** Triangles one square of the sky is written with. */
+    public static final int TRIANGLES_PER_SQUARE = 2;
+
+    /** Vertices one square of the sky is written with. */
+    public static final int VERTICES_PER_SQUARE = TRIANGLES_PER_SQUARE * VERTICES_PER_TRIANGLE;
+
+    /** Vertices one cell of the layer of clouds is written with, which is the square of one cloud. */
+    public static final int VERTICES_PER_CELL = VERTICES_PER_SQUARE;
+
+    /**
+     * Vertices the pass of a sky may write into one frame.
+     * <p>
+     * How much a sky costs is a number of this class and not of the world: the layer of clouds is drawn
+     * around the camera and not over a whole world, see {@link #cloudLayerVertices()} and
+     * {@link #bodyVertices()}. The buffer is a little larger than the two of them together, and a pass that
+     * would run past its end is cut short instead of breaking the frame, see {@link #triangle}.
+     */
+    public static final int MAX_VERTICES = 2048;
+
     /** Height the layer of clouds is drawn at, above the terrain a player walks on. */
     public static final int CLOUD_Y = 180;
 
@@ -58,9 +80,11 @@ public final class SkyRenderer implements Disposable {
      * A sky is written as it is drawn and kept nowhere: a body of it is one square of two triangles and the
      * layer of clouds is a few hundred of them, so the frames of this pass cost what they draw and no buffer
      * of the game is touched. Every vertex carries its own colour, which is how the sun fades away as it
-     * reaches the horizon, see {@link #drawBody}.
+     * reaches the horizon, see {@link #drawBody}, and the buffer holds the whole sky of a frame, see
+     * {@link #MAX_VERTICES}.
      */
-    private final ImmediateModeRenderer20 triangles = new ImmediateModeRenderer20(3, true, false, 0);
+    private final ImmediateModeRenderer20 triangles =
+            new ImmediateModeRenderer20(MAX_VERTICES, true, false, 0);
 
     /** Colour of the pass being written, reused every frame. */
     private final Color colour = new Color();
@@ -175,9 +199,32 @@ public final class SkyRenderer implements Disposable {
      */
     private void triangle(float x1, float y1, float z1, float x2, float y2, float z2,
             float x3, float y3, float z3) {
+        if (triangles.getNumVertices() + VERTICES_PER_TRIANGLE > MAX_VERTICES) {
+            // A frame is never broken by a sky: what does not fit into the buffer is dropped instead of
+            // written past its end. What fits is decided by the numbers above, see MAX_VERTICES.
+            return;
+        }
         triangles.vertex(x1, y1, z1);
         triangles.vertex(x2, y2, z2);
         triangles.vertex(x3, y3, z3);
+    }
+
+    /**
+     * Vertices one whole layer of clouds is written with, every cell of it drawn.
+     *
+     * @return the worst case of the pass over the clouds
+     */
+    public static int cloudLayerVertices() {
+        return (CLOUD_RADIUS * 2 + 1) * (CLOUD_RADIUS * 2 + 1) * VERTICES_PER_CELL;
+    }
+
+    /**
+     * Vertices the two bodies of the sky are written with, the sun and the moon.
+     *
+     * @return the worst case of the two squares of the sky
+     */
+    public static int bodyVertices() {
+        return 2 * VERTICES_PER_SQUARE;
     }
 
     /**
