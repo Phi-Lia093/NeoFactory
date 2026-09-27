@@ -327,16 +327,15 @@ public final class MachineGui {
         }
         Slot fuel = menu.fuelCell();
         int size = MachineTextures.ICON_CELL;
-        float x = panelX + fuel.x();
-        float y = panelY + panelHeight - fuel.y() - ContainerLayout.SLOT_SIZE - MachineMenu.FLAME_GAP
-                - size;
-        int row = menu.flameIsLit() ? MachineMenu.FLAME_LIT_ROW : MachineMenu.FLAME_OUT_ROW;
+        float x = panelX + flameX(fuel);
+        float y = panelY + panelHeight - flameTop(fuel) - size;
         if (!menu.flameIsLit() && menu.flameIsTemperature() && menu.flameShare() <= 0.0f) {
             // The flame of a boiler is its temperature and a cold boiler has no fire at all: the picture of a
             // flame that is out is what a machine that burns an item shows when its fire went out, and a
             // boiler that is at the temperature of the room shows nothing.
             return;
         }
+        int row = menu.flameIsLit() ? menu.flameRow() : menu.flameOutRow();
         TextureRegion flame = panel.icon(menu.flameColumn(), row);
         if (flame == null) {
             return;
@@ -402,9 +401,20 @@ public final class MachineGui {
             return false;
         }
         Slot fuel = menu.fuelCell();
-        int top = fuel.y() + ContainerLayout.SLOT_SIZE + MachineMenu.FLAME_GAP;
-        return localX >= fuel.x() && localX < fuel.x() + MachineTextures.ICON_CELL && localY >= top
-                && localY < top + MachineTextures.ICON_CELL;
+        int top = flameTop(fuel);
+        return localX >= flameX(fuel) && localX < flameX(fuel) + MachineTextures.ICON_CELL
+                && localY >= top && localY < top + MachineTextures.ICON_CELL;
+    }
+
+    /** X of the flame of a machine, which stands one cell left of the slot it belongs to. */
+    private static float flameX(Slot fuel) {
+        return fuel.x() - MachineMenu.FLAME_LEFT_CELLS * MachineTextures.ICON_CELL;
+    }
+
+    /** Row of the upper edge of the flame of a machine, which stands two cells above that slot. */
+    private static int flameTop(Slot fuel) {
+        return fuel.y() + ContainerLayout.SLOT_SIZE + MachineMenu.FLAME_GAP
+                - MachineMenu.FLAME_UP_CELLS * MachineTextures.ICON_CELL;
     }
 
     /**

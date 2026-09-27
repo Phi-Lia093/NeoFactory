@@ -92,20 +92,32 @@ public final class MachineMenu {
     /** Kelvin a flame of a boiler is full at, a hundred degrees Celsius. */
     public static final float FLAME_HOT_TEMPERATURE = 373.0f;
 
-    /** Column of the flame of the bronze age in the icon sheet, the first of its three flavours. */
-    public static final int FLAME_BRONZE_COLUMN = 5;
+    /** Column of the three flames in the icon sheet: the copper, the steel and the plain one share it. */
+    public static final int FLAME_COLUMN = 6;
 
-    /** Column of the flame of the age of steel in the icon sheet, the second of the three. */
-    public static final int FLAME_STEEL_COLUMN = 6;
+    /** Row of the flame of copper while it burns. */
+    public static final int FLAME_COPPER_ROW = 2;
 
-    /** Column of the flame of the grey age in the icon sheet, the third of the three. */
-    public static final int FLAME_NORMAL_COLUMN = 7;
+    /** Row of the flame of steel while it burns. */
+    public static final int FLAME_STEEL_ROW = 3;
 
-    /** Row of the flames that are alight in the icon sheet. */
-    public static final int FLAME_LIT_ROW = 0;
+    /** Row of the plain flame while it burns. */
+    public static final int FLAME_NORMAL_ROW = 4;
 
-    /** Row of the flames that are out in the icon sheet. */
-    public static final int FLAME_OUT_ROW = 1;
+    /** Row of the flame of copper while its fire is out. */
+    public static final int FLAME_COPPER_OUT_ROW = 5;
+
+    /** Row of the flame of steel while its fire is out. */
+    public static final int FLAME_STEEL_OUT_ROW = 6;
+
+    /** Row of the plain flame while its fire is out. */
+    public static final int FLAME_NORMAL_OUT_ROW = 7;
+
+    /** Cells the flame stands left of the slot it belongs to. */
+    public static final int FLAME_LEFT_CELLS = 1;
+
+    /** Cells the flame stands above the slot it belongs to, the gap below it counted. */
+    public static final int FLAME_UP_CELLS = 2;
 
     /** Unit the tooltip of a tank writes behind an amount of fluid, one cell being a thousand of them. */
     public static final String FLUID_UNIT = "mB";
@@ -409,9 +421,19 @@ public final class MachineMenu {
         return machine instanceof FuelMachine fuel ? fuel.fuelSeconds() : 0.0f;
     }
 
-    /** X of the flame of this machine in the icon sheet, one of the three flavours the sheet carries. */
+    /** Column of the flame of this machine in the icon sheet, which the flavours of the sheet share. */
     public int flameColumn() {
-        return style() == MachineStyle.BRONZE ? FLAME_BRONZE_COLUMN : FLAME_NORMAL_COLUMN;
+        return FLAME_COLUMN;
+    }
+
+    /** Row of the flame of this machine while it burns, which is the one of its style. */
+    public int flameRow() {
+        return style() == MachineStyle.BRONZE ? FLAME_COPPER_ROW : FLAME_NORMAL_ROW;
+    }
+
+    /** Row of the flame of this machine while its fire is out, which is the one of its style. */
+    public int flameOutRow() {
+        return style() == MachineStyle.BRONZE ? FLAME_COPPER_OUT_ROW : FLAME_NORMAL_OUT_ROW;
     }
 
     /**
