@@ -35,11 +35,12 @@ public final class ChestLayout {
      * Height of the band at the top of the panel that holds the name of the container.
      * <p>
      * The band has to hold the line of the font with the air above and below it and nothing of it may reach
-     * the first row of slots: the name begins {@link ContainerGui#TITLE_TOP} pixels below the upper edge of
-     * the panel and the line of the font is as tall as its cell, so the band is that much plus the air under
-     * the name, see {@link #CONTAINER_Y}.
+     * the first row of slots: the top of the name lies {@link ContainerGui#TITLE_TOP} pixels below the upper
+     * edge of the panel and the glyphs of the font are eight pixels tall, so the band is those nine pixels
+     * plus the air under the name. The number is written out and not added up from other constants, so that
+     * moving the name of a panel can never move the slots of the container with it.
      */
-    public static final int TITLE_HEIGHT = ContainerGui.TITLE_TOP + PixelFont.ASCII_CELL_SIZE + 4;
+    public static final int TITLE_HEIGHT = 13;
 
     /** Y coordinate of the first row of the container, the upper edge of an icon. */
     public static final int CONTAINER_Y = TITLE_HEIGHT;

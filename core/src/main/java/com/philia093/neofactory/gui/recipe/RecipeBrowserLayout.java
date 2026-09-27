@@ -138,8 +138,13 @@ public final class RecipeBrowserLayout {
      */
     public static final int TEMPLATE_NAME_Y = 0;
 
-    /** Height of the panel of a machine, the height a template is laid out in. */
-    public static final int TEMPLATE_HEIGHT = MachineMenu.HEIGHT;
+    /**
+     * Height of the panel of a machine, the height a template is laid out in.
+     * <p>
+     * The number stands on its own and is written out: a template of the screen of recipes is laid out in
+     * pixels of its own, so moving a row of a machine screen can never move a line of this screen with it.
+     */
+    public static final int TEMPLATE_HEIGHT = 166;
 
     /**
      * Y coordinate of the first line of what a recipe reports.
@@ -148,13 +153,13 @@ public final class RecipeBrowserLayout {
      * <b>looked at</b> has no inventory of a player to show, so those rows carry what the recipe costs -
      * how much energy it takes, how much of it a tick, at which voltage and how long it runs.
      */
-    public static final int TEMPLATE_INFO_Y = MachineMenu.PLAYER_STORAGE_TOP;
+    public static final int TEMPLATE_INFO_Y = 84;
 
     /** X coordinate of the column the report of a recipe stands in. */
-    public static final int TEMPLATE_INFO_X = MachineMenu.PLAYER_LEFT;
+    public static final int TEMPLATE_INFO_X = 8;
 
     /** Height of one line of the report. */
-    public static final int TEMPLATE_LINE_HEIGHT = PixelFont.ASCII_CELL_SIZE + 2;
+    public static final int TEMPLATE_LINE_HEIGHT = 10;
 
     /** Amount of lines the report of a recipe holds. */
     public static final int TEMPLATE_INFO_LINES = 5;
@@ -167,16 +172,16 @@ public final class RecipeBrowserLayout {
      * <p>
      * It stands right of the report and never over it, which is what {@link #TEMPLATE_INFO_WIDTH} keeps.
      */
-    public static final int TEMPLATE_HINT_X = WIDTH - PADDING - TEMPLATE_HINT_WIDTH;
+    public static final int TEMPLATE_HINT_X = 122;
 
     /** Width the report of a recipe may take, so it never runs into the column of the page. */
-    public static final int TEMPLATE_INFO_WIDTH = TEMPLATE_HINT_X - TEMPLATE_INFO_X - 4;
+    public static final int TEMPLATE_INFO_WIDTH = 110;
 
     /** Distance between the left edges of the two buttons that turn a page. */
     public static final int TEMPLATE_HINT_BUTTONS = 20;
 
     /** Side of the square a button of the page is drawn in, the art of NEI. */
-    public static final int TEMPLATE_BUTTON_SIZE = NeiTextures.BUTTON_SIZE;
+    public static final int TEMPLATE_BUTTON_SIZE = 20;
 
     /**
      * Y coordinate of the row that carries the page and its two buttons.
@@ -185,17 +190,16 @@ public final class RecipeBrowserLayout {
      * however long a line of the report turns out to be: the report takes the rows the inventory of a machine
      * stands in and the row under them carries {@code < X/Y >}.
      */
-    public static final int TEMPLATE_PAGE_Y = TEMPLATE_INFO_Y
-            + TEMPLATE_INFO_LINES * TEMPLATE_LINE_HEIGHT;
+    public static final int TEMPLATE_PAGE_Y = 134;
 
     /** X coordinate of the button that walks on one page, on the right edge of the panel. */
-    public static final int TEMPLATE_NEXT_X = WIDTH - PADDING - TEMPLATE_BUTTON_SIZE;
+    public static final int TEMPLATE_NEXT_X = 148;
 
     /** X coordinate of the number of the page, between the two buttons. */
-    public static final int TEMPLATE_PAGE_TEXT_X = TEMPLATE_NEXT_X - 4 - 3 * PixelFont.ASCII_CELL_SIZE;
+    public static final int TEMPLATE_PAGE_TEXT_X = 120;
 
     /** X coordinate of the button that walks one page back, left of the number of the page. */
-    public static final int TEMPLATE_PREV_X = TEMPLATE_PAGE_TEXT_X - 2 - TEMPLATE_BUTTON_SIZE;
+    public static final int TEMPLATE_PREV_X = 98;
 
     /** Side of the square the transfer of a recipe is marked with, in the corner of the field of a page. */
     public static final int TRANSFER_SIZE = NeiTextures.SMALL_BUTTON;
