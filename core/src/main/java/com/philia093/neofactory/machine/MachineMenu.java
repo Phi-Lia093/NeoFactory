@@ -97,7 +97,7 @@ public final class MachineMenu {
      * to hold it: two pixels more than the frame, a line of {@code PixelFont.ASCII_CELL_SIZE} pixels and the
      * air under it, so nothing the screen writes ever reaches the first row of slots.
      */
-    public static final int TEXT_TOP = 1;
+    public static final int TEXT_TOP = 0;
 
     /** X the status line is aligned to when no upgrade slot stands at the right edge. */
     public static final int TEXT_RIGHT = WIDTH - TEXT_LEFT;

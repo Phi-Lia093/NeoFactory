@@ -52,6 +52,17 @@ public final class NeiTextures {
     /** The ground of a button. */
     public static final String BUTTON = FOLDER + "button_enabled";
 
+    /**
+     * The ground of a small button, of which only the upper left quarter of the picture is painted.
+     * <p>
+     * The picture is twenty pixels square and only the first ten pixels of it are painted; the small ground
+     * is that quarter. The quarter is taken as it is and not the big ground cut down, see {@link #drawButton}.
+     */
+    public static final String BUTTON_SMALL = FOLDER + "button_enabled_small";
+
+    /** The ground of a small button the mouse points at, of which only the upper left quarter is painted. */
+    public static final String BUTTON_HIGHLIGHT_SMALL = FOLDER + "button_highlight_small";
+
     /** The ground of a button the mouse points at. */
     public static final String BUTTON_HIGHLIGHT = FOLDER + "button_highlight";
 
@@ -122,6 +133,8 @@ public final class NeiTextures {
     private final TextureRegion tabCatalyst;
     private final TextureRegion button;
     private final TextureRegion buttonHighlight;
+    private final TextureRegion buttonSmall;
+    private final TextureRegion buttonHighlightSmall;
     private final TextureRegion buttonDisabled;
     private final TextureRegion search;
     private final TextureRegion arrowPrevious;
@@ -160,6 +173,10 @@ public final class NeiTextures {
         this.tabCatalyst = textures.region(TAB_CATALYST);
         this.button = textures.region(BUTTON);
         this.buttonHighlight = textures.region(BUTTON_HIGHLIGHT);
+        // Only the upper left quarter of the picture of a small button is painted, so that quarter is cut out
+        // of the sheet and it alone is ever drawn: the rest of the picture is transparent.
+        this.buttonSmall = quarter(textures.region(BUTTON_SMALL));
+        this.buttonHighlightSmall = quarter(textures.region(BUTTON_HIGHLIGHT_SMALL));
         this.buttonDisabled = textures.region(BUTTON_DISABLED);
         this.search = textures.region(SEARCH);
         this.arrowPrevious = textures.region(ARROW_PREVIOUS);
@@ -225,6 +242,15 @@ public final class NeiTextures {
         return panel[0];
     }
 
+    /** The upper left quarter of a picture, {@code null} for a picture that is missing. */
+    private static TextureRegion quarter(TextureRegion art) {
+        if (art == null) {
+            return null;
+        }
+        return new TextureRegion(art, 0, 0, Math.min(SMALL_BUTTON, art.getRegionWidth()),
+                Math.min(SMALL_BUTTON, art.getRegionHeight()));
+    }
+
     /**
      * Draws the ground of a button.
      * <p>
@@ -242,6 +268,13 @@ public final class NeiTextures {
      * @param pointed {@code true} while the mouse points at it
      */
     public void drawButton(SpriteBatch batch, float x, float y, int size, boolean usable, boolean pointed) {
+        if (size == SMALL_BUTTON) {
+            TextureRegion small = usable ? (pointed ? buttonHighlightSmall : buttonSmall) : null;
+            if (small != null) {
+                batch.draw(small, x, y, size, size);
+                return;
+            }
+        }
         TextureRegion art = usable ? (pointed ? buttonHighlight : button) : buttonDisabled;
         if (art == null || size <= 0) {
             return;

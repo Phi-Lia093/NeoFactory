@@ -200,11 +200,16 @@ public final class RecipeBrowserLayout {
     /** Side of the square the transfer of a recipe is marked with, in the corner of the field of a page. */
     public static final int TRANSFER_SIZE = NeiTextures.SMALL_BUTTON;
 
+    /** Pixels the button is nudged past the corner of the cell, onto the bevel of the slot it stands in. */
+    public static final int TRANSFER_NUDGE = 2;
+
     /** X coordinate of the button that lays the recipe of the page out, lower right of the field. */
-    public static final int TRANSFER_X = cellX(PAGE_COLUMNS - 1) + CELL - TRANSFER_SIZE;
+    public static final int TRANSFER_X =
+            cellX(PAGE_COLUMNS - 1) + CELL - TRANSFER_SIZE + TRANSFER_NUDGE;
 
     /** Y coordinate of that button, in the same corner as its X coordinate. */
-    public static final int TRANSFER_Y = cellY(PAGE_ROWS - 1) + CELL - TRANSFER_SIZE;
+    public static final int TRANSFER_Y =
+            cellY(PAGE_ROWS - 1) + CELL - TRANSFER_SIZE + TRANSFER_NUDGE;
 
     /**
      * {@code true} while a point of the panel lies on the button that lays the recipe out.

@@ -612,10 +612,9 @@ public final class RecipeBrowserGui {
         if (shown == null) {
             return null;
         }
-        for (int row = 0; row < RecipeBrowserLayout.PAGE_ROWS; row++) {
-            for (int column = 0; column < RecipeBrowserLayout.PAGE_COLUMNS; column++) {
-                if (isInCell(localX, localY, RecipeBrowserLayout.cellX(column),
-                        RecipeBrowserLayout.cellY(row))) {
+        for (int row = 0; row < shown.rows(); row++) {
+            for (int column = 0; column < shown.columns(); column++) {
+                if (isInCell(localX, localY, pageX(shown, column), pageY(shown, row))) {
                     return shown.cell(column, row);
                 }
             }
@@ -727,11 +726,10 @@ public final class RecipeBrowserGui {
             drawFooter(batch, x, y, height, "nothing is known about it");
             return;
         }
-        for (int row = 0; row < RecipeBrowserLayout.PAGE_ROWS; row++) {
-            for (int column = 0; column < RecipeBrowserLayout.PAGE_COLUMNS; column++) {
-                drawCell(batch, x, y, height, RecipeBrowserLayout.cellX(column),
-                        RecipeBrowserLayout.cellY(row), shown.cell(column, row),
-                        row * RecipeBrowserLayout.PAGE_COLUMNS + column);
+        for (int row = 0; row < shown.rows(); row++) {
+            for (int column = 0; column < shown.columns(); column++) {
+                drawCell(batch, x, y, height, pageX(shown, column), pageY(shown, row),
+                        shown.cell(column, row), row * RecipeBrowserLayout.PAGE_COLUMNS + column);
             }
         }
         TextureRegion arrow = panel.arrowFull();
@@ -773,12 +771,15 @@ public final class RecipeBrowserGui {
 
     /** Index of the cell of the page under the mouse, {@code -1} while it points beside every cell. */
     private int hoveredPageCell(float mouseX, float mouseY) {
+        RecipePage shown = page();
+        if (shown == null) {
+            return -1;
+        }
         int localX = localX(mouseX);
         int localY = localY(mouseY);
-        for (int row = 0; row < RecipeBrowserLayout.PAGE_ROWS; row++) {
-            for (int column = 0; column < RecipeBrowserLayout.PAGE_COLUMNS; column++) {
-                if (isInCell(localX, localY, RecipeBrowserLayout.cellX(column),
-                        RecipeBrowserLayout.cellY(row))) {
+        for (int row = 0; row < shown.rows(); row++) {
+            for (int column = 0; column < shown.columns(); column++) {
+                if (isInCell(localX, localY, pageX(shown, column), pageY(shown, row))) {
                     return row * RecipeBrowserLayout.PAGE_COLUMNS + column;
                 }
             }
@@ -787,6 +788,44 @@ public final class RecipeBrowserGui {
             return RESULT_CELL;
         }
         return -1;
+    }
+
+    /**
+     * {@code true} for a page that shows the slots of a machine and not the field of a table.
+     * <p>
+     * A recipe of a machine is laid out in a single row, because the input slots of a machine lie in one, see
+     * {@link RecipePage#MACHINE_COLUMNS}; a recipe of the workbench is laid out in the field of nine cells it
+     * is crafted in, where a pattern keeps its own shape.
+     */
+    private static boolean machineRow(RecipePage shown) {
+        return !shown.kind().startsWith("crafting_");
+    }
+
+    /**
+     * X coordinate of a column of a page.
+     * <p>
+     * The row of a machine stands against its arrow, so the ingredients of a recipe are read right beside the
+     * product the recipe makes and the empty cells of the field stand to the left of them, which is how the
+     * screen of that machine stands them; a pattern and a bag keep the field as it is.
+     */
+    private static int pageX(RecipePage shown, int column) {
+        if (machineRow(shown)) {
+            return RecipeBrowserLayout.cellX(RecipeBrowserLayout.PAGE_COLUMNS - shown.columns() + column);
+        }
+        return RecipeBrowserLayout.cellX(column);
+    }
+
+    /**
+     * Y coordinate of a row of a page.
+     * <p>
+     * The single row of a machine is centred on the arrow, so the recipe reads as the screen of the machine
+     * that runs it; a pattern and a bag are laid out from the upper left cell of the field.
+     */
+    private static int pageY(RecipePage shown, int row) {
+        if (machineRow(shown)) {
+            return RecipeBrowserLayout.cellY(row + (RecipeBrowserLayout.PAGE_ROWS - shown.rows()) / 2);
+        }
+        return RecipeBrowserLayout.cellY(row);
     }
 
     /** Index of the cell of the list under the mouse, {@code -1} while it points beside every cell. */
