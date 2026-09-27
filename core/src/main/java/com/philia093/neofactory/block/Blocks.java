@@ -538,6 +538,8 @@ public final class Blocks {
                 .ground(true)
                 .hardness(2.5f)
                 .toolType(ToolType.AXE)
+                .blockEntity("crafting_table")
+                .container()
                 .build();
         BlockRegistry.register(CRAFTING_TABLE);
 

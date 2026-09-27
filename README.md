@@ -47,6 +47,13 @@ stored on disk so that a session can be continued later.
   the inventory screen is drawn with, see `ContainerBlockEntity` and `ContainerGui`.
   A container works on nothing - the tick of the world passes it by - which is what tells
   it from a machine.
+- **The table of the workshop** - the crafting table makes what its nine cells hold: a pattern
+  laid out in them or a bag of ingredients, looked up in the very tables the two by two field
+  of the player uses, so a recipe that fits the inventory fits the table as well. The field
+  belongs to the block: a pattern is still lying on the table when the player comes back, and
+  it travels with the chunk. The result beside it is worked out from the cells and never
+  stored, so a stored table can never hand out a product its own cells do not make, and taking
+  it gives up the ingredients the recipe was matched with, see `CraftingField`.
 - **Save games** - one folder per world, a level file plus one file per chunk the
   player changed, written while playing and when leaving.
 - **Chunk streaming** - the terrain around the player is kept in memory and the
@@ -339,6 +346,7 @@ stored on disk so that a session can be continued later.
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry, the machine behind a block and the container that keeps items |
 | `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
+| `recipe` | the files behind `assets/recipes`: what a recipe is, the grid it is offered, the loader that reads a file, and the work field of nine cells a table of the workshop holds |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |
 | `loot` | what a broken block leaves behind: the tables, the files below `assets/loot_tables` and the rule that a block without a table drops itself |
@@ -348,7 +356,7 @@ stored on disk so that a session can be continued later.
 | `world.save` | the save format, the level file, the chunk files and the entity tags |
 | `entity` | entities: the base class, the type registry, the manager, the player and dropped items |
 | `chat` | the input line, the messages and the commands a line behind a slash is looked up in |
-| `gui` | hotbar, inventory, creative inventory and chat rendering, layout and widgets |
+| `gui` | hotbar, inventory, creative inventory, the screen of a container and of the table of the workshop, and chat rendering, layout and widgets |
 | `render` | world, entity, selection and font rendering |
 | `screen` | the screens and the manager that switches between them |
 | `input` | keyboard and mouse state |

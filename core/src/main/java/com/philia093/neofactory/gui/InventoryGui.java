@@ -10,11 +10,10 @@ import com.philia093.neofactory.gui.panel.ArrowElement;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.recipe.CraftingRecipes;
 import com.philia093.neofactory.recipe.InventoryGrid;
 import com.philia093.neofactory.recipe.Recipe;
 import com.philia093.neofactory.recipe.RecipeGrid;
-import com.philia093.neofactory.recipe.RecipeRegistry;
-import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 
@@ -288,13 +287,15 @@ public final class InventoryGui {
 
     /**
      * The recipe a field matches, the shaped ones first.
+     * <p>
+     * The lookup lives in {@link CraftingRecipes}, because the field of the player and the field of
+     * the table of the workshop make the very same recipes.
      *
      * @param grid items the player put into the field
      * @return the recipe, or {@code null} when nothing can be made of them
      */
     private static Recipe findRecipe(RecipeGrid grid) {
-        Recipe shaped = RecipeRegistry.find(RecipeType.CRAFTING_SHAPED, grid);
-        return shaped != null ? shaped : RecipeRegistry.find(RecipeType.CRAFTING_SHAPELESS, grid);
+        return CraftingRecipes.find(grid);
     }
 
     /** X coordinate of the mouse inside the panel. */

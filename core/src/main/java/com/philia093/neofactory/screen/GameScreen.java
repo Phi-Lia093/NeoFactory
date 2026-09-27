@@ -17,6 +17,7 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.philia093.neofactory.NeoFactoryGame;
 import com.philia093.neofactory.blockentity.BlockEntity;
 import com.philia093.neofactory.blockentity.ChestBlockEntity;
+import com.philia093.neofactory.blockentity.CraftingTableBlockEntity;
 import com.philia093.neofactory.blockentity.ContainerBlockEntity;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.entity.EntityTypes;
@@ -30,6 +31,8 @@ import com.philia093.neofactory.chat.command.CommandRegistry;
 import com.philia093.neofactory.gui.ChatOverlay;
 import com.philia093.neofactory.gui.ChestLayout;
 import com.philia093.neofactory.gui.ContainerGui;
+import com.philia093.neofactory.gui.CraftingLayout;
+import com.philia093.neofactory.gui.CraftingPart;
 import com.philia093.neofactory.gui.CreativeInventoryGui;
 import com.philia093.neofactory.gui.HotbarGui;
 import com.philia093.neofactory.gui.InventoryGui;
@@ -42,6 +45,7 @@ import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.item.WorldDrops;
 import com.philia093.neofactory.loot.LootTableRegistry;
 import com.philia093.neofactory.material.Materials;
+import com.philia093.neofactory.recipe.CraftingField;
 import com.philia093.neofactory.render.BlockIconRenderer;
 import com.philia093.neofactory.render.HumanoidRenderer;
 import com.philia093.neofactory.render.BlockPictures;
@@ -588,8 +592,9 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         containerGui.setDropper(stack -> drops.throwFrom(player, stack));
 
         if (fresh) {
-            // A new world starts at its spawn point and gets a starter kit, because
-            // there is no crafting yet to turn the first blocks into tools.
+            // A new world starts at its spawn point and gets a starter kit, so a world can be tried out
+            // right away. A player who wants to make their own tools lays a pattern on the table of the
+            // workshop and takes the product off it, see CraftingField.
             fillDebugInventory(player.inventory());
         }
 
@@ -1442,6 +1447,19 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                     player.inventory(), Items.CHEST.displayName());
             openContainer = chest;
             LOGGER.info("Opened a chest at block ({}, {}, {})", target.x(), target.y(), target.z());
+            return true;
+        }
+        if (entity instanceof CraftingTableBlockEntity table) {
+            // The field of the table belongs to the block, so the work field of this screen is built
+            // around the cells the block holds: a pattern lies on the table until somebody takes it off,
+            // and the result beside it is worked out from those cells, see CraftingField.
+            CraftingField field = new CraftingField(table.contents());
+            containerGui.open(table,
+                    CraftingLayout.of(field.resultSlot(), table.contents(), player.inventory()),
+                    player.inventory(), Items.CRAFTING_TABLE.displayName(), new CraftingPart(field));
+            openContainer = table;
+            LOGGER.info("Opened the crafting table at block ({}, {}, {})",
+                    target.x(), target.y(), target.z());
             return true;
         }
         return false;

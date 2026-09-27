@@ -48,7 +48,45 @@ public final class ContainerGui {
 
     private final GuiViewport viewport;
     private final PixelFont font;
+
+    /** View the container is drawn with, also the source of the arrow a part draws. */
     private final ContainerView view;
+
+    /**
+     * What a container screen adds to the slots of a container.
+     * <p>
+     * A chest is shown by its slots alone. The table of the workshop is not: it shows a field of nine
+     * cells, the result they make and the arrow between the two, it asks the recipes whenever a click
+     * changed the field, and it gives up the ingredients when the product is taken - see
+     * {@link CraftingPart}. None of that belongs to the screen of a container, so it is handed in as a
+     * part: the part is bound to the menu and to the view that were just opened and it draws between the
+     * slots and the items, which is where a decoration of a container belongs.
+     */
+    public interface Part {
+
+        /**
+         * Binds the part to the container that was just opened.
+         * <p>
+         * Called once per open and before the screen is drawn for the first time, so a part may answer
+         * the clicks of the player, see
+         * {@link ContainerMenu#setChangeListener(ContainerMenu.ChangeListener)}.
+         *
+         * @param menu menu of the container that is up
+         * @param view view the container is drawn with, also the source of its arrow
+         */
+        void bind(ContainerMenu menu, ContainerView view);
+
+        /**
+         * Draws what the container adds, between its slots and the items in them.
+         *
+         * @param batch batch switched to the projection of the interface viewport
+         * @param panelX left edge of the panel in interface pixels
+         * @param panelY lower edge of the panel in interface pixels
+         * @param panelWidth width of the panel in pixels
+         * @param panelHeight height of the panel in pixels
+         */
+        void draw(SpriteBatch batch, float panelX, float panelY, int panelWidth, int panelHeight);
+    }
 
     /** Menu of the container that is up, {@code null} while the screen is closed. */
     private ContainerMenu menu;
@@ -68,6 +106,9 @@ public final class ContainerGui {
      * {@link ContainerMenu#setDropper(ContainerMenu.StackDropper)}.
      */
     private ContainerMenu.StackDropper dropper;
+
+    /** What this screen adds to the container that is up, {@code null} for a plain container. */
+    private Part part;
 
     /**
      * Creates the screen.
@@ -137,11 +178,34 @@ public final class ContainerGui {
      */
     public void open(ContainerBlockEntity container, ContainerLayout layout,
             Inventory playerInventory, String title) {
+        open(container, layout, playerInventory, title, null);
+    }
+
+    /**
+     * Opens the screen on the slots of a container, with what the screen adds to them.
+     * <p>
+     * The layout is built by the caller, because only the caller knows what the block holds: a chest
+     * brings three rows and the table of the workshop a field of three by three with a result beside it,
+     * see {@link ChestLayout} and {@link CraftingLayout}. A part is bound here, once the menu exists, so
+     * it may answer what a click did with the slots it was given, see {@link Part}.
+     *
+     * @param container container the screen shows, never {@code null}
+     * @param layout layout of its slots
+     * @param playerInventory inventory of the player, the side a stack is moved to
+     * @param title name written at the top of the panel
+     * @param part what the screen adds to the container, {@code null} for slots and nothing else
+     */
+    public void open(ContainerBlockEntity container, ContainerLayout layout,
+            Inventory playerInventory, String title, Part part) {
         close();
         this.container = container;
         this.title = title;
+        this.part = part;
         this.menu = new ContainerMenu(layout, playerInventory);
         this.menu.setDropper(dropper);
+        if (part != null) {
+            part.bind(this.menu, view);
+        }
         this.menu.open();
     }
 
@@ -157,6 +221,7 @@ public final class ContainerGui {
         }
         menu = null;
         container = null;
+        part = null;
         title = "";
     }
 
@@ -285,9 +350,18 @@ public final class ContainerGui {
         if (!isOpen()) {
             return;
         }
-        // The name is a decoration of the container: it is drawn together with the slots and below
-        // the items, so it never covers the stack a player points at.
-        view.render(batch, menu, panelX(), panelY(), mouseX, mouseY, this::drawTitle);
+        // The name and what the container adds are decorations of the container: they are drawn together
+        // with the slots and below the items, so neither covers the stack a player points at.
+        view.render(batch, menu, panelX(), panelY(), mouseX, mouseY, this::drawDecorations);
+    }
+
+    /** Draws the name of the container and whatever the part of this screen adds. */
+    private void drawDecorations(SpriteBatch batch, float panelX, float panelY, int panelWidth,
+            int panelHeight) {
+        drawTitle(batch, panelX, panelY, panelWidth, panelHeight);
+        if (part != null) {
+            part.draw(batch, panelX, panelY, panelWidth, panelHeight);
+        }
     }
 
     /** Writes the name of the container into the band the layout keeps free. */

@@ -103,6 +103,15 @@ public final class BlockEntityTypes {
     public static final BlockEntityType CHEST = new BlockEntityType("chest",
             type -> new ChestBlockEntity(type));
 
+    /**
+     * The table of the workshop, the first container that works on what it holds.
+     * <p>
+     * It is a container and not a machine: it holds a field of nine cells and makes nothing until a
+     * player takes the product of the recipe those cells hold, see {@link CraftingTableBlockEntity}.
+     */
+    public static final BlockEntityType CRAFTING_TABLE = new BlockEntityType("crafting_table",
+            type -> new CraftingTableBlockEntity(type));
+
     private static boolean registered;
 
     private BlockEntityTypes() {
@@ -131,6 +140,7 @@ public final class BlockEntityTypes {
         BlockEntityRegistry.register(STEEL_FORGE_HAMMER);
         BlockEntityRegistry.register(PIPE);
         BlockEntityRegistry.register(CHEST);
+        BlockEntityRegistry.register(CRAFTING_TABLE);
         registered = true;
     }
 }
