@@ -39,7 +39,7 @@ public final class ChestLayout {
      * the panel and the line of the font is as tall as its cell, so the band is that much plus the air under
      * the name, see {@link #CONTAINER_Y}.
      */
-    public static final int TITLE_HEIGHT = ContainerGui.TITLE_TOP + PixelFont.ASCII_CELL_SIZE + 4;
+    public static final int TITLE_HEIGHT = ContainerGui.TITLE_TOP + PixelFont.ASCII_CELL_SIZE + 6;
 
     /** Y coordinate of the first row of the container, the upper edge of an icon. */
     public static final int CONTAINER_Y = TITLE_HEIGHT;
