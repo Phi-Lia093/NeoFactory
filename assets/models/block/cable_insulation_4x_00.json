@@ -1,0 +1,21 @@
+{
+  "textures": {
+    "side": "cable_insulation/4x",
+    "end": "cable_insulation/4x"
+  },
+  "tint": true,
+  "elements": [
+    {
+      "from": [4, 4, 4],
+      "to": [12, 12, 12],
+      "faces": {
+        "north": { "texture": "#end" },
+        "east": { "texture": "#end" },
+        "south": { "texture": "#end" },
+        "west": { "texture": "#end" },
+        "top": { "texture": "#end" },
+        "bottom": { "texture": "#end" }
+      }
+    }
+  ]
+}

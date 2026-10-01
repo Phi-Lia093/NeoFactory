@@ -6,7 +6,6 @@ import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ToolType;
-import com.philia093.neofactory.pipe.PipeSize;
 import com.philia093.neofactory.pipe.PipeTexture;
 
 import java.util.ArrayList;
@@ -52,17 +51,14 @@ public final class Cables {
     /** Id of the first cable block, in the order of {@link CableMaterials#all()}. */
     public static final int FIRST_BLOCK_ID = 188;
 
-    /** Id of the first cable item, in the order of {@link CableMaterials#all()}. */
-    public static final int FIRST_ITEM_ID = 259;
+    /** Id of the first cable item, in the order of the tables of the cables. */
+    public static final int FIRST_ITEM_ID = 304;
 
-    /** Amount of cables: one per material and size the tables name together. */
+    /** Amount of cables: one per material, size and kind the tables name together. */
     public static final int COUNT = countOfCables();
 
     /** Seconds of work a cable takes to break. */
     public static final float HARDNESS = 0.4f;
-
-    /** Size of the tube every cable is drawn with, the thinnest one of the metal family. */
-    public static final PipeSize TUBE = PipeSize.TINY;
 
     /**
      * Directions a cable may join, in the order of the properties of its block state.
@@ -94,9 +90,9 @@ public final class Cables {
         // Utility class: never instantiated.
     }
 
-    /** Counts the cables the two tables name together. */
+    /** Counts the cables the tables name together: a material, a size and a kind of every one. */
     private static int countOfCables() {
-        return CableMaterials.all().size() * CableSize.values().length;
+        return CableMaterials.all().size() * CableSize.values().length * CableKind.values().length;
     }
 
     /**
@@ -245,17 +241,22 @@ public final class Cables {
     }
 
     /**
-     * Name of the model a cable of a mask is drawn with.
+     * Name of the model a line of a kind, a width and a mask is drawn with.
      * <p>
-     * The models are the ones of the thinnest tube of the metal family, see the class comment: a cable
-     * names the canonical model of its mask and the quarter turn that shows it, exactly like a pipe does.
+     * A bare line is the tube of its width in the metal family of the pipes and a wrapped one is the skin of
+     * its width, see {@link CableKind}: both name the canonical model of their mask and the quarter turn that
+     * shows it, exactly like a pipe does.
      *
-     * @param mask connections of a cable
-     * @return the name of the model, such as {@code pipe_metal_tiny_00}
+     * @param kind kind of the line
+     * @param size width of the line
+     * @param mask connections of the line
+     * @return the name of the model, such as {@code pipe_metal_tiny_00} or {@code cable_insulation_1x_00}
      */
-    public static String modelName(int mask) {
-        return PipeTexture.METAL.folder() + "_" + TUBE.fileName() + "_"
-                + String.format(Locale.ROOT, "%02d", canonical(mask));
+    public static String modelName(CableKind kind, CableSize size, int mask) {
+        String family = kind == CableKind.WIRE
+                ? PipeTexture.METAL.folder() + "_" + size.tube().fileName()
+                : kind.folder() + "_" + size.fileName();
+        return family + "_" + String.format(Locale.ROOT, "%02d", canonical(mask));
     }
 
     /**
@@ -265,12 +266,14 @@ public final class Cables {
 
         private final CableMaterial material;
         private final CableSize size;
+        private final CableKind kind;
         private final Block block;
         private Item item;
 
-        private Cable(CableMaterial material, CableSize size, Block block) {
+        private Cable(CableMaterial material, CableSize size, CableKind kind, Block block) {
             this.material = material;
             this.size = size;
+            this.kind = kind;
             this.block = block;
         }
 
@@ -284,6 +287,11 @@ public final class Cables {
             return size;
         }
 
+        /** What this line is wrapped in, a bare line or one with a skin. */
+        public CableKind kind() {
+            return kind;
+        }
+
         /** Highest voltage a line of this cable may carry, see {@link CableMaterial#voltage()}. */
         public Voltage voltage() {
             return material.voltage();
@@ -294,9 +302,14 @@ public final class Cables {
             return material.amperage() * size.factor();
         }
 
-        /** Energy one cable takes away per block an energy travels, see {@link CableMaterial#loss()}. */
+        /**
+         * Energy one cable takes away per block an energy travels.
+         * <p>
+         * The loss of the material, halved and rounded down when the line wears a skin, see
+         * {@link CableKind#loss(CableMaterial)}.
+         */
         public int loss() {
-            return material.loss();
+            return kind.loss(material);
         }
 
         /** Energy a line of one cable of this size carries a tick. */
@@ -324,17 +337,17 @@ public final class Cables {
 
         /** Name of the block, of the item and of the files, such as {@code copper_cable_1x}. */
         public String name() {
-            return material.name() + "_cable_" + size.fileName();
+            return material.name() + "_" + kind.fileName() + "_" + size.fileName();
         }
 
-        /** Name a player reads, such as {@code Copper 1x Cable}. */
+        /** Name a player reads, such as {@code Copper 4x Cable}. */
         public String displayName() {
-            return material.displayName() + " " + size.displayName() + " Cable";
+            return material.displayName() + " " + size.displayName() + " " + kind.displayName();
         }
 
         /** Name of the model this cable is drawn with while it is joined in one way. */
         public String modelName(int mask) {
-            return Cables.modelName(mask);
+            return Cables.modelName(kind, size, mask);
         }
 
         @Override
@@ -357,22 +370,25 @@ public final class Cables {
         int id = FIRST_BLOCK_ID;
         for (CableMaterial material : CableMaterials.all()) {
             for (CableSize size : CableSize.values()) {
-                Block.Builder builder = Block.builder(id++, material.name() + "_cable_" + size.fileName())
-                        // The picture of a cable is a fallback, exactly like the one of a pipe: a cable of
-                        // the world is drawn from the model of its state. It is named all the same, because
-                        // a block without a picture is never drawn at all.
-                        .texture(PipeTexture.METAL.end(TUBE))
-                        .solid(false)
-                        .ground(true)
-                        .itemState(STRAIGHT_MASK)
-                        .hardness(HARDNESS)
-                        // A cable is taken apart with the wrench, the tool the line of the industry is
-                        // built with.
-                        .toolType(ToolType.WRENCH)
-                        .tint(material.color());
-                Block block = builder.build();
-                BlockRegistry.register(block);
-                CABLES.add(new Cable(material, size, block));
+                for (CableKind kind : CableKind.values()) {
+                    Block.Builder builder = Block.builder(id++,
+                            material.name() + "_" + kind.fileName() + "_" + size.fileName())
+                            // The picture of a cable is a fallback, exactly like the one of a pipe: a cable
+                            // of the world is drawn from the model of its state. It is named all the same,
+                            // because a block without a picture is never drawn at all.
+                            .texture(kind.picture(size))
+                            .solid(false)
+                            .ground(true)
+                            .itemState(STRAIGHT_MASK)
+                            .hardness(HARDNESS)
+                            // A cable is taken apart with the wrench, the tool the line of the industry is
+                            // built with.
+                            .toolType(ToolType.WRENCH)
+                            .tint(material.color());
+                    Block block = builder.build();
+                    BlockRegistry.register(block);
+                    CABLES.add(new Cable(material, size, kind, block));
+                }
             }
         }
         blocksRegistered = true;
@@ -423,15 +439,16 @@ public final class Cables {
     }
 
     /**
-     * The cable of a material and a size.
+     * The cable of a material, a size and a kind.
      *
      * @param material material of the cable
      * @param size size of the cable
+     * @param kind what the line is wrapped in
      * @return the cable, or {@code null} when the game has none
      */
-    public static Cable of(CableMaterial material, CableSize size) {
+    public static Cable of(CableMaterial material, CableSize size, CableKind kind) {
         for (Cable cable : CABLES) {
-            if (cable.material() == material && cable.size() == size) {
+            if (cable.material() == material && cable.size() == size && cable.kind() == kind) {
                 return cable;
             }
         }

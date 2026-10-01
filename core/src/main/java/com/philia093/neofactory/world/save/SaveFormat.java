@@ -84,13 +84,15 @@ public final class SaveFormat {
      * every material - which is the second reason this version refuses it. The block id cost nothing: block
      * ids are written down one by one and no run of them grows in the middle, see {@code Blocks#CHEST_ID}.
      * <p>
-     * <b>What version 14 changed.</b> The line of the power arrived: the cables of the industry take the
-     * block numbers 188 to 232 and the item numbers 259 to 303, which is the run the items of the materials
-     * of the game used to start at. Every item of every material therefore stands forty five numbers higher
-     * than it did and a stored inventory of version 13 names the wrong items for every material - what
-     * version 8 said about a stored inventory holds here word for word, see {@code Cables}.
+     * <b>What versions 14 and 15 changed.</b> The line of the power arrived: the cables of the industry took
+     * the block numbers 188 to 727 and the item numbers 304 to 843, which is the run the items of the
+     * materials of the game used to start at. Every item of every material therefore stands five hundred and
+     * forty numbers higher than it did and a stored inventory of an older version names the wrong items for
+     * every material - what version 8 said about a stored inventory holds here word for word, see
+     * {@code Cables}. The first of the two steps held the single line of every material, the second added the
+     * five wider widths and the two kinds, a line with a skin and one without.
      */
-    public static final int DATA_VERSION = 14;
+    public static final int DATA_VERSION = 15;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

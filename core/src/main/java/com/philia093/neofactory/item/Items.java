@@ -441,12 +441,13 @@ public final class Items {
      * one of the two reasons that version is refused, see
      * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
      * <p>
-     * <b>What the cables of the line of the power changed.</b> The forty five cables of the industry took
-     * the numbers 259 to 303 - the run this constant names - so the items of the materials begin forty five
-     * numbers higher than they did and a stored inventory of version 13 names the wrong items for every
-     * material, see {@link com.philia093.neofactory.cable.Cables}.
+     * <b>What the cables of the line of the power changed.</b> The five hundred and forty lines of the
+     * industry - every material of the table of the cables, every width and both kinds - took the numbers
+     * 304 to 843, so the items of the materials begin that many numbers higher than they did and a stored
+     * inventory of version 14 names the wrong items for every material, see
+     * {@link com.philia093.neofactory.cable.Cables}.
      */
-    public static final int NEXT_FREE_ID = 304;
+    public static final int NEXT_FREE_ID = 844;
 
     /**
      * Amount an empty container stacks to.

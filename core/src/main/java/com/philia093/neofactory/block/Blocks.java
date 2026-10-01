@@ -136,7 +136,7 @@ public final class Blocks {
     public static final int CHEST_ID = 187;
 
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 233;
+    public static final int NEXT_FREE_ID = 728;
 
     /**
      * Light the torch gives away, the first source of light of the game.

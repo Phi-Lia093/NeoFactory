@@ -35,29 +35,36 @@ class CableTableTest {
     @Test
     void theTableHoldsOneCableOfEveryMaterial() {
         assertEquals(45, CableMaterials.all().size());
-        assertEquals(1, CableSize.values().length, "the single line is the cable of the table");
-        assertEquals(45, Cables.all().size());
-        assertEquals(45, Cables.COUNT);
+        assertEquals(6, CableSize.values().length, "1x to 16x");
+        assertEquals(2, CableKind.values().length, "a bare line and one with a skin");
+        assertEquals(540, Cables.all().size());
+        assertEquals(540, Cables.COUNT);
         for (CableMaterial material : CableMaterials.all()) {
             for (CableSize size : CableSize.values()) {
-                Cables.Cable cable = Cables.of(material, size);
-                assertNotNull(cable, material + " " + size);
-                assertEquals(material, cable.material());
-                assertEquals(size, cable.size());
-                assertEquals(material.voltage(), cable.voltage());
-                assertEquals(material.amperage() * size.factor(), cable.amperage());
-                assertEquals(material.loss(), cable.loss());
-                assertEquals(material.throughput(), cable.throughput());
-                assertEquals(material.name() + "_cable_" + size.fileName(), cable.name());
-                assertEquals(material.displayName() + " " + size.displayName() + " Cable",
-                        cable.displayName());
-                assertEquals(cable, Cables.of(cable.block()), "the block leads back to its cable");
-                assertEquals(cable.block(), cable.item().block(), "the item places its block");
+                for (CableKind kind : CableKind.values()) {
+                    Cables.Cable cable = Cables.of(material, size, kind);
+                    assertNotNull(cable, material + " " + size + " " + kind);
+                    assertEquals(material, cable.material());
+                    assertEquals(size, cable.size());
+                    assertEquals(kind, cable.kind());
+                    assertEquals(material.voltage(), cable.voltage());
+                    assertEquals(material.amperage() * size.factor(), cable.amperage());
+                    assertEquals(kind.loss(material), cable.loss());
+                    assertEquals(kind == CableKind.CABLE ? material.loss() / 2 : material.loss(),
+                            cable.loss(), "a skin halves the loss of the line");
+                    assertEquals(material.name() + "_" + kind.fileName() + "_" + size.fileName(),
+                            cable.name());
+                    assertEquals(material.displayName() + " " + size.displayName() + " "
+                            + kind.displayName(), cable.displayName());
+                    assertEquals(cable, Cables.of(cable.block()), "the block leads back to its cable");
+                    assertEquals(cable.block(), cable.item().block(), "the item places its block");
+                }
             }
         }
         assertNull(Cables.of(Blocks.STONE), "a stone is no cable");
         assertNull(Cables.of((Block) null));
-        assertNull(Cables.of(CableMaterials.COPPER, null));
+        assertNull(Cables.of(CableMaterials.COPPER, CableSize.SINGLE, null));
+        assertNull(Cables.of(CableMaterials.COPPER, null, CableKind.WIRE));
     }
 
     @Test
@@ -81,6 +88,24 @@ class CableTableTest {
                 "the cables take the numbers the blocks of the game left free");
         assertEquals(Items.NEXT_FREE_ID - Cables.COUNT, Cables.FIRST_ITEM_ID,
                 "and the items the ones the materials of the game used to start at");
+    }
+
+    @Test
+    void aSkinHalvesTheLossOfALine() {
+        assertEquals(4, CableKind.WIRE.loss(CableMaterials.COPPER), "a bare copper line of the table");
+        assertEquals(2, CableKind.CABLE.loss(CableMaterials.COPPER), "two of the four are lost");
+        assertEquals(1, CableKind.WIRE.loss(CableMaterials.RED_ALLOY), "a bare line of a workshop");
+        assertEquals(0, CableKind.CABLE.loss(CableMaterials.RED_ALLOY),
+                "half of one unit rounds down to nothing");
+        assertEquals(8, CableKind.WIRE.loss(CableMaterials.NICHROME),
+                "the line of a heating element loses the most");
+        assertEquals(4, CableKind.CABLE.loss(CableMaterials.NICHROME), "and half of it with a skin");
+        for (CableMaterial material : CableMaterials.all()) {
+            assertEquals(material.loss() / 2, CableKind.CABLE.loss(material),
+                    "a skin always takes half");
+            assertEquals(material.loss(), CableKind.WIRE.loss(material),
+                    "and a bare line loses what its material loses");
+        }
     }
 
     @Test
@@ -120,8 +145,13 @@ class CableTableTest {
             canonicals.add(Cables.canonical(mask));
         }
         assertEquals(24, canonicals.size(), "the number of models one cable needs");
-        assertEquals("pipe_metal_tiny_00", Cables.modelName(0), "the art of a thin tube");
-        assertEquals("pipe_metal_tiny_63", Cables.modelName(Cables.ALL_MASK),
-                "the model of a cable that joins on all six sides");
+        assertEquals("pipe_metal_tiny_00", Cables.modelName(CableKind.WIRE, CableSize.SINGLE, 0),
+                "a bare line is the tube of its width");
+        assertEquals("pipe_metal_huge_63", Cables.modelName(CableKind.WIRE, CableSize.SIXTEEN,
+                Cables.ALL_MASK), "the widest bare line is the widest tube the pack holds");
+        assertEquals("cable_insulation_1x_00", Cables.modelName(CableKind.CABLE, CableSize.SINGLE, 0),
+                "a wrapped line wears the skin of its width");
+        assertEquals("cable_insulation_16x_63", Cables.modelName(CableKind.CABLE, CableSize.SIXTEEN,
+                Cables.ALL_MASK), "the skin of the widest line");
     }
 }
