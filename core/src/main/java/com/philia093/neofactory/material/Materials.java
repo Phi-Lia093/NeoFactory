@@ -64,6 +64,34 @@ public final class Materials {
     /** Colour of steel, shared with the pipes that are made of it. */
     public static final Color STEEL_COLOR = new Color(0.58f, 0.60f, 0.64f, 1f);
 
+    /**
+     * Colour of iron, shared with the cables that are made of it.
+     * <p>
+     * A cable is a block of the industry and a block is painted while the blocks are registered, which
+     * happens long before the materials are declared. The colours of every metal a cable is made of
+     * therefore stand here, next to the colour of copper, and the materials themselves use them as well
+     * so that a cable is the colour of its ingot, see {@code CableMaterials}.
+     */
+    public static final Color IRON_COLOR = new Color(0.86f, 0.86f, 0.88f, 1f);
+
+    /** Colour of gold, shared with the cables that are made of it. */
+    public static final Color GOLD_COLOR = new Color(1.00f, 0.85f, 0.30f, 1f);
+
+    /** Colour of tin, shared with the cables that are made of it. */
+    public static final Color TIN_COLOR = new Color(0.80f, 0.82f, 0.85f, 1f);
+
+    /** Colour of silver, shared with the cables that are made of it. */
+    public static final Color SILVER_COLOR = new Color(0.94f, 0.95f, 0.97f, 1f);
+
+    /** Colour of nickel, shared with the cables that are made of it. */
+    public static final Color NICKEL_COLOR = new Color(0.78f, 0.83f, 0.72f, 1f);
+
+    /** Colour of aluminium, shared with the cables that are made of it. */
+    public static final Color ALUMINIUM_COLOR = new Color(0.86f, 0.88f, 0.92f, 1f);
+
+    /** Colour of platinum, shared with the cables that are made of it. */
+    public static final Color PLATINUM_COLOR = new Color(0.82f, 0.92f, 0.94f, 1f);
+
     /** Tin, used to solder and to alloy. */
     public static Material TIN;
 
@@ -174,6 +202,112 @@ public final class Materials {
     /** Colour of the heat resistant chromium iron alloy nine hundred and three. */
     public static final Color INCOLOY_903_COLOR = new Color(0.69f, 0.71f, 0.67f, 1f);
 
+    // ------------------------------------------------------------------
+    // The colours of the materials that carry a cable of their own, see CableMaterials. A cable is a block
+    // of the industry like a pipe and the same rule holds: the blocks are painted while they are
+    // registered, and the materials themselves are declared long after that. A metal that already has its
+    // colour written down above keeps it - iron, gold, tin, silver, nickel, aluminium, platinum, lead,
+    // copper, steel, titanium, tungsten, tungsten steel and niobium titanium - so a cable of silver is the
+    // colour of a silver ingot and no second colour has to be kept in step with the first.
+    // ------------------------------------------------------------------
+
+    /** Colour of the red alloy, the first line of a workshop. */
+    public static final Color RED_ALLOY_COLOR = new Color(0.75f, 0.32f, 0.28f, 1f);
+
+    /** Colour of the redstone alloy, the cheap line of the age of steam. */
+    public static final Color REDSTONE_ALLOY_COLOR = new Color(0.62f, 0.20f, 0.20f, 1f);
+
+    /** Colour of cobalt, the blue grey metal of a line that takes heat. */
+    public static final Color COBALT_COLOR = new Color(0.40f, 0.45f, 0.62f, 1f);
+
+    /** Colour of zinc, the pale metal that protects a line. */
+    public static final Color ZINC_COLOR = new Color(0.62f, 0.70f, 0.76f, 1f);
+
+    /** Colour of solder, the dull alloy of a join. */
+    public static final Color SOLDER_COLOR = new Color(0.72f, 0.72f, 0.70f, 1f);
+
+    /** Colour of cupronickel, the silvery alloy of a wide line. */
+    public static final Color CUPRONICKEL_COLOR = new Color(0.72f, 0.74f, 0.78f, 1f);
+
+    /** Colour of annealed copper, the bright copper that lost its hardness. */
+    public static final Color ANNEALED_COPPER_COLOR = new Color(0.90f, 0.58f, 0.36f, 1f);
+
+    /** Colour of magnetic steel, the dark steel a line is wound around. */
+    public static final Color MAGNETIC_STEEL_COLOR = new Color(0.45f, 0.47f, 0.52f, 1f);
+
+    /** Colour of kanthal, the warm grey alloy of a heating line. */
+    public static final Color KANTHAL_COLOR = new Color(0.52f, 0.50f, 0.48f, 1f);
+
+    /** Colour of electrum, the pale gold of an alloy of gold and silver. */
+    public static final Color ELECTRUM_COLOR = new Color(0.92f, 0.84f, 0.45f, 1f);
+
+    /** Colour of nichrome, the grey alloy of a heating element. */
+    public static final Color NICHROME_COLOR = new Color(0.58f, 0.58f, 0.60f, 1f);
+
+    /** Colour of black steel, the darkest metal of the table. */
+    public static final Color BLACK_STEEL_COLOR = new Color(0.22f, 0.23f, 0.26f, 1f);
+
+    /** Colour of graphene, the black sheet a cheap line is cut from. */
+    public static final Color GRAPHENE_COLOR = new Color(0.16f, 0.17f, 0.19f, 1f);
+
+    /** Colour of osmium, the densest metal of a line. */
+    public static final Color OSMIUM_COLOR = new Color(0.68f, 0.72f, 0.80f, 1f);
+
+    /** Colour of the high speed steel of grade G. */
+    public static final Color HSS_G_COLOR = new Color(0.42f, 0.44f, 0.48f, 1f);
+
+    /** Colour of the high speed steel of grade E. */
+    public static final Color HSS_E_COLOR = new Color(0.38f, 0.40f, 0.45f, 1f);
+
+    /** Colour of the high speed steel of grade S, the last steel of the table. */
+    public static final Color HSS_S_COLOR = new Color(0.34f, 0.36f, 0.42f, 1f);
+
+    /** Colour of vanadium gallium, the compound a superconducting line is wound from. */
+    public static final Color VANADIUM_GALLIUM_COLOR = new Color(0.55f, 0.58f, 0.66f, 1f);
+
+    /** Colour of the ceramic of yttrium, barium and copper, the oxide of a warm superconductor. */
+    public static final Color YTTRIUM_BARIUM_COPPER_OXIDE_COLOR = new Color(0.30f, 0.32f, 0.36f, 1f);
+
+    /** Colour of osmiridium, the white alloy of osmium and iridium. */
+    public static final Color OSMIRIDIUM_COLOR = new Color(0.74f, 0.78f, 0.84f, 1f);
+
+    // The superconductors, from the middle voltage up. Every one of them is a colder blue than the metal
+    // line of its age, and the ones of the last ages turn pale, because a line of that size is drawn on the
+    // panel of a machine the way the picture of a superconductor reads: a bright wire that loses nothing.
+
+    /** Colour of the superconductor of the middle voltage, the first one the industry draws. */
+    public static final Color MV_SUPERCONDUCTOR_COLOR = new Color(0.55f, 0.75f, 0.80f, 1f);
+
+    /** Colour of the superconductor of the high voltage. */
+    public static final Color HV_SUPERCONDUCTOR_COLOR = new Color(0.50f, 0.72f, 0.85f, 1f);
+
+    /** Colour of the superconductor of the extreme voltage. */
+    public static final Color EV_SUPERCONDUCTOR_COLOR = new Color(0.45f, 0.70f, 0.90f, 1f);
+
+    /** Colour of the superconductor of the fine age. */
+    public static final Color IV_SUPERCONDUCTOR_COLOR = new Color(0.60f, 0.65f, 0.92f, 1f);
+
+    /** Colour of the superconductor of the large age. */
+    public static final Color LUV_SUPERCONDUCTOR_COLOR = new Color(0.62f, 0.80f, 0.70f, 1f);
+
+    /** Colour of the superconductor of the zero point module. */
+    public static final Color ZPM_SUPERCONDUCTOR_COLOR = new Color(0.75f, 0.72f, 0.95f, 1f);
+
+    /** Colour of the superconductor of the ultimate voltage. */
+    public static final Color UV_SUPERCONDUCTOR_COLOR = new Color(0.80f, 0.60f, 0.95f, 1f);
+
+    /** Colour of the superconductor of the ultra high voltage. */
+    public static final Color UHV_SUPERCONDUCTOR_COLOR = new Color(0.90f, 0.65f, 0.85f, 1f);
+
+    /** Colour of the superconductor of the ultra excessive voltage. */
+    public static final Color UEV_SUPERCONDUCTOR_COLOR = new Color(0.95f, 0.80f, 0.70f, 1f);
+
+    /** Colour of the superconductor of the ultra immense voltage. */
+    public static final Color UIV_SUPERCONDUCTOR_COLOR = new Color(0.95f, 0.90f, 0.65f, 1f);
+
+    /** Colour of the superconductor of the ultra massive voltage, the palest of them all. */
+    public static final Color UMV_SUPERCONDUCTOR_COLOR = new Color(0.95f, 0.95f, 0.90f, 1f);
+
     private static final List<Material> DECLARED = new ArrayList<>();
     private static boolean registered;
 
@@ -204,27 +338,27 @@ public final class Materials {
 
     /** Builds the materials and writes them into the registry. */
     private static void declare() {
-        IRON = register(Material.builder("iron", "Iron").color(new Color(0.86f, 0.86f, 0.88f, 1f))
+        IRON = register(Material.builder("iron", "Iron").color(IRON_COLOR)
                 .formula("Fe").kind(MaterialKind.METAL)
                 // The ingot keeps the id it had in Items, see the class comment.
                 .item(MaterialForm.INGOT, Items.IRON_INGOT_ID).build());
-        GOLD = register(Material.builder("gold", "Gold").color(new Color(1.00f, 0.85f, 0.30f, 1f))
+        GOLD = register(Material.builder("gold", "Gold").color(GOLD_COLOR)
                 .formula("Au").kind(MaterialKind.METAL)
                 .item(MaterialForm.INGOT, Items.GOLD_INGOT_ID).build());
         COPPER = register(Material.builder("copper", "Copper")
                 .color(COPPER_COLOR).formula("Cu").build());
-        TIN = register(Material.builder("tin", "Tin").color(new Color(0.80f, 0.82f, 0.85f, 1f))
+        TIN = register(Material.builder("tin", "Tin").color(TIN_COLOR)
                 .formula("Sn").build());
         LEAD = register(Material.builder("lead", "Lead").color(LEAD_COLOR)
                 .formula("Pb").build());
         SILVER = register(Material.builder("silver", "Silver")
-                .color(new Color(0.94f, 0.95f, 0.97f, 1f)).formula("Ag").build());
+                .color(SILVER_COLOR).formula("Ag").build());
         NICKEL = register(Material.builder("nickel", "Nickel")
-                .color(new Color(0.78f, 0.83f, 0.72f, 1f)).formula("Ni").build());
+                .color(NICKEL_COLOR).formula("Ni").build());
         ALUMINIUM = register(Material.builder("aluminium", "Aluminium")
-                .color(new Color(0.86f, 0.88f, 0.92f, 1f)).formula("Al").build());
+                .color(ALUMINIUM_COLOR).formula("Al").build());
         PLATINUM = register(Material.builder("platinum", "Platinum")
-                .color(new Color(0.82f, 0.92f, 0.94f, 1f)).formula("Pt").build());
+                .color(PLATINUM_COLOR).formula("Pt").build());
         TUNGSTEN = register(Material.builder("tungsten", "Tungsten")
                 .color(TUNGSTEN_COLOR).formula("W").build());
         // The two metals of the bronze age. They stand at the end of the list on purpose: a material
