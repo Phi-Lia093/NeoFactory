@@ -423,6 +423,188 @@ public final class Materials {
                 .formula("").build());
         register(Material.builder("incoloy_903", "Incoloy 903").color(INCOLOY_903_COLOR)
                 .formula("").build());
+
+        // ------------------------------------------------------------------
+        // The materials of the cable line, see CableMaterials. They are written after the lines of the
+        // pipes for the same reason the pipes were written after the twelve metals: a material declares its
+        // items in the order it stands in, so a material that arrives later is appended here and never
+        // inserted between two others, see the class comment.
+        //
+        // A metal of the cable line comes in the shapes of a metal, and the materials that are no plain
+        // metal bring their own list: graphene is a sheet of carbon and not an alloy, so it is cut, rolled
+        // and drawn but never cast into a gear, and a superconductor comes as the powder it is mixed from,
+        // the blank it is cast into, the bar it is drawn out of and the wire it ends up as. A formula is
+        // written down where the material really has one and the name of it says so - an element, a well
+        // known alloy, a compound - and an alloy whose name hides its composition is left without one, so
+        // nothing here is a guess.
+        // ------------------------------------------------------------------
+
+        /** The red alloy, the cheapest line of a workshop, made of copper and redstone. */
+        register(Material.builder("red_alloy", "Red Alloy").color(RED_ALLOY_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** The redstone alloy, the cheap line of the age of steam. */
+        register(Material.builder("redstone_alloy", "Redstone Alloy").color(REDSTONE_ALLOY_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** Cobalt, the tough metal of a line that takes heat. */
+        register(Material.builder("cobalt", "Cobalt").color(COBALT_COLOR)
+                .formula("Co").kind(MaterialKind.METAL).build());
+
+        /** Zinc, the metal that protects what it is drawn around. */
+        register(Material.builder("zinc", "Zinc").color(ZINC_COLOR)
+                .formula("Zn").kind(MaterialKind.METAL).build());
+
+        /** Solder, the soft alloy of tin and lead that holds a join together. */
+        register(Material.builder("solder", "Solder").color(SOLDER_COLOR)
+                .formula("SnPb").kind(MaterialKind.METAL).build());
+
+        /** Cupronickel, the alloy of copper and nickel that carries a wide line. */
+        register(Material.builder("cupronickel", "Cupronickel").color(CUPRONICKEL_COLOR)
+                .formula("CuNi").kind(MaterialKind.METAL).build());
+
+        /** Annealed copper, the same metal softened, which loses less over the same length. */
+        register(Material.builder("annealed_copper", "Annealed Copper").color(ANNEALED_COPPER_COLOR)
+                .formula("Cu").kind(MaterialKind.METAL).build());
+
+        /** Magnetic steel, the steel a line of the age is wound around. */
+        register(Material.builder("magnetic_steel", "Magnetic Steel").color(MAGNETIC_STEEL_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** Kanthal, the iron chromium aluminium alloy of a heating line. */
+        register(Material.builder("kanthal", "Kanthal").color(KANTHAL_COLOR)
+                .formula("FeCrAl").kind(MaterialKind.METAL).build());
+
+        /** Electrum, the alloy of gold and silver. */
+        register(Material.builder("electrum", "Electrum").color(ELECTRUM_COLOR)
+                .formula("AgAu").kind(MaterialKind.METAL).build());
+
+        /** Nichrome, the alloy of nickel and chromium of a heating element. */
+        register(Material.builder("nichrome", "Nichrome").color(NICHROME_COLOR)
+                .formula("NiCr").kind(MaterialKind.METAL).build());
+
+        /** Black steel, the dark steel of a line that carries four amperes. */
+        register(Material.builder("black_steel", "Black Steel").color(BLACK_STEEL_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** Graphene, the sheet of carbon a cheap line of the fine age is cut from. */
+        register(Material.builder("graphene", "Graphene").color(GRAPHENE_COLOR)
+                .formula("C").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.PLATE,
+                        MaterialForm.FOIL, MaterialForm.ROD, MaterialForm.FINE_WIRE)
+                .build());
+
+        /** Osmium, the densest metal of the table. */
+        register(Material.builder("osmium", "Osmium").color(OSMIUM_COLOR)
+                .formula("Os").kind(MaterialKind.METAL).build());
+
+        /** High speed steel of grade G, the steel of a tool that keeps its edge white hot. */
+        register(Material.builder("hss_g", "HSS-G").color(HSS_G_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** High speed steel of grade E, the steel of the last metal line of the large age. */
+        register(Material.builder("hss_e", "HSS-E").color(HSS_E_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** High speed steel of grade S, the steel of the last line of the table that is no superconductor. */
+        register(Material.builder("hss_s", "HSS-S").color(HSS_S_COLOR)
+                .formula("").kind(MaterialKind.METAL).build());
+
+        /** Vanadium gallium, the intermetallic compound a superconducting wire is wound from. */
+        register(Material.builder("vanadium_gallium", "Vanadium Gallium")
+                .color(VANADIUM_GALLIUM_COLOR).formula("V3Ga").kind(MaterialKind.METAL).build());
+
+        /** The ceramic superconductor of yttrium, barium and copper. */
+        register(Material.builder("yttrium_barium_copper_oxide", "Yttrium Barium Copper Oxide")
+                .color(YTTRIUM_BARIUM_COPPER_OXIDE_COLOR).formula("YBa2Cu3O7")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** Osmiridium, the white alloy of osmium and iridium: the highest current at the lowest loss. */
+        register(Material.builder("osmiridium", "Osmiridium").color(OSMIRIDIUM_COLOR)
+                .formula("OsIr").kind(MaterialKind.METAL).build());
+
+        // The superconductors, from the middle voltage up, see CableMaterials. Every one of them is the
+        // wire of its own age and the blank that wire is drawn out of: the bar a player draws and the fine
+        // wire that comes out of it are two shapes of the same material, and the cable of the table is the
+        // wire in the world.
+
+        /** The superconductor of the middle voltage, the first line that loses nothing. */
+        register(Material.builder("mv_superconductor", "MV Superconductor")
+                .color(MV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the high voltage. */
+        register(Material.builder("hv_superconductor", "HV Superconductor")
+                .color(HV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the extreme voltage. */
+        register(Material.builder("ev_superconductor", "EV Superconductor")
+                .color(EV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the fine age. */
+        register(Material.builder("iv_superconductor", "IV Superconductor")
+                .color(IV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the large age. */
+        register(Material.builder("luv_superconductor", "LuV Superconductor")
+                .color(LUV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the zero point module. */
+        register(Material.builder("zpm_superconductor", "ZPM Superconductor")
+                .color(ZPM_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the ultimate voltage. */
+        register(Material.builder("uv_superconductor", "UV Superconductor")
+                .color(UV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the ultra high voltage. */
+        register(Material.builder("uhv_superconductor", "UHV Superconductor")
+                .color(UHV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the ultra excessive voltage. */
+        register(Material.builder("uev_superconductor", "UEV Superconductor")
+                .color(UEV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the ultra immense voltage. */
+        register(Material.builder("uiv_superconductor", "UIV Superconductor")
+                .color(UIV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
+
+        /** The superconductor of the ultra massive voltage, the widest line of the table. */
+        register(Material.builder("umv_superconductor", "UMV Superconductor")
+                .color(UMV_SUPERCONDUCTOR_COLOR).formula("")
+                .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
+                        MaterialForm.FINE_WIRE)
+                .build());
     }
 
     /** Writes a material into the registry and hands it back. */

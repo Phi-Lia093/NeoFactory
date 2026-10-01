@@ -178,9 +178,11 @@ class CreativeInventoryTest {
         assertEquals(1, creative.firstRow(), "one row down");
         assertEquals(Items.LOG_OAK, creative.stackAt(0).item(), "the tenth item starts the row");
 
-        creative.scroll(99);
+        // A scroll far past the end lands on the last row, whichever row that is: the list of the game is
+        // as long as the items it holds, so the amount to scroll by is read off the list itself.
+        creative.scroll(creative.maxRow() + 1);
         assertEquals(creative.maxRow(), creative.firstRow(), "the scroll stops at the end");
-        creative.scroll(-99);
+        creative.scroll(-(creative.maxRow() + 1));
         assertEquals(0, creative.firstRow(), "and at the beginning");
     }
 

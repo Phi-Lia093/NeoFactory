@@ -1,5 +1,8 @@
 package com.philia093.neofactory.cable;
 
+import com.philia093.neofactory.material.Material;
+import com.philia093.neofactory.material.MaterialRegistry;
+import com.philia093.neofactory.support.TestRegistries;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -9,6 +12,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -141,5 +145,24 @@ class CableMaterialsTest {
         assertEquals(0, CableMaterials.UMV_SUPERCONDUCTOR.loss());
         assertFalse(CableMaterials.UMV_SUPERCONDUCTOR.hasHeat(),
                 "the table names no heat for a superconductor");
+    }
+
+    /**
+     * Every cable of the table is a material the game holds.
+     * <p>
+     * A cable is a block of a material, so the table and the materials have to name one another: a row no
+     * material answers to would be a cable nobody can build, and two names for one line would be a cable
+     * that reads differently in its tooltip than in the hand of a player.
+     */
+    @Test
+    void everyCableIsAMaterialOfTheGame() {
+        TestRegistries.ensure();
+        for (CableMaterial material : CableMaterials.all()) {
+            Material game = MaterialRegistry.byName(material.name());
+            assertNotNull(game, material + " is no material of the game");
+            assertEquals(material.displayName(), game.displayName(),
+                    material + " is named differently by Materials");
+            assertEquals(material.color(), game.color(), material + " is painted differently");
+        }
     }
 }
