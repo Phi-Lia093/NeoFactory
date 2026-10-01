@@ -2,6 +2,7 @@ package com.philia093.neofactory.block;
 
 import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.item.ToolType;
+import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.pipe.Pipes;
 
 /**
@@ -135,7 +136,7 @@ public final class Blocks {
     public static final int CHEST_ID = 187;
 
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 188;
+    public static final int NEXT_FREE_ID = 233;
 
     /**
      * Light the torch gives away, the first source of light of the game.
@@ -649,6 +650,13 @@ public final class Blocks {
         // because there are twenty eight of them: the table of the pipes builds them, see Pipes.
         // ------------------------------------------------------------------
         Pipes.registerBlocks();
+
+        // ------------------------------------------------------------------
+        // The cables of the line of the power, one block per material of the table of the cables. They are
+        // not written out here either, and they stand behind the pipes so that no block of the fluid system
+        // moved, see Cables.
+        // ------------------------------------------------------------------
+        Cables.registerBlocks();
 
         // ------------------------------------------------------------------
         // The chest: the block a player keeps things in. It is a whole cube of one picture like the

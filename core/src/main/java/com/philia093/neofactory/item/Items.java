@@ -2,6 +2,7 @@ package com.philia093.neofactory.item;
 
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.pipe.Pipes;
@@ -314,6 +315,15 @@ public final class Items {
     public static final int PIPE_ID_FROM = 100;
 
     /**
+     * Id of the first item of the cables of the line of the power, in the order of the table of the cables.
+     * <p>
+     * A cable takes a run of its own right here, in front of the items of the materials and behind the
+     * pipes, exactly like a pipe does above: the forty five cables of the game are numbered from this one
+     * on, see {@link com.philia093.neofactory.cable.Cables#FIRST_ITEM_ID} and {@link #NEXT_FREE_ID}.
+     */
+    public static final int CABLE_ID_FROM = Cables.FIRST_ITEM_ID;
+
+    /**
      * Ids of the six machines of the age of steam, the ones that run on the steam of the boiler.
      * <p>
      * They are the first numbers no item held, see {@link #NEXT_FREE_ID}: the machines of the coming steps of
@@ -430,8 +440,13 @@ public final class Items {
      * number higher than it did. A stored inventory of version 12 therefore names the wrong items, which is
      * one of the two reasons that version is refused, see
      * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
+     * <p>
+     * <b>What the cables of the line of the power changed.</b> The forty five cables of the industry took
+     * the numbers 259 to 303 - the run this constant names - so the items of the materials begin forty five
+     * numbers higher than they did and a stored inventory of version 13 names the wrong items for every
+     * material, see {@link com.philia093.neofactory.cable.Cables}.
      */
-    public static final int NEXT_FREE_ID = 259;
+    public static final int NEXT_FREE_ID = 304;
 
     /**
      * Amount an empty container stacks to.
@@ -1063,6 +1078,11 @@ public final class Items {
         // the blocks were registered, see Pipes. They take the numbers 100 to 127, a run of their own:
         // the wrench is the only item that stands in the window between the boiler and them.
         Pipes.registerItems();
+
+        // The cables of the line of the power: one item per material of the table, in the order it is
+        // declared, and the blocks of them were built while the blocks of the game were, see Cables. They
+        // take the run of numbers the materials of the game used to start at.
+        Cables.registerItems();
 
         // The materials bring their own items, one per shape they come in. They are registered
         // here, right before the table closes, so that they append behind every item written above
