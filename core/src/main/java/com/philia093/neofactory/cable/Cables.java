@@ -243,16 +243,15 @@ public final class Cables {
     /**
      * Name of the model a line of a kind, a width and a mask is drawn with.
      * <p>
-     * The art of a cable is its own and not the tube of a pipe, see {@code tools/gen_cable_models.ps1}: a bare
-     * line is a solid tube of the highlight the pack keeps for a wire, a wrapped one is the skin of its width
-     * with the metal core showing in every mouth, and one model is written for each of the sixty four ways a
-     * cable may be joined. The state of a cable names the model of its own mask, so no turn is needed to show
-     * it.
+     * The art of a cable is its own and not the tube of a pipe: a bare line is a solid tube of the highlight
+     * the pack keeps for a wire, a wrapped one the skin of its width with the metal core in every mouth. The
+     * models and the state files of the line of the power are committed with the game and drawn by hand once,
+     * so nothing of them is built while the game starts.
      *
      * @param kind kind of the line
      * @param size width of the line
      * @param mask connections of the line
-     * @return the name of the model, such as {@code cable_wire_1x_00} or {@code cable_insulation_16x_3f}
+     * @return the name of the model, such as {@code cable_wire_1x_00}
      */
     public static String modelName(CableKind kind, CableSize size, int mask) {
         return kind.folder() + "_" + size.fileName() + "_"

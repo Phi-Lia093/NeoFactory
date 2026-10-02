@@ -79,8 +79,8 @@ public enum CableKind {
      * Picture of the line of a width, the fallback a block names while its model is not drawn.
      * <p>
      * A bare line is drawn from the highlight of the metal the pack keeps for a wire and a wrapped one from
-     * the skin of its width, see {@code tools/gen_cable_models.ps1}: the two kinds of the same width of the
-     * same material are two different pictures.
+     * the skin of its width, which is hand drawn and kept in {@code assets/blocks/cable_insulation}: the two
+     * kinds of the same width of the same material are two different pictures.
      *
      * @param size width of the line
      * @return the name of the picture, relative to {@code blocks/}
