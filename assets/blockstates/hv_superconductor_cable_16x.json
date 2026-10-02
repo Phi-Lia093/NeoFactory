@@ -41,7 +41,7 @@
     "north=true,east=false,south=false,west=true,top=false,bottom=true":{"model":"cable_insulation_hv_superconductor_16x_13","y":270},
     "north=true,east=false,south=false,west=true,top=true,bottom=false":{"model":"cable_insulation_hv_superconductor_16x_14","y":270},
     "north=true,east=false,south=false,west=true,top=true,bottom=true":{"model":"cable_insulation_hv_superconductor_16x_15","y":270},
-    "north=true,east=false,south=true,west=false,top=false,bottom=false":{"model":"cable_insulation_hv_superconductor_16x_20","y":90},
+    "north=true,east=false,south=true,west=false,top=false,bottom=false":{"model":"cable_insulation_hv_superconductor_16x_40","y":0},
     "north=true,east=false,south=true,west=false,top=false,bottom=true":{"model":"cable_insulation_hv_superconductor_16x_21","y":90},
     "north=true,east=false,south=true,west=false,top=true,bottom=false":{"model":"cable_insulation_hv_superconductor_16x_22","y":90},
     "north=true,east=false,south=true,west=false,top=true,bottom=true":{"model":"cable_insulation_hv_superconductor_16x_23","y":90},

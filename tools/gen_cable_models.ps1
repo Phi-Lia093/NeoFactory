@@ -208,6 +208,11 @@ for ($mask = 0; $mask -le 63; $mask++) {
     while ($walk -ne $mask -and $drawn -lt 4) { $walk = Turn $walk; $drawn++ }
     $turns[$mask] = $drawn
 }
+# The state a line shows in a slot and in the hand is the straight run from north to south, see Cables#STRAIGHT_MASK.
+# It is written down as a model of its own, so an icon of a line is the model of the state itself and no turn
+# is needed to show it - which is how the pipes of the fluid system are drawn as an item as well.
+$canonical[40] = 40
+$turns[40] = 0
 $names = Get-ChildItem $states -Filter '*_wire_1x.json' | ForEach-Object { $_.BaseName -replace '_wire_1x$', '' }
 # A bare line is painted in the colour of its material, so one model serves every material of a width.
 foreach ($size in $sizes.Keys) {
