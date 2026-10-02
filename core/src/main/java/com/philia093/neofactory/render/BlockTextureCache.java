@@ -290,9 +290,13 @@ public class BlockTextureCache implements Disposable {
 
     /** The icon of an item, or {@code null} when none of the ways to a picture worked. */
     private TextureRegion iconOrNull(Item item) {
-        if (item.isBlockItem() && item.block() != null && !item.block().isTransparent()) {
+        if (item.isBlockItem() && item.block() != null
+                && (!item.block().isTransparent() || item.block().itemState() != 0)) {
             // A world of cubes shows the block itself, see BlockIconRenderer; the folded tile is what
             // stands in for it while there is no graphics card that can draw one, or in the flat view.
+            // A block that is see through is drawn from itself as well while it names a state for its item:
+            // a line of the power is transparent so that the blocks next to it keep their faces, see
+            // {@code Cables}, and it is still a shape of its own in a slot, see {@code Block#itemState}.
             TextureRegion cube = blockIconRenderer == null ? null : blockIconRenderer.icon(item.block());
             if (cube == null) {
                 cube = blockIcon(item.texture(), item.iconFrame());
