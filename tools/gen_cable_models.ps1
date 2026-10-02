@@ -54,6 +54,56 @@ foreach ($size in $skins.Keys) {
 }
 Write-Host 'Wrote the skins of the line, and a dark grey copy of every one'
 
+# The core of a wrapped line is the metal of its material, and a wrapped line is not painted by the game at
+# all - that is what keeps the rubber out of the colour of the metal. The colour of every material is read
+# out of the declaration of the materials instead of being written down twice: a shape of a metal is grey
+# scale and the colour of the material is what paints it, see MaterialForm.
+$wireDir = Join-Path $root 'assets\blocks\cable_wire'
+$declaration = Get-Content (Join-Path $root 'core\src\main\java\com\philia093\neofactory\material\Materials.java') -Raw
+$constants = @{}
+foreach ($match in [regex]::Matches($declaration, 'Color\s+([A-Z0-9_]+)\s*=\s*new\s+Color\(\s*([0-9.]+)f\s*,\s*([0-9.]+)f\s*,\s*([0-9.]+)f')) {
+    $constants[$match.Groups[1].Value] = @([double]$match.Groups[2].Value, [double]$match.Groups[3].Value,
+        [double]$match.Groups[4].Value)
+}
+$materials = @{}
+foreach ($match in [regex]::Matches($declaration, 'Material\.builder\("([a-z0-9_]+)"[^;]*?\.color\(\s*(?:new\s+Color\(\s*([0-9.]+)f\s*,\s*([0-9.]+)f\s*,\s*([0-9.]+)f|([A-Z0-9_]+))\s*\)')) {
+    $name = $match.Groups[1].Value
+    if ($match.Groups[2].Success) {
+        $materials[$name] = @([double]$match.Groups[2].Value, [double]$match.Groups[3].Value,
+            [double]$match.Groups[4].Value)
+    }
+    elseif ($constants.ContainsKey($match.Groups[5].Value)) {
+        $materials[$name] = $constants[$match.Groups[5].Value]
+    }
+}
+$wireSource = Join-Path $wires 'wire.png'
+$written = 0
+foreach ($name in (Get-ChildItem $states -Filter '*_wire_1x.json' |
+        ForEach-Object { $_.BaseName -replace '_wire_1x$', '' } | Sort-Object)) {
+    if (-not $materials.ContainsKey($name)) {
+        Write-Host ('No colour for ' + $name + ', left out')
+        continue
+    }
+    $colour = $materials[$name]
+    $stream = New-Object System.IO.MemoryStream(, [System.IO.File]::ReadAllBytes($wireSource))
+    $bitmap = New-Object System.Drawing.Bitmap($stream)
+    for ($x = 0; $x -lt $bitmap.Width; $x++) {
+        for ($y = 0; $y -lt $bitmap.Height; $y++) {
+            $pixel = $bitmap.GetPixel($x, $y)
+            if ($pixel.A -eq 0) { continue }
+            $r = [int][Math]::Min(255, [Math]::Round($pixel.R * $colour[0]))
+            $g = [int][Math]::Min(255, [Math]::Round($pixel.G * $colour[1]))
+            $b = [int][Math]::Min(255, [Math]::Round($pixel.B * $colour[2]))
+            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $r, $g, $b))
+        }
+    }
+    $bitmap.Save((Join-Path $wireDir ($name + '.png')), [System.Drawing.Imaging.ImageFormat]::Png)
+    $bitmap.Dispose()
+    $stream.Dispose()
+    $written++
+}
+Write-Host ('Wrote the core of ' + $written + ' materials')
+
 # The box of the tube of one side and the box of the skin around it, in sixteenths of a block. The skin is
 # one sixteenth wider than the tube on every side, so the metal fills the skin and no gap shows between them.
 function StubBoxes($side, $t) {
