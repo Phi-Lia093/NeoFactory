@@ -22,23 +22,20 @@ $manifest = Join-Path $root 'assets\assets.txt'
 New-Item -ItemType Directory -Force -Path $wires | Out-Null
 Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wires 'wire.png')
 
-# The box of a stub of one side, as text: the outer box and the core inside it, in sixteenths of a block.
+# The box of the tube of one side and the box of the skin around it, in sixteenths of a block. The skin is
+# one sixteenth wider than the tube on every side, so the metal fills the skin and no gap shows between them.
 function StubBoxes($side, $t) {
     $t = [int]$t
     $u = [int](16 - [int]$t)
-    $i = [int]([int]$t + 1)
-    $j = [int]([int]$u - 1)
-    # A core only fits inside a stub that is wide enough: a box of no thickness is no box, and a model with
-    # one is refused by the loader, which is why a wide cable has an open mouth instead of a core in it.
-    $hasCore = $i -le $j
-    if (-not $hasCore) { $i = $t; $j = $u }
+    $a = [int]([int]$t - 1)
+    $b = [int]([int]$u + 1)
     switch ($side) {
-        'north'  { return @(("$t,$t,0|$u,$u,$t"), ("$i,$i,0|$j,$j,$t"), $hasCore) }
-        'east'   { return @(("$u,$t,$t|16,$u,$u"), ("$u,$i,$i|16,$j,$j"), $hasCore) }
-        'south'  { return @(("$t,$t,$u|$u,$u,16"), ("$i,$i,$u|$j,$j,16"), $hasCore) }
-        'west'   { return @(("0,$t,$t|$t,$u,$u"), ("0,$i,$i|$t,$j,$j"), $hasCore) }
-        'top'    { return @(("$t,$u,$t|$u,16,$u"), ("$i,$u,$i|$j,16,$j"), $hasCore) }
-        'bottom' { return @(("$t,0,$t|$u,$t,$u"), ("$i,0,$i|$j,$t,$j"), $hasCore) }
+        'north'  { return @(("$t,$t,0|$u,$u,$t"), ("$a,$a,0|$b,$b,$t")) }
+        'east'   { return @(("$u,$t,$t|16,$u,$u"), ("$b,$a,$a|16,$b,$b")) }
+        'south'  { return @(("$t,$t,$u|$u,$u,16"), ("$a,$a,$u|$b,$b,16")) }
+        'west'   { return @(("0,$t,$t|$t,$u,$u"), ("0,$a,$a|$t,$b,$b")) }
+        'top'    { return @(("$t,$u,$t|$u,16,$u"), ("$a,$u,$a|$b,16,$b")) }
+        'bottom' { return @(("$t,0,$t|$u,$t,$u"), ("$a,0,$a|$b,$t,$b")) }
     }
 }
 
@@ -83,19 +80,19 @@ function ModelOf($size, $mask, $bare) {
         if (([int]$mask -band [int]$bits[$side]) -eq 0) { continue }
         $stub = StubBoxes $side $t
         if ($bare) { $boxes += (Box $stub[0] '#wire' '' ''); continue }
-        # The mouth of a joined side is open while a core fits inside the stub: the face of the stub that
-        # stands at the face of the block is left out and the bare core is drawn in it, so the metal of the
-        # line shows through the skin. A cable too wide for a core keeps that face and is closed with it.
-        $open = ''
-        if ($stub[2]) { $open = $side }
-        $boxes += (Box $stub[0] '#wire' $open '#skin')
-        if ($stub[2]) { $boxes += (Box $stub[1] '#wire' '' '') }
+        # The metal runs through the mouth and the skin is drawn around it: the skin is one sixteenth wider on
+        # every side, so the two of them touch and nothing floats in the middle of the block.
+        $boxes += (Box $stub[0] '#wire' '' '')
+        $boxes += (Box $stub[1] '#wire' $side '#skin')
     }
     $textures = '"wire":"cable_wire/wire"'
+    $tint = 'true'
     if (-not $bare) {
         $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full"'
+        # The skin of a cable is black rubber: the colour of the material must not run over it.
+        $tint = 'false'
     }
-    return '{"textures":{' + $textures + '},"tint":true,"elements":[' + ($boxes -join ',') + ']}'
+    return '{"textures":{' + $textures + '},"tint":' + $tint + ',"elements":[' + ($boxes -join ',') + ']}'
 }
 
 $written = 0

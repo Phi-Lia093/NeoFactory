@@ -391,8 +391,13 @@ public final class Cables {
                             .toolType(ToolType.WRENCH)
                             // A cable carries a block entity, the way a pipe does: it is what answers the
                             // grid of faces a player with a wrench sees, see CableBlockEntity.
-                            .blockEntity("cable")
-                            .tint(material.color());
+                            .blockEntity("cable");
+                    // A bare line is painted in the colour of its material. A line with a skin around it is
+                    // not: its skin is black rubber and the colour of the metal would run over it, see
+                    // CableKind#isTinted.
+                    if (kind.isTinted()) {
+                        builder.tint(material.color());
+                    }
                     Block block = builder.build();
                     BlockRegistry.register(block);
                     CABLES.add(new Cable(material, size, kind, block));
