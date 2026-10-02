@@ -29,7 +29,10 @@ Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wi
 # metal under it into red rubber or blue rubber - see the colour a block paints its faces with.
 Add-Type -AssemblyName System.Drawing
 $insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
-$shade = 0.06
+$shade = 0.5
+$toneR = 0.62
+$toneG = 0.72
+$toneB = 0.95
 $skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
     '16x' = 'HUGE'; 'full' = 'FULL' }
 foreach ($size in $skins.Keys) {
@@ -44,8 +47,10 @@ foreach ($size in $skins.Keys) {
             $pixel = $bitmap.GetPixel($x, $y)
             if ($pixel.A -eq 0) { continue }
             $grey = [int][Math]::Round(($pixel.R * 0.3) + ($pixel.G * 0.59) + ($pixel.B * 0.11))
-            $value = [int][Math]::Round($grey * $shade)
-            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $value, $value, $value))
+            $r = [int][Math]::Min(255, [Math]::Round($grey * $toneR * $shade))
+            $g = [int][Math]::Min(255, [Math]::Round($grey * $toneG * $shade))
+            $b = [int][Math]::Min(255, [Math]::Round($grey * $toneB * $shade))
+            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $r, $g, $b))
         }
     }
     $bitmap.Save((Join-Path $insulationDir ($size + '_dark.png')), [System.Drawing.Imaging.ImageFormat]::Png)
