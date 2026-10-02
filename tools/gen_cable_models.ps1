@@ -23,14 +23,12 @@ $manifest = Join-Path $root 'assets\assets.txt'
 
 New-Item -ItemType Directory -Force -Path $wires | Out-Null
 Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wires 'wire.png')
-
-# The pictures of a skin are grey scale like every other shape of the game, and a skin is black rubber: the
-# grey of the pack is turned into black here, so an overlay of it reads as rubber without taking the colour
-# of the metal it covers, see CableKind.
+# The pictures of a skin are grey scale like every shape of the game, and a cable is wrapped in black rubber:
+# the grey of the pack is turned into black here, so a skin stays black whatever colour the metal has.
 Add-Type -AssemblyName System.Drawing
 $insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
 $skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
-    '16x' = 'HUGE' }
+    '16x' = 'HUGE'; 'full' = 'FULL' }
 foreach ($size in $skins.Keys) {
     $target = Join-Path $insulationDir ($size + '.png')
     $source = Join-Path 'D:\textures\blocks\iconsets' ('INSULATION_' + $skins[$size] + '.png')
@@ -69,15 +67,30 @@ function StubBoxes($side, $t) {
     }
 }
 
-# One box of a model, as text. A side that is left out of $skip is not drawn at all. The overlay is drawn
-# over the picture without the colour of the material, which is what keeps the skin of a cable black.
-function Box($box, $texture, $skip, $overlay) {
+# One face of a box, as text: the picture and, when it has one, the picture drawn over it.
+function Face($side, $texture, $overlay) {
+    $face = '"' + $side + '":{"texture":"' + $texture + '"'
+    if ($overlay) { $face = $face + ',"overlay":"' + $overlay + '"' }
+    return ($face + '}')
+}
+
+# One box of a model, as text, with every face of it the same picture.
+function Box($box, $texture, $skip, $overlay, $unused) {
     $faces = @()
     foreach ($side in $sides) {
         if ($side -eq $skip) { continue }
-        $face = '"' + $side + '":{"texture":"' + $texture + '"'
-        if ($overlay) { $face = $face + ',"overlay":"' + $overlay + '"' }
-        $faces += ($face + '}')
+        $faces += (Face $side $texture $overlay)
+    }
+    $half = $box.Split('|')
+    return '{"from":[' + $half[0] + '],"to":[' + $half[1] + '],"faces":{' + ($faces -join ',') + '}}'
+}
+
+# One box whose walls are one picture and whose face at the end of a run is a ring of the skin over metal.
+function BoxNoEnd($box, $wall, $endBase, $endOverlay, $end) {
+    $faces = @()
+    foreach ($side in $sides) {
+        if ($side -eq $end) { $faces += (Face $side $endBase $endOverlay); continue }
+        $faces += (Face $side $wall '')
     }
     $half = $box.Split('|')
     return '{"from":[' + $half[0] + '],"to":[' + $half[1] + '],"faces":{' + ($faces -join ',') + '}}'
@@ -100,20 +113,25 @@ function ModelOf($size, $mask, $bare) {
         $overlay = 'cable_insulation/full'
         if ($bare) { $overlay = '' }
         elseif ($joined) { $overlay = $skin }
-        $face = '"' + $side + '":{"texture":"#wire"'
-        if ($overlay) { $face = $face + ',"overlay":"#skin"' }
-        if (-not $bare -and -not $joined) { $face = '"' + $side + '":{"texture":"#wire","overlay":"#full"' }
-        $faces += ($face + '}')
+        if ($bare) {
+            $faces += ('"' + $side + '":{"texture":"#wire"}')
+        }
+        elseif ($joined) {
+            $faces += ('"' + $side + '":{"texture":"#wire"}')
+        }
+        else {
+            # A cap: the whole skin, and the metal of the material is not drawn under it at all.
+            $faces += ('"' + $side + '":{"texture":"#full"}')
+        }
     }
     $boxes += '{"from":[' + $half[0] + '],"to":[' + $half[1] + '],"faces":{' + ($faces -join ',') + '}}'
     foreach ($side in $sides) {
         if (([int]$mask -band [int]$bits[$side]) -eq 0) { continue }
         $stub = StubBoxes $side $t
-        if ($bare) { $boxes += (Box $stub[0] '#wire' '' ''); continue }
-        # The metal runs through the mouth and the skin is drawn around it: the skin is one sixteenth wider on
-        # every side, so the two of them touch and nothing floats in the middle of the block.
-        $boxes += (Box $stub[0] '#wire' '' '')
-        $boxes += (Box $stub[1] '#wire' $side '#skin')
+        if ($bare) { $boxes += (Box $stub[0] '#wire' '' '' '' ''); continue }
+        # The skin of a run has no thickness of its own: the walls of the tube are wrapped in it, and the
+        # mouth of the line is the ring of the width over the metal of the material, whose middle is open.
+        $boxes += (BoxNoEnd $stub[0] '#skin' '#wire' '#skin' $side)
     }
     $textures = '"wire":"cable_wire/wire"'
     if (-not $bare) {
