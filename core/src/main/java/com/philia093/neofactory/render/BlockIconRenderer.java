@@ -279,7 +279,13 @@ public class BlockIconRenderer implements Disposable {
     public void prime() {
         int drawn = 0;
         for (Block block : BlockRegistry.all()) {
-            if (block.isTransparent()) {
+            if (block.isTransparent() && block.itemState() == 0) {
+                // A block that is see through keeps its folded tile in a slot - unless it names a state for
+                // its item. A line of the power is transparent so that the blocks next to it keep their
+                // faces, see {@code Cables}, and it is baked here with everything else: a bake that is left
+                // to the first slot that asks for it happens while the interface is being drawn, and a frame
+                // drawn in the middle of a pass comes out wrong - the first slots of a screen are the ones a
+                // player saw as a block instead of a wire, see {@link #bake(Block, FrameBuffer)}.
                 continue;
             }
             if (icon(block) != null) {
