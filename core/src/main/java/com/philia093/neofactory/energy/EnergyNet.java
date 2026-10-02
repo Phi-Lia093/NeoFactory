@@ -155,6 +155,21 @@ public final class EnergyNet {
     }
 
     /**
+     * {@code true} when this line is too much for a machine and destroys it.
+     * <p>
+     * A line of a higher tier than the one a machine was built for is no line that machine survives: the
+     * energy is not handed over at all, and both the line and the machine are lost, see
+     * {@link EnergyAcceptor#accepts(Voltage)}.
+     *
+     * @param machine machine the line would feed
+     * @return {@code true} when the line burns the machine and itself
+     */
+    public boolean overvolts(EnergyAcceptor machine) {
+        Objects.requireNonNull(machine, "machine");
+        return !machine.accepts(voltage);
+    }
+
+    /**
      * Moves energy from one storage to another through this line.
      * <p>
      * What is carried is asked of the source and offered to the sink, and the line keeps what it loses on

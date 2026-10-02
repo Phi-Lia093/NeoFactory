@@ -2,6 +2,7 @@ package com.philia093.neofactory.energy;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.machine.EnergyStorage;
@@ -50,6 +51,19 @@ public final class EnergyGrid {
          * @return the storage, or {@code null} when no machine with a buffer stands there
          */
         EnergyStorage buffer(int x, int y, int z);
+
+        /**
+         * Empties a cell, which is what an over-voltage leaves behind.
+         * <p>
+         * A line of a higher tier than a machine was built for takes the machine and every cable of the line
+         * with it, see {@link EnergyNet#overvolts(EnergyAcceptor)}, so the net has to be able to take a block
+         * away.
+         *
+         * @param x x of the cell
+         * @param y y of the cell
+         * @param z z of the cell
+         */
+        void remove(int x, int y, int z);
     }
 
     /** The cells of a world: its blocks, its states and the buffers of its machines. */
@@ -80,6 +94,11 @@ public final class EnergyGrid {
         }
 
         @Override
+        public void remove(int x, int y, int z) {
+            world.setBlock(x, y, z, Blocks.AIR);
+        }
+
+        @Override
         public String toString() {
             return "WorldCells";
         }
@@ -101,12 +120,15 @@ public final class EnergyGrid {
     public static final class Line {
 
         private final List<Cables.Cable> cables;
+        private final List<int[]> cablesAt;
         private final List<EnergyStorage> ends;
         private final List<int[]> positions;
         private final EnergyNet net;
 
-        private Line(List<Cables.Cable> cables, List<EnergyStorage> ends, List<int[]> positions) {
+        private Line(List<Cables.Cable> cables, List<int[]> cablesAt, List<EnergyStorage> ends,
+                List<int[]> positions) {
             this.cables = List.copyOf(cables);
+            this.cablesAt = List.copyOf(cablesAt);
             this.ends = List.copyOf(ends);
             this.positions = List.copyOf(positions);
             this.net = EnergyNet.of(cables);
@@ -154,12 +176,30 @@ public final class EnergyGrid {
          * out evenly between the machines that can take it. Every share travels through
          * {@link EnergyNet#carry}, so the loss of the run is paid by the source, a machine whose buffer is
          * full simply takes nothing, and the rest of a division nobody wanted stays in the source.
+         * <p>
+         * <b>A line that is too much for a machine destroys it and itself.</b> Before anything is handed
+         * over, every machine of the line that would not survive this tier is looked for - a machine whose
+         * tier stands below the tier of the line, see {@link EnergyNet#overvolts(EnergyAcceptor)} - and then
+         * nothing is delivered at all: the machine and every cable of the line are taken out of the world,
+         * which is what a player finds when a line of a later age is run into a workshop of an earlier one.
          *
+         * @param cells cells of the world, so that a line that burns can be taken away
          * @param source buffer that gives the energy
          * @param wanted amount the line should hand over
-         * @return the amount the machines of the line received
+         * @return the amount the machines of the line received, {@code 0} when the line burned
          */
-        public int push(EnergyStorage source, int wanted) {
+        public int push(Cells cells, EnergyStorage source, int wanted) {
+            Objects.requireNonNull(cells, "cells");
+            List<EnergyStorage> burned = new ArrayList<>();
+            for (EnergyStorage end : ends) {
+                if (end != source && overvolts(end)) {
+                    burned.add(end);
+                }
+            }
+            if (!burned.isEmpty()) {
+                burn(cells, burned);
+                return 0;
+            }
             List<EnergyStorage> sinks = new ArrayList<>();
             for (EnergyStorage end : ends) {
                 if (end != source && end.canReceive()) {
@@ -175,6 +215,40 @@ public final class EnergyGrid {
                 moved += net.carry(source, sink, share);
             }
             return moved;
+        }
+
+        /** {@code true} when this line is too much for the machine of one of its ends. */
+        public boolean overvolts(EnergyStorage end) {
+            return end instanceof EnergyAcceptor && net.overvolts((EnergyAcceptor) end);
+        }
+
+        /**
+         * Takes the machine and every cable of the line out of the world.
+         *
+         * @param cells cells of the world
+         * @param burned machines of this line the tier destroyed
+         * @return amount of cells that were emptied
+         */
+        public int burn(Cells cells, List<EnergyStorage> burned) {
+            Objects.requireNonNull(cells, "cells");
+            Set<Long> taken = new HashSet<>();
+            for (int[] cell : cablesAt) {
+                if (taken.add(key(cell[0], cell[1], cell[2]))) {
+                    cells.remove(cell[0], cell[1], cell[2]);
+                }
+            }
+            int count = cablesAt.size();
+            for (int index = 0; index < ends.size(); index++) {
+                if (!burned.contains(ends.get(index))) {
+                    continue;
+                }
+                int[] cell = positions.get(index);
+                if (taken.add(key(cell[0], cell[1], cell[2]))) {
+                    cells.remove(cell[0], cell[1], cell[2]);
+                    count++;
+                }
+            }
+            return count;
         }
 
         @Override
@@ -210,6 +284,7 @@ public final class EnergyGrid {
             return null;
         }
         List<Cables.Cable> cables = new ArrayList<>();
+        List<int[]> cablesAt = new ArrayList<>();
         List<EnergyStorage> ends = new ArrayList<>();
         List<int[]> positions = new ArrayList<>();
         Set<Long> seenCables = new HashSet<>();
@@ -220,6 +295,7 @@ public final class EnergyGrid {
         while (!open.isEmpty()) {
             int[] cell = open.remove(open.size() - 1);
             cables.add(Cables.of(cells.block(cell[0], cell[1], cell[2])));
+            cablesAt.add(new int[] {cell[0], cell[1], cell[2]});
             int state = cells.state(cell[0], cell[1], cell[2]);
             for (BlockFace face : Cables.DIRECTIONS) {
                 if (!Cables.isConnected(state, face)) {
@@ -241,7 +317,7 @@ public final class EnergyGrid {
                 }
             }
         }
-        return new Line(cables, ends, positions);
+        return new Line(cables, cablesAt, ends, positions);
     }
 
     /** Key of a cell, so that a set of visited cells holds no position twice. */
