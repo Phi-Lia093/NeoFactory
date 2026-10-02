@@ -47,7 +47,6 @@ foreach ($size in $skins.Keys) {
     $bitmap.Dispose()
     $stream.Dispose()
 }
-Copy-Item -Force 'D:\textures\blocks\iconsets\INSULATION_FULL.png' (Join-Path $insulationDir 'full.png')
 Write-Host 'Wrote the skins of the line in black'
 
 # The box of the tube of one side and the box of the skin around it, in sixteenths of a block. The skin is
