@@ -24,11 +24,12 @@ $manifest = Join-Path $root 'assets\assets.txt'
 New-Item -ItemType Directory -Force -Path $wires | Out-Null
 Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wires 'wire.png')
 # The pictures of a skin are kept exactly as the pack draws them, and a darker copy of each of them is written
-# next to it: the model of a cable names the darker one, so a skin reads as black rubber while the shading of
-# the art is still there - a skin of one flat colour looked like a cable made of paint.
+# next to it. The darker copy is turned into a shade of grey first and darkened after that: a skin has to read
+# as black rubber under the colour of any material, and a skin that keeps its own hue turns the colour of the
+# metal under it into red rubber or blue rubber - see the colour a block paints its faces with.
 Add-Type -AssemblyName System.Drawing
 $insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
-$shade = 0.35
+$shade = 0.18
 $skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
     '16x' = 'HUGE'; 'full' = 'FULL' }
 foreach ($size in $skins.Keys) {
@@ -42,17 +43,16 @@ foreach ($size in $skins.Keys) {
         for ($y = 0; $y -lt $bitmap.Height; $y++) {
             $pixel = $bitmap.GetPixel($x, $y)
             if ($pixel.A -eq 0) { continue }
-            $r = [int][Math]::Round($pixel.R * $shade)
-            $g = [int][Math]::Round($pixel.G * $shade)
-            $b = [int][Math]::Round($pixel.B * $shade)
-            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $r, $g, $b))
+            $grey = [int][Math]::Round(($pixel.R * 0.3) + ($pixel.G * 0.59) + ($pixel.B * 0.11))
+            $value = [int][Math]::Round($grey * $shade)
+            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $value, $value, $value))
         }
     }
     $bitmap.Save((Join-Path $insulationDir ($size + '_dark.png')), [System.Drawing.Imaging.ImageFormat]::Png)
     $bitmap.Dispose()
     $stream.Dispose()
 }
-Write-Host 'Wrote the skins of the line, and a darker copy of every one'
+Write-Host 'Wrote the skins of the line, and a dark grey copy of every one'
 
 # The box of the tube of one side and the box of the skin around it, in sixteenths of a block. The skin is
 # one sixteenth wider than the tube on every side, so the metal fills the skin and no gap shows between them.
@@ -143,14 +143,10 @@ function ModelOf($size, $mask, $bare) {
         $boxes += (BoxNoEnd $stub[0] '#skin' '#wire' '#skin' $side)
     }
     $textures = '"wire":"cable_wire/wire"'
-    $tint = 'true'
     if (-not $bare) {
         $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full_dark"'
-        # The skin of a cable is rubber of its own colour: the colour of the material must not run over it,
-        # which is what a line that is not tinted says, see CableKind#isTinted.
-        $tint = 'false'
     }
-    return '{"textures":{' + $textures + '},"tint":' + $tint + ',"elements":[' + ($boxes -join ',') + ']}'
+    return '{"textures":{' + $textures + '},"tint":true,"elements":[' + ($boxes -join ',') + ']}'
 }
 
 $written = 0
