@@ -23,41 +23,17 @@ $manifest = Join-Path $root 'assets\assets.txt'
 
 New-Item -ItemType Directory -Force -Path $wires | Out-Null
 Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wires 'wire.png')
-# The pictures of a skin are kept exactly as the pack draws them, and a darker copy of each of them is written
-# next to it. The darker copy is turned into a shade of grey first and darkened after that: a skin has to read
-# as black rubber under the colour of any material, and a skin that keeps its own hue turns the colour of the
-# metal under it into red rubber or blue rubber - see the colour a block paints its faces with.
+# The pictures of a skin are the ones of the pack, as they are drawn: the tone of the rubber is written into
+# the art itself and nothing has to be baked next to it.
 Add-Type -AssemblyName System.Drawing
 $insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
-$shade = 0.5
-$toneR = 0.62
-$toneG = 0.72
-$toneB = 0.95
 $skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
     '16x' = 'HUGE'; 'full' = 'FULL' }
 foreach ($size in $skins.Keys) {
     $source = Join-Path 'D:\textures\blocks\iconsets' ('INSULATION_' + $skins[$size] + '.png')
     Copy-Item -Force $source (Join-Path $insulationDir ($size + '.png'))
-    # The picture is read into memory before it is written back: a bitmap that keeps the file open cannot be
-    # saved over it, which is what GDI+ refuses to do.
-    $stream = New-Object System.IO.MemoryStream(, [System.IO.File]::ReadAllBytes($source))
-    $bitmap = New-Object System.Drawing.Bitmap($stream)
-    for ($x = 0; $x -lt $bitmap.Width; $x++) {
-        for ($y = 0; $y -lt $bitmap.Height; $y++) {
-            $pixel = $bitmap.GetPixel($x, $y)
-            if ($pixel.A -eq 0) { continue }
-            $grey = [int][Math]::Round(($pixel.R * 0.3) + ($pixel.G * 0.59) + ($pixel.B * 0.11))
-            $r = [int][Math]::Min(255, [Math]::Round($grey * $toneR * $shade))
-            $g = [int][Math]::Min(255, [Math]::Round($grey * $toneG * $shade))
-            $b = [int][Math]::Min(255, [Math]::Round($grey * $toneB * $shade))
-            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $r, $g, $b))
-        }
-    }
-    $bitmap.Save((Join-Path $insulationDir ($size + '_dark.png')), [System.Drawing.Imaging.ImageFormat]::Png)
-    $bitmap.Dispose()
-    $stream.Dispose()
 }
-Write-Host 'Wrote the skins of the line, and a dark grey copy of every one'
+Write-Host 'Wrote the skins of the line as the pack draws them'
 
 # The core of a wrapped line is the metal of its material, and a wrapped line is not painted by the game at
 # all - that is what keeps the rubber out of the colour of the metal. The colour of every material is read
@@ -164,7 +140,7 @@ function BoxNoEnd($box, $wall, $endBase, $endOverlay, $end) {
 function ModelOf($size, $mask, $bare, $core) {
     $t = [int]$sizes[$size]
     $mask = [int]$mask
-    $skin = 'cable_insulation/' + $size + '_dark'
+    $skin = 'cable_insulation/' + $size
     $u = [int](16 - [int]$t)
     $boxOfCore = "$t,$t,$t|" + $u + ',' + $u + ',' + $u
     $half = $boxOfCore.Split('|')
@@ -199,7 +175,7 @@ function ModelOf($size, $mask, $bare, $core) {
         # The core of a wrapped line is the metal of its material and the model names it: the block of a
         # wrapped line is painted by nothing, so the rubber of the skin stays black whatever is in it.
         $textures = '"core":"' + $core + '","wire":"' + $core + '","skin":"' + $skin +
-            '","full":"cable_insulation/full_dark"'
+            '","full":"cable_insulation/full"'
         $tint = 'false'
     }
     return '{"textures":{' + $textures + '},"tint":' + $tint + ',"elements":[' + ($boxes -join ',') + ']}'
