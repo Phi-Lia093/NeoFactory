@@ -23,15 +23,17 @@ $manifest = Join-Path $root 'assets\assets.txt'
 
 New-Item -ItemType Directory -Force -Path $wires | Out-Null
 Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wires 'wire.png')
-# The pictures of a skin are grey scale like every shape of the game, and a cable is wrapped in black rubber:
-# the grey of the pack is turned into black here, so a skin stays black whatever colour the metal has.
+# The pictures of a skin are kept exactly as the pack draws them, and a darker copy of each of them is written
+# next to it: the model of a cable names the darker one, so a skin reads as black rubber while the shading of
+# the art is still there - a skin of one flat colour looked like a cable made of paint.
 Add-Type -AssemblyName System.Drawing
 $insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
+$shade = 0.35
 $skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
     '16x' = 'HUGE'; 'full' = 'FULL' }
 foreach ($size in $skins.Keys) {
-    $target = Join-Path $insulationDir ($size + '.png')
     $source = Join-Path 'D:\textures\blocks\iconsets' ('INSULATION_' + $skins[$size] + '.png')
+    Copy-Item -Force $source (Join-Path $insulationDir ($size + '.png'))
     # The picture is read into memory before it is written back: a bitmap that keeps the file open cannot be
     # saved over it, which is what GDI+ refuses to do.
     $stream = New-Object System.IO.MemoryStream(, [System.IO.File]::ReadAllBytes($source))
@@ -40,14 +42,17 @@ foreach ($size in $skins.Keys) {
         for ($y = 0; $y -lt $bitmap.Height; $y++) {
             $pixel = $bitmap.GetPixel($x, $y)
             if ($pixel.A -eq 0) { continue }
-            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, 0, 0, 0))
+            $r = [int][Math]::Round($pixel.R * $shade)
+            $g = [int][Math]::Round($pixel.G * $shade)
+            $b = [int][Math]::Round($pixel.B * $shade)
+            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, $r, $g, $b))
         }
     }
-    $bitmap.Save($target, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bitmap.Save((Join-Path $insulationDir ($size + '_dark.png')), [System.Drawing.Imaging.ImageFormat]::Png)
     $bitmap.Dispose()
     $stream.Dispose()
 }
-Write-Host 'Wrote the skins of the line in black'
+Write-Host 'Wrote the skins of the line, and a darker copy of every one'
 
 # The box of the tube of one side and the box of the skin around it, in sixteenths of a block. The skin is
 # one sixteenth wider than the tube on every side, so the metal fills the skin and no gap shows between them.
@@ -86,9 +91,14 @@ function Box($box, $texture, $skip, $overlay, $unused) {
 
 # One box whose walls are one picture and whose face at the end of a run is a ring of the skin over metal.
 function BoxNoEnd($box, $wall, $endBase, $endOverlay, $end) {
+    $opposite = @{ north = 'south'; south = 'north'; east = 'west'; west = 'east'; top = 'bottom'
+        bottom = 'top' }
     $faces = @()
     foreach ($side in $sides) {
         if ($side -eq $end) { $faces += (Face $side $endBase $endOverlay); continue }
+        # The face the box turns towards the middle of the line is left out: it lies on the face of the box of
+        # the middle, and two faces that lie on each other let the inside of the line show at the seam.
+        if ($side -eq $opposite[$end]) { continue }
         $faces += (Face $side $wall '')
     }
     $half = $box.Split('|')
@@ -99,7 +109,7 @@ function BoxNoEnd($box, $wall, $endBase, $endOverlay, $end) {
 function ModelOf($size, $mask, $bare) {
     $t = [int]$sizes[$size]
     $mask = [int]$mask
-    $skin = 'cable_insulation/' + $size
+    $skin = 'cable_insulation/' + $size + '_dark'
     $u = [int](16 - [int]$t)
     $core = "$t,$t,$t|" + $u + ',' + $u + ',' + $u
     $half = $core.Split('|')
@@ -134,7 +144,7 @@ function ModelOf($size, $mask, $bare) {
     }
     $textures = '"wire":"cable_wire/wire"'
     if (-not $bare) {
-        $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full"'
+        $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full_dark"'
     }
     return '{"textures":{' + $textures + '},"tint":true,"elements":[' + ($boxes -join ',') + ']}'
 }
@@ -185,7 +195,16 @@ foreach ($material in $names) {
 Write-Host ('Wrote the states of ' + $names.Count + ' materials, every width and both kinds')
 
 $lines = Get-Content $manifest
-if ($lines -notcontains 'blocks/cable_wire/wire.png') {
-    Add-Content -Path $manifest -Value 'blocks/cable_wire/wire.png'
-    Write-Host 'Added blocks/cable_wire/wire.png to the manifest'
+foreach ($name in @('blocks/cable_wire/wire.png', 'blocks/cable_insulation/1x.png',
+        'blocks/cable_insulation/2x.png', 'blocks/cable_insulation/4x.png',
+        'blocks/cable_insulation/8x.png', 'blocks/cable_insulation/12x.png',
+        'blocks/cable_insulation/16x.png', 'blocks/cable_insulation/full.png',
+        'blocks/cable_insulation/1x_dark.png', 'blocks/cable_insulation/2x_dark.png',
+        'blocks/cable_insulation/4x_dark.png', 'blocks/cable_insulation/8x_dark.png',
+        'blocks/cable_insulation/12x_dark.png', 'blocks/cable_insulation/16x_dark.png',
+        'blocks/cable_insulation/full_dark.png')) {
+    if ($lines -notcontains $name) {
+        Add-Content -Path $manifest -Value $name
+        Write-Host ('Added ' + $name + ' to the manifest')
+    }
 }
