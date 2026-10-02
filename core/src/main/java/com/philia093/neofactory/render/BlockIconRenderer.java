@@ -127,7 +127,22 @@ public class BlockIconRenderer implements Disposable {
      * "too little to read" and kept their folded tile, which a player sees as a pipe that fills the slot
      * like a block, see {@link #reachedTheFrame(Block)} and {@code BlockIconRendererTest}.
      */
-    private static final float MINIMUM_COVERAGE = 0.01f;
+    /**
+     * Share of the frame the drawing has to cover to be used at all.
+     * <p>
+     * The frame is the cell a block stands in, so the number here only catches a drawing that stayed empty,
+     * where the tile the block was folded from reads better than an empty slot - a slot says how large a
+     * thing is by the room it leaves.
+     * <p>
+     * <b>It stands below the thinnest thing the game draws.</b> The pipes of the fluid system are four
+     * sixteenths of a block wide at their thinnest and cover about a hundredth of the frame, and a line of
+     * the power is thinner still - two sixteenths for the single wire - which is a half of that share: a
+     * threshold of one hundredth left every line of the power with its folded tile, which a player sees as a
+     * cable that fills its slot like a block. A hundredth of the smaller share is what both of them pass,
+     * see {@link #reachedTheFrame(Block)} and {@code BlockIconRendererTest}.
+     */
+    private static final float MINIMUM_COVERAGE = 0.002f;
+
 
     private final BlockShader shader;
     private final BlockPictures pictures;
