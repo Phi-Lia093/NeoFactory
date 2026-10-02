@@ -29,7 +29,7 @@ Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wi
 # metal under it into red rubber or blue rubber - see the colour a block paints its faces with.
 Add-Type -AssemblyName System.Drawing
 $insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
-$shade = 0.18
+$shade = 0.06
 $skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
     '16x' = 'HUGE'; 'full' = 'FULL' }
 foreach ($size in $skins.Keys) {
