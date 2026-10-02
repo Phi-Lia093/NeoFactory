@@ -143,10 +143,14 @@ function ModelOf($size, $mask, $bare) {
         $boxes += (BoxNoEnd $stub[0] '#skin' '#wire' '#skin' $side)
     }
     $textures = '"wire":"cable_wire/wire"'
+    $tint = 'true'
     if (-not $bare) {
         $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full_dark"'
+        # The skin of a cable is rubber of its own colour: the colour of the material must not run over it,
+        # which is what a line that is not tinted says, see CableKind#isTinted.
+        $tint = 'false'
     }
-    return '{"textures":{' + $textures + '},"tint":true,"elements":[' + ($boxes -join ',') + ']}'
+    return '{"textures":{' + $textures + '},"tint":' + $tint + ',"elements":[' + ($boxes -join ',') + ']}'
 }
 
 $written = 0
