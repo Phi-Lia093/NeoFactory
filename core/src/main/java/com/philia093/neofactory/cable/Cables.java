@@ -378,6 +378,11 @@ public final class Cables {
                             // because a block without a picture is never drawn at all.
                             .texture(kind.picture(size))
                             .solid(false)
+                            // A cable fills no cell: its tube leaves the corners of the block empty, so a
+                            // block that stands next to one keeps its faces. Without this the mesher would
+                            // take the face of a neighbour away as soon as a cable touched it, because the
+                            // question it asks is whether a block fills the whole cell, see SectionMesher.
+                            .transparent(true)
                             .ground(true)
                             .itemState(STRAIGHT_MASK)
                             .hardness(HARDNESS)
