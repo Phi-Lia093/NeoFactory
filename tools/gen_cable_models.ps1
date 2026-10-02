@@ -8,7 +8,9 @@
 #
 # Run it after the art pack is replaced:  powershell -File tools/gen_cable_models.ps1
 
-$sizes = @{ '1x' = 2; '2x' = 3; '4x' = 4; '8x' = 5; '12x' = 6; '16x' = 7 }
+# Thickness of a line, as the number of sixteenths of a cell its tube is inset from the edge on every side:
+# the single line is the narrowest and the sixteenth the widest, so the inset counts down as the width grows.
+$sizes = @{ '1x' = 7; '2x' = 6; '4x' = 5; '8x' = 4; '12x' = 3; '16x' = 2 }
 $sides = @('north', 'east', 'south', 'west', 'top', 'bottom')
 $bits = @{ north = 32; east = 16; south = 8; west = 4; top = 2; bottom = 1 }
 
@@ -21,6 +23,34 @@ $manifest = Join-Path $root 'assets\assets.txt'
 
 New-Item -ItemType Directory -Force -Path $wires | Out-Null
 Copy-Item -Force 'D:\textures\blocks\materialicons\NONE\wire.png' (Join-Path $wires 'wire.png')
+
+# The pictures of a skin are grey scale like every other shape of the game, and a skin is black rubber: the
+# grey of the pack is turned into black here, so an overlay of it reads as rubber without taking the colour
+# of the metal it covers, see CableKind.
+Add-Type -AssemblyName System.Drawing
+$insulationDir = Join-Path $root 'assets\blocks\cable_insulation'
+$skins = @{ '1x' = 'TINY'; '2x' = 'SMALL'; '4x' = 'MEDIUM'; '8x' = 'MEDIUM_PLUS'; '12x' = 'LARGE'
+    '16x' = 'HUGE' }
+foreach ($size in $skins.Keys) {
+    $target = Join-Path $insulationDir ($size + '.png')
+    $source = Join-Path 'D:\textures\blocks\iconsets' ('INSULATION_' + $skins[$size] + '.png')
+    # The picture is read into memory before it is written back: a bitmap that keeps the file open cannot be
+    # saved over it, which is what GDI+ refuses to do.
+    $stream = New-Object System.IO.MemoryStream(, [System.IO.File]::ReadAllBytes($source))
+    $bitmap = New-Object System.Drawing.Bitmap($stream)
+    for ($x = 0; $x -lt $bitmap.Width; $x++) {
+        for ($y = 0; $y -lt $bitmap.Height; $y++) {
+            $pixel = $bitmap.GetPixel($x, $y)
+            if ($pixel.A -eq 0) { continue }
+            $bitmap.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($pixel.A, 0, 0, 0))
+        }
+    }
+    $bitmap.Save($target, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bitmap.Dispose()
+    $stream.Dispose()
+}
+Copy-Item -Force 'D:\textures\blocks\iconsets\INSULATION_FULL.png' (Join-Path $insulationDir 'full.png')
+Write-Host 'Wrote the skins of the line in black'
 
 # The box of the tube of one side and the box of the skin around it, in sixteenths of a block. The skin is
 # one sixteenth wider than the tube on every side, so the metal fills the skin and no gap shows between them.
@@ -86,13 +116,10 @@ function ModelOf($size, $mask, $bare) {
         $boxes += (Box $stub[1] '#wire' $side '#skin')
     }
     $textures = '"wire":"cable_wire/wire"'
-    $tint = 'true'
     if (-not $bare) {
         $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full"'
-        # The skin of a cable is black rubber: the colour of the material must not run over it.
-        $tint = 'false'
     }
-    return '{"textures":{' + $textures + '},"tint":' + $tint + ',"elements":[' + ($boxes -join ',') + ']}'
+    return '{"textures":{' + $textures + '},"tint":true,"elements":[' + ($boxes -join ',') + ']}'
 }
 
 $written = 0
