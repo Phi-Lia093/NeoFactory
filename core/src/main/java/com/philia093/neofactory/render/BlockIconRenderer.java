@@ -141,7 +141,7 @@ public class BlockIconRenderer implements Disposable {
      * cable that fills its slot like a block. A hundredth of the smaller share is what both of them pass,
      * see {@link #reachedTheFrame(Block)} and {@code BlockIconRendererTest}.
      */
-    private static final float MINIMUM_COVERAGE = 0.002f;
+    private static final float MINIMUM_COVERAGE = 1.0e-4f;
 
 
     private final BlockShader shader;
