@@ -1,0 +1,1 @@
+{"textures":{"core":"cable_wire/hss_e","wire":"cable_wire/hss_e","skin":"cable_insulation/16x_dark","full":"cable_insulation/full_dark"},"tint":false,"elements":[{"from":[2,2,2],"to":[14,14,14],"faces":{"north":{"texture":"#full"},"east":{"texture":"#full"},"south":{"texture":"#full"},"west":{"texture":"#full"},"top":{"texture":"#full"},"bottom":{"texture":"#full"}}}]}
