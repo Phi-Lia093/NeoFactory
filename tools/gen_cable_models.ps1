@@ -156,31 +156,27 @@ function BoxNoEnd($box, $wall, $endBase, $endOverlay, $end) {
 }
 
 # The model of one kind, one width and one mask of connections, as the text of a file.
-function ModelOf($size, $mask, $bare) {
+function ModelOf($size, $mask, $bare, $core) {
     $t = [int]$sizes[$size]
     $mask = [int]$mask
     $skin = 'cable_insulation/' + $size + '_dark'
     $u = [int](16 - [int]$t)
-    $core = "$t,$t,$t|" + $u + ',' + $u + ',' + $u
-    $half = $core.Split('|')
-    $coreBox = $half[0] + '|' + $half[1]
+    $boxOfCore = "$t,$t,$t|" + $u + ',' + $u + ',' + $u
+    $half = $boxOfCore.Split('|')
     $boxes = @()
-    # The box of the middle: the cap of every side the cable does not join, the skin of the ones it does.
+    # The box of the middle: the cap of every side the cable does not join, the metal of the ones it does.
     $faces = @()
     foreach ($side in $sides) {
         $joined = (([int]$mask -band [int]$bits[$side]) -ne 0)
-        $overlay = 'cable_insulation/full'
-        if ($bare) { $overlay = '' }
-        elseif ($joined) { $overlay = $skin }
-        if ($bare) {
-            $faces += ('"' + $side + '":{"texture":"#wire"}')
+        if ($joined) {
+            $faces += (Face $side $core '')
         }
-        elseif ($joined) {
-            $faces += ('"' + $side + '":{"texture":"#wire"}')
+        elseif ($bare) {
+            $faces += (Face $side '#wire' '')
         }
         else {
             # A cap: the whole skin, and the metal of the material is not drawn under it at all.
-            $faces += ('"' + $side + '":{"texture":"#full"}')
+            $faces += (Face $side '#full' '')
         }
     }
     $boxes += '{"from":[' + $half[0] + '],"to":[' + $half[1] + '],"faces":{' + ($faces -join ',') + '}}'
@@ -190,23 +186,64 @@ function ModelOf($size, $mask, $bare) {
         if ($bare) { $boxes += (Box $stub[0] '#wire' '' '' '' ''); continue }
         # The skin of a run has no thickness of its own: the walls of the tube are wrapped in it, and the
         # mouth of the line is the ring of the width over the metal of the material, whose middle is open.
-        $boxes += (BoxNoEnd $stub[0] '#skin' '#wire' '#skin' $side)
+        $boxes += (BoxNoEnd $stub[0] '#skin' $core '#skin' $side)
     }
     $textures = '"wire":"cable_wire/wire"'
+    $tint = 'true'
     if (-not $bare) {
-        $textures = '"wire":"cable_wire/wire","skin":"' + $skin + '","full":"cable_insulation/full_dark"'
+        # The core of a wrapped line is the metal of its material and the model names it: the block of a
+        # wrapped line is painted by nothing, so the rubber of the skin stays black whatever is in it.
+        $textures = '"core":"' + $core + '","wire":"' + $core + '","skin":"' + $skin +
+            '","full":"cable_insulation/full_dark"'
+        $tint = 'false'
     }
-    return '{"textures":{' + $textures + '},"tint":true,"elements":[' + ($boxes -join ',') + ']}'
+    return '{"textures":{' + $textures + '},"tint":' + $tint + ',"elements":[' + ($boxes -join ',') + ']}'
+}
+
+# One quarter turn of a mask about the vertical axis, the turn the game makes, see Cables#turned.
+function Turn($mask) {
+    $next = [int]$mask -band 3
+    if (([int]$mask -band 32) -ne 0) { $next = $next -bor 4 }
+    if (([int]$mask -band 16) -ne 0) { $next = $next -bor 32 }
+    if (([int]$mask -band 8) -ne 0) { $next = $next -bor 16 }
+    if (([int]$mask -band 4) -ne 0) { $next = $next -bor 8 }
+    return $next
 }
 
 $written = 0
+# The mask of every state, the canonical mask it is drawn with and the turn that shows it.
+$canonical = @{}
+$turns = @{}
+for ($mask = 0; $mask -le 63; $mask++) {
+    $best = $mask
+    for ($step = 1; $step -le 3; $step++) {
+        $turned = $mask
+        for ($i = 0; $i -lt $step; $i++) { $turned = Turn $turned }
+        if ($turned -lt $best) { $best = $turned }
+    }
+    $canonical[$mask] = $best
+    $drawn = 0
+    $walk = $best
+    while ($walk -ne $mask -and $drawn -lt 4) { $walk = Turn $walk; $drawn++ }
+    $turns[$mask] = $drawn
+}
+$names = Get-ChildItem $states -Filter '*_wire_1x.json' | ForEach-Object { $_.BaseName -replace '_wire_1x$', '' }
+# A bare line is painted in the colour of its material, so one model serves every material of a width.
 foreach ($size in $sizes.Keys) {
-    foreach ($bare in @($true, $false)) {
-        $family = 'cable_wire_' + $size
-        if (-not $bare) { $family = 'cable_insulation_' + $size }
+    for ($mask = 0; $mask -le 63; $mask++) {
+        $text = ModelOf $size $mask $true '#wire'
+        [System.IO.File]::WriteAllText((Join-Path $models ('cable_wire_' + $size + '_' + $mask.ToString('00') + '.json')), $text, $utf8)
+        $written++
+    }
+}
+# A wrapped line is painted by nothing, so the metal of its material is a picture of its own: one model per
+# material, width and canonical mask, which the blockstate shows turned.
+foreach ($material in $names) {
+    foreach ($size in $sizes.Keys) {
         for ($mask = 0; $mask -le 63; $mask++) {
-            $text = ModelOf $size $mask $bare
-            [System.IO.File]::WriteAllText((Join-Path $models ($family + '_' + $mask.ToString('00') + '.json')), $text, $utf8)
+            if ($canonical[$mask] -ne $mask) { continue }
+            $text = ModelOf $size $mask $false ('cable_wire/' + $material)
+            [System.IO.File]::WriteAllText((Join-Path $models ('cable_insulation_' + $material + '_' + $size + '_' + $mask.ToString('00') + '.json')), $text, $utf8)
             $written++
         }
     }
@@ -229,32 +266,35 @@ $properties = '"properties":{"north":["false","true"],"east":["false","true"],"s
 $names = Get-ChildItem $states -Filter '*_wire_1x.json' | ForEach-Object { $_.BaseName -replace '_wire_1x$', '' }
 foreach ($material in $names) {
     foreach ($size in $sizes.Keys) {
-        foreach ($kind in @('wire', 'cable')) {
-            $family = 'cable_wire_' + $size
-            if ($kind -eq 'cable') { $family = 'cable_insulation_' + $size }
-            $variants = @()
-            for ($mask = 0; $mask -le 63; $mask++) {
-                $variants += ('"' + $keys[$mask] + '":{"model":"' + $family + '_' + $mask.ToString('00') + '","y":0}')
-            }
-            $text = '{' + "`n" + '  ' + $properties + ',' + "`n" + '  "variants": {' + "`n" + '    ' +
-                ($variants -join (',' + "`n" + '    ')) + "`n" + '  }' + "`n" + '}'
-            [System.IO.File]::WriteAllText((Join-Path $states ($material + '_' + $kind + '_' + $size + '.json')), $text, $utf8)
+        $variants = @()
+        for ($mask = 0; $mask -le 63; $mask++) {
+            $variants += ('"' + $keys[$mask] + '":{"model":"cable_wire_' + $size + '_' +
+                $mask.ToString('00') + '","y":0}')
         }
+        $text = '{' + "`n" + '  ' + $properties + ',' + "`n" + '  "variants": {' + "`n" + '    ' +
+            ($variants -join (',' + "`n" + '    ')) + "`n" + '  }' + "`n" + '}'
+        [System.IO.File]::WriteAllText((Join-Path $states ($material + '_wire_' + $size + '.json')), $text, $utf8)
+
+        $variants = @()
+        for ($mask = 0; $mask -le 63; $mask++) {
+            $variants += ('"' + $keys[$mask] + '":{"model":"cable_insulation_' + $material + '_' + $size +
+                '_' + $canonical[$mask].ToString('00') + '","y":' + ($turns[$mask] * 90) + '}')
+        }
+        $text = '{' + "`n" + '  ' + $properties + ',' + "`n" + '  "variants": {' + "`n" + '    ' +
+            ($variants -join (',' + "`n" + '    ')) + "`n" + '  }' + "`n" + '}'
+        [System.IO.File]::WriteAllText((Join-Path $states ($material + '_cable_' + $size + '.json')), $text, $utf8)
     }
 }
 Write-Host ('Wrote the states of ' + $names.Count + ' materials, every width and both kinds')
 
 $lines = Get-Content $manifest
-foreach ($name in @('blocks/cable_wire/wire.png', 'blocks/cable_insulation/1x.png',
-        'blocks/cable_insulation/2x.png', 'blocks/cable_insulation/4x.png',
-        'blocks/cable_insulation/8x.png', 'blocks/cable_insulation/12x.png',
-        'blocks/cable_insulation/16x.png', 'blocks/cable_insulation/full.png',
-        'blocks/cable_insulation/1x_dark.png', 'blocks/cable_insulation/2x_dark.png',
-        'blocks/cable_insulation/4x_dark.png', 'blocks/cable_insulation/8x_dark.png',
-        'blocks/cable_insulation/12x_dark.png', 'blocks/cable_insulation/16x_dark.png',
-        'blocks/cable_insulation/full_dark.png')) {
-    if ($lines -notcontains $name) {
-        Add-Content -Path $manifest -Value $name
-        Write-Host ('Added ' + $name + ' to the manifest')
+foreach ($folder in @('cable_wire', 'cable_insulation')) {
+    foreach ($file in Get-ChildItem (Join-Path $root ('assets\blocks\' + $folder)) -Filter '*.png') {
+        $name = 'blocks/' + $folder + '/' + $file.Name
+        if ($lines -notcontains $name) {
+            Add-Content -Path $manifest -Value $name
+            $lines += $name
+        }
     }
 }
+Write-Host ('The manifest holds ' + (Get-Content $manifest | Measure-Object -Line).Lines + ' files')

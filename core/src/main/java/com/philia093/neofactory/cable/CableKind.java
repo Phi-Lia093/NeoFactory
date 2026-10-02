@@ -37,7 +37,7 @@ public enum CableKind {
      * brought in by {@code tools/import_cables.ps1}: a skin is no grey scale art of a metal, so it comes
      * with its own family and its own names, which are the names of the sizes of {@link CableSize}.
      */
-    CABLE("cable", "Cable", "cable_insulation", true);
+    CABLE("cable", "Cable", "cable_insulation", false);
 
     private final String fileName;
     private final String displayName;
