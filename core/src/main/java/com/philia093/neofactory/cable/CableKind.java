@@ -27,8 +27,8 @@ import com.philia093.neofactory.pipe.PipeTexture;
  */
 public enum CableKind {
 
-    /** The bare line: a metal tube with nothing around it. */
-    WIRE("wire", "Wire", PipeTexture.METAL.folder(), true),
+    /** The bare line: solid metal, drawn from the highlight the pack keeps for a wire. */
+    WIRE("wire", "Wire", "cable_wire", true),
 
     /**
      * The line with a skin around it: half the loss and the picture of the skin of the pack.
@@ -78,14 +78,15 @@ public enum CableKind {
     /**
      * Picture of the line of a width, the fallback a block names while its model is not drawn.
      * <p>
-     * A bare line is the end of the tube of its width in the metal family and a wrapped one is the skin of
-     * its width, so the two kinds of the same width of the same material are two different pictures.
+     * A bare line is drawn from the highlight of the metal the pack keeps for a wire and a wrapped one from
+     * the skin of its width, see {@code tools/gen_cable_models.ps1}: the two kinds of the same width of the
+     * same material are two different pictures.
      *
      * @param size width of the line
      * @return the name of the picture, relative to {@code blocks/}
      */
     public String picture(CableSize size) {
-        return this == WIRE ? PipeTexture.METAL.end(size.tube()) : folder + "/" + size.fileName();
+        return this == WIRE ? folder + "/wire" : folder + "/" + size.fileName();
     }
 
     /**

@@ -243,20 +243,20 @@ public final class Cables {
     /**
      * Name of the model a line of a kind, a width and a mask is drawn with.
      * <p>
-     * A bare line is the tube of its width in the metal family of the pipes and a wrapped one is the skin of
-     * its width, see {@link CableKind}: both name the canonical model of their mask and the quarter turn that
-     * shows it, exactly like a pipe does.
+     * The art of a cable is its own and not the tube of a pipe, see {@code tools/gen_cable_models.ps1}: a bare
+     * line is a solid tube of the highlight the pack keeps for a wire, a wrapped one is the skin of its width
+     * with the metal core showing in every mouth, and one model is written for each of the sixty four ways a
+     * cable may be joined. The state of a cable names the model of its own mask, so no turn is needed to show
+     * it.
      *
      * @param kind kind of the line
      * @param size width of the line
      * @param mask connections of the line
-     * @return the name of the model, such as {@code pipe_metal_tiny_00} or {@code cable_insulation_1x_00}
+     * @return the name of the model, such as {@code cable_wire_1x_00} or {@code cable_insulation_16x_3f}
      */
     public static String modelName(CableKind kind, CableSize size, int mask) {
-        String family = kind == CableKind.WIRE
-                ? PipeTexture.METAL.folder() + "_" + size.tube().fileName()
-                : kind.folder() + "_" + size.fileName();
-        return family + "_" + String.format(Locale.ROOT, "%02d", canonical(mask));
+        return kind.folder() + "_" + size.fileName() + "_"
+                + String.format(Locale.ROOT, "%02x", stateOf(mask));
     }
 
     /**

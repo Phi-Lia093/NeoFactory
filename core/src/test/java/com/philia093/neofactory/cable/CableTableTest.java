@@ -144,14 +144,14 @@ class CableTableTest {
                     "every turn of a cable is the same cable");
             canonicals.add(Cables.canonical(mask));
         }
-        assertEquals(24, canonicals.size(), "the number of models one cable needs");
-        assertEquals("pipe_metal_tiny_00", Cables.modelName(CableKind.WIRE, CableSize.SINGLE, 0),
-                "a bare line is the tube of its width");
-        assertEquals("pipe_metal_huge_63", Cables.modelName(CableKind.WIRE, CableSize.SIXTEEN,
-                Cables.ALL_MASK), "the widest bare line is the widest tube the pack holds");
+        assertEquals(24, canonicals.size(), "the number of ways a cable turns into another of its own masks");
+        assertEquals("cable_wire_1x_00", Cables.modelName(CableKind.WIRE, CableSize.SINGLE, 0),
+                "a bare line is drawn from the highlight of a wire");
+        assertEquals("cable_wire_16x_3f", Cables.modelName(CableKind.WIRE, CableSize.SIXTEEN,
+                Cables.ALL_MASK), "the widest bare line, joined on every side");
         assertEquals("cable_insulation_1x_00", Cables.modelName(CableKind.CABLE, CableSize.SINGLE, 0),
                 "a wrapped line wears the skin of its width");
-        assertEquals("cable_insulation_16x_63", Cables.modelName(CableKind.CABLE, CableSize.SIXTEEN,
+        assertEquals("cable_insulation_16x_3f", Cables.modelName(CableKind.CABLE, CableSize.SIXTEEN,
                 Cables.ALL_MASK), "the skin of the widest line");
     }
 }
