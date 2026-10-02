@@ -3,6 +3,10 @@ package com.philia093.neofactory.gui.creative;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.pipe.PipeMaterials;
+import com.philia093.neofactory.cable.CableKind;
+import com.philia093.neofactory.cable.CableMaterials;
+import com.philia093.neofactory.cable.CableSize;
+import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.pipe.PipeSize;
 import com.philia093.neofactory.pipe.Pipes;
 
@@ -34,7 +38,10 @@ public final class CreativeRegistry {
 
     private static final List<CreativeTab> TABS = List.of(
             CreativeTab.items("blocks", "Blocks", Items.STONE, CreativeRegistry::isBlock),
-            CreativeTab.items("machines", "Machines", Items.FURNACE, CreativeRegistry::isMachine),
+            CreativeTab.items("machines", "Machines", Items.FURNACE,
+                item -> CreativeRegistry.isMachine(item) && !CreativeRegistry.isCable(item)),
+        CreativeTab.items("wires", "Wires", Cables.of(CableMaterials.COPPER, CableSize.SINGLE,
+                CableKind.WIRE).item(), CreativeRegistry::isCable),
             CreativeTab.items("pipes", "Pipes", Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM).item(),
                     CreativeRegistry::isPipe),
             CreativeTab.items("fluids", "Fluids", Items.WATER_CELL, CreativeRegistry::isFluid),
@@ -76,6 +83,18 @@ public final class CreativeRegistry {
      */
     private static boolean isPipe(Item item) {
         return item.isBlockItem() && item.block() != null && Pipes.of(item.block()) != null;
+    }
+
+    /**
+     * {@code true} when an item places a cable of the line of the power.
+     * <p>
+     * A cable carries a block entity like a pipe does, so it would land in the tab of the machines by
+     * itself: the wires have a tab of their own instead, because a player who is building a line of them
+     * looks for all of them at once - every material, every width and both the bare line and the one with a
+     * skin - see {@link Cables} and {@code CableKind}.
+     */
+    private static boolean isCable(Item item) {
+        return item.isBlockItem() && item.block() != null && Cables.of(item.block()) != null;
     }
 
     /**

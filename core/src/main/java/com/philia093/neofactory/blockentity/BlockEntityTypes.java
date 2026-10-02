@@ -94,6 +94,10 @@ public final class BlockEntityTypes {
     public static final BlockEntityType PIPE = new BlockEntityType("pipe",
             type -> new PipeBlockEntity(type));
 
+    /** A cable, whose state is the mask of the sides it joins, see {@code Cables}. */
+    public static final BlockEntityType CABLE = new BlockEntityType("cable",
+            type -> new CableBlockEntity(type));
+
     /**
      * A chest, the first block that keeps what a player puts in it.
      * <p>
@@ -124,6 +128,7 @@ public final class BlockEntityTypes {
             return;
         }
         BlockEntityRegistry.register(FURNACE);
+        BlockEntityRegistry.register(CABLE);
         BlockEntityRegistry.register(BRONZE_BOILER);
         BlockEntityRegistry.register(STEAM_FURNACE);
         BlockEntityRegistry.register(ALLOY_FURNACE);

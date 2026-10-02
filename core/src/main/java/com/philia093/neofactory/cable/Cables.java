@@ -389,6 +389,9 @@ public final class Cables {
                             // A cable is taken apart with the wrench, the tool the line of the industry is
                             // built with.
                             .toolType(ToolType.WRENCH)
+                            // A cable carries a block entity, the way a pipe does: it is what answers the
+                            // grid of faces a player with a wrench sees, see CableBlockEntity.
+                            .blockEntity("cable")
                             .tint(material.color());
                     Block block = builder.build();
                     BlockRegistry.register(block);
