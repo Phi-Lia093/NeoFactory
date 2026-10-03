@@ -183,8 +183,8 @@ stored on disk so that a session can be continued later.
   materials: wood, clay, copper, bronze, wrought iron, lead, steel, polyethylene, stainless steel, titanium,
   polytetrafluoroethylene, tungsten steel, polybenzimidazole, niobium titanium, tungsten, the two tantalum
   tungsten alloys, europium, depleted uranium, maraging steel of both grades, Inconel of both grades,
-  Hastelloy X and Incoloy 903. Their blocks take the block ids 29 to 173 and their items the ids 100 to
-  244: `DATA_VERSION` is 12 and a world of version 11 is refused. In the creative inventory the pipes have a
+  Hastelloy X and Incoloy 903. Their blocks take the block ids 29 to 173 and their items the ids 100 to 244,
+  the window the items of the industry were given, see `SaveFormat`. In the creative inventory the pipes have a
   tab of their own. A pipe decides one thing
   and nothing else: **which of its six sides it joins.** Those six sides are the six properties of its
   block and the number of its state is the mask of the connections, so the game knows every way a pipe can
@@ -253,6 +253,45 @@ stored on disk so that a session can be continued later.
   a junction, because it names no rate of its own - a boiler empties its kettle at the rate of the widest line
   that stands at it.
 
+- **The cables of the power** - the other half of the industry: a line of cables carries the energy a machine
+  makes to the machines that work on it. A cable is a **material** and a **width** in one of **two
+  wrappings**: the bare wire a workshop starts with and the insulated cable that wears a skin over it, which
+  loses **half** of what the bare one loses, rounded down - a copper line of four units a block loses two
+  once it is wrapped, and a line of one unit loses nothing at all - and is drawn from art of its own. The game
+  knows forty five materials, from the red alloy of the first line to the superconductor of the last age, in
+  the six widths of one, two, four, eight, twelve and sixteen amperes: five hundred and forty cables that take
+  the block ids 188 to 727 and the item ids 304 to 843, which is why `DATA_VERSION` is 15 and a world of an
+  older version is refused. The widths of the industry are the widths of the pipes, so a line of it is read
+  the same way whatever runs through it.
+  **A cable joins the sides its state says it joins**, exactly like a pipe: a cable that is placed joins
+  nothing at all - it stands as a stub in its cell until a player opens a side of it with the wrench on the
+  grid of its faces - and nothing heals itself, so a line a player built is the line they get. Two cables that
+  touch without a joined side are two lines, and a machine the line is run past takes nothing from it by
+  accident.
+  **What a line carries is the worst of its cables**: a line of two materials is a line of the worse one and a
+  line of two widths a line of the narrower one, so a copper cable between two superconductors carries no more
+  than copper. One tick of a line is its voltage times its current - a single copper cable is a hundred and
+  twenty eight units a tick and the sixteen fold bundle four times that - and a line is not slower when it is
+  long, it simply costs more: every block of the run takes its loss away from what travels through it, and the
+  machine that hands the energy over pays what the machine at the far end receives **plus** that loss.
+  **A line that is too strong destroys what stands at it**: a machine that was built for a tier below the tier
+  of the line is not fed at all - the machine and every cable of that line go, which is what a player finds
+  when a line of a later age is run into a workshop of an earlier one, see `EnergyNet` and `EnergyAcceptor`.
+  **A machine of the power network holds a buffer of a tier.** It is filled with **one ampere of that tier a
+  tick** and no more however wide the line at it is, and it stores a few ticks of work, see
+  `MachineEnergyStorage`. The two plugs of it - the side a line arrives on and the side a machine hands its
+  power over on - are sides like every other part of a machine, set with the wrench or with the wheel of the
+  panel, and a line hangs on those two sides and on no other: a cable that stands at the front of a machine or
+  at the side of its tank carries nothing of it. A machine that holds no buffer has no plug at all, which is
+  why the boiler and the machines of the age of steam stand along the cables of a workshop and do nothing with
+  them.
+  **A machine that makes power is the pump of the line.** A cable carries nothing of its own, so the machine
+  that makes the energy is the one that moves it: every tick it walks the line that stands at its plug and
+  hands that line one tick of it, and the line shares what it was handed out over the machines at its ends - a
+  machine whose buffer is full takes nothing and the remainder stays where it was, so nothing is ever taken
+  out of a machine to be lost on the way, see `EnergyGrid` and `MachineBlockEntity#updateEnergy`. Every
+  machine that will make power later needs no second mechanism: it hands what it made to the line at its plug
+  like the first one.
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
 - **Faces and tools** - a block is worked on from the face it is looked at, and the faces a player
@@ -399,9 +438,11 @@ stored on disk so that a session can be continued later.
 | --- | --- |
 | `fluid` | what a fluid is: the kinds, the temperature it carries, the colour a tank and a cell paint it in, the containers that carry it and the tank a machine offers a pipe on a side (`FluidNode`) |
 | `pipe` | the pipes of the industry: the materials and the sizes each of them comes in, what one of them moves a second and how hot a fluid may be in it, the mask of the sides it joins, the valve of every side and the arithmetic that divides a junction between pipes - a side is turned with the wrench of the game, see `blockentity` and `world.interaction` |
+| `cable` | the line of the power: the materials and the six widths each of them comes in, the two wrappings of a line and the loss the skin takes away, the mask of the sides a cable joins (turned with the wrench, see `blockentity`) and the tables of the blocks and items of a cable |
+| `energy` | the power of the game: one line of cables and what it carries and loses a tick (`EnergyNet`), the net of a world with the machines that hang on the sides their plugs lie on (`EnergyGrid`) and the buffer of a tier a line is measured against (`EnergyAcceptor`) |
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry, the machine behind a block and the container that keeps items |
-| `machine` | what a machine is built from: slots and tanks with a role, energy, the recipes it runs and the side of the block each of those is reached through (`FaceConfig`, `MachineSides`, `FaceClick`) |
+| `machine` | what a machine is built from: slots and tanks with a role, energy (the buffer of a tier, `MachineEnergyStorage`), the recipes it runs and the side of the block each of those is reached through (`FaceConfig`, `MachineSides`, `FaceClick`) |
 | `recipe` | the files behind `assets/recipes`: what a recipe is, the grid it is offered, the loader that reads a file, and the work field of nine cells a table of the workshop holds |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |

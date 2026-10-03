@@ -10,6 +10,7 @@ import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
+import com.philia093.neofactory.energy.EnergyGrid;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.FaceConfig;
@@ -135,7 +136,44 @@ public class MachineBlockEntity extends BlockEntity
         }
         updateExhaust(world);
         pourIntoPipes(world);
+        updateEnergy(world);
         updateLitState(world, delta);
+    }
+
+    /**
+     * Feeds the line of cables this machine hands its power over to.
+     * <p>
+     * <b>A machine that makes power is the pump of the line the way a machine is the pump of a fluid.</b> A
+     * cable is no source and carries nothing of its own, so the machine that makes the energy is the one that
+     * moves it: every tick it looks at the side a player gave to the plug it gives power out of, walks the
+     * line of cables that stands there and hands that line what one tick of it is worth, see
+     * {@link EnergyGrid.Line#push}. The line shares what it was given out over the machines at its ends - a
+     * machine whose buffer is full takes nothing and the rest stays where it was - and a machine at the end of
+     * a line that is too strong for it is destroyed together with every cable of that line instead, see
+     * {@code EnergyAcceptor}.
+     * <p>
+     * <b>A cable that is not joined towards the machine is not the line of that machine.</b> The walk of a
+     * line only follows the sides a cable joins, so a cable that stands at the plug of a machine without
+     * reaching it leaves the machine out of the ends of that line - and nothing is handed over to a line that
+     * does not reach this machine, which is what a player who cut the join with the wrench asked for, see
+     * {@link EnergyGrid#line}.
+     * <p>
+     * A machine that gives no power has no plug at all: a machine of the age of steam, a furnace that burns
+     * coal and every machine that only takes power in stand along the same line and give nothing.
+     *
+     * @param world world this machine lies in
+     */
+    private void updateEnergy(World world) {
+        BlockFace plug = machine.faces().energyOut();
+        if (plug == null) {
+            return;
+        }
+        EnergyGrid.Cells cells = EnergyGrid.of(world);
+        EnergyGrid.Line line = EnergyGrid.line(cells, x() + plug.x(), y() + plug.y(), z() + plug.z());
+        if (line == null || !line.reaches(machine.energy())) {
+            return;
+        }
+        line.push(cells, machine.energy(), line.net().capacity());
     }
 
     /**

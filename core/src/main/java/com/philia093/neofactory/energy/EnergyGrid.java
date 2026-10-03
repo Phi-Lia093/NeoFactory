@@ -6,6 +6,7 @@ import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.machine.EnergyStorage;
+import com.philia093.neofactory.machine.FaceConfig;
 import com.philia093.neofactory.world.World;
 
 import java.util.ArrayList;
@@ -23,10 +24,12 @@ import java.util.Set;
  * that cross without a join, stay apart - a line is a thing a player builds and not something the game
  * guesses at.
  * <p>
- * <b>What hangs on a line are the machines next to its cables.</b> A machine of the game carries a buffer of
- * energy, see {@link EnergyStorage} and {@code MachineBlockEntity}, and a machine whose buffer takes energy
- * in is a machine the line may feed. The ends are collected while the line is walked, so the net of a line
- * and the machines it reaches are one question and not two.
+ * <b>What hangs on a line are the machines next to its cables, through the side each of them was given for
+ * the power.</b> A machine of the game carries a buffer of energy and two plugs - the one a line feeds it
+ * through and the one it feeds a line through, see {@link EnergyStorage} and {@code FaceConfig} - and the walk
+ * counts a machine as an end of the line only while the cable that reaches it stands at one of those two
+ * sides. The ends are collected while the line is walked, so the net of a line and the machines it reaches are
+ * one question and not two.
  * <p>
  * <b>Nothing here knows the world directly.</b> Every cell is asked through {@link Cells}, which a world
  * answers through {@link #of(World)} and which a test answers with a map, see {@code EnergyGridTest}: the
@@ -46,11 +49,21 @@ public final class EnergyGrid {
         int state(int x, int y, int z);
 
         /**
-         * Buffer of energy of the machine in a cell.
+         * Buffer of energy of the machine in a cell, reached from one side of it.
+         * <p>
+         * <b>A line hangs on the side a machine was given for the power.</b> The energy of a machine is
+         * reached through one side of its block and through no other - the plug a player set with the wrench,
+         * see {@code FaceConfig} - so a cable that stands at a side the machine carries no plug on is a cable
+         * the machine has nothing to do with. The side is handed in as the side of the machine, which is the
+         * opposite of the side of the cable that reaches it.
          *
-         * @return the storage, or {@code null} when no machine with a buffer stands there
+         * @param x x of the cell
+         * @param y y of the cell
+         * @param z z of the cell
+         * @param from side of that cell the line reaches it through
+         * @return the storage, or {@code null} when no machine with a plug on that side stands there
          */
-        EnergyStorage buffer(int x, int y, int z);
+        EnergyStorage buffer(int x, int y, int z, BlockFace from);
 
         /**
          * Empties a cell, which is what an over-voltage leaves behind.
@@ -86,11 +99,17 @@ public final class EnergyGrid {
         }
 
         @Override
-        public EnergyStorage buffer(int x, int y, int z) {
-            if (!(world.blockEntity(x, y, z) instanceof MachineBlockEntity)) {
+        public EnergyStorage buffer(int x, int y, int z, BlockFace from) {
+            if (!(world.blockEntity(x, y, z) instanceof MachineBlockEntity machine)) {
                 return null;
             }
-            return ((MachineBlockEntity) world.blockEntity(x, y, z)).machine().energy();
+            FaceConfig faces = machine.machine().faces();
+            if (faces.energyIn() != from && faces.energyOut() != from) {
+                // The machine carries no plug on that side, so the line does not hang on it: a side may carry
+                // one job at a time and the front carries none at all, see FaceConfig.
+                return null;
+            }
+            return machine.machine().energy();
         }
 
         @Override
@@ -310,7 +329,7 @@ public final class EnergyGrid {
                     }
                     continue;
                 }
-                EnergyStorage buffer = cells.buffer(nx, ny, nz);
+                EnergyStorage buffer = cells.buffer(nx, ny, nz, face.opposite());
                 if (buffer != null && seenEnds.add(key(nx, ny, nz))) {
                     ends.add(buffer);
                     positions.add(new int[] {nx, ny, nz});

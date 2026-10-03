@@ -6,8 +6,13 @@ package com.philia093.neofactory.machine;
  * The class is the simple case a machine starts with: a buffer with a capacity and two
  * limits that say how fast it may be filled and emptied. It is also what a test uses to
  * check a machine without a power network, see {@code SmeltingMachineTest}.
+ * <p>
+ * <b>A machine of the power network is built with one of these and a tier</b>, because a line of cables that
+ * carries more than a machine was made for destroys it: such a buffer is the very same buffer with the tier
+ * written next to it, see {@link MachineEnergyStorage}. The subclass is the only reason this class is not
+ * final, and a test that needs neither a tier nor a line keeps to it.
  */
-public final class SimpleEnergyStorage implements EnergyStorage {
+public class SimpleEnergyStorage implements EnergyStorage {
 
     private final int capacity;
     private final int maxReceive;

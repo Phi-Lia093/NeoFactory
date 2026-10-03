@@ -86,12 +86,13 @@ class EnergyGridTest {
         }
     }
 
-    /** The cells of the test: a map of blocks, of masks and of machines. */
+    /** The cells of the test: a map of blocks, of masks and of the machines that hang on them. */
     private static final class Cells implements EnergyGrid.Cells {
 
         private final Map<String, Block> blocks = new HashMap<>();
         private final Map<String, Integer> states = new HashMap<>();
         private final Map<String, EnergyStorage> buffers = new HashMap<>();
+        private final Map<String, List<BlockFace>> plugs = new HashMap<>();
         private final List<String> removed = new ArrayList<>();
 
         private void cable(int x, int y, int z, int mask) {
@@ -100,9 +101,20 @@ class EnergyGridTest {
             states.put(at(x, y, z), mask);
         }
 
-        private void machine(int x, int y, int z, EnergyStorage storage) {
+        /**
+         * Puts a machine of the test in a cell.
+         *
+         * @param x x of the cell
+         * @param y y of the cell
+         * @param z z of the cell
+         * @param storage buffer of the machine
+         * @param plugSides sides of the machine its power is reached through, none for a machine that carries
+         *        no plug at all
+         */
+        private void machine(int x, int y, int z, EnergyStorage storage, BlockFace... plugSides) {
             blocks.put(at(x, y, z), Blocks.STONE);
             buffers.put(at(x, y, z), storage);
+            plugs.put(at(x, y, z), List.of(plugSides));
         }
 
         @Override
@@ -116,7 +128,10 @@ class EnergyGridTest {
         }
 
         @Override
-        public EnergyStorage buffer(int x, int y, int z) {
+        public EnergyStorage buffer(int x, int y, int z, BlockFace from) {
+            if (!plugs.getOrDefault(at(x, y, z), List.of()).contains(from)) {
+                return null;
+            }
             return buffers.get(at(x, y, z));
         }
 
@@ -125,6 +140,7 @@ class EnergyGridTest {
             removed.add(at(x, y, z));
             blocks.remove(at(x, y, z));
             buffers.remove(at(x, y, z));
+            plugs.remove(at(x, y, z));
         }
 
         private static String at(int x, int y, int z) {
@@ -158,7 +174,7 @@ class EnergyGridTest {
         cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
         cells.cable(1, 64, 0, Cables.mask(BlockFace.WEST, BlockFace.SOUTH, BlockFace.EAST));
         cells.cable(1, 64, 1, Cables.mask(BlockFace.NORTH));
-        cells.machine(2, 64, 0, machine);
+        cells.machine(2, 64, 0, machine, BlockFace.WEST);
 
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
         assertEquals(3, line.length(), "the walk turned the corner");
@@ -171,13 +187,32 @@ class EnergyGridTest {
     }
 
     @Test
+    void aMachineWhosePlugFacesAwayIsNoEndOfTheLine() {
+        Cells cells = new Cells();
+        Machine machine = new Machine(Voltage.HIGH, 1000);
+        machine.fill(1000);
+        cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
+        // The cable reaches the machine from the west, but the power of the machine is reached through its
+        // north side: a line hangs on the side a player set and not on every side a cable meets.
+        cells.machine(1, 64, 0, machine, BlockFace.NORTH);
+
+        EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
+
+        assertTrue(line.ends().isEmpty(), "the machine is no end of that line");
+        assertFalse(line.reaches(machine));
+        assertEquals(0, line.push(cells, machine, 100), "so nothing is handed over");
+        assertTrue(cells.removed.isEmpty(), "and nothing burns");
+        assertEquals(1000, machine.amount(), "the buffer of the machine is untouched");
+    }
+
+    @Test
     void aLineTooStrongForAMachineBurnsTheLineAndTheMachine() {
         Cells cells = new Cells();
         Machine small = new Machine(Voltage.LOW, 100);
         Machine big = new Machine(Voltage.HIGH, 100);
         cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
-        cells.machine(1, 64, 0, small);
-        cells.machine(-1, 64, 0, big);
+        cells.machine(1, 64, 0, small, BlockFace.WEST);
+        cells.machine(-1, 64, 0, big, BlockFace.EAST);
 
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
         assertTrue(line.overvolts(small), "a line of the middle voltage is too much for a machine of low");
@@ -195,8 +230,8 @@ class EnergyGridTest {
         Machine sink = new Machine(Voltage.HIGH, 100);
         source.fill(1000);
         cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
-        cells.machine(1, 64, 0, sink);
-        cells.machine(-1, 64, 0, source);
+        cells.machine(1, 64, 0, sink, BlockFace.WEST);
+        cells.machine(-1, 64, 0, source, BlockFace.EAST);
 
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
         assertEquals(100, line.push(cells, source, 100), "what fits arrives");
