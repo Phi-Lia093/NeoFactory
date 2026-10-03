@@ -15,6 +15,7 @@ import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Aabb;
 import com.philia093.neofactory.util.nbt.NbtCompound;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import com.philia093.neofactory.world.interaction.FaceOperable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -166,7 +167,7 @@ class FaceGridShapeTest {
 
         @Override
         public boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-                Player player, ItemStack held, boolean modifier) {
+                Player player, ItemStack held, FaceClick click) {
             return true;
         }
 

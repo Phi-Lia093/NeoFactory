@@ -47,6 +47,9 @@ public abstract class Machine {
     private final MachineTank[] tanks;
     private final List<RecipeType> recipeTypes;
 
+    /** What a player made of the sides of this machine: the side each of its parts is reached through. */
+    private final FaceConfig faces;
+
     /** Input side, built once because a machine never changes its slots. */
     private final MachineInputs inputs;
 
@@ -72,6 +75,7 @@ public abstract class Machine {
         this.energy = Objects.requireNonNull(energy, "energy");
         this.recipeTypes = List.copyOf(recipeTypes == null ? List.of() : recipeTypes);
         this.tanks = tanks == null ? new MachineTank[0] : tanks.clone();
+        this.faces = new FaceConfig(rolesOfTanks(), energy);
 
         this.inputs = new MachineInputs(inventory.gridOf(MachineInventory.Role.INPUT),
                 storages(MachineTank.Role.INPUT));
@@ -111,6 +115,46 @@ public abstract class Machine {
     /** Storage this machine takes its energy from. */
     public EnergyStorage energy() {
         return energy;
+    }
+
+    /**
+     * What a player made of the sides of this machine.
+     * <p>
+     * Every part of a machine - its tanks, the plugs of the power and the vent of its steam - is reached
+     * through one side of its block, and the side of each of them is set by a player with the wrench or with
+     * the wheel of its screen. The rules of it all live in {@link FaceConfig}: a side carries one job, and
+     * the front of the machine carries none.
+     *
+     * @return the sides of this machine
+     */
+    public FaceConfig faces() {
+        return faces;
+    }
+
+    /**
+     * Picture of the casing a side of this machine that carries a job is drawn with.
+     * <p>
+     * A side a player gave a job to shows the casing of the machine and the overlay of the job over it -
+     * the stub of a pipe, the plug of the power - instead of the picture its model carries there, see
+     * {@code FaceAppearance}. A machine of the age of steam is built of bronze and says so here, while a
+     * machine of a tier of the line of the power names its own casing.
+     *
+     * @return the name of a picture relative to {@code blocks/}
+     */
+    public String casing() {
+        return CASING;
+    }
+
+    /** Casing of a machine of the age of steam, which is what a machine that says nothing is built of. */
+    public static final String CASING = "bronze_casing/bronze_casing_side";
+
+    /** Role of every tank of this machine, in the order the tanks are held. */
+    private MachineTank.Role[] rolesOfTanks() {
+        MachineTank.Role[] roles = new MachineTank.Role[tanks.length];
+        for (int index = 0; index < tanks.length; index++) {
+            roles[index] = tanks[index].role();
+        }
+        return roles;
     }
 
     /** Amount of tanks of this machine. */
@@ -239,6 +283,7 @@ public abstract class Machine {
             storedTanks.add(entry);
         }
         data.put(storedTanks);
+        faces.save(data);
         NbtCompound state = new NbtCompound(SaveTags.MACHINE_STATE);
         saveState(state);
         data.put(state);
@@ -269,6 +314,7 @@ public abstract class Machine {
                 }
             }
         }
+        faces.load(data);
         NbtCompound state = data.getCompound(SaveTags.MACHINE_STATE);
         loadState(state == null ? new NbtCompound(SaveTags.MACHINE_STATE) : state);
     }

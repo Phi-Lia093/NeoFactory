@@ -11,6 +11,7 @@ import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -78,14 +79,14 @@ class PipeConnectionTest {
      * @return {@code true} when the pipe turned that side
      */
     private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face,
-            boolean modifier) {
+            FaceClick click) {
         return pipe.operateFace(world, pipe.x(), pipe.y(), pipe.z(), face, FaceTool.WRENCH, null,
-                ItemStack.of(Items.WRENCH, 1), modifier);
+                ItemStack.of(Items.WRENCH, 1), click);
     }
 
     /** Turns one side of a pipe with the wrench and no modifier key, the way a plain click does. */
     private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face) {
-        return turn(world, pipe, face, false);
+        return turn(world, pipe, face, FaceClick.RIGHT);
     }
 
     /** Lets the world tick for a while, which is what must not change any mask of any pipe. */
@@ -230,7 +231,7 @@ class PipeConnectionTest {
         for (FaceTool tool : List.of(FaceTool.CROWBAR, FaceTool.WIRE_CUTTER, FaceTool.SCREWDRIVER,
                 FaceTool.EMPTY_HAND)) {
             assertFalse(pipe.operateFace(world, 0, Y, 0, BlockFace.EAST, tool, null, ItemStack.EMPTY,
-                    false), tool + " turned a side of a pipe");
+                    FaceClick.RIGHT), tool + " turned a side of a pipe");
         }
         assertEquals(0, maskOf(world, 0, Y, 0), "only the wrench turns a pipe");
     }

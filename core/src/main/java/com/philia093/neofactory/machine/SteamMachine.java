@@ -101,6 +101,9 @@ public abstract class SteamMachine extends RecipeMachine {
                 new MachineTank(tank, MachineTank.Role.INPUT));
         this.steam = tank;
         this.pressure = Objects.requireNonNull(pressure, "pressure");
+        // A machine of the age of steam blows its spent steam out of a side of its block, which is a side a
+        // player sets with the wrench, see FaceConfig and MachineBlockEntity#operateFace.
+        faces().withExhaust();
     }
 
     /** Pressure this machine works at, see {@link MachinePressure}. */

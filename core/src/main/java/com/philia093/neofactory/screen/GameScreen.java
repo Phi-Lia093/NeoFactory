@@ -73,6 +73,7 @@ import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.BlockPlacer;
 import com.philia093.neofactory.world.interaction.BlockTarget;
 import com.philia093.neofactory.world.interaction.BlockTargeting;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import com.philia093.neofactory.world.interaction.FaceGrid;
 import com.philia093.neofactory.world.interaction.FaceMark;
 import com.philia093.neofactory.world.interaction.FaceOperable;
@@ -421,11 +422,20 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
                     player.inventory().setSelectedSlot(slot);
                     return true;
                 }
+                if (faceTool == FaceTool.WRENCH && InputHandler.isShiftHeld()
+                        && world.isFaceGridOpen() && faceCell != NO_FACE_CELL) {
+                    // The wrench with the modifier key gives a side of a machine a job of taking something
+                    // in: the steam of a steam machine blows out of that side and the power of a machine
+                    // comes in through it, see FaceClick. Without the key the left button takes the block
+                    // apart, which the mining path of #updateInteraction does.
+                    workOnFace(true);
+                    return true;
+                }
                 if (world.isFaceGridOpen() && faceCell != NO_FACE_CELL && faceTool != FaceTool.WRENCH) {
                     // The left button works on an open grid for every tool but the wrench: the wrench is the
                     // tool of the workshop, and a player who holds it takes a block apart with the left
                     // button and turns a face with the right one, see #updateInteraction and #buildBlock.
-                    workOnFace();
+                    workOnFace(true);
                     return true;
                 }
             }
@@ -1415,7 +1425,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // button is what turns a face, see #workOnFace. Releasing the button stops the work, so nothing is
         // repeated by holding it.
         boolean workingOnAGrid = world.isFaceGridOpen() && faceCell != NO_FACE_CELL
-                && faceTool != FaceTool.WRENCH;
+                && (faceTool != FaceTool.WRENCH || InputHandler.isShiftHeld());
         boolean broken = mining.update(delta, world, target, player.inventory().heldStack(),
                 !workingOnAGrid && inputHandler.isBreakingDown());
         if (broken) {
@@ -1469,9 +1479,10 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
      * reaches, which is the face the player looks at for the middle cell and another one for every cell
      * beside it, see {@link FaceGrid#faceOf(BlockFace, BlockFace, int)}.
      *
+     * @param left {@code true} when the left button was pressed, {@code false} for the right one
      * @return {@code true} when the grid was open, so the click was spent on it
      */
-    private boolean workOnFace() {
+    private boolean workOnFace(boolean left) {
         if (!world.isFaceGridOpen() || target == null || target.face() == null
                 || faceCell == NO_FACE_CELL) {
             return false;
@@ -1481,13 +1492,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             return false;
         }
         BlockFace face = FaceGrid.faceOf(target.face(), viewerFacing(), faceCell);
-        boolean modifier = InputHandler.isShiftHeld();
+        FaceClick click = FaceClick.of(left, InputHandler.isShiftHeld());
         boolean done = operable.operateFace(world, target.x(), target.y(), target.z(), face, faceTool,
-                player, player.inventory().heldStack(), modifier);
+                player, player.inventory().heldStack(), click);
         LOGGER.info("The grid of faces of ({}, {}, {}) reached the {} face with the {}, {}{}",
                 target.x(), target.y(), target.z(), face, faceTool,
                 done ? "and it worked" : "which did nothing",
-                modifier ? ", the modifier key held" : "");
+                click.modifier() ? ", the modifier key held" : "");
         return true;
     }
 
@@ -1528,7 +1539,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         if (target == null) {
             return false;
         }
-        if (workOnFace()) {
+        if (workOnFace(false)) {
             return true;
         }
         if (!InputHandler.isShiftHeld() && openContainer()) {

@@ -176,8 +176,13 @@ public final class SaveTags {
     /** Name of the side a machine was turned to, see {@code MachineBlockEntity#facing()}. */
     public static final String MACHINE_FACING = "Facing";
 
-    /** Name of the side a steam machine blows its steam out of, see {@code MachineBlockEntity}. */
-    public static final String MACHINE_EXHAUST = "Exhaust";
+    /**
+     * Name of the group holding which side each part of a machine is reached through.
+     * <p>
+     * One entry per part of the machine - the two plugs, the vent and every tank - written by
+     * {@code FaceConfig}, see that class.
+     */
+    public static final String MACHINE_FACES = "Faces";
 
     /** Seconds a whole piece of fuel burns. */
     public static final String BURN_TOTAL = "BurnTotal";

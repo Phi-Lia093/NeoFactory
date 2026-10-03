@@ -18,6 +18,7 @@ import com.philia093.neofactory.pipe.Pipes.Pipe;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.FaceMark;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import com.philia093.neofactory.world.interaction.FaceOperable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -338,11 +339,11 @@ public class PipeBlockEntity extends BlockEntity implements FaceOperable {
      */
     @Override
     public boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-            Player player, ItemStack held, boolean modifier) {
-        if (tool != FaceTool.WRENCH || Pipes.of(world.peekBlock(x, y, z)) == null) {
+            Player player, ItemStack held, FaceClick click) {
+        if (tool != FaceTool.WRENCH || !click.isRight() || Pipes.of(world.peekBlock(x, y, z)) == null) {
             return false;
         }
-        if (modifier) {
+        if (click.modifier()) {
             PipeFlow valve = cycleFlow(face);
             LOGGER.info("The pipe at ({}, {}, {}) lets fluid through its {} side {}", x, y, z, face,
                     valve);

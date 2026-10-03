@@ -6,6 +6,7 @@ import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import com.philia093.neofactory.world.interaction.FaceOperable;
 
 /**
@@ -58,7 +59,12 @@ public class CableBlockEntity extends BlockEntity implements FaceOperable {
      */
     @Override
     public boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-            Player player, ItemStack held, boolean modifier) {
+            Player player, ItemStack held, FaceClick click) {
+        if (tool != FaceTool.WRENCH || !click.isRight()) {
+            // A line is turned with the right button: the left one takes a block apart, and the jobs of the
+            // sides belong to the machines at the ends of the line, see FaceClick.
+            return false;
+        }
         int state = world.getState(x, y, z);
         int turned = Cables.toggled(state, face);
         if (turned == state) {

@@ -12,13 +12,20 @@ import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.machine.Machine;
+import com.philia093.neofactory.machine.FaceConfig;
+import com.philia093.neofactory.machine.MachineSides;
 import com.philia093.neofactory.machine.MachineTank;
 import com.philia093.neofactory.machine.SteamMachine;
 import com.philia093.neofactory.pipe.PipeTransport;
 import com.philia093.neofactory.pipe.Pipes;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceAppearance;
+import com.philia093.neofactory.world.interaction.FaceClick;
+import com.philia093.neofactory.world.interaction.FaceMark;
 import com.philia093.neofactory.world.interaction.FaceOperable;
+import com.philia093.neofactory.world.interaction.FacePicture;
+import com.philia093.neofactory.world.interaction.FaceRole;
 import com.philia093.neofactory.world.save.SaveTags;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,20 +47,28 @@ import java.util.Objects;
  * A machine that needs to look at its neighbours overrides {@code update} in a subclass
  * and keeps the world it was given.
  */
-public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOperable {
+public class MachineBlockEntity extends BlockEntity
+        implements FluidNode, FaceOperable, FaceAppearance {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
     /**
      * Direction a machine looks in before anybody turns it.
      * <p>
-     * The mouth is the face fluid runs <i>into</i> the machine through - the art of a machine shows it as
-     * the opening of its front - and every other side of a machine that makes a fluid is a hatch that gives
-     * what the machine made, see {@link FluidNode}. A player turns both the machine and the face its steam
-     * blows out of with the wrench: the right button sets the direction, the right button with the modifier
-     * key sets the exhaust, see {@link #operateFace}.
+     * The front is the side the art of a machine shows and the one side of it that carries nothing: no pipe,
+     * no cable and no belt is ever built against it, see {@link FaceConfig}. A machine is turned with the
+     * wrench and keeps to the four sides of the horizon while it is, see {@link #operateFace}.
      */
     public static final BlockFace MOUTH = BlockFace.NORTH;
+
+    /**
+     * Property a block of a machine uses to say which way its front looks.
+     * <p>
+     * A machine is turned while the game runs, so the side it looks in has to reach the mesh of its chunk:
+     * the state of the cell is what the mesher reads, so the entity writes the side into it the moment the
+     * wrench turns the machine, see {@link #updateFacingState(World)}.
+     */
+    public static final String FACING = "facing";
 
     /**
      * Property a block of a machine uses to say that the machine works.
@@ -80,8 +95,14 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
     /** Side the machine looks in, turned by the wrench and stored with the machine. */
     private BlockFace facing = MOUTH;
 
-    /** Side the steam of a steam machine blows out of, set with the wrench and the modifier key. */
-    private BlockFace exhaustFace = MOUTH.opposite();
+    /**
+     * {@code true} once the side this machine looks in was read from the block and written back.
+     * <p>
+     * A block is placed turned towards the player who built it, which is a turn of the state of the cell and
+     * no turn of the machine, so the first tick of a machine takes that side over and writes it back with
+     * the jobs of the sides in mind, see {@link #settleFacing(World)}.
+     */
+    private boolean facingSettled;
 
     /**
      * Creates the block entity of a machine.
@@ -101,6 +122,9 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
 
     @Override
     protected void update(World world, float delta) {
+        if (!facingSettled) {
+            settleFacing(world);
+        }
         machine.tick(delta);
         if (machine.isExploded()) {
             ruin(world);
@@ -129,7 +153,12 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
         if (!steam.takesAnExhaustCheck() && !steam.isWaitingForExhaust()) {
             return;
         }
-        BlockFace face = exhaustFace;
+        BlockFace face = machine.faces().exhaust();
+        if (face == null) {
+            // A machine that is no machine of steam has no vent at all, which is the shape its sides were
+            // built with, see FaceConfig.
+            return;
+        }
         // A cell of a chunk that is not loaded reports air, so a machine at the edge of the built world is
         // never blocked by terrain nobody has raised yet.
         boolean blocked = world.peekBlock(x() + face.x(), y() + face.y(), z() + face.z()).isSolid();
@@ -148,8 +177,9 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
     /**
      * {@code true}: every machine shows the grid of faces.
      * <p>
-     * A player who holds the wrench at a machine sets the side it looks in and the side its steam blows out
-     * of, see {@link #operateFace}.
+     * A player who holds the wrench at a machine turns it, gives one of its sides a job, or takes the whole
+     * machine apart with the left button. Which of those a click means is read from the button and from the
+     * modifier key, see {@link FaceClick} and {@link #operateFace}.
      */
     @Override
     public boolean showsFaceGrid(World world, int x, int y, int z) {
@@ -157,12 +187,21 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
     }
 
     /**
-     * Turns the machine, or sets where its steam blows out.
+     * Does what a click with the wrench on one side of a machine asks for.
      * <p>
-     * <b>The right button turns the machine</b>: the side a player clicked is the side the machine looks in
-     * from then on, which is the side its mouth - the tank fluid runs into - is reached through. <b>The right
-     * button with the modifier key sets the exhaust</b>: the steam of a recipe leaves through that face, and
-     * a solid block standing there is reported when a craft ends, see {@code SteamMachine}.
+     * <b>The right button turns the machine</b>: the side a player clicked is the side it looks in from then
+     * on, and the side it turns onto gives up whatever job it had - a machine that is turned onto the side a
+     * pipe was built against leaves the pipe behind with a mouth that reaches nothing, see
+     * {@link FaceConfig#turned(BlockFace)}.
+     * <p>
+     * <b>The modifier key gives a side a job.</b> With the left button the side becomes the one that takes
+     * something in - the vent a machine of steam blows out of, the plug the power of a machine comes in
+     * through - and with the right button the one that gives something out, the plug a generator feeds the
+     * line of the cables through. A side that already carries that very job loses it, so the same click
+     * takes a job away again, and a side the machine has no use for is refused, see {@link FaceConfig}.
+     * <p>
+     * <b>The left button without the modifier key takes the machine apart</b> and never reaches here: it is
+     * the click the world spends on mining, see {@code GameScreen#updateInteraction}.
      *
      * @param world world the machine lies in
      * @param x block X coordinate
@@ -172,78 +211,234 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
      * @param tool tool the operation is carried out with
      * @param player player who works on the machine
      * @param held stack the player holds
-     * @param modifier {@code true} to set the exhaust instead of the direction
-     * @return {@code true} when something was set
+     * @param click which button was pressed and whether the modifier key was held
+     * @return {@code true} when the machine or one of its sides changed
      */
     @Override
     public boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-            Player player, ItemStack held, boolean modifier) {
-        if (tool != FaceTool.WRENCH) {
+            Player player, ItemStack held, FaceClick click) {
+        if (tool != FaceTool.WRENCH || click == FaceClick.LEFT) {
             return false;
         }
-        if (modifier) {
-            exhaustFace = face;
-            LOGGER.info("The {} at ({}, {}, {}) blows its steam out of its {} side", machine.name(), x, y, z,
-                    face);
-            return true;
+        boolean done = switch (click) {
+            case RIGHT -> turn(world, face);
+            case SHIFT_LEFT -> give(face, true);
+            default -> give(face, false);
+        };
+        if (done) {
+            // The sides of a machine are what the block entity draws, and the state of the cell says nothing
+            // about them: the section is asked to be meshed again, see World#markDirty.
+            world.markDirty(x, y, z);
+        }
+        return done;
+    }
+
+    /**
+     * Turns this machine onto one of its sides.
+     *
+     * @param world world the machine lies in
+     * @param face side the machine looks in from now on
+     * @return {@code true} when the machine was turned
+     */
+    private boolean turn(World world, BlockFace face) {
+        if (face == facing || !MachineSides.isHorizontal(face)) {
+            // A machine looks along the horizon, because the four names a player reads for the sides of its
+            // front - left and right, up and down - only mean something then, see MachineSides.
+            return false;
         }
         facing = face;
-        LOGGER.info("The {} at ({}, {}, {}) now looks towards its {} side", machine.name(), x, y, z, face);
+        facingSettled = true;
+        machine.faces().turned(face);
+        updateFacingState(world);
+        LOGGER.info("The {} at ({}, {}, {}) now looks towards its {} side", machine.name(), x(), y(), z(),
+                face);
         return true;
     }
 
-    /** Side the machine looks in, the face its mouth is reached through. */
+    /**
+     * Gives one side of this machine a job, or takes the job it carries away again.
+     *
+     * @param face side the job is put on
+     * @param incoming {@code true} for the job of taking something in, {@code false} for giving it out
+     * @return {@code true} when a side of the machine changed
+     */
+    private boolean give(BlockFace face, boolean incoming) {
+        if (face == facing) {
+            // The front carries nothing, so no job is ever put on it, see FaceConfig.
+            return false;
+        }
+        FaceConfig faces = machine.faces();
+        if (incoming) {
+            if (faces.blowsSteam()) {
+                return faces.setExhaust(away(faces.exhaust(), face), facing);
+            }
+            return faces.setEnergyIn(away(faces.energyIn(), face), facing);
+        }
+        return faces.setEnergyOut(away(faces.energyOut(), face), facing);
+    }
+
+    /** The side a job moves to, {@code null} when the click lands on the side that already carries it. */
+    private static BlockFace away(BlockFace owner, BlockFace face) {
+        return owner == face ? null : face;
+    }
+
+    /** Side the machine looks in, the one side of it that carries nothing. */
     public BlockFace facing() {
         return facing;
     }
-    /** Side the steam of this machine blows out of. */
+
+    /** Side this machine blows its spent steam out of, {@code null} when it is no machine of steam. */
     public BlockFace exhaustFace() {
-        return exhaustFace;
+        return machine.faces().exhaust();
     }
 
+    /**
+     * Reads the side the block was built with, and writes the side the machine looks in back into the cell.
+     * <p>
+     * A machine is placed turned towards the player who built it: that turn is a turn of the state of the
+     * cell, written before the entity of the machine exists, so the side belongs to the machine itself only
+     * from its first tick on. The turn is taken over here - the jobs of the sides are read with it - and the
+     * side is written back, which is a write that changes nothing at all when the two already agree.
+     *
+     * @param world world the machine lies in
+     */
+    private void settleFacing(World world) {
+        facingSettled = true;
+        BlockStateTable states = world.getBlock(x(), y(), z()).states();
+        if (!states.hasProperty(FACING)) {
+            return;
+        }
+        BlockFace placed = BlockFace.byName(states.decode(world.getState(x(), y(), z())).get(FACING));
+        if (placed != null && MachineSides.isHorizontal(placed) && placed != facing) {
+            facing = placed;
+            machine.faces().turned(placed);
+        }
+        updateFacingState(world);
+    }
+
+    /**
+     * Writes the side this machine looks in into the state of its cell.
+     * <p>
+     * The turn of a state is what carries the front of a model around the vertical axis, so a machine that is
+     * turned keeps the picture of its model until the state of its cell says otherwise: the side the wrench
+     * set is written the moment it is set, and the mesher of the section draws the front of the machine on
+     * the side a player turned it to. A block that carries no such property is left alone, which keeps one
+     * machine of the game from depending on the model of another.
+     *
+     * @param world world the machine lies in
+     */
+    private void updateFacingState(World world) {
+        BlockStateTable states = world.getBlock(x(), y(), z()).states();
+        if (!states.hasProperty(FACING)) {
+            return;
+        }
+        Map<String, String> values = new LinkedHashMap<>(states.decode(world.getState(x(), y(), z())));
+        String wanted = facing.toString();
+        if (wanted.equals(values.get(FACING))) {
+            return;
+        }
+        values.put(FACING, wanted);
+        world.setState(x(), y(), z(), states.stateOf(values));
+    }
+
+    /**
+     * The pictures one side of this machine is drawn with.
+     * <p>
+     * A side a player gave a job to shows the casing of the machine with the overlay of that job over it -
+     * the stub of a pipe for a fluid, the plug of the power for the line of the cables - and every other
+     * side, the front included, keeps the picture the model of its state carries there.
+     *
+     * @param face side of the block, as the world has it
+     * @return the two pictures of that side, {@code null} when the model of the machine stands
+     */
+    @Override
+    public FacePicture pictureOn(BlockFace face) {
+        FaceRole role = machine.faces().roleOn(face, facing);
+        return role == FaceRole.NONE ? null : FacePicture.of(machine.casing(), role);
+    }
+
+    /**
+     * What the grid of faces says about one side of this machine.
+     * <p>
+     * The side a machine looks in is crossed out, because it is the one side of a machine that carries
+     * nothing at all: no pipe and no cable is ever built against the front. A side that takes something in
+     * carries the arrow that points into the block and a side that gives something out the arrow that points
+     * away, whatever the job is - a player reads from the arrow whether a side is a mouth or a plug, see
+     * {@link FaceMark}.
+     *
+     * @param face side of the block the cell stands for
+     * @return the mark of that side
+     */
+    @Override
+    public FaceMark faceMark(World world, int x, int y, int z, BlockFace face) {
+        if (face == facing) {
+            return FaceMark.CLOSED;
+        }
+        return switch (machine.faces().roleOn(face, facing)) {
+            case FLUID_IN, ENERGY_IN, ITEM_IN -> FaceMark.IN;
+            case FLUID_OUT, ENERGY_OUT, EXHAUST, ITEM_OUT -> FaceMark.OUT;
+            default -> FaceMark.NOTHING;
+        };
+    }
+
+    /**
+     * The tank one side of this machine is reached through.
+     *
+     * @param face side of the block
+     * @return the tank on that side, {@code null} when no tank is reached from there
+     */
     @Override
     public FluidStorage tankOn(BlockFace face) {
-        // The mouth of a machine is the face fluid runs into and its other five sides give what the machine
-        // made, see FluidNode. A machine that makes no fluid - a steam machine, which blows its steam out of
-        // the exhaust and keeps nothing - is filled from every side instead, because there is no hatch of it
-        // to tell the mouth from.
-        if (tankOf(MachineTank.Role.OUTPUT) == null) {
-            return tankOf(MachineTank.Role.INPUT);
-        }
-        return face == facing ? tankOf(MachineTank.Role.INPUT) : tankOf(MachineTank.Role.OUTPUT);
+        int index = tankAt(face);
+        return index < 0 ? null : machine.tank(index).storage();
     }
 
+    /**
+     * {@code true} when fluid may run into this machine through a side.
+     * <p>
+     * Only a side a player gave to a tank that is filled answers yes: the side of a tank that is emptied is
+     * the side a machine gives what it made out of, and a side that carries no tank at all reaches nothing.
+     * Which side that is is the configuration of the machine, see {@link FaceConfig}.
+     */
     @Override
     public boolean takesOn(BlockFace face) {
-        return (tankOf(MachineTank.Role.OUTPUT) == null || face == facing) && tankOn(face) != null;
+        int index = tankAt(face);
+        return index >= 0 && machine.tank(index).isInput();
     }
 
-    /** The first tank of a role, {@code null} when the machine holds none of them. */
-    private FluidStorage tankOf(MachineTank.Role role) {
-        List<MachineTank> tanks = machine.tanksOf(role);
-        return tanks.isEmpty() ? null : tanks.get(0).storage();
+    /** Index of the tank a side is reached through, {@code -1} when no tank of the machine is. */
+    private int tankAt(BlockFace face) {
+        FaceConfig faces = machine.faces();
+        for (int index = 0; index < faces.tankCount(); index++) {
+            if (faces.faceOfTank(index) == face) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     /**
      * Pours what the machine made into the lines that stand next to it.
      * <p>
-     * A machine is a pump and a pipe is not, so the machine is the one that pushes: every tick it offers its
-     * output tank to the machines and pipes around it and every pipe takes what it can pass on in one tick -
-     * so a wide line is filled faster than a narrow one and all of them together empty the tank. The mouth is
-     * left out, because that is the face the machine takes fluid in through and never gives it out of. A
-     * pipe that has its own valve shut on the side towards the machine takes nothing, which is what makes a
-     * player able to cut a machine off with the wrench, see {@code PipeFlow}.
+     * A machine is a pump and a pipe is not, so the machine is the one that pushes: every tick it offers
+     * every tank that is emptied to the pipe that stands on the side of that tank and the pipe takes what it
+     * can pass on in one tick - so a wide line is filled faster than a narrow one and the tanks are emptied.
+     * <b>A tank that a player gave no side to is poured into nothing</b>, which is what the wheel of the
+     * interface is for, and a tank that is filled never pours at all: its side is the mouth of the machine,
+     * see {@link FluidNode}. A pipe that has its own valve shut on the side towards the machine takes
+     * nothing, which is what makes a player able to cut a machine off with the wrench, see {@code PipeFlow}.
      *
      * @param world world this machine lies in
      */
     private void pourIntoPipes(World world) {
-        FluidStorage tank = tankOf(MachineTank.Role.OUTPUT);
-        if (tank == null || tank.isEmpty()) {
-            return;
-        }
-        Fluid fluid = tank.fluid();
-        for (BlockFace face : BlockFace.ALL) {
-            if (face == MOUTH) {
+        FaceConfig faces = machine.faces();
+        for (int index = 0; index < faces.tankCount(); index++) {
+            if (faces.roleOfTank(index) != MachineTank.Role.OUTPUT) {
+                continue;
+            }
+            BlockFace face = faces.faceOfTank(index);
+            FluidStorage tank = machine.tank(index).storage();
+            if (face == null || tank.isEmpty()) {
                 continue;
             }
             int otherX = x() + face.x();
@@ -263,12 +458,10 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
                 // a player joined it and nowhere else, see Pipes.
                 continue;
             }
+            Fluid fluid = tank.fluid();
             int offer = Math.min(tank.amount(), PipeTransport.perTick(pipe.flow()));
             int moved = line.give(face.opposite(), fluid, offer);
             tank.drain(moved, false);
-            if (tank.isEmpty()) {
-                return;
-            }
         }
     }
 
@@ -327,15 +520,16 @@ public class MachineBlockEntity extends BlockEntity implements FluidNode, FaceOp
     protected void writeOwnData(NbtCompound data) {
         machine.save(data);
         data.putString(SaveTags.MACHINE_FACING, facing.name());
-        data.putString(SaveTags.MACHINE_EXHAUST, exhaustFace.name());
     }
 
     @Override
     protected void readOwnData(NbtCompound data) {
         machine.load(data);
-        facing = faceByName(data.getString(SaveTags.MACHINE_FACING, MOUTH.name()), MOUTH);
-        exhaustFace = faceByName(data.getString(SaveTags.MACHINE_EXHAUST, MOUTH.opposite().name()),
-                MOUTH.opposite());
+        BlockFace stored = faceByName(data.getString(SaveTags.MACHINE_FACING, MOUTH.name()), MOUTH);
+        // A machine looks along the horizon, see MachineSides: a world that was stored before that rule
+        // existed keeps the front the machine is built with.
+        facing = MachineSides.isHorizontal(stored) ? stored : MOUTH;
+        facingSettled = false;
     }
 
     /** A side by its name, so a stored machine is never left without one. */

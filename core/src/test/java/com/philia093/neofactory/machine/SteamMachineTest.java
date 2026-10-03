@@ -13,6 +13,7 @@ import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -161,24 +162,30 @@ class SteamMachineTest {
         assertEquals(BlockFace.NORTH, entity.facing(), "a machine that was just built looks north");
         assertEquals(BlockFace.SOUTH, entity.exhaustFace(), "and blows its steam out of the back");
 
-        assertTrue(turn(entity, world, BlockFace.WEST, FaceTool.WRENCH, false), "the wrench turns the machine");
+        assertTrue(turn(entity, world, BlockFace.WEST, FaceTool.WRENCH, FaceClick.RIGHT),
+                "the wrench turns the machine");
         assertEquals(BlockFace.WEST, entity.facing());
-        assertTrue(turn(entity, world, BlockFace.TOP, FaceTool.WRENCH, true),
-                "and the modifier key sets the exhaust");
-        assertEquals(BlockFace.TOP, entity.exhaustFace());
+        assertFalse(turn(entity, world, BlockFace.TOP, FaceTool.WRENCH, FaceClick.RIGHT),
+                "a machine looks along the horizon and never at the ceiling");
+        assertEquals(BlockFace.WEST, entity.facing(), "so the turn was refused");
+        assertTrue(turn(entity, world, BlockFace.TOP, FaceTool.WRENCH, FaceClick.SHIFT_LEFT),
+                "and the modifier key with the left button gives a side the job of taking something in");
+        assertEquals(BlockFace.TOP, entity.exhaustFace(), "which sets the vent of the steam");
         assertEquals(BlockFace.WEST, entity.facing(), "without turning the machine");
 
-        assertFalse(turn(entity, world, BlockFace.EAST, FaceTool.SCREWDRIVER, false),
+        assertFalse(turn(entity, world, BlockFace.EAST, FaceTool.SCREWDRIVER, FaceClick.RIGHT),
                 "another tool does nothing");
-        assertFalse(turn(entity, world, BlockFace.EAST, FaceTool.EMPTY_HAND, true),
+        assertFalse(turn(entity, world, BlockFace.EAST, FaceTool.EMPTY_HAND, FaceClick.SHIFT_LEFT),
                 "and the modifier key of an empty hand sets nothing");
+        assertFalse(turn(entity, world, entity.facing(), FaceTool.WRENCH, FaceClick.SHIFT_LEFT),
+                "and the front of a machine carries no job at all");
     }
 
     /** Works on one face of a machine the way a click on a cell of the grid does. */
     private static boolean turn(MachineBlockEntity entity, World world, BlockFace face, FaceTool tool,
-            boolean modifier) {
+            FaceClick click) {
         return entity.operateFace(world, entity.x(), entity.y(), entity.z(), face, tool, null,
-                ItemStack.of(Items.WRENCH, 1), modifier);
+                ItemStack.of(Items.WRENCH, 1), click);
     }
 
     /** A block entity of the tests, which is what the world stores for a machine. */

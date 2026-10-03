@@ -77,12 +77,14 @@ public interface FaceOperable {
      * @param tool tool the operation is carried out with, never {@link FaceTool#NONE}
      * @param player player who works on the block
      * @param held stack the player holds in that hand, never empty
-     * @param modifier {@code true} when the player holds the modifier key, the second way of working on the
-     *        same cell: a pipe turns the valve of a side instead of its join, see
+     * @param click which button was pressed and whether the modifier key was held while it was, see
+     *        {@link FaceClick}: a pipe turns the valve of a side instead of its join when the modifier key is
+     *        held, and a machine gives a side the job of taking something in with the left button and the
+     *        job of giving something out with the right, see
      *        {@code PipeBlockEntity#operateFace(World, int, int, int, BlockFace, FaceTool, Player,
-     *        ItemStack, boolean)}
+     *        ItemStack, FaceClick)}
      * @return {@code true} when something was done
      */
     boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool,
-            Player player, ItemStack held, boolean modifier);
+            Player player, ItemStack held, FaceClick click);
 }

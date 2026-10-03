@@ -17,6 +17,7 @@ import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import com.philia093.neofactory.world.interaction.FaceMark;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -126,11 +127,11 @@ class PipeFlowTest {
         assertEquals(PipeFlow.BOTH, pipe.flowOf(BlockFace.SOUTH), "on every side of it");
 
         // The wrench with the modifier key held walks the cycle and never runs out of settings.
-        assertTrue(turn(world, pipe, BlockFace.NORTH, true));
+        assertTrue(turn(world, pipe, BlockFace.NORTH, FaceClick.SHIFT_RIGHT));
         assertEquals(PipeFlow.IN, pipe.flowOf(BlockFace.NORTH), "a mouth takes only");
-        turn(world, pipe, BlockFace.NORTH, true);
+        turn(world, pipe, BlockFace.NORTH, FaceClick.SHIFT_RIGHT);
         assertEquals(PipeFlow.OUT, pipe.flowOf(BlockFace.NORTH), "an outlet gives only");
-        turn(world, pipe, BlockFace.NORTH, true);
+        turn(world, pipe, BlockFace.NORTH, FaceClick.SHIFT_RIGHT);
         assertEquals(PipeFlow.BOTH, pipe.flowOf(BlockFace.NORTH), "and the cycle starts again");
 
         assertTrue(pipe.flowOf(BlockFace.NORTH).takes());
@@ -145,13 +146,13 @@ class PipeFlowTest {
         World world = new World(SEED, 2, 0);
         PipeBlockEntity pipe = place(world, copper(), 0, Y, 0);
 
-        assertTrue(turn(world, pipe, BlockFace.EAST, false));
+        assertTrue(turn(world, pipe, BlockFace.EAST, FaceClick.RIGHT));
         assertEquals(Pipes.mask(BlockFace.EAST), Pipes.maskOf(world.getState(0, Y, 0)),
                 "the join of the side was turned");
         assertEquals(PipeFlow.BOTH, pipe.flowOf(BlockFace.EAST), "and the valve was left alone");
 
         pipe.setFlow(BlockFace.WEST, PipeFlow.IN);
-        assertTrue(turn(world, pipe, BlockFace.WEST, false));
+        assertTrue(turn(world, pipe, BlockFace.WEST, FaceClick.RIGHT));
         assertEquals(PipeFlow.IN, pipe.flowOf(BlockFace.WEST),
                 "turning the join of a side leaves its valve where it was");
     }
@@ -233,9 +234,9 @@ class PipeFlowTest {
     }
 
     /** Turns one side of a pipe with the wrench, the way a click on a cell of the grid does. */
-    private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face, boolean modifier) {
+    private static boolean turn(World world, PipeBlockEntity pipe, BlockFace face, FaceClick click) {
         return pipe.operateFace(world, pipe.x(), pipe.y(), pipe.z(), face, FaceTool.WRENCH, null,
-                ItemStack.of(Items.WRENCH, 1), modifier);
+                ItemStack.of(Items.WRENCH, 1), click);
     }
 
     @Test
@@ -291,6 +292,9 @@ class PipeFlowTest {
         world.setBlock(x, Y, -1, Blocks.GRINDER);
         MachineBlockEntity entity = new MachineBlockEntity(BlockEntityTypes.GRINDER, new GrinderMachine());
         entity.setPosition(x, Y, -1);
+        // The tank of steam of the machine is reached through the side the pipe of the test line stands on,
+        // which is what a player sets with the wrench or with the wheel of the screen, see FaceConfig.
+        entity.machine().faces().setTank(0, BlockFace.SOUTH, entity.facing());
         world.addBlockEntity(entity);
         return entity;
     }
