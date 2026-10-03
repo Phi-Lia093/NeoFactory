@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "basicmachines/electric_furnace/electric_furnace_mv_bottom", "cullface": "down" },
+        "up": { "texture": "basicmachines/electric_furnace/electric_furnace_mv_top", "cullface": "up" },
+        "north": { "texture": "basicmachines/electric_furnace/electric_furnace_mv_front", "cullface": "north" },
+        "south": { "texture": "basicmachines/electric_furnace/electric_furnace_mv_side", "cullface": "south" },
+        "west": { "texture": "basicmachines/electric_furnace/electric_furnace_mv_side", "cullface": "west" },
+        "east": { "texture": "basicmachines/electric_furnace/electric_furnace_mv_side", "cullface": "east" }
+      }
+    }
+  ]
+}

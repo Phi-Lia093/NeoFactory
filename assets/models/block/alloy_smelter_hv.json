@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "basicmachines/alloy_smelter/alloy_smelter_hv_bottom", "cullface": "down" },
+        "up": { "texture": "basicmachines/alloy_smelter/alloy_smelter_hv_top", "cullface": "up" },
+        "north": { "texture": "basicmachines/alloy_smelter/alloy_smelter_hv_front", "cullface": "north" },
+        "south": { "texture": "basicmachines/alloy_smelter/alloy_smelter_hv_side", "cullface": "south" },
+        "west": { "texture": "basicmachines/alloy_smelter/alloy_smelter_hv_side", "cullface": "west" },
+        "east": { "texture": "basicmachines/alloy_smelter/alloy_smelter_hv_side", "cullface": "east" }
+      }
+    }
+  ]
+}
