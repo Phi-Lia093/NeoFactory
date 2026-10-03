@@ -12,7 +12,7 @@ import java.util.Objects;
  * A machine of the electrical age is filled and emptied by the line of cables it stands on, and the tier of
  * that line is the one question the buffer has to answer beyond the amounts: a line of a tier a machine was
  * not made for is not slower, it is fatal - the energy is not handed over at all and the line takes the
- * machine and every cable of it away, see {@link EnergyAcceptor} and {@code EnergyGrid.Line#push}.
+ * machine and every cable of it away, see {@link EnergyAcceptor} and {@code EnergyGrid.Line#pull}.
  * <p>
  * <b>A machine takes one ampere of its own tier.</b> The two limits of the buffer are the amount one tick of
  * a line of that tier carries, so a machine of the low voltage takes thirty two units a tick and no more
@@ -22,6 +22,12 @@ import java.util.Objects;
  * A machine whose buffer takes power in is a machine a line may feed and a machine whose buffer gives power
  * out is one that feeds a line, which is what gives such a machine the two plugs of {@link FaceConfig}: the
  * sides a player sets with the wrench, see {@code MachineBlockEntity#updateEnergy}.
+ * <p>
+ * <b>A machine that only works</b> - every machine of the electrical age that pays for a recipe - <b>is given
+ * a buffer that may not be emptied</b>, a {@code maxExtract} of zero: it takes power in through its one plug
+ * and is never a source of the line it stands on, which is what keeps a line of machines that work from
+ * feeding one another. A machine that makes power is the mirror of it: it fills its own buffer and gives it
+ * out, and the line around it takes what it made, see {@code EnergyGrid.Line#pull}.
  */
 public final class MachineEnergyStorage extends SimpleEnergyStorage implements EnergyAcceptor {
 

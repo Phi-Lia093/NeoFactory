@@ -11,7 +11,9 @@ import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemDrops;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.energy.EnergyGrid;
+import com.philia093.neofactory.energy.EnergyNet;
 import com.philia093.neofactory.entity.Player;
+import com.philia093.neofactory.machine.EnergyStorage;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.ExhaustMachine;
 import com.philia093.neofactory.machine.FaceConfig;
@@ -141,39 +143,59 @@ public class MachineBlockEntity extends BlockEntity
     }
 
     /**
-     * Feeds the line of cables this machine hands its power over to.
+     * Brings the power this machine wants out of the line of cables it stands on.
      * <p>
-     * <b>A machine that makes power is the pump of the line the way a machine is the pump of a fluid.</b> A
-     * cable is no source and carries nothing of its own, so the machine that makes the energy is the one that
-     * moves it: every tick it looks at the side a player gave to the plug it gives power out of, walks the
-     * line of cables that stands there and hands that line what one tick of it is worth, see
-     * {@link EnergyGrid.Line#push}. The line shares what it was given out over the machines at its ends - a
-     * machine whose buffer is full takes nothing and the rest stays where it was - and a machine at the end of
-     * a line that is too strong for it is destroyed together with every cable of that line instead, see
-     * {@code EnergyAcceptor}.
+     * <b>A cable carries nothing of its own, so the machine that works is the one that moves the energy.</b>
+     * A machine that makes power only fills its own buffer; the machine that wants it reaches for it: every
+     * tick it asks for what it needs, {@link Machine#requestEu()}, and this class hands the question to the
+     * side a player gave to the plug it takes power in through. The line is walked from that plug and what it
+     * brings is drawn out of the buffers that may give, see {@link EnergyGrid.Line#pull}. A machine that asks
+     * for nothing - a machine of the age of steam, a furnace that burns coal - never touches a line at all.
      * <p>
      * <b>A cable that is not joined towards the machine is not the line of that machine.</b> The walk of a
      * line only follows the sides a cable joins, so a cable that stands at the plug of a machine without
-     * reaching it leaves the machine out of the ends of that line - and nothing is handed over to a line that
-     * does not reach this machine, which is what a player who cut the join with the wrench asked for, see
+     * reaching it leaves the machine out of the ends of that line - and a machine asks a line that does not
+     * reach it for nothing, which is what a player who cut the join with the wrench asked for, see
      * {@link EnergyGrid#line}.
      * <p>
-     * A machine that gives no power has no plug at all: a machine of the age of steam, a furnace that burns
-     * coal and every machine that only takes power in stand along the same line and give nothing.
+     * <b>Two machines with no cable between them need no line.</b> When nothing but the neighbouring block
+     * stands at the plug, the machine takes what the buffer beside it can give over the gap with no loss,
+     * which is the way the first workshop of the age of electricity is built, see {@link EnergyNet#hand}.
+     * <p>
+     * <b>A line that is too much for a machine takes it away.</b> A line of a higher tier than the machine
+     * was built for does not feed it: the machine and every cable of the line are taken out of the world, see
+     * {@code EnergyAcceptor}. The tier is settled by the machine that asks and never by a machine that only
+     * makes power, so a wrong tier costs what the machine cost.
      *
      * @param world world this machine lies in
      */
     private void updateEnergy(World world) {
-        BlockFace plug = machine.faces().energyOut();
+        EnergyStorage buffer = machine.energy();
+        if (!buffer.canReceive() || buffer.isFull()) {
+            // A machine that holds no buffer, or whose buffer is full, has no reason to reach for a line.
+            return;
+        }
+        int wanted = Math.min(machine.requestEu(), buffer.capacity() - buffer.amount());
+        if (wanted <= 0) {
+            return;
+        }
+        BlockFace plug = machine.faces().energyIn();
         if (plug == null) {
             return;
         }
+        int cellX = x() + plug.x();
+        int cellY = y() + plug.y();
+        int cellZ = z() + plug.z();
         EnergyGrid.Cells cells = EnergyGrid.of(world);
-        EnergyGrid.Line line = EnergyGrid.line(cells, x() + plug.x(), y() + plug.y(), z() + plug.z());
-        if (line == null || !line.reaches(machine.energy())) {
+        EnergyGrid.Line line = EnergyGrid.line(cells, cellX, cellY, cellZ);
+        if (line != null && line.reaches(buffer)) {
+            line.pull(cells, buffer, wanted);
             return;
         }
-        line.push(cells, machine.energy(), line.net().capacity());
+        // Nothing but the two machines: the energy crosses the gap with no cable and no loss.
+        if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour) {
+            EnergyNet.hand(neighbour.machine().energy(), buffer, wanted);
+        }
     }
 
     /**

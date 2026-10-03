@@ -31,11 +31,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Checks what a machine of the power network does with the line of cables it stands on.
  * <p>
- * A cable carries nothing of its own: a line moves what a machine hands it and what it brings to the machines
- * at its ends. Both halves of that are checked here against a world of the game, because a machine reads a
- * line off the blocks around it: a machine that makes power walks the line of the side a player gave to its
- * plug, see {@code MachineBlockEntity#updateEnergy}, and the line shares what it was handed out over the
- * buffers that hang on it, see {@link EnergyGrid.Line#push}.
+ * A cable carries nothing of its own: the machine that works draws what it needs out of the line it stands
+ * on, and the machine that makes power only fills its own buffer. Both halves of that are checked here
+ * against a world of the game, because a machine reads a line off the blocks around it: a machine that wants
+ * power walks the line of the side a player gave to the plug it takes power in through, see
+ * {@code MachineBlockEntity#updateEnergy}, and the line brings what its ends can give, see
+ * {@link EnergyGrid.Line#pull}.
  * <p>
  * The machines of these tests are of the test - a buffer of a tier and no slots at all - but the blocks and
  * the cables are the ones of the game, so what is checked is the whole way from a block entity to the buffer
@@ -131,14 +132,14 @@ class EnergyLineTest {
 
         settle(world, 1);
 
-        // A machine hands one ampere of its tier over a tick and the loss of the run is paid out of the very
-        // amperes it hands over, so the machine at the other end of a line receives a tick of it less the loss.
+        // The machine that works draws one ampere of its tier a tick out of the line, and the loss of the run
+        // is paid out of what it draws: the machine that asked receives a tick of the line less that loss.
         int perTick = line.net().capacity() - line.net().totalLoss();
         assertEquals(Voltage.MEDIUM, line.net().voltage(), "a single copper cable is a line of its material");
         assertEquals(1, line.net().amperage());
         assertEquals(perTick, bufferOf(sink).amount(), "one tick of the line arrived in the buffer of it");
         assertEquals(CAPACITY - line.net().capacity(), bufferOf(generator).amount(),
-                "and the machine that made the power handed one tick of the line over");
+                "and the machine that stood behind it gave one tick of the line up");
         assertTrue(perTick > 0);
     }
 
@@ -242,7 +243,9 @@ class EnergyLineTest {
         boiler.setPosition(0, Y, 0);
         world.addBlockEntity(boiler);
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
-        MachineBlockEntity sink = place(world, machine(Voltage.LOW), 2, Y, 0);
+        // The machine that works is of the tier of the cable, so the line is not too much for it: what is
+        // checked here is that a machine with no buffer feeds nothing, not that a wrong tier burns a machine.
+        MachineBlockEntity sink = place(world, machine(Voltage.MEDIUM), 2, Y, 0);
         sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
         settle(world, 3);
@@ -257,11 +260,21 @@ class EnergyLineTest {
     /** A machine of the power network: a buffer of a tier and one slot that nothing is ever put into. */
     private static final class TestMachine extends Machine {
 
+        private final Voltage tier;
+
         private TestMachine(int capacity, Voltage tier) {
             super(new MachineScreen("Test", ProgressKind.GENERIC, List.of(SlotKind.SMELTING), List.of(), 0, 0,
                             false),
                     new MachineInventory(MachineInventory.Role.INPUT),
                     new MachineEnergyStorage(capacity, tier), List.of());
+            this.tier = tier;
+        }
+
+        @Override
+        public int requestEu() {
+            // A machine of the test draws one ampere of its tier a tick, the way a machine of the power
+            // network tops up its buffer while it waits, see Machine#requestEu and MachineBlockEntity.
+            return tier.euPerTick();
         }
 
         @Override

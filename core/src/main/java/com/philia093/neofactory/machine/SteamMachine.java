@@ -264,28 +264,37 @@ public abstract class SteamMachine extends RecipeMachine implements ExhaustMachi
      * and not against the time the recipe names, which is what makes a machine of pressure drink twice the
      * steam a tick for half as long: the craft costs the same tankful either way, see
      * {@link MachinePressure}.
+     * <p>
+     * What comes back is the part of the frame the tank could really pay, between nothing and the whole of
+     * it, so a machine that runs dry stands still with its work and its input rather than losing them, see
+     * {@link RecipeMachine#payForWork}.
+     *
+     * @param recipe recipe that runs
+     * @param delta time since the last frame in seconds
+     * @return the share of the frame that was paid for, {@code 0} when the tank could give nothing
      */
     @Override
-    protected boolean payForWork(MachineRecipe recipe, float delta) {
+    protected float payForWork(MachineRecipe recipe, float delta) {
         int cost = steamOf(recipe);
         if (cost <= 0) {
-            return true;
+            return 1.0f;
         }
         float seconds = Math.max(craftTime(recipe), delta);
         steamDebt += cost * delta / seconds;
         int whole = (int) steamDebt;
         if (whole <= 0) {
             // Not a whole millibucket yet: this frame is free, the next ones pay for it.
-            return true;
+            return 1.0f;
         }
         int taken = steam.fluid() == Fluids.STEAM ? steam.drain(whole, false) : 0;
         if (taken < whole) {
-            // The machine waits, so this frame counts for nothing and the debt is dropped.
+            // The tank could not pay the whole frame, so the machine stands still for the part it missed:
+            // the rest of the frame is dropped rather than carried over, and the work it already did waits.
             steamDebt = 0.0f;
-            return false;
+            return (float) taken / whole;
         }
         steamDebt -= taken;
-        return true;
+        return 1.0f;
     }
 
     @Override

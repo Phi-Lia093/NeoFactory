@@ -118,6 +118,22 @@ public abstract class Machine {
     }
 
     /**
+     * Amount of energy this machine wants from a line of cables this tick.
+     * <p>
+     * <b>A cable carries nothing of its own, so the machine that wants power is the one that asks for it</b>,
+     * and this is the question the block entity hands to the line a machine stands on, see
+     * {@code MachineBlockEntity#updateEnergy}. A machine that is no machine of the power network asks for
+     * nothing and keeps the zero below: a furnace that burns coal, a machine of the age of steam and every
+     * machine that only makes power and is never fed by a line. A machine of the electrical age answers with
+     * the share of its work it is about to pay for, which is one ampere of its tier while it waits.
+     *
+     * @return the amount wanted, {@code 0} when this machine takes nothing from a line
+     */
+    public int requestEu() {
+        return 0;
+    }
+
+    /**
      * What a player made of the sides of this machine.
      * <p>
      * Every part of a machine - its tanks, the plugs of the power and the vent of its steam - is reached

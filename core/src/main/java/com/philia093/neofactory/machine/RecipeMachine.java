@@ -113,9 +113,10 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
      * was started: the machine pays for the share of every frame, counts the time and hands the products over
      * when the recipe is done.
      * <p>
-     * A machine that cannot pay any more forgets the craft, and what it swallowed is gone: an interruption -
-     * no power, a block that was broken - costs the portion that was being worked on. Nothing is handed back,
-     * which is what keeps a player from using a machine that fails as a free storage.
+     * <b>A machine that cannot pay stands still.</b> A frame that is not paid for does not count, and the
+     * work already done and the input that was swallowed are kept: a shortage of power, or a machine whose
+     * block was broken and built again, costs the time it waited and no more, and a machine that comes back
+     * to power takes its craft up where it left it.
      */
     @Override
     protected void update(float delta) {
@@ -123,11 +124,13 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
             startCraft(delta);
             return;
         }
-        if (!payForWork(craft, delta)) {
-            forgetCraft();
+        float share = payForWork(craft, delta);
+        if (share <= 0.0f) {
+            // The machine could not pay anything this frame, so it waits with its work: what it swallowed is
+            // kept and the next frame asks again, see payForWork.
             return;
         }
-        craftSeconds += delta;
+        craftSeconds += delta * share;
         if (craftSeconds >= craftTotal) {
             craft.produce(outputs());
             MachineRecipe finished = craft;
@@ -163,7 +166,7 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
         if (recipe == null || !recipe.fits(outputs())) {
             return;
         }
-        if (!payForWork(recipe, delta)) {
+        if (payForWork(recipe, delta) <= 0.0f) {
             return;
         }
         craft = recipe;
@@ -223,8 +226,12 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
      * The machine of this class pays with the energy of its buffer, see {@link EnergyStorage}. What one
      * frame costs is the share of the whole craft it is worth: a recipe that costs 200 units over ten
      * seconds takes 20 units a second, and the fraction that does not make a whole unit is kept for the
-     * frames after it. A machine without enough energy waits - so the work already done is kept, the same
-     * way a furnace keeps its fire - and it never pays more than the recipe asked for.
+     * frames after it.
+     * <p>
+     * <b>What comes back is the part of that frame the machine could really pay</b>, between nothing and the
+     * whole of it: a machine that could pay half of its share advances its craft by half a frame and waits
+     * for the next one, see {@link #update(float)}. What could not be paid is dropped rather than carried
+     * over, so a craft never costs more than the recipe asked for however often the power comes and goes.
      * <p>
      * <b>A machine that runs on something else overrides this and not the loop around it.</b> A steam
      * machine pays with the steam of one of its tanks, see {@link MachineTank}, while the search for a
@@ -232,30 +239,36 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
      *
      * @param recipe recipe that runs
      * @param delta time since the last frame in seconds
-     * @return {@code true} when the frame was paid for
+     * @return the share of the frame that was paid for, {@code 0} when the machine could pay nothing
      */
-    protected boolean payForWork(MachineRecipe recipe, float delta) {
+    protected float payForWork(MachineRecipe recipe, float delta) {
         int cost = recipe.energy();
         if (cost <= 0) {
-            return true;
+            // A recipe that costs nothing is a frame that is always paid for.
+            return 1.0f;
         }
         float seconds = Math.max(recipe.seconds(), delta);
         energyDebt += cost * delta / seconds;
         int whole = (int) energyDebt;
         if (whole <= 0) {
             // Not a whole unit yet: this frame is free, the next ones pay for it.
-            return true;
+            return 1.0f;
         }
         int paid = energy().extract(whole, false);
-        if (paid < whole) {
-            // The machine waits, so this frame counts for nothing and the debt is
-            // dropped: the next frame asks for its own share again instead of piling up
-            // a debt that could never be paid.
+        if (paid <= 0) {
+            // Nothing at all was paid, so the frame counts for nothing: the machine waits and the next
+            // frame asks for its own share again instead of piling up a debt that could never be paid.
             energyDebt = 0.0f;
-            return false;
+            return 0.0f;
+        }
+        if (paid < whole) {
+            // Part of the frame was paid: the work advances by that part and the rest of the frame is
+            // dropped rather than carried over, so a craft never costs more than the recipe asked for.
+            energyDebt = 0.0f;
+            return (float) paid / whole;
         }
         energyDebt -= paid;
-        return true;
+        return 1.0f;
     }
 
     @Override

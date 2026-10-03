@@ -189,48 +189,54 @@ public final class EnergyGrid {
         }
 
         /**
-         * Moves energy out of one end of the line into every machine of it that takes energy in.
+         * Brings the energy a machine of this line asks for out of the ends that can give it.
          * <p>
-         * What one tick of the line is worth, {@link EnergyNet#capacity()}, is the offer, and it is shared
-         * out evenly between the machines that can take it. Every share travels through
-         * {@link EnergyNet#carry}, so the loss of the run is paid by the source, a machine whose buffer is
-         * full simply takes nothing, and the rest of a division nobody wanted stays in the source.
+         * <b>A cable carries nothing of its own, so the machine that works is the one that moves the
+         * energy.</b> The machine at the end of the line is the one that asks, and the line answers with
+         * what its ends can give: every end that is a source - a buffer that may be emptied, which is the
+         * buffer of a machine that makes power and of nothing that only works - hands over an even share of
+         * what was asked for. Every share travels through {@link EnergyNet#carry}, so the loss of the run is
+         * paid by the source, a line that nobody feeds leaves the machine waiting, and the rest of a division
+         * nobody wanted stays where it was.
          * <p>
-         * <b>A line that is too much for a machine destroys it and itself.</b> Before anything is handed
-         * over, every machine of the line that would not survive this tier is looked for - a machine whose
-         * tier stands below the tier of the line, see {@link EnergyNet#overvolts(EnergyAcceptor)} - and then
-         * nothing is delivered at all: the machine and every cable of the line are taken out of the world,
-         * which is what a player finds when a line of a later age is run into a workshop of an earlier one.
+         * <b>A line that is too much for the machine that asks destroys it and itself.</b> The tier is
+         * settled before anything is carried: a machine whose own tier stands below the tier of the line, see
+         * {@link EnergyNet#overvolts(EnergyAcceptor)}, is not fed at all - it and every cable of the line are
+         * taken out of the world, which is what a player finds when a line of a later age is run into a
+         * workshop of an earlier one. A machine that asks for nothing never meets the line, so nothing burns
+         * while it is idle.
          *
          * @param cells cells of the world, so that a line that burns can be taken away
-         * @param source buffer that gives the energy
-         * @param wanted amount the line should hand over
-         * @return the amount the machines of the line received, {@code 0} when the line burned
+         * @param sink buffer that wants the energy
+         * @param wanted amount the sink asks for
+         * @return the amount the sink received, {@code 0} when the line burned or nothing was given
          */
-        public int push(Cells cells, EnergyStorage source, int wanted) {
+        public int pull(Cells cells, EnergyStorage sink, int wanted) {
             Objects.requireNonNull(cells, "cells");
-            List<EnergyStorage> burned = new ArrayList<>();
-            for (EnergyStorage end : ends) {
-                if (end != source && overvolts(end)) {
-                    burned.add(end);
-                }
-            }
-            if (!burned.isEmpty()) {
-                burn(cells, burned);
+            Objects.requireNonNull(sink, "sink");
+            if (!reaches(sink)) {
+                // A machine that is no end of this line is not fed by it, however it was asked to.
                 return 0;
             }
-            List<EnergyStorage> sinks = new ArrayList<>();
-            for (EnergyStorage end : ends) {
-                if (end != source && end.canReceive()) {
-                    sinks.add(end);
-                }
-            }
-            if (sinks.isEmpty() || wanted <= 0) {
+            if (overvolts(sink)) {
+                burn(cells, List.of(sink));
                 return 0;
             }
-            int share = Math.max(1, wanted / sinks.size());
+            if (wanted <= 0 || !sink.canReceive()) {
+                return 0;
+            }
+            List<EnergyStorage> sources = new ArrayList<>();
+            for (EnergyStorage end : ends) {
+                if (end != sink && end.canExtract()) {
+                    sources.add(end);
+                }
+            }
+            if (sources.isEmpty()) {
+                return 0;
+            }
+            int share = Math.max(1, wanted / sources.size());
             int moved = 0;
-            for (EnergyStorage sink : sinks) {
+            for (EnergyStorage source : sources) {
                 moved += net.carry(source, sink, share);
             }
             return moved;

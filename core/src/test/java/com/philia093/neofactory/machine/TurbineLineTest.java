@@ -155,6 +155,13 @@ class TurbineLineTest {
         }
 
         @Override
+        public int requestEu() {
+            // A machine of the test draws one ampere of its tier a tick, the way a machine of the power
+            // network tops up its buffer while it waits, see Machine#requestEu and MachineBlockEntity.
+            return Voltage.MEDIUM.euPerTick();
+        }
+
+        @Override
         protected void update(float delta) {
             // A machine of the test takes the power of a line and does nothing with it.
         }

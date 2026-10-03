@@ -200,7 +200,7 @@ class EnergyGridTest {
 
         assertTrue(line.ends().isEmpty(), "the machine is no end of that line");
         assertFalse(line.reaches(machine));
-        assertEquals(0, line.push(cells, machine, 100), "so nothing is handed over");
+        assertEquals(0, line.pull(cells, machine, 100), "so nothing is handed over");
         assertTrue(cells.removed.isEmpty(), "and nothing burns");
         assertEquals(1000, machine.amount(), "the buffer of the machine is untouched");
     }
@@ -217,9 +217,11 @@ class EnergyGridTest {
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
         assertTrue(line.overvolts(small), "a line of the middle voltage is too much for a machine of low");
         assertFalse(line.overvolts(big));
-        assertEquals(0, line.push(cells, big, 100), "nothing is handed over");
+        // The machine that asks is the one the tier is settled on: it and the cable go, the machine that only
+        // makes power survives, see EnergyGrid.Line#pull.
+        assertEquals(0, line.pull(cells, small, 100), "nothing is handed over");
         assertTrue(cells.removed.contains("0,64,0"), "the cable of the line is gone");
-        assertTrue(cells.removed.contains("1,64,0"), "and the machine it was too much for");
+        assertTrue(cells.removed.contains("1,64,0"), "and the machine that asked, which was too small for it");
         assertFalse(cells.removed.contains("-1,64,0"), "the machine that could take it survives");
     }
 
@@ -234,10 +236,27 @@ class EnergyGridTest {
         cells.machine(-1, 64, 0, source, BlockFace.EAST);
 
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
-        assertEquals(100, line.push(cells, source, 100), "what fits arrives");
+        assertEquals(100, line.pull(cells, sink, 100), "what the machine asked for arrives");
         assertEquals(100, sink.amount());
         assertEquals(1000 - 100 - line.net().totalLoss(), source.amount(),
                 "and the source paid the loss of the line");
         assertTrue(cells.removed.isEmpty(), "nothing burned");
+    }
+
+    @Test
+    void aMachineAsksALineOfAnEmptySourceForNothing() {
+        Cells cells = new Cells();
+        Machine sink = new Machine(Voltage.HIGH, 100);
+        cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
+        cells.machine(1, 64, 0, sink, BlockFace.WEST);
+        // The machine at the other end may give, but it holds nothing: a line nobody feeds leaves the machine
+        // that asks waiting instead of handing it energy from nowhere.
+        cells.machine(-1, 64, 0, new Machine(Voltage.HIGH, 100), BlockFace.EAST);
+
+        EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
+
+        assertEquals(0, line.pull(cells, sink, 100), "an empty source gives nothing");
+        assertEquals(0, sink.amount());
+        assertTrue(cells.removed.isEmpty(), "and nothing burns");
     }
 }
