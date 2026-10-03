@@ -13,6 +13,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.recipe.EnergyRecipe;
 import com.philia093.neofactory.recipe.RecipeGrid;
+import com.philia093.neofactory.recipe.RecipeLoader;
 import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.TickClock;
@@ -20,11 +21,15 @@ import com.philia093.neofactory.world.World;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -45,6 +50,9 @@ class ElectricMachineTest {
     private static final int Y = 64;
 
     private static final int SEED = 7;
+
+    /** The tiers a machine of the line exists in, in the order the line grows. */
+    private static final List<Voltage> TIERS = List.of(Voltage.LOW, Voltage.MEDIUM, Voltage.HIGH);
 
     @BeforeAll
     static void registerGameData() {
@@ -196,6 +204,82 @@ class ElectricMachineTest {
         assertEquals(Blocks.AIR, world.getBlock(1, Y, 0), "and so is every cable of that line");
         assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "the machine that only makes power survives");
         assertEquals(2048, source.machine().energy().amount(), "with what it held");
+    }
+
+    @Test
+    void everyFamilyAndTierOfTheLineIsAMachineOfItsOwn() {
+        assertEquals(18, MachineFamilies.all().size() * TIERS.size(),
+                "six families of three tiers make the machines of the line");
+
+        for (MachineFamilies.Family family : MachineFamilies.all()) {
+            for (Voltage tier : TIERS) {
+                String name = family.nameOf(tier);
+                ElectricMachine machine = family.machine(tier);
+
+                assertEquals(tier, machine.tier(), name + " is built for the tier it is named after");
+                assertEquals(family.maxAmps(), machine.maxAmps(), name + " takes the current of its family");
+                assertEquals(ElectricMachine.BUFFER_TICKS * tier.euPerTick(), machine.bufferCapacity(),
+                        name + " holds sixty four ticks of its own tier");
+                assertEquals(family.recipeTypes(), machine.recipeTypes(),
+                        name + " works through the group of its family");
+                assertEquals(family.inputs().size(),
+                        machine.inventory().slotsOf(MachineInventory.Role.INPUT).size(),
+                        name + " holds the input slots of its family");
+                assertEquals(family.outputs().size(),
+                        machine.inventory().slotsOf(MachineInventory.Role.OUTPUT).size(),
+                        name + " holds the output slots of its family");
+
+                // The screen a player reads: the tier in front of the name of the family, in the grey panel.
+                MachineScreen screen = machine.screen();
+                assertEquals(family.titleOf(tier), screen.title(), name + " is read under its own title");
+                assertEquals(MachineStyle.NORMAL, screen.style(), "a machine of the line is drawn in grey");
+                assertEquals(ProgressKind.GENERIC, screen.progress());
+                assertEquals(family.inputs(), screen.inputs());
+                assertEquals(family.outputs(), screen.outputs());
+                assertEquals(0, screen.fluidInputs() + screen.fluidOutputs(),
+                        "a machine of the line holds no tank: the power arrives over a line");
+
+                // And the shape of the machine is really on disk, see import_basicmachines.ps1.
+                assertPresent("blocks/" + family.pictureOf(tier, "front") + ".png");
+                assertPresent("models/block/" + name + ".json");
+                assertPresent("blockstates/" + name + ".json");
+            }
+        }
+    }
+
+    @Test
+    void aMachineOfTheLineRunsARecipeOfTheGroupItReads() throws IOException {
+        for (MachineFamilies.Family family : MachineFamilies.all()) {
+            RecipeType group = family.recipeTypes().get(0);
+            MachineRecipe recipe = firstRecipeOf(group);
+
+            for (Voltage tier : TIERS) {
+                assertTrue(family.machine(tier).canRun(recipe),
+                        family.nameOf(tier) + " refuses a recipe of " + group.name());
+            }
+        }
+    }
+
+    /** {@code true} when a file of the game is really there, the art and the shape of a machine included. */
+    private static void assertPresent(String relative) {
+        assertTrue(Files.isRegularFile(TestRegistries.ASSETS.resolve(relative)),
+                "the machine asks for " + relative + ", which is not there");
+    }
+
+    /** The first recipe file of a group, read the way the game reads it. */
+    private static MachineRecipe firstRecipeOf(RecipeType group) throws IOException {
+        Path folder = TestRegistries.ASSETS.resolve(RecipeLoader.FOLDER).resolve(group.name());
+        try (var entries = Files.list(folder)) {
+            Path file = entries
+                    .filter(path -> path.getFileName().toString().endsWith(RecipeLoader.EXTENSION))
+                    .sorted()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("No recipe of " + group.name()));
+            String fileName = file.getFileName().toString();
+            String name = fileName.substring(0, fileName.length() - RecipeLoader.EXTENSION.length());
+            return assertInstanceOf(MachineRecipe.class,
+                    RecipeLoader.parse(group, name, Files.readString(file)));
+        }
     }
 
     /** A machine of the test of a tier and a current, with one slot in and one slot out. */
