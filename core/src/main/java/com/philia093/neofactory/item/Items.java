@@ -1,6 +1,9 @@
 package com.philia093.neofactory.item;
 
+import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.TurbineTier;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.cable.Cables;
@@ -466,13 +469,25 @@ public final class Items {
     public static final int STEAM_TURBINE_HV_ID = 846;
 
     /**
+     * Id of the first machine of the line of the power, the first of the eighteen.
+     * <p>
+     * The machines take the numbers right behind the turbines, so every item that a stored inventory names
+     * keeps its number and the save game needs no new version. <b>The ids are handed out by the table of the
+     * families:</b> the six families of {@link MachineFamilies} in the order they are written down and the
+     * three tiers of every one of them, so the furnace of the low voltage takes the first number and the alloy
+     * smelter of the high voltage the last, see {@code Blocks#LINE_FIRST_ID}.
+     */
+    public static final int LINE_FIRST_ID = 847;
+
+    /**
      * Next unused item id, used to verify that a new item got a fresh id.
      * <p>
-     * The three turbines moved this number, because they stand in front of the items of the materials: the
-     * materials begin at the number written here, see
+     * The three turbines moved this number, because they stand in front of the items of the materials, and the
+     * eighteen machines of the line moved it again: the materials begin at the number written here, see
      * {@link com.philia093.neofactory.cable.Cables} for the run of the cables that stands in front of them.
      */
-    public static final int NEXT_FREE_ID = 847;
+    public static final int NEXT_FREE_ID = LINE_FIRST_ID + MachineFamilies.all().size()
+            * MachineFamilies.TIERS.size();
 
     /**
      * Amount an empty container stacks to.
@@ -1134,6 +1149,20 @@ public final class Items {
         STEAM_TURBINE_HV = register(Item.builder(STEAM_TURBINE_HV_ID, "steam_turbine_hv")
                 .displayName(TurbineTier.HV.displayName())
                 .buildBlock(Blocks.STEAM_TURBINE_HV));
+
+        // The eighteen machines of the line of the power, one per family and tier of MachineFamilies. They are
+        // block items like every machine: each borrows the picture of its block, the block names the entity
+        // behind it, and what a player reads at a machine is the tier in front of the name of its family - LV
+        // Macerator, HV Alloy Smelter. They take the numbers 847 to 864, so no item that a stored inventory
+        // names moved, see LINE_FIRST_ID.
+        int lineId = LINE_FIRST_ID;
+        for (MachineFamilies.Family family : MachineFamilies.all()) {
+            for (Voltage tier : MachineFamilies.TIERS) {
+                register(Item.builder(lineId++, family.nameOf(tier))
+                        .displayName(family.titleOf(tier))
+                        .buildBlock(BlockRegistry.byName(family.nameOf(tier))));
+            }
+        }
 
         // The materials bring their own items, one per shape they come in. They are registered
         // here, right before the table closes, so that they append behind every item written above

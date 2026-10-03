@@ -51,9 +51,6 @@ class ElectricMachineTest {
 
     private static final int SEED = 7;
 
-    /** The tiers a machine of the line exists in, in the order the line grows. */
-    private static final List<Voltage> TIERS = List.of(Voltage.LOW, Voltage.MEDIUM, Voltage.HIGH);
-
     @BeforeAll
     static void registerGameData() {
         TestRegistries.ensure();
@@ -208,11 +205,11 @@ class ElectricMachineTest {
 
     @Test
     void everyFamilyAndTierOfTheLineIsAMachineOfItsOwn() {
-        assertEquals(18, MachineFamilies.all().size() * TIERS.size(),
+        assertEquals(18, MachineFamilies.all().size() * MachineFamilies.TIERS.size(),
                 "six families of three tiers make the machines of the line");
 
         for (MachineFamilies.Family family : MachineFamilies.all()) {
-            for (Voltage tier : TIERS) {
+            for (Voltage tier : MachineFamilies.TIERS) {
                 String name = family.nameOf(tier);
                 ElectricMachine machine = family.machine(tier);
 
@@ -253,7 +250,7 @@ class ElectricMachineTest {
             RecipeType group = family.recipeTypes().get(0);
             MachineRecipe recipe = firstRecipeOf(group);
 
-            for (Voltage tier : TIERS) {
+            for (Voltage tier : MachineFamilies.TIERS) {
                 assertTrue(family.machine(tier).canRun(recipe),
                         family.nameOf(tier) + " refuses a recipe of " + group.name());
             }

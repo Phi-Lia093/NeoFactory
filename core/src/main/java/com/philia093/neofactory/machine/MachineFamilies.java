@@ -126,7 +126,22 @@ public final class MachineFamilies {
     }
 
     /**
+     * The tiers a machine of the line exists in, in the order the line grows.
+     * <p>
+     * <b>A tier is a casing and a line of its own</b>, so every family of the table below is built three
+     * times: the blocks, the items and the block entities of the eighteen machines are filled by walking the
+     * families and, for every one of them, these three tiers, see {@code Blocks}, {@code Items} and
+     * {@code BlockEntityTypes}.
+     */
+    public static final List<Voltage> TIERS = List.of(Voltage.LOW, Voltage.MEDIUM, Voltage.HIGH);
+
+    /**
      * Every family of the line, in the order the machines of it are registered.
+     * <p>
+     * <b>The order of this list is the order of the ids.</b> A block and an item take their number from the
+     * place a family and a tier stand at, and an id is permanent - a stored world and a stored inventory spell
+     * it out - so a family that is added goes behind the ones written here and never in the middle, see
+     * {@code Blocks#LINE_FIRST_ID} and {@code Items#LINE_FIRST_ID}.
      */
     public static final List<Family> ALL = List.of(
             ElectricFurnaceMachine.FAMILY,

@@ -1,10 +1,12 @@
 package com.philia093.neofactory.gui.creative;
 
 import com.badlogic.gdx.Input;
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.pipe.PipeMaterials;
 import com.philia093.neofactory.pipe.PipeSize;
 import com.philia093.neofactory.pipe.Pipes;
@@ -124,8 +126,19 @@ class CreativeInventoryTest {
                 "then the turbines, the first machines of the game that make power");
         assertEquals(Items.STEAM_TURBINE_MV, creative.stackAt(16).item(), "the turbine of the middle voltage");
         assertEquals(Items.STEAM_TURBINE_HV, creative.stackAt(17).item(), "and the one of the high voltage");
-        assertTrue(creative.stackAt(18).isEmpty(), "and nothing behind them so far");
-        assertEquals(18, creative.matches().size(), "the list holds the machines of the game");
+
+        // The eighteen machines of the line of the power stand behind them, one per family and tier of the
+        // table of the families: the furnace of the low voltage comes first and the alloy smelter of the high
+        // voltage last, see MachineFamilies.
+        int slot = 18;
+        for (MachineFamilies.Family family : MachineFamilies.all()) {
+            for (Voltage tier : MachineFamilies.TIERS) {
+                assertEquals(ItemRegistry.byName(family.nameOf(tier)), creative.stackAt(slot++).item(),
+                        family.titleOf(tier) + " is listed with the machines");
+            }
+        }
+        assertTrue(creative.stackAt(slot).isEmpty(), "and nothing behind them so far");
+        assertEquals(36, creative.matches().size(), "the list holds the machines of the game");
     }
 
     @Test

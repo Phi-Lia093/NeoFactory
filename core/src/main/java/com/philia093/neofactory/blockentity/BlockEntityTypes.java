@@ -1,5 +1,6 @@
 package com.philia093.neofactory.blockentity;
 
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.machine.AlloyFurnaceMachine;
 import com.philia093.neofactory.machine.CompressorMachine;
 import com.philia093.neofactory.machine.ExtractorMachine;
@@ -12,6 +13,7 @@ import com.philia093.neofactory.machine.HighPressureExtractorMachine;
 import com.philia093.neofactory.machine.HighPressureForgeHammerMachine;
 import com.philia093.neofactory.machine.HighPressureGrinderMachine;
 import com.philia093.neofactory.machine.HighPressureSteamFurnaceMachine;
+import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.SmeltingMachine;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
 import com.philia093.neofactory.machine.SteamFurnaceMachine;
@@ -169,6 +171,16 @@ public final class BlockEntityTypes {
         BlockEntityRegistry.register(PIPE);
         BlockEntityRegistry.register(CHEST);
         BlockEntityRegistry.register(CRAFTING_TABLE);
+
+        // The eighteen machines of the line of the power, one type per family and tier. They are not written
+        // out here because there are eighteen of them: the table of the families names every one of them and
+        // hands the machine behind the block over, see MachineFamilies.
+        for (MachineFamilies.Family family : MachineFamilies.all()) {
+            for (Voltage tier : MachineFamilies.TIERS) {
+                BlockEntityRegistry.register(new BlockEntityType(family.nameOf(tier),
+                        type -> new MachineBlockEntity(type, family.machine(tier))));
+            }
+        }
         registered = true;
     }
 }

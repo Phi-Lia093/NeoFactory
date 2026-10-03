@@ -1,8 +1,10 @@
 package com.philia093.neofactory.block;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.ToolType;
 import com.philia093.neofactory.cable.Cables;
+import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.pipe.Pipes;
 
 /**
@@ -150,8 +152,21 @@ public final class Blocks {
     /** Id of the steam turbine of the high voltage. */
     public static final int STEAM_TURBINE_HV_ID = 730;
 
+    /**
+     * Id of the first machine of the line of the power, the first of the eighteen.
+     * <p>
+     * The machines take the numbers right behind the turbines, so nothing that a stored world holds moved and
+     * the save game needs no new version, see {@link #NEXT_FREE_ID}. <b>The ids are handed out by the table of
+     * the families:</b> the six families of {@link MachineFamilies} in the order they are written down, and
+     * the three tiers of every one of them, so the furnace of the low voltage takes the first number and the
+     * alloy smelter of the high voltage the last. A family that is added goes behind the ones written down,
+     * which is what keeps the number of a machine that a world already holds.
+     */
+    public static final int LINE_FIRST_ID = 731;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 731;
+    public static final int NEXT_FREE_ID = LINE_FIRST_ID + MachineFamilies.all().size()
+            * MachineFamilies.TIERS.size();
 
     /**
      * Light the torch gives away, the first source of light of the game.
@@ -710,6 +725,21 @@ public final class Blocks {
                 .build();
         BlockRegistry.register(CHEST);
 
+        // ------------------------------------------------------------------
+        // The eighteen machines of the line of the power, one per family and tier of MachineFamilies. They
+        // are not written out here because there are eighteen of them: the table of the families builds them,
+        // and every one of them is a cube of the casing of its tier whose front shows the machine that stands
+        // there. A machine of the line holds no tank - the power it runs on arrives over a line and never in a
+        // bucket - so it carries no fluid and no pipe is built towards it, see MachineFamilies and
+        // MachineBlockEntity.
+        // ------------------------------------------------------------------
+        int lineId = LINE_FIRST_ID;
+        for (MachineFamilies.Family family : MachineFamilies.all()) {
+            for (Voltage tier : MachineFamilies.TIERS) {
+                lineMachineBlock(lineId++, family, tier);
+            }
+        }
+
         BlockRegistry.freeze();
     }
 
@@ -767,6 +797,35 @@ public final class Blocks {
                 .toolType(ToolType.WRENCH)
                 .blockEntity(name)
                 .carriesFluid()
+                .build();
+        BlockRegistry.register(block);
+        return block;
+    }
+
+    /**
+     * Builds one of the machines of the line of the power.
+     * <p>
+     * A machine of the line is a machine like every other one: a whole cube that is taken apart with the
+     * wrench and that names the block entity holding its slots and its work, and the tiers of the line tell
+     * its pictures apart, see {@link MachineFamilies.Family#pictureOf(Voltage, String)}. <b>It holds no tank
+     * and no pipe is built towards it</b> - what it runs on arrives over a line of cables and never in a
+     * bucket - which is the one thing the block of a machine of the age of steam does that this one does not,
+     * see {@code MachineBlockEntity}.
+     *
+     * @param id block id of the machine, taken from {@link #LINE_FIRST_ID}
+     * @param family family of the machine, which names its art and the entity behind it
+     * @param tier tier the machine is built for
+     * @return the registered block
+     */
+    private static Block lineMachineBlock(int id, MachineFamilies.Family family, Voltage tier) {
+        String name = family.nameOf(tier);
+        Block block = Block.builder(id, name)
+                .texture(family.pictureOf(tier, "front"))
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
+                .blockEntity(name)
                 .build();
         BlockRegistry.register(block);
         return block;

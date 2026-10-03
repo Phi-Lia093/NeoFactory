@@ -1,10 +1,17 @@
 package com.philia093.neofactory.blockentity;
 
+import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.machine.ElectricMaceratorMachine;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
+import com.philia093.neofactory.recipe.RecipeLoader;
+import com.philia093.neofactory.recipe.RecipeRegistry;
+import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
@@ -13,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -87,9 +95,47 @@ class MachineLitStateTest {
         assertFalse(Blocks.FURNACE.states().hasProperty(MachineBlockEntity.LIT));
     }
 
+    @Test
+    void aMachineOfTheLineLightsTheFrontOfItsBlock() {
+        World world = new World(SEED, 0, 0);
+        Block macerator = BlockRegistry.byName("macerator_lv");
+
+        assertNotNull(macerator, "the game holds a macerator of the low voltage");
+        assertTrue(macerator.states().hasProperty(MachineBlockEntity.LIT),
+                "a machine of the line says in its cell whether it works");
+        assertTrue(macerator.states().hasProperty(MachineBlockEntity.FACING), "and which way it looks");
+        assertEquals(8, macerator.states().stateCount(),
+                "four directions and the two faces of a machine that runs");
+        world.setBlock(X, Y, Z, macerator);
+
+        // A machine of the line works through the very recipe the grinder of bronze reads and pays for it out
+        // of the buffer the block entity fills, see MachineBlockEntity and MachineFamilies.
+        ElectricMaceratorMachine machine = new ElectricMaceratorMachine(Voltage.LOW);
+        MachineBlockEntity entity = new MachineBlockEntity(
+                new BlockEntityType("macerator_lv", type -> new MachineBlockEntity(type, machine)), machine);
+        entity.setPosition(X, Y, Z);
+        world.addBlockEntity(entity);
+
+        RecipeRegistry.register(RecipeLoader.parse(RecipeType.GRINDING, "test_dust",
+                "{ \"ingredient\": \"iron_ore\", \"result\": { \"item\": \"iron_dust\" },"
+                        + " \"time\": 8.0, \"power\": 1, \"voltage\": 8 }"));
+        machine.inventory().set(ElectricMaceratorMachine.INPUT, ItemStack.of(Items.IRON_ORE, 1));
+        machine.buffer().setAmount(machine.bufferCapacity());
+
+        entity.tick(world, TickClock.TICK_SECONDS);
+
+        assertTrue(machine.isRunning(), "the machine started the work");
+        assertEquals("true", litOf(world, macerator), "the front of a working machine glows");
+    }
+
     /** Value of the property of the light in the cell of the test. */
     private static String litOf(World world) {
         return Blocks.BRONZE_BOILER.states().decode(world.getState(X, Y, Z))
                 .get(MachineBlockEntity.LIT);
+    }
+
+    /** Value of the property of the light in the cell of the test, read through the states of a block. */
+    private static String litOf(World world, Block block) {
+        return block.states().decode(world.getState(X, Y, Z)).get(MachineBlockEntity.LIT);
     }
 }
