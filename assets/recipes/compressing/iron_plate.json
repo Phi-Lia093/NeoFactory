@@ -2,5 +2,6 @@
   "ingredients": ["iron_ingot"],
   "result": { "item": "iron_plate" },
   "time": 6.0,
-  "steam": 700
+  "power": 1,
+  "voltage": 8
 }

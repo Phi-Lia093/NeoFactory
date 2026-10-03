@@ -8,49 +8,57 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A recipe a machine of the age of steam performs over time.
+ * A recipe a machine works through, of any age: one or two items go in, one item comes out.
  * <p>
- * It is the recipe of every machine that runs on steam: one or two items go in, one item comes out, and the
- * work takes a number of seconds and a number of millibuckets of steam, see {@link #steam()}. One class is
- * enough for all of them because a machine of that age only differs in the slots it offers and in the recipes
- * it reads - a grinder turns an ore into dust with a single ingredient, an alloy furnace mixes two of them into
- * one - so nothing of the recipe depends on the machine that runs it, see {@link MachineRecipe}.
+ * <b>One file serves every machine that can run it.</b> A recipe says what it takes, what it makes, how long
+ * a craft takes and how much power it draws a tick - and every machine that reads its group decides for
+ * itself what that power means: a furnace that burns coal ignores it and works by the clock, a machine of the
+ * age of steam turns it into millibuckets and drinks them, and a machine of the electric age pays it out of
+ * its buffer and over-clocks it if its line is stronger, see {@code SmeltingMachine}, {@code SteamMachine}
+ * and {@code ElectricMachine}. That is what makes a group a group: the furnace of bronze and the furnace of
+ * the high voltage read the very same file and neither of them owns it.
  * <p>
- * <b>The ingredients are places, not stacks.</b> A recipe that names two ingredients needs two filled places of
- * the input of its machine and takes one item out of each of them, the way
- * {@link ShapelessRecipe} counts them: filling a single slot with a whole stack is not what a two-ingredient
- * recipe asks for.
+ * <b>Steam is the energy of a recipe written in millibuckets.</b> Four millibuckets of steam are worth one
+ * unit, so what a machine of the age of steam spends follows from {@link #energy()}, see
+ * {@link MachineRecipe#steam()}.
+ * <p>
+ * <b>The ingredients are places, not stacks.</b> A recipe that names two ingredients needs two filled places
+ * of the input of its machine and takes one item out of each of them: filling a single slot with a whole
+ * stack is not what a two-ingredient recipe asks for, see {@link ShapelessRecipe}.
  */
-public final class SteamRecipe implements MachineRecipe {
+public final class ProcessingRecipe implements MachineRecipe, EnergyRecipe {
 
-    /** Seconds a recipe of the age of steam takes when its file does not say. */
-    public static final float DEFAULT_SECONDS = 8.0f;
+    /** Seconds a recipe takes when its file does not say. */
+    public static final float DEFAULT_SECONDS = 10.0f;
 
     private final String name;
     private final RecipeType type;
     private final List<Ingredient> ingredients;
     private final ItemStack result;
     private final float seconds;
-    private final int steam;
+    private final int euPerTick;
+    private final int voltage;
 
     /**
      * Creates a recipe.
      *
      * @param name name of the recipe, the name of its file
-     * @param type kind of the recipe, which is the machine that reads it
+     * @param type kind of the recipe, which is the group of machines that reads it
      * @param ingredients one ingredient per place of the input a craft fills
      * @param result what the machine makes
      * @param seconds time one craft takes
-     * @param steam steam one craft spends, in millibuckets, {@code 0} for a recipe that spends none
+     * @param euPerTick power the recipe draws a tick, {@code 0} for a recipe that draws none
+     * @param voltage voltage the recipe asks for, the tier of the machine that may run it
      */
-    public SteamRecipe(String name, RecipeType type, List<Ingredient> ingredients, ItemStack result,
-            float seconds, int steam) {
+    public ProcessingRecipe(String name, RecipeType type, List<Ingredient> ingredients, ItemStack result,
+            float seconds, int euPerTick, int voltage) {
         this.name = Objects.requireNonNull(name, "name");
         this.type = Objects.requireNonNull(type, "type");
         this.ingredients = List.copyOf(Objects.requireNonNull(ingredients, "ingredients"));
         this.result = Objects.requireNonNull(result, "result");
         this.seconds = seconds > 0.0f ? seconds : DEFAULT_SECONDS;
-        this.steam = Math.max(0, steam);
+        this.euPerTick = Math.max(0, euPerTick);
+        this.voltage = Math.max(0, voltage);
         if (this.ingredients.isEmpty()) {
             throw new IllegalArgumentException("A recipe needs at least one ingredient: " + name);
         }
@@ -72,6 +80,7 @@ public final class SteamRecipe implements MachineRecipe {
     }
 
     /** Ingredients this recipe accepts, one per used place of the input. */
+    @Override
     public List<Ingredient> ingredients() {
         return ingredients;
     }
@@ -81,16 +90,34 @@ public final class SteamRecipe implements MachineRecipe {
         return seconds;
     }
 
-    /** Steam one craft of this recipe spends, in millibuckets. */
+    /** Power this recipe draws a tick, in units, {@code 0} for a recipe that draws none. */
     @Override
-    public int steam() {
-        return steam;
+    public int euPerTick() {
+        return euPerTick;
+    }
+
+    /** Voltage this recipe asks for, the tier of the machine that may run it. */
+    @Override
+    public int voltage() {
+        return voltage;
+    }
+
+    /**
+     * Energy one craft of this recipe costs, the total a machine of the electric age pays.
+     * <p>
+     * What a recipe draws is what it draws every tick, so the total follows from the power and the time and
+     * is not a number of its file, see {@link EnergyRecipe#totalEu()}. The steam a machine of the age of
+     * steam spends is the same number written in millibuckets, see {@link MachineRecipe#steam()}.
+     */
+    @Override
+    public int energy() {
+        return totalEu();
     }
 
     @Override
     public boolean matches(RecipeGrid grid) {
-        // One place is used by one ingredient, so a recipe of two ingredients needs two filled places even when
-        // one of them holds a whole stack, see ShapelessRecipe.
+        // One place is used by one ingredient, so a recipe of two ingredients needs two filled places even
+        // when one of them holds a whole stack, see ShapelessRecipe.
         if (grid.filledPlaces() != ingredients.size()) {
             return false;
         }
@@ -145,7 +172,7 @@ public final class SteamRecipe implements MachineRecipe {
 
     @Override
     public String toString() {
-        return "SteamRecipe(" + name + ", " + ingredients.size() + " ingredients -> " + result + ", "
-                + seconds + "s, " + steam + "mB)";
+        return "ProcessingRecipe(" + name + ", " + ingredients.size() + " ingredients -> " + result + ", "
+                + seconds + "s, " + euPerTick + "EU/t at " + voltage + "V)";
     }
 }

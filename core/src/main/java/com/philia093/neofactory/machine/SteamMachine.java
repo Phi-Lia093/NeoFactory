@@ -1,7 +1,9 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.fluid.SimpleFluidStorage;
+import com.philia093.neofactory.recipe.EnergyRecipe;
 import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.save.SaveTags;
@@ -33,6 +35,17 @@ public abstract class SteamMachine extends RecipeMachine implements ExhaustMachi
 
     /** Steam the tank of a steam machine holds, in millibuckets. */
     public static final int STEAM_CAPACITY = 16000;
+
+    /**
+     * Voltage of the age of steam, which is the tier a machine of it works at.
+     * <p>
+     * <b>A machine of the age of steam is a machine of the ultra low voltage</b>, whatever pressure it works
+     * at: the tier of a recipe is what decides whether a machine may run it at all, so a machine of the first
+     * age reads the recipes of that age and of no later one, see {@link #findRecipe()}. It is also the tier a
+     * machine of the electric age measures a recipe of this age against when it over-clocks it, see
+     * {@code ElectricMachine}.
+     */
+    public static final Voltage AGE = Voltage.ULTRA_LOW;
 
     private final SimpleFluidStorage steam;
 
@@ -217,7 +230,24 @@ public abstract class SteamMachine extends RecipeMachine implements ExhaustMachi
             return null;
         }
         MachineRecipe recipe = recognisedRecipe();
+        if (recipe == null || asksForALaterAge(recipe)) {
+            return null;
+        }
         return canSpend(recipe) ? recipe : null;
+    }
+
+    /**
+     * {@code true} when a recipe asks for a line stronger than the age of steam.
+     * <p>
+     * A recipe that names a voltage above {@link #AGE} is the business of a later machine: a furnace of bronze
+     * never runs it, and the input of it stays in the slot, see {@link #findRecipe()}. A recipe that names no
+     * voltage at all is no recipe of the electric age and is taken as one of this age.
+     *
+     * @param recipe recipe that was recognised
+     * @return {@code true} when the recipe is of a later age than this machine
+     */
+    private static boolean asksForALaterAge(MachineRecipe recipe) {
+        return recipe instanceof EnergyRecipe energy && energy.voltage() > AGE.euPerTick();
     }
 
     /**

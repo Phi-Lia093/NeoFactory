@@ -1,0 +1,7 @@
+{
+  "ingredient": "sand",
+  "result": { "item": "glass" },
+  "time": 8.0,
+  "power": 1,
+  "voltage": 8
+}

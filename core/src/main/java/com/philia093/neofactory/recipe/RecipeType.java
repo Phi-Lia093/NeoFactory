@@ -12,8 +12,9 @@ import java.util.Objects;
  * type is the name of a folder: a new kind of crafting only needs a constant here and
  * a folder next to the existing ones, see {@link RecipeLoader}.
  * <p>
- * The list holds what the game can use today. A furnace and a machine read
- * {@link #SMELTING}, the crafting grid of the player reads the two crafting types.
+ * The list holds what the game can use today. The crafting grid of the player reads the two crafting types,
+ * and every machine that works on an item reads one of {@link #processingKinds()} - one folder per group of
+ * machines, so a furnace of bronze and a furnace of the high voltage read the very same file.
  */
 public final class RecipeType {
 
@@ -25,15 +26,6 @@ public final class RecipeType {
 
     /** A recipe a machine performs over time, such as smelting an ore. */
     public static final RecipeType SMELTING = new RecipeType("smelting");
-
-    /**
-     * A recipe the furnace of the age of steam smelts.
-     * <p>
-     * It reads like {@link #SMELTING} and spends steam besides, see {@link #isSteam()}: a machine of the age
-     * of steam pays for its work with the steam of the boiler and not with a flame of its own, so the two ages
-     * cannot share one folder - an ore that is smelted for free would not be a machine of the steam age.
-     */
-    public static final RecipeType STEAM_SMELTING = new RecipeType("steam_smelting");
 
     /** A recipe the alloy furnace mixes out of two items. */
     public static final RecipeType ALLOY_SMELTING = new RecipeType("alloy_smelting");
@@ -53,21 +45,20 @@ public final class RecipeType {
     private static final Map<String, RecipeType> BY_NAME = new LinkedHashMap<>();
 
     /**
-     * The kinds of recipe a machine of the age of steam reads, the ones of {@link #STEAM_SMELTING} through
+     * The kinds of recipe a machine works through over time, the ones of {@link #SMELTING} through
      * {@link #FORGING}.
      */
-    private static final List<RecipeType> STEAM;
+    private static final List<RecipeType> PROCESSING;
 
     static {
         BY_NAME.put(CRAFTING_SHAPED.name, CRAFTING_SHAPED);
         BY_NAME.put(CRAFTING_SHAPELESS.name, CRAFTING_SHAPELESS);
-        BY_NAME.put(SMELTING.name, SMELTING);
-        List<RecipeType> steam = List.of(STEAM_SMELTING, ALLOY_SMELTING, GRINDING, COMPRESSING,
+        List<RecipeType> processing = List.of(SMELTING, ALLOY_SMELTING, GRINDING, COMPRESSING,
                 EXTRACTING, FORGING);
-        for (RecipeType type : steam) {
+        for (RecipeType type : processing) {
             BY_NAME.put(type.name, type);
         }
-        STEAM = steam;
+        PROCESSING = processing;
     }
 
     private final String name;
@@ -92,19 +83,19 @@ public final class RecipeType {
     }
 
     /**
-     * {@code true} when this kind of recipe is performed by a machine of the age of steam.
+     * {@code true} when this kind of recipe is worked through by a machine over time.
      * <p>
-     * A kind of that age is read from its own folder and spends steam, see
-     * {@link com.philia093.neofactory.recipe.SteamRecipe} and
-     * {@link com.philia093.neofactory.machine.SteamMachine}.
+     * A kind of that sort is read from its own folder and is one the furnace of every age may read: the file
+     * says what it makes and what a craft costs, and each machine decides how to pay for it, see
+     * {@link ProcessingRecipe}.
      */
-    public boolean isSteam() {
-        return STEAM.contains(this);
+    public boolean isProcessing() {
+        return PROCESSING.contains(this);
     }
 
-    /** The kinds of recipe a machine of the age of steam reads, in the order they are declared. */
-    public static List<RecipeType> steamKinds() {
-        return STEAM;
+    /** The kinds of recipe a machine works through over time, in the order they are declared. */
+    public static List<RecipeType> processingKinds() {
+        return PROCESSING;
     }
 
     /** Every type the game knows, in the order they are declared. */

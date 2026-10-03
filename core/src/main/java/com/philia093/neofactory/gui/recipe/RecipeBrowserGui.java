@@ -1018,19 +1018,18 @@ public final class RecipeBrowserGui {
     /**
      * What a recipe reports about itself.
      * <p>
-     * An age that says nothing about energy reports none: the machines of this game burn fuel and steam, so
-     * a recipe that is not an {@code EnergyRecipe} writes no volts at all, see {@link RecipeReport}.
+     * <b>One recipe of a group serves every age, so the report names what all of them pay.</b> A recipe a
+     * machine works through tells how long a craft takes and what it is worth in steam, and a recipe that
+     * names what it draws a tick adds the volts besides, see {@link RecipeReport}: a player reads the price
+     * of one craft in the units of every machine that could run it.
      *
      * @param recipe recipe the page shows
      * @return the report of that recipe
      */
     private static RecipeReport reportOf(Recipe recipe) {
         RecipeReport report = new RecipeReport();
-        if (recipe instanceof com.philia093.neofactory.recipe.SmeltingRecipe smelting) {
-            report.time(smelting.seconds());
-        }
-        if (recipe instanceof com.philia093.neofactory.recipe.SteamRecipe steam) {
-            report.time(steam.seconds()).steam(steam.steam());
+        if (recipe instanceof com.philia093.neofactory.machine.MachineRecipe machine) {
+            report.time(machine.seconds()).steam(machine.steam());
         }
         if (recipe instanceof com.philia093.neofactory.recipe.EnergyRecipe energy) {
             report.energy(energy);

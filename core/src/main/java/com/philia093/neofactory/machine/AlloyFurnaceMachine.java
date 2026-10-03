@@ -10,7 +10,7 @@ import java.util.List;
  * It is the smelter of an alloy: two slots feed it and one product leaves it, and a recipe of
  * {@code assets/recipes/alloy_smelting} names what goes together - bronze from copper and tin, for instance.
  * A recipe that asks for both slots needs both of them filled, because an ingredient is a place of the input
- * and not a stack, see {@link com.philia093.neofactory.recipe.SteamRecipe}.
+ * and not a stack, see {@link com.philia093.neofactory.recipe.ProcessingRecipe}.
  * <p>
  * Like every machine of its age it is paid for with steam and blows it out of an exhaust, see
  * {@link SteamMachine}. Its screen shows the flame of the bronze age for both of the slots it is fed and the

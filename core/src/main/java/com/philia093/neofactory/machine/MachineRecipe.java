@@ -56,17 +56,21 @@ public interface MachineRecipe extends Recipe {
     /**
      * Steam one craft takes, in millibuckets, {@code 0} for a machine that runs on something else.
      * <p>
-     * <b>This is the number a steam machine pays with</b>, and it is what makes two recipes of the same
-     * machine cost different amounts of steam: a recipe that grinds a soft ore asks for less of it than one
-     * that melts a metal, and both say so in their own file, see {@code SteamMachine}. The number is not
-     * {@link #fluidIngredients()}: a fluid ingredient is something the machine keeps - it is taken out of the
-     * tank and away with the craft - while the steam of a recipe is what the machine <i>spends</i>, and the
-     * exhaust is where it goes, see {@code SteamMachine#steamPerSecond(MachineRecipe)}.
+     * <b>Steam is the energy of a recipe written in millibuckets.</b> Four millibuckets of it are worth one
+     * unit, so what a machine of the age of steam spends is four times what one craft costs, see
+     * {@link #energy()}: the span of a furnace of bronze, the span of a furnace of the high voltage, is one
+     * number in one file, and neither age names it twice, see {@code SteamMachine}.
+     * <p>
+     * The number is not {@link #fluidIngredients()}: a fluid ingredient is something the machine keeps - it is
+     * taken out of the tank and away with the craft - while the steam of a recipe is what the machine
+     * <i>spends</i>, and the exhaust is where it goes, see {@code SteamMachine}.
      *
      * @return the steam in millibuckets, never negative
      */
     default int steam() {
-        return 0;
+        // Four millibuckets of steam are one unit of energy, so a recipe that says what a craft costs has
+        // already said what steam it takes: the rate stands here and no file of the age of steam names it.
+        return 4 * energy();
     }
 
     /**

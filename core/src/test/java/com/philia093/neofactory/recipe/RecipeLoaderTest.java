@@ -1,5 +1,6 @@
 package com.philia093.neofactory.recipe;
 
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.Inventory;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
@@ -17,6 +18,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -192,9 +194,12 @@ class RecipeLoaderTest {
     @Test
     void aSmeltingRecipeTakesASingleItem() throws IOException {
         Recipe recipe = read(RecipeType.SMELTING, "iron_ingot");
+        ProcessingRecipe processing = assertInstanceOf(ProcessingRecipe.class, recipe);
 
-        assertTrue(recipe instanceof SmeltingRecipe);
-        assertEquals(10.0f, ((SmeltingRecipe) recipe).seconds(), 0.001f);
+        assertEquals(10.0f, processing.seconds(), 0.001f);
+        assertEquals(1, processing.ingredients().size(), "a smelting recipe takes one item");
+        assertEquals(1, processing.euPerTick(), "and it names the power a craft draws");
+        assertEquals(Voltage.ULTRA_LOW.euPerTick(), processing.voltage());
 
         Inventory input = new Inventory(1);
         RecipeGrid grid = new InventoryGrid(input, 0, 1, 1);
@@ -204,6 +209,36 @@ class RecipeLoaderTest {
         assertTrue(recipe.matches(grid));
         recipe.consume(grid);
         assertEquals(1, input.get(0).count(), "one ore was used");
+    }
+
+    @Test
+    void aRecipeOfAGroupIsReadWithItsPowerAndItsVoltage() {
+        Recipe recipe = RecipeLoader.parse(RecipeType.ALLOY_SMELTING, "bronze_ingot",
+                "{ \"ingredients\": [\"copper_ingot\", \"tin_ingot\"],"
+                        + " \"result\": { \"item\": \"bronze_ingot\", \"count\": 2 },"
+                        + " \"time\": 12.0, \"power\": 2, \"voltage\": 8 }");
+        ProcessingRecipe processing = assertInstanceOf(ProcessingRecipe.class, recipe);
+
+        assertEquals(2, processing.ingredients().size(), "two metals, one place each");
+        assertEquals(2, processing.euPerTick());
+        assertEquals(8, processing.voltage());
+        assertEquals(2 * 12 * 20, processing.energy(),
+                "the energy of a craft is the power times the ticks it runs");
+        assertEquals(4 * 2 * 12 * 20, processing.steam(), "and the steam is four times the energy");
+    }
+
+    @Test
+    void aRecipeThatNamesNoPowerIsARecipeOfTheFirstAge() {
+        Recipe recipe = RecipeLoader.parse(RecipeType.SMELTING, "plain",
+                "{ \"ingredient\": \"iron_ore\", \"result\": { \"item\": \"iron_ingot\" } }");
+        ProcessingRecipe processing = assertInstanceOf(ProcessingRecipe.class, recipe);
+
+        assertEquals(ProcessingRecipe.DEFAULT_SECONDS, processing.seconds(), 0.001f);
+        assertEquals(0, processing.euPerTick(), "a recipe that says nothing about power draws none");
+        assertEquals(0, processing.energy());
+        assertEquals(0, processing.steam(), "and it is worth no steam either");
+        assertEquals(Voltage.ULTRA_LOW.euPerTick(), processing.voltage(),
+                "a recipe of an age that has no line is a recipe of the first age");
     }
 
     @Test

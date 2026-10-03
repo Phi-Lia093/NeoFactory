@@ -10,8 +10,9 @@ import java.util.List;
  * It is the first machine a player builds once the boiler stands: a heap of ore goes in, an ingot comes out,
  * and the work is paid for with the steam of the boiler instead of with a flame of its own - which is why it
  * needs no fuel slot and no flame, see {@link SteamMachine}. Its recipes live in
- * {@code assets/recipes/steam_smelting} and each of them says how much steam one craft spends, so an ore that
- * melts easily costs less of it than one that does not.
+ * {@code assets/recipes/smelting} together with the ones of the furnace that burns coal - one file per ore,
+ * read by the furnace of every age, so a player grinds an ore the same way whatever strength of line the
+ * workshop runs on, see {@code ProcessingRecipe}.
  * <p>
  * The screen is the bronze one of the age of steam: the flame of the bronze age for the ore and the plain slot
  * for the ingot, with the tank of steam at the foot of the panel.
@@ -57,6 +58,6 @@ public class SteamFurnaceMachine extends SteamMachine {
      */
     protected SteamFurnaceMachine(MachinePressure pressure) {
         super(screen(pressure), new MachineInventory(MachineInventory.Role.INPUT,
-                MachineInventory.Role.OUTPUT), List.of(RecipeType.STEAM_SMELTING), pressure);
+                MachineInventory.Role.OUTPUT), List.of(RecipeType.SMELTING), pressure);
     }
 }

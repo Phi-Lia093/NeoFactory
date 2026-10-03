@@ -2,5 +2,6 @@
   "ingredients": ["iron_ingot"],
   "result": { "item": "iron_dust" },
   "time": 6.0,
-  "steam": 600
+  "power": 1,
+  "voltage": 8
 }

@@ -18,6 +18,11 @@ import java.util.List;
  * decide whether the input is theirs. How long one craft takes and what it makes comes
  * from the recipe file, so a new smelting recipe needs no code at all.
  * <p>
+ * <b>A furnace that burns coal shares its recipes with the furnace of a line.</b> A file of the group says
+ * what a craft costs, and this machine ignores that number and works by the clock: the flame is what it pays
+ * with. The very ore a furnace of bronze melts is therefore the ore a furnace of the high voltage melts, and
+ * a player who replaces one with the other keeps the recipes they knew, see {@code ProcessingRecipe}.
+ * <p>
  * While a recipe fits, the machine burns fuel. The progress grows while a flame lasts
  * and falls back when the flame goes out, which is what makes a furnace stop and start
  * with the fuel rather than losing what it had done. Nothing ticks the machine in the

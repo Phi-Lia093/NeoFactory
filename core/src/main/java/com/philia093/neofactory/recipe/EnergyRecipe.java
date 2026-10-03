@@ -3,12 +3,13 @@ package com.philia093.neofactory.recipe;
 /**
  * A recipe that draws energy, the one a machine of the electric age runs.
  * <p>
- * The game is built in ages and the machines of the age of steam burn fuel and steam, see
- * {@link SteamRecipe} and {@link com.philia093.neofactory.machine.FuelMachine}: a recipe of that age knows
- * how long it takes and nothing about volts. A recipe that is run by energy says so by implementing this
- * interface, and only then does a screen report what it costs - <b>the amount of energy it takes, the amount
- * it takes every tick and the voltage it asks for</b> - which is what the screen of recipes prints in the rows
- * the inventory of a machine would stand in, see {@code RecipeReport}.
+ * The game is built in ages and a recipe is not: one file says what a craft takes and what it costs, and
+ * every machine that reads its group pays for it its own way, see {@link ProcessingRecipe} and
+ * {@link com.philia093.neofactory.machine.FuelMachine}. A recipe that names what it draws a tick and the
+ * voltage it asks for says so by implementing this interface, and only then does a screen report what it
+ * costs - <b>the amount of energy it takes, the amount it takes every tick and the voltage it asks for</b> -
+ * which is what the screen of recipes prints in the rows the inventory of a machine would stand in, see
+ * {@code RecipeReport}.
  * <p>
  * The total of a recipe is not a number of its file: it is what it draws while it runs, so it follows from
  * {@link #euPerTick()} and {@link #seconds()} unless a recipe says otherwise.
@@ -21,7 +22,7 @@ public interface EnergyRecipe {
     /** Voltage the recipe asks for, the tier of the machine that may run it. */
     int voltage();
 
-    /** Seconds one craft takes, the same number {@link SmeltingRecipe#seconds()} answers. */
+    /** Seconds one craft takes, the same number {@link ProcessingRecipe#seconds()} answers. */
     float seconds();
 
     /**

@@ -1,11 +1,13 @@
 package com.philia093.neofactory.recipe;
 
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.machine.AlloyFurnaceMachine;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.MachineInventory;
 import com.philia093.neofactory.machine.MachineRecipe;
+import com.philia093.neofactory.machine.SteamMachine;
 import com.philia093.neofactory.support.TestRegistries;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,11 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Checks the recipe files of the age of steam, one folder per machine.
+ * Checks the recipe files a machine works through, one folder per group of machines.
  * <p>
- * A file of that age is read by {@link SteamRecipe} and says how much steam one craft spends, which is the
- * number its machine has to pay. The files are read from the assets of the project and not through the
- * registry, because the registry is filled while the game starts, see {@link RecipeLoader#parse}.
+ * A file of the game is read by {@link ProcessingRecipe} and names what a craft takes, what it makes, how
+ * long it takes and what it draws a tick. <b>The age of steam pays for the very same file in millibuckets</b>
+ * - four of them for every unit - which is why a recipe of a group is one file and not one per age, see
+ * {@link SteamMachine#AGE}. The files are read from the assets of the project and not through the registry,
+ * because the registry is filled while the game starts, see {@link RecipeLoader#parse}.
  */
 class SteamRecipesTest {
 
@@ -39,24 +43,27 @@ class SteamRecipesTest {
     }
 
     @Test
-    void everyRecipeOfTheAgeOfSteamIsReadAndSpendsSteam() throws IOException {
+    void everyRecipeOfAGroupIsReadAndNamesWhatACraftCosts() throws IOException {
         int read = 0;
-        for (RecipeType type : RecipeType.steamKinds()) {
+        for (RecipeType type : RecipeType.processingKinds()) {
             List<Path> files = filesOf(type);
             assertFalse(files.isEmpty(), type.name() + " is a kind of recipe a machine reads");
             for (Path file : files) {
                 Recipe recipe = RecipeLoader.parse(type, nameOf(file), Files.readString(file));
 
-                SteamRecipe steamRecipe = assertInstanceOf(SteamRecipe.class, recipe,
-                        file.getFileName() + " is a recipe of the age of steam");
-                assertEquals(type, steamRecipe.type(), "the folder of a recipe is the machine it belongs to");
-                assertTrue(steamRecipe.steam() > 0,
-                        recipe.name() + " says how much steam one craft spends");
-                assertTrue(steamRecipe.seconds() > 0.0f, recipe.name() + " says how long a craft takes");
+                ProcessingRecipe processing = assertInstanceOf(ProcessingRecipe.class, recipe,
+                        file.getFileName() + " is a recipe a machine works through");
+                assertEquals(type, processing.type(), "the folder of a recipe is the group it belongs to");
+                assertTrue(processing.seconds() > 0.0f, recipe.name() + " says how long a craft takes");
+                assertTrue(processing.euPerTick() > 0,
+                        recipe.name() + " says how much power a craft draws");
+                assertEquals(Voltage.ULTRA_LOW.euPerTick(), processing.voltage(),
+                        recipe.name() + " asks for the tier of the age of steam");
+                assertTrue(processing.steam() > 0, recipe.name() + " is worth steam on that tier");
             }
             read += files.size();
         }
-        assertEquals(21, read, "the recipes the age of steam ships with");
+        assertEquals(21, read, "the recipes the game ships with");
     }
 
     @Test

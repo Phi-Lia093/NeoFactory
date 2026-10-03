@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
@@ -144,15 +145,13 @@ public final class RecipeLoader {
         if (type == RecipeType.CRAFTING_SHAPELESS) {
             return new ShapelessRecipe(name, readIngredients(name, root.get("ingredients")), result);
         }
-        if (type == RecipeType.SMELTING) {
-            return new SmeltingRecipe(name, readIngredient(name, root.get("ingredient")), result,
-                    root.getFloat("time", SmeltingRecipe.DEFAULT_SECONDS));
-        }
-        if (type.isSteam()) {
-            // A recipe of the age of steam names its ingredients as a list, the way a shapeless recipe does,
-            // and says how many millibuckets of steam one craft spends, see SteamRecipe.
-            return new SteamRecipe(name, type, readIngredients(name, root.get("ingredients")), result,
-                    root.getFloat("time", SteamRecipe.DEFAULT_SECONDS), root.getInt("steam", 0));
+        if (type.isProcessing()) {
+            // A recipe a machine works through: the places of its input, a time, the power it draws a tick
+            // and the voltage it asks for. A file may name a single ingredient or a list of them, so a
+            // furnace of one slot and one of two read the same shape, see ProcessingRecipe.
+            return new ProcessingRecipe(name, type, readMachineIngredients(name, root), result,
+                    root.getFloat("time", ProcessingRecipe.DEFAULT_SECONDS), root.getInt("power", 0),
+                    root.getInt("voltage", Voltage.ULTRA_LOW.euPerTick()));
         }
         throw new IllegalArgumentException("No loader for the recipe type '" + type.name() + "'");
     }
@@ -216,6 +215,29 @@ public final class RecipeLoader {
             ingredients.add(readIngredient(name, element));
         }
         return ingredients;
+    }
+
+    /**
+     * Reads the places a recipe a machine works through fills.
+     * <p>
+     * A file names either a single {@code ingredient} - the shape a furnace of one slot has always had - or a
+     * list of {@code ingredients}, one per place, which is what a recipe of two metals asks for. Both mean the
+     * same thing to a machine of that sort, see {@link ProcessingRecipe}.
+     *
+     * @param name name of the recipe, for the message of a broken file
+     * @param root the file
+     * @return one ingredient per place of the input
+     */
+    private static List<Ingredient> readMachineIngredients(String name, JsonValue root) {
+        JsonValue list = root.get("ingredients");
+        if (list != null) {
+            return readIngredients(name, list);
+        }
+        JsonValue single = root.get("ingredient");
+        if (single == null) {
+            throw new IllegalArgumentException("The recipe '" + name + "' names no ingredient");
+        }
+        return List.of(readIngredient(name, single));
     }
 
     /** Reads one ingredient, which is an item name or a list of them. */

@@ -13,7 +13,7 @@ import java.util.Locale;
  * in carry what it takes instead: how long it runs and, when the age of a recipe says so, what it burns or
  * how much energy it draws. <b>Nothing is invented</b> - a recipe that says nothing about energy reports no
  * energy, which is what keeps a screen of the age of steam from promising volts it does not have, see
- * {@link EnergyRecipe} and {@link SteamRecipe}.
+ * {@link EnergyRecipe} and {@link com.philia093.neofactory.recipe.ProcessingRecipe}.
  * <p>
  * The report is built where the recipe is known and not here: the screen of recipes hands it the numbers it
  * read out of the recipe, and a number it does not hand over is a line that is not written.

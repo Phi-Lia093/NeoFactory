@@ -2,5 +2,6 @@
   "ingredients": ["gold_ingot"],
   "result": { "item": "gold_foil" },
   "time": 8.0,
-  "steam": 900
+  "power": 1,
+  "voltage": 8
 }
