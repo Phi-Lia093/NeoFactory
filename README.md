@@ -80,7 +80,9 @@ stored on disk so that a session can be continued later.
   cell walks on to that item, the arrows of the head walk through the groups of the game - the blocks, the
   machines and one group per kind of recipe - and the box at the foot of a list searches it by the name of an
   item, the name it reads as and the chemical formula of its material, see `RecipeIndex`, `RecipeArranger` and
-  `RecipeBrowserGui`. The screen is drawn from the pictures of the interface and needs no art of its own.
+  `RecipeBrowserGui`. A page reports what a recipe is worth: how long a craft takes, what steam it is worth
+  and, for a recipe that names it, the power it draws a tick and the voltage it asks for, see `RecipeReport`.
+  The screen is drawn from the pictures of the interface and needs no art of its own.
 - **Save games** - one folder per world, a level file plus one file per chunk the
   player changed, written while playing and when leaving.
 - **Chunk streaming** - the terrain around the player is kept in memory and the
@@ -165,11 +167,17 @@ stored on disk so that a session can be continued later.
   together, the **grinder**, which turns ore into dust, the **compressor**, which presses an item into a
   plate, the **extractor**, which takes something apart, and the **forge hammer**, which beats an ingot into
   shape. Each of them holds one tank of sixteen thousand millibuckets, which a line of pipes or a cell fills,
-  and each reads its own kind of recipe from its own folder of `assets/recipes` - `steam_smelting`,
-  `alloy_smelting`, `grinding`, `compressing`, `extracting` and `forging` - where every file says how long a
-  craft takes and how many millibuckets of steam it spends. **Steam is spent while a craft runs**, the way a
-  machine of the electrical age spends its energy: one frame pays the share of the craft it is worth, so a
-  machine whose tank is empty waits with its input in the slot until the boiler catches up.
+  and each reads a group of recipes from a folder of `assets/recipes` - `smelting`, `alloy_smelting`,
+  `grinding`, `compressing`, `extracting` and `forging` - where every file says what a craft takes, what it
+  makes, how long it takes and **how much power it draws a tick**. **Steam is the energy of a recipe written
+  in millibuckets**: four of them are worth one unit, so a machine of this age pays four times what one craft
+  costs and no file names the same number twice - and the very file a furnace of bronze melts an ore with is
+  the one a furnace of the high voltage melts it with, see `ProcessingRecipe`. **A machine of the age of steam
+  is a machine of the ultra low voltage**, the eight units a tick of the first line, so it reads the groups of
+  its age and of no later one, and a machine of the line over-clocks the recipes of this age, see below.
+  **Steam is spent while a craft runs**, the way a machine of the electrical age spends its energy: one frame
+  pays the share of the craft it is worth, so a machine whose tank is empty waits with its input in the slot
+  until the boiler catches up.
   **A machine of the bronze age blows its steam out of one side of its block.** The vent is a side of the
   machine like every other part of it and is set with the wrench - `SHIFT` with the left button, the click
   that gives a side the job of taking something in - and the moment a craft ends the machine looks at that
@@ -181,9 +189,9 @@ stored on disk so that a session can be continued later.
 - **The steam turbines** - three machines that turn the steam of a boiler into the power of a line of cables,
   and the first machines of the game that **make** energy. A turbine is a tank of sixteen thousand millibuckets
   of steam, the same tank every machine of its age carries, a buffer of the tier it was built for and one plug
-  the power leaves by: every tick it drinks the steam of its tier, fills its buffer with the energy that steam
-  is worth and drives the line that stands at the side of its plug, see `MachineEnergyStorage` and
-  `MachineBlockEntity#updateEnergy`. **One energy is worth two millibuckets of steam**, and the blades of a
+  the power leaves by: every tick it drinks the steam of its tier and fills its own buffer with the energy that
+  steam is worth, and the line that stands at the side of its plug draws what it made, see
+  `MachineEnergyStorage` and `MachineBlockEntity#updateEnergy`. **One energy is worth two millibuckets of steam**, and the blades of a
   turbine do not get all of it: the low turbine turns eighty five of every hundred, the middle one seventy
   five and the high one sixty six, so a better machine of this family drinks more steam for the same ampère
   and not less. Each of them hands over **one ampère of its own tier** a tick - thirty two units of the low
@@ -210,6 +218,35 @@ stored on disk so that a session can be continued later.
   numbers the materials of the game used to start at, so every item of every material stood three numbers
   higher - which is the version 16, and the sides of a machine became words a player reads at it in version
   17, see `SaveFormat`.
+- **The machines of the line** - the age of electricity: six families of machine and three tiers of casing
+  each, which makes **eighteen machines** that run on the power of a line of cables instead of on a flame or
+  on steam - the **electric furnace**, which smelts what the furnace of coal smelts, the **macerator**, the
+  **compressor**, the **extractor**, the **forge hammer** and the **alloy smelter**, each of them reading the
+  very group of recipes its twin of bronze reads, see `MachineFamilies` and `ElectricMachine`.
+  **A machine of the line asks the line for what it needs.** An idle machine tops its buffer up at **one
+  ampere of its tier a tick**; a machine that works asks for the current its recipe draws -
+  `floor(power × 2 / voltage) + 1` amperes, never below one and never above the **two** a machine of this kind
+  may take. **The machine is the one that reaches for the power and never the cable**: a line carries nothing
+  of its own, so the machine that works is the one that draws it, and the block entity of the machine is what
+  carries the question to the line standing at its plug, see `EnergyGrid.Line#pull`.
+  **The buffer of such a machine holds sixty four ticks of its tier** - two thousand and forty eight units at
+  the low voltage, eight thousand one hundred and ninety two at the middle one and thirty two thousand seven
+  hundred and sixty eight at the high one - and it may **only be filled**: what one call may add is the current
+  of the machine and what one call may take is nothing at all. A machine of the line is therefore never a
+  source of the line it stands on, and a workshop of them is a tree of power and never a ring.
+  **A machine of a later tier over-clocks the recipes of an earlier one.** Every tier is four times the one
+  below it, so one step of over-clock runs a recipe at four times the power for half the time, which is twice
+  what the craft costs - and the step is taken as far as the current of the machine allows and no further. A
+  recipe that would need more amperes than the machine may take is no recipe for it at all, and a frame that
+  cannot be paid for leaves the work and the input where they are, so a machine of the line neither eats an
+  input it cannot pay for nor loses one, see `ElectricMachine`.
+  What a player reads at a machine of the line is the tier in front of the name of its family - `LV Macerator`,
+  `HV Alloy Smelter`. Every one of them is drawn in the grey panel of the age of electricity, holds no tank,
+  because the power it runs on arrives over a line and never in a bucket, and lights the front of its block
+  while it works. The eighteen blocks take the ids 731 to 748 and the items 847 to 864, both right behind the
+  turbines, so nothing that a stored world or a stored inventory names has moved and no version is refused.
+  Their art is two pictures of the pack drawn together - the casing of the tier under the overlay of the family
+  - which is what `tools/verify/import_basicmachines.ps1` writes.
 - **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
   comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
   medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
@@ -308,24 +345,29 @@ stored on disk so that a session can be continued later.
   twenty eight units a tick and the sixteen fold bundle four times that - and a line is not slower when it is
   long, it simply costs more: every block of the run takes its loss away from what travels through it, and the
   machine that hands the energy over pays what the machine at the far end receives **plus** that loss.
-  **A line that is too strong destroys what stands at it**: a machine that was built for a tier below the tier
-  of the line is not fed at all - the machine and every cable of that line go, which is what a player finds
-  when a line of a later age is run into a workshop of an earlier one, see `EnergyNet` and `EnergyAcceptor`.
-  **A machine of the power network holds a buffer of a tier.** It is filled with **one ampere of that tier a
-  tick** and no more however wide the line at it is, and it stores a few ticks of work, see
-  `MachineEnergyStorage`. The two plugs of it - the side a line arrives on and the side a machine hands its
-  power over on - are sides like every other part of a machine, set with the wrench or with the wheel of the
-  panel, and a line hangs on those two sides and on no other: a cable that stands at the front of a machine or
-  at the side of its tank carries nothing of it. A machine that holds no buffer has no plug at all, which is
-  why the boiler and the machines of the age of steam stand along the cables of a workshop and do nothing with
-  them.
-  **A machine that makes power is the pump of the line.** A cable carries nothing of its own, so the machine
-  that makes the energy is the one that moves it: every tick it walks the line that stands at its plug and
-  hands that line one tick of it, and the line shares what it was handed out over the machines at its ends - a
-  machine whose buffer is full takes nothing and the remainder stays where it was, so nothing is ever taken
-  out of a machine to be lost on the way, see `EnergyGrid` and `MachineBlockEntity#updateEnergy`. Every
-  machine that will make power later needs no second mechanism: it hands what it made to the line at its plug
-  like the first one.
+  **A line that is too strong destroys the machine that reaches for it**: a machine that asks a line of a
+  higher tier for power is not fed at all - the machine and every cable of that line go, which is what a player
+  finds when a line of a later age is run into a workshop of an earlier one, see `EnergyNet` and
+  `EnergyAcceptor`. A machine that asks for nothing never meets the line, so an idle workshop is safe, and the
+  tier of a line is settled by the machine that works and never by the one that only makes power.
+  **A machine of the power network holds a buffer of a tier.** What one call may add is **one ampere of that
+  tier** and no more however wide the line at it is. A machine that makes power may be emptied by the line,
+  because that is what it fills its buffer for, while **a machine that works may only be filled**: it spends
+  out of its own buffer, so it is never a source of the line it stands on and a workshop of consumers is a tree
+  of power and never a ring, see `MachineEnergyStorage`. The plugs of a machine - the side a line arrives on
+  and the side it hands power out of - are sides like every other part of it, set with the wrench or with the
+  wheel of the panel, and a line hangs on those sides and on no other: a cable that stands at the front of a
+  machine or at the side of its tank carries nothing of it. A machine that holds no buffer has no plug at all,
+  which is why the boiler and the machines of the age of steam stand along the cables of a workshop and do
+  nothing with them.
+  **A line is drawn by the machine that works and never pushed by the one that makes.** A cable carries
+  nothing of its own, so the machine that wants the power is the one that moves it: every tick the block entity
+  of a machine walks the line that stands at the plug it takes power in through and draws out of the buffers
+  that may give what its own buffer may take, and the loss of the run is paid by the machine the power comes
+  from, so nothing ever travels to be lost on the way, see `EnergyGrid` and
+  `MachineBlockEntity#updateEnergy`. A machine that makes power therefore needs no pump of its own: it fills
+  its own buffer, and every machine that works draws what it left there - which is what makes the turbines and
+  the machines of the line one network and not two.
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
 - **Faces and tools** - a block is worked on from the face it is looked at, and the faces a player
@@ -565,7 +607,12 @@ block that keeps what a player puts in it, at block id 187 and item id 258, and 
 `chest` that a build without it would report and skip - a chest would open empty while the items in it were
 still written down. Its item took the number the run of the materials used to start at, so every item of
 every material stands one number higher than it did, and a stored inventory of version 12 names the wrong
-items for every one of them.
+items for every one of them. The machines of the line arrived without a version of their own: they take
+block and item numbers behind the ones that were already handed out - 731 to 748 and 847 to 864 - so
+nothing that a stored world or a stored inventory names has moved and no file of an older version has to
+be refused. The one kind of file that changed is a recipe: it names the power a craft draws a tick and the
+voltage it asks for instead of the steam it spends, and a recipe is read while the game starts and never
+stored, see `ProcessingRecipe` and `MachineFamilies`.
 
 ## Build and run
 
@@ -593,6 +640,7 @@ tools/gen_pipe_models.ps1            models and blockstates of every pipe of the
 tools/verify/extract_3d_assets.ps1   the faces, the colormaps and the sky an art pack is asked for
 tools/verify/extract_creative.ps1    the panels, the tabs and the thumbs of the creative inventory
 tools/verify/material_forms.ps1      one grey scale picture per shape a material comes in
+tools/verify/import_basicmachines.ps1  the machines of the line: the casing of a tier under the overlay of a family
 tools/verify/import_gregtech_assets.ps1  the casing, the fronts and the tops of the machines
 tools/verify/restore_assets.ps1      fetches back whatever an editor emptied out of assets/
 tools/verify/grayscale_fluid.ps1     turns a picture of the pack into a fluid window
@@ -644,6 +692,16 @@ script writes the tops of the other two as four counter clockwise quarter turns 
 casing and the mouth of the same machine stay where they are, because a still picture names one frame and no
 run at all. A top that is a strip is counted from its file and never from the model that draws it, so a machine
 begins to turn as soon as its art is a strip, see `BlockPictures#frameCountOf`.
+
+**The art of a machine of the line is two pictures of the pack drawn together.** The pack draws a basic
+machine as an overlay - one file per face, with a second file for the face it shows while it runs - while the
+game draws a machine from one picture per face, because the icon of its item is baked out of the block: so
+`tools/verify/import_basicmachines.ps1` draws the casing of the tier under the overlay of the family and
+writes what comes out. Four faces and the two of them that move, three tiers and six families make the
+hundred and forty-four pictures of `assets/blocks/basicmachines`, the thirty-six models and the eighteen
+blockstates beside them. A face the pack draws nothing for - the top of a furnace that has nothing on it, the
+floor of every one of them - is left as the bare casing, so every face of a machine is a picture like any
+other and its model is a plain cube whose faces are the front, the top, the bottom and the two flanks.
 
 **The models of the pipes are written by a script and checked by a test.** A pipe is drawn from the state
 of its cell - the mask of the six sides it joins, see `pipe` - and sixty four masks in seven sizes are more

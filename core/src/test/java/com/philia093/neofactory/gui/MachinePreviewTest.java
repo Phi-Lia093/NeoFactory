@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui;
 
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.material.Materials;
@@ -10,7 +11,9 @@ import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.machine.ElectricMaceratorMachine;
 import com.philia093.neofactory.machine.Machine;
+import com.philia093.neofactory.machine.MachineError;
 import com.philia093.neofactory.machine.MachineInventory;
 import com.philia093.neofactory.machine.MachineMenu;
 import com.philia093.neofactory.machine.MachineScreen;
@@ -21,6 +24,9 @@ import com.philia093.neofactory.machine.SlotKind;
 import com.philia093.neofactory.machine.SmeltingMachine;
 import com.philia093.neofactory.machine.SteamTurbineMachine;
 import com.philia093.neofactory.machine.TurbineTier;
+import com.philia093.neofactory.recipe.RecipeLoader;
+import com.philia093.neofactory.recipe.RecipeRegistry;
+import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.support.TestIcons;
@@ -73,6 +79,10 @@ class MachinePreviewTest {
     /** Picture of the panel of a generator, whose cell of energy wears the icon of a battery. */
     private static final Path GENERATOR_PREVIEW =
             Path.of("build", "reports", "machine-generator-preview.png");
+
+    /** Picture of the panel of a machine of the line of the power, which has a bar and an alarm. */
+    private static final Path LINE_PREVIEW =
+            Path.of("build", "reports", "machine-line-preview.png");
 
     /** Colour the fill of the cell of energy is painted in, the red of the screen of a machine. */
     private static final int ENERGY_FILL = 0xFFB81F1F;
@@ -225,6 +235,50 @@ class MachinePreviewTest {
     }
 
     /**
+     * Paints the panel of a machine of the line of the power, the age a workshop is played in once the first
+     * generator turns.
+     * <p>
+     * A machine of the line is a machine of recipes: it fills the bar of its craft, it reads its buffer on the
+     * plain cell of energy at the foot of the panel, and a machine that has work and nothing to run it with
+     * shows the red alarm of the fourth column of the icons. The test writes the whole panel to
+     * {@code core/build/reports/machine-line-preview.png} - the picture to look at when the screen of a machine
+     * of that age changes - and pins the three of them down, see {@code ElectricMachine} and
+     * {@code MachineFamilies}.
+     */
+    @Test
+    void thePanelOfAMachineOfTheLineIsPaintedAsTheGameDrawsIt() throws IOException {
+        RecipeRegistry.register(RecipeLoader.parse(RecipeType.GRINDING, "preview_dust",
+                "{ \"ingredient\": \"iron_ore\", \"result\": { \"item\": \"iron_dust\" },"
+                        + " \"time\": 8.0, \"power\": 1, \"voltage\": 8 }"));
+        ElectricMaceratorMachine macerator = new ElectricMaceratorMachine(Voltage.LOW);
+        macerator.inventory().set(ElectricMaceratorMachine.INPUT, ItemStack.of(Items.IRON_ORE, 1));
+        MachineMenu menu = new MachineMenu(macerator, new PlayerInventory());
+        ContainerLayout layout = menu.container().layout();
+
+        assertEquals(ProgressKind.GENERIC, menu.progressKind(), "a machine of the line fills the bar");
+        assertEquals(SlotKind.GENERIC, menu.energySlotKind(),
+                "and reads its power on the plain cell of the panel");
+        assertEquals(MachineError.NO_POWER, menu.error(),
+                "an input that waits for the line reports the alarm of a machine without power");
+
+        BufferedImage machine = read(MACHINE_SHEET);
+        BufferedImage picture = new BufferedImage(
+                MachineTextures.WIDTH + 2 * MARGIN, MachineTextures.HEIGHT + 2 * MARGIN,
+                BufferedImage.TYPE_INT_ARGB);
+        fill(picture, BACKDROP);
+        copy(machine, picture, 0, 0, MachineTextures.WIDTH, MachineTextures.HEIGHT, MARGIN, MARGIN);
+        drawSlots(picture, machine, layout);
+        drawContents(picture, layout);
+        drawArrow(picture, machine, CRAFT_PROGRESS);
+        drawEnergyCell(picture, machine, menu, layout);
+        drawErrorMark(picture, machine, menu, layout);
+        drawInfo(picture);
+
+        ImageIO.write(picture, "png", LINE_PREVIEW.toFile());
+        assertTrue(LINE_PREVIEW.toFile().isFile(), "the preview was not written");
+    }
+
+    /**
      * Draws the cell of energy at the foot of the panel, the way {@code MachineGui#drawEnergy} does it.
      * <p>
      * The icon is the one {@link MachineMenu#energySlotKind()} names - the plain cell of a machine of recipes
@@ -242,6 +296,26 @@ class MachinePreviewTest {
         int inside = ContainerLayout.SLOT_SIZE - 2;
         fillBox(picture, x + PanelTextures.SLOT_BEVEL + 1, y + PanelTextures.SLOT_BEVEL + 1, inside,
                 inside / 2, ENERGY_FILL);
+    }
+
+    /**
+     * Draws the alarm of the machine, the way {@code MachineGui#drawError} does it.
+     * <p>
+     * The mark is the cell {@link MachineMenu#error()} names of the column of errors of the icons - the red
+     * alarm of a machine that has work and nothing to run it with - and it stands where the flame of a furnace
+     * and of a boiler stands, see {@link MachineGui}.
+     */
+    private static void drawErrorMark(BufferedImage picture, BufferedImage machine, MachineMenu menu,
+            ContainerLayout layout) {
+        MachineError error = menu.error();
+        if (!error.isError()) {
+            return;
+        }
+        int x = MARGIN + MachineMenu.ERROR_LEFT;
+        int y = MARGIN + layout.panelHeight() - MachineMenu.ERROR_TOP - MachineMenu.MARK_SIZE;
+        copy(machine, picture, MachineTextures.iconX(error.column()),
+                MachineTextures.iconY(error.row(menu.style())), MachineTextures.ICON_CELL,
+                MachineTextures.ICON_CELL, x, y);
     }
 
     /** Draws the tanks of the foot of the panel. */
