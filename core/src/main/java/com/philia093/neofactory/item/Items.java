@@ -1,6 +1,7 @@
 package com.philia093.neofactory.item;
 
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.machine.TurbineTier;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.fluid.Fluids;
@@ -447,7 +448,31 @@ public final class Items {
      * inventory of version 14 names the wrong items for every material, see
      * {@link com.philia093.neofactory.cable.Cables}.
      */
-    public static final int NEXT_FREE_ID = 844;
+    /**
+     * Id of the first steam turbine, the machine that turns the steam of a boiler into the power of a line.
+     * <p>
+     * The three turbines take the numbers the items of the materials of the game used to start at, which is
+     * where the cables put them: every item of every material therefore stands three numbers higher than it
+     * did, so a stored inventory of an older version names the wrong items for every material and that
+     * version is refused, see
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
+     */
+    public static final int STEAM_TURBINE_LV_ID = 844;
+
+    /** Id of the steam turbine of the middle voltage. */
+    public static final int STEAM_TURBINE_MV_ID = 845;
+
+    /** Id of the steam turbine of the high voltage. */
+    public static final int STEAM_TURBINE_HV_ID = 846;
+
+    /**
+     * Next unused item id, used to verify that a new item got a fresh id.
+     * <p>
+     * The three turbines moved this number, because they stand in front of the items of the materials: the
+     * materials begin at the number written here, see
+     * {@link com.philia093.neofactory.cable.Cables} for the run of the cables that stands in front of them.
+     */
+    public static final int NEXT_FREE_ID = 847;
 
     /**
      * Amount an empty container stacks to.
@@ -692,6 +717,15 @@ public final class Items {
 
     /** The forge hammer of steel. */
     public static Item STEEL_FORGE_HAMMER;
+
+    /** The steam turbine of the low voltage, the first machine of the game that makes power. */
+    public static Item STEAM_TURBINE_LV;
+
+    /** The steam turbine of the middle voltage. */
+    public static Item STEAM_TURBINE_MV;
+
+    /** The steam turbine of the high voltage. */
+    public static Item STEAM_TURBINE_HV;
 
     /**
      * The chest, the first item of a block that keeps what a player puts in it.
@@ -1084,6 +1118,22 @@ public final class Items {
         // declared, and the blocks of them were built while the blocks of the game were, see Cables. They
         // take the run of numbers the materials of the game used to start at.
         Cables.registerItems();
+
+        // The three steam turbines, the machines that turn the steam of a boiler into the power of a line of
+        // cables. They are block items like every machine: each borrows the picture of its block, and the
+        // block names the entity that holds the tank and the buffer of the machine behind it. They take the
+        // numbers the materials of the game used to start at, so every item of every material stands three
+        // numbers higher than it did, see STEAM_TURBINE_LV_ID and
+        // {@link com.philia093.neofactory.machine.TurbineTier} for the names of the three of them.
+        STEAM_TURBINE_LV = register(Item.builder(STEAM_TURBINE_LV_ID, "steam_turbine_lv")
+                .displayName(TurbineTier.LV.displayName())
+                .buildBlock(Blocks.STEAM_TURBINE_LV));
+        STEAM_TURBINE_MV = register(Item.builder(STEAM_TURBINE_MV_ID, "steam_turbine_mv")
+                .displayName(TurbineTier.MV.displayName())
+                .buildBlock(Blocks.STEAM_TURBINE_MV));
+        STEAM_TURBINE_HV = register(Item.builder(STEAM_TURBINE_HV_ID, "steam_turbine_hv")
+                .displayName(TurbineTier.HV.displayName())
+                .buildBlock(Blocks.STEAM_TURBINE_HV));
 
         // The materials bring their own items, one per shape they come in. They are registered
         // here, right before the table closes, so that they append behind every item written above

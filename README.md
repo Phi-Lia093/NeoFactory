@@ -176,6 +176,28 @@ stored on disk so that a session can be continued later.
   The craft that was already running is always finished, because the steam of it was paid for. A machine of
   this age is built of bronze casing like the boiler, is taken apart with the wrench, and its front glows
   while it works.
+- **The steam turbines** - three machines that turn the steam of a boiler into the power of a line of cables,
+  and the first machines of the game that **make** energy. A turbine is a tank of sixteen thousand millibuckets
+  of steam, the same tank every machine of its age carries, a buffer of the tier it was built for and a vent
+  the spent steam goes out of: every tick it drinks the steam of its tier, fills its buffer with the energy
+  that steam is worth and drives the line that stands at the side of its plug, see `MachineEnergyStorage` and
+  `MachineBlockEntity#updateEnergy`. **One energy is worth two millibuckets of steam**, and the blades of a
+  turbine do not get all of it: the low turbine turns eighty five of every hundred, the middle one seventy
+  five and the high one sixty six, so a better machine of this family drinks more steam for the same ampère
+  and not less. Each of them hands over **one ampère of its own tier** a tick - thirty two units of the low
+  voltage, a hundred and twenty eight of the middle one, five hundred and twelve of the high one - and its
+  buffer holds a few seconds of that, see `TurbineTier` for the whole table. A turbine of bronze is the
+  machine of the first workshop, the two others are the machines a larger one is built around.
+  **Nothing is drunk that nobody wants**: a turbine whose buffer is full stands still instead of boiling the
+  steam of its tank away, and one whose vent is walled in waits with the steam it has and reports the wall,
+  the way a machine of recipes waits for its exhaust. The tiers are read off the block - each of them is built
+  of the casing of its age - and a player may build a turbine before the line it feeds exists, because a
+  machine that takes power later is the one that makes it worth drinking. The wheel on the front of a turbine
+  is one picture of the pack, so it stands still while the machine turns; what a player reads the work of a
+  turbine off is its panel, whose cell of energy fills as the machine makes power.
+  The block ids 728 to 730 were appended behind the cables, so no block of the game moved; the items took the
+  numbers the materials of the game used to start at, so every item of every material stands three numbers
+  higher and `DATA_VERSION` is 16, see `SaveFormat`.
 - **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
   comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
   medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
@@ -260,9 +282,9 @@ stored on disk so that a session can be continued later.
   once it is wrapped, and a line of one unit loses nothing at all - and is drawn from art of its own. The game
   knows forty five materials, from the red alloy of the first line to the superconductor of the last age, in
   the six widths of one, two, four, eight, twelve and sixteen amperes: five hundred and forty cables that take
-  the block ids 188 to 727 and the item ids 304 to 843, which is why `DATA_VERSION` is 15 and a world of an
-  older version is refused. The widths of the industry are the widths of the pipes, so a line of it is read
-  the same way whatever runs through it.
+  the block ids 188 to 727 and the item ids 304 to 843, which is the run of the items the materials of the
+  game used to start at, see `SaveFormat`. The widths of the industry are the widths of the pipes, so a line
+  of it is read the same way whatever runs through it.
   **A cable joins the sides its state says it joins**, exactly like a pipe: a cable that is placed joins
   nothing at all - it stands as a stub in its cell until a player opens a side of it with the wrench on the
   grid of its faces - and nothing heals itself, so a line a player built is the line they get. Two cables that

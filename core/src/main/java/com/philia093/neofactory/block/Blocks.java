@@ -135,8 +135,23 @@ public final class Blocks {
      */
     public static final int CHEST_ID = 187;
 
+    /**
+     * Id of the first steam turbine, the machine that turns steam into the power of a line of cables.
+     * <p>
+     * The three turbines take the numbers right behind the cables, so nothing that a stored world holds moved
+     * and the save game needs no new version, see {@link #NEXT_FREE_ID} and
+     * {@code com.philia093.neofactory.machine.TurbineTier}.
+     */
+    public static final int STEAM_TURBINE_LV_ID = 728;
+
+    /** Id of the steam turbine of the middle voltage. */
+    public static final int STEAM_TURBINE_MV_ID = 729;
+
+    /** Id of the steam turbine of the high voltage. */
+    public static final int STEAM_TURBINE_HV_ID = 730;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = 728;
+    public static final int NEXT_FREE_ID = 731;
 
     /**
      * Light the torch gives away, the first source of light of the game.
@@ -282,6 +297,15 @@ public final class Blocks {
 
     /** The forge hammer of steel. */
     public static Block STEEL_FORGE_HAMMER;
+
+    /** The steam turbine of the low voltage, the first machine of the game that makes power. */
+    public static Block STEAM_TURBINE_LV;
+
+    /** The steam turbine of the middle voltage. */
+    public static Block STEAM_TURBINE_MV;
+
+    /** The steam turbine of the high voltage. */
+    public static Block STEAM_TURBINE_HV;
 
     /**
      * The chest, the block a player keeps things in.
@@ -659,6 +683,16 @@ public final class Blocks {
         Cables.registerBlocks();
 
         // ------------------------------------------------------------------
+        // The three steam turbines, the first machines of the game that make power. They stand behind the
+        // cables, so no block of the game moved: a turbine is a cube of the casing of its age whose front
+        // shows the wheel, and the casing a side that carries a job is drawn with comes from the machine
+        // behind the block, see Machine#casing and TurbineTier.
+        // ------------------------------------------------------------------
+        STEAM_TURBINE_LV = turbineBlock(STEAM_TURBINE_LV_ID, "steam_turbine_lv");
+        STEAM_TURBINE_MV = turbineBlock(STEAM_TURBINE_MV_ID, "steam_turbine_mv");
+        STEAM_TURBINE_HV = turbineBlock(STEAM_TURBINE_HV_ID, "steam_turbine_hv");
+
+        // ------------------------------------------------------------------
         // The chest: the block a player keeps things in. It is a whole cube of one picture like the
         // blocks of the landscape, and it is the first of them that names a block entity - not a
         // machine that works, but a container that holds what somebody put in, see
@@ -693,6 +727,33 @@ public final class Blocks {
      * @param name name of the block, also the name of its texture folder and of the block entity behind it
      * @return the registered block
      */
+    /**
+     * Builds one of the steam turbines.
+     * <p>
+     * A turbine is a machine like every other one - a cube of casing that is taken apart with the wrench, that
+     * names a tank a line of pipes may be built towards and that names the entity holding its tank and its
+     * buffer - and the three of them share the picture of their front, which is the wheel of the machine:
+     * what tells them apart is the casing of their age, and that is a picture the machine behind the block
+     * names, see {@code SteamTurbineMachine#casing}.
+     *
+     * @param id block id of the turbine
+     * @param name name of the block, which is the name of the block entity type as well
+     * @return the block
+     */
+    private static Block turbineBlock(int id, String name) {
+        Block block = Block.builder(id, name)
+                .texture("steam_turbine/steam_turbine_front")
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
+                .blockEntity(name)
+                .carriesFluid()
+                .build();
+        BlockRegistry.register(block);
+        return block;
+    }
+
     private static Block machineBlock(int id, String name) {
         Block block = Block.builder(id, name)
                 .texture(name + "/" + name + "_front")

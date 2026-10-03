@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"]
+  },
+  "variants": {
+    "facing=north": { "model": "steam_turbine_lv", "y": 0 },
+    "facing=east": { "model": "steam_turbine_lv", "y": 270 },
+    "facing=south": { "model": "steam_turbine_lv", "y": 180 },
+    "facing=west": { "model": "steam_turbine_lv", "y": 90 }
+  }
+}

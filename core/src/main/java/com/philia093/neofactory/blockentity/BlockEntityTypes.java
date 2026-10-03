@@ -15,6 +15,8 @@ import com.philia093.neofactory.machine.HighPressureSteamFurnaceMachine;
 import com.philia093.neofactory.machine.SmeltingMachine;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
 import com.philia093.neofactory.machine.SteamFurnaceMachine;
+import com.philia093.neofactory.machine.SteamTurbineMachine;
+import com.philia093.neofactory.machine.TurbineTier;
 
 /**
  * Every block entity type the game knows.
@@ -99,6 +101,24 @@ public final class BlockEntityTypes {
             type -> new CableBlockEntity(type));
 
     /**
+     * The steam turbine of the low voltage, the first machine of the game that makes power.
+     * <p>
+     * Three types for the three tiers of the machine, because the tier is what its numbers come from and a
+     * block entity holds one machine: each of them carries the tank of steam, the buffer of its tier and the
+     * vent the spent steam goes out of, see {@link SteamTurbineMachine} and {@link TurbineTier}.
+     */
+    public static final BlockEntityType STEAM_TURBINE_LV = new BlockEntityType("steam_turbine_lv",
+            type -> new MachineBlockEntity(type, new SteamTurbineMachine(TurbineTier.LV)));
+
+    /** The steam turbine of the middle voltage. */
+    public static final BlockEntityType STEAM_TURBINE_MV = new BlockEntityType("steam_turbine_mv",
+            type -> new MachineBlockEntity(type, new SteamTurbineMachine(TurbineTier.MV)));
+
+    /** The steam turbine of the high voltage. */
+    public static final BlockEntityType STEAM_TURBINE_HV = new BlockEntityType("steam_turbine_hv",
+            type -> new MachineBlockEntity(type, new SteamTurbineMachine(TurbineTier.HV)));
+
+    /**
      * A chest, the first block that keeps what a player puts in it.
      * <p>
      * Not a machine: it holds a bag of items and does no work with them, so it carries the
@@ -143,6 +163,9 @@ public final class BlockEntityTypes {
         BlockEntityRegistry.register(STEEL_COMPRESSOR);
         BlockEntityRegistry.register(STEEL_EXTRACTOR);
         BlockEntityRegistry.register(STEEL_FORGE_HAMMER);
+        BlockEntityRegistry.register(STEAM_TURBINE_LV);
+        BlockEntityRegistry.register(STEAM_TURBINE_MV);
+        BlockEntityRegistry.register(STEAM_TURBINE_HV);
         BlockEntityRegistry.register(PIPE);
         BlockEntityRegistry.register(CHEST);
         BlockEntityRegistry.register(CRAFTING_TABLE);

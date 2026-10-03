@@ -29,7 +29,7 @@ import java.util.Objects;
  * next recipe until the way is open again - the craft that was already running is finished, because the
  * steam of it was paid for and used.
  */
-public abstract class SteamMachine extends RecipeMachine {
+public abstract class SteamMachine extends RecipeMachine implements ExhaustMachine {
 
     /** Steam the tank of a steam machine holds, in millibuckets. */
     public static final int STEAM_CAPACITY = 16000;
@@ -154,6 +154,7 @@ public abstract class SteamMachine extends RecipeMachine {
     }
 
     /** {@code true} while the exhaust was found blocked and the next recipe has to wait for it. */
+    @Override
     public boolean isWaitingForExhaust() {
         return exhaustBlocked;
     }
@@ -163,6 +164,7 @@ public abstract class SteamMachine extends RecipeMachine {
      *
      * @param blocked {@code true} when a solid block stands in the way of the steam
      */
+    @Override
     public void reportExhaust(boolean blocked) {
         exhaustBlocked = blocked;
     }
@@ -172,6 +174,7 @@ public abstract class SteamMachine extends RecipeMachine {
      *
      * @return {@code true} when the block has to look at the exhaust of this machine now
      */
+    @Override
     public boolean takesAnExhaustCheck() {
         boolean pending = exhaustToCheck;
         exhaustToCheck = false;

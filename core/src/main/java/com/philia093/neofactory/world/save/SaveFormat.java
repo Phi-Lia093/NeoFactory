@@ -91,8 +91,16 @@ public final class SaveFormat {
      * every material - what version 8 said about a stored inventory holds here word for word, see
      * {@code Cables}. The first of the two steps held the single line of every material, the second added the
      * five wider widths and the two kinds, a line with a skin and one without.
+     * <p>
+     * <b>What version 16 changed.</b> The three steam turbines - the first machines of the game that make
+     * power - took the block numbers 728 to 730 and the item numbers 844 to 846. The blocks cost nothing: they
+     * stand behind the cables and no block of the game moved. <b>The items are what refuses this version</b>,
+     * because those three numbers are where the items of the materials of the game began: every item of every
+     * material stands three numbers higher than it did and a stored inventory of version 15 names the wrong
+     * items for every material - what version 8 said about a stored inventory holds here word for word, see
+     * {@code Items#STEAM_TURBINE_LV_ID}.
      */
-    public static final int DATA_VERSION = 15;
+    public static final int DATA_VERSION = 16;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

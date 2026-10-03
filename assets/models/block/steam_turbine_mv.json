@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "machine_mv/machine_mv", "cullface": "down" },
+        "up": { "texture": "machine_mv/machine_mv", "cullface": "up" },
+        "north": { "texture": "machine_mv/machine_mv", "overlay": "steam_turbine/steam_turbine_front", "cullface": "north" },
+        "south": { "texture": "machine_mv/machine_mv", "cullface": "south" },
+        "west": { "texture": "machine_mv/machine_mv", "cullface": "west" },
+        "east": { "texture": "machine_mv/machine_mv", "cullface": "east" }
+      }
+    }
+  ]
+}

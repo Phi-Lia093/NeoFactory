@@ -120,8 +120,12 @@ class CreativeInventoryTest {
         assertEquals(Items.STEEL_COMPRESSOR, creative.stackAt(12).item(), "the compressor of steel");
         assertEquals(Items.STEEL_EXTRACTOR, creative.stackAt(13).item(), "the extractor of steel");
         assertEquals(Items.STEEL_FORGE_HAMMER, creative.stackAt(14).item(), "and the hammer of steel");
-        assertTrue(creative.stackAt(15).isEmpty(), "and nothing behind them so far");
-        assertEquals(15, creative.matches().size(), "the list holds the machines of the game");
+        assertEquals(Items.STEAM_TURBINE_LV, creative.stackAt(15).item(),
+                "then the turbines, the first machines of the game that make power");
+        assertEquals(Items.STEAM_TURBINE_MV, creative.stackAt(16).item(), "the turbine of the middle voltage");
+        assertEquals(Items.STEAM_TURBINE_HV, creative.stackAt(17).item(), "and the one of the high voltage");
+        assertTrue(creative.stackAt(18).isEmpty(), "and nothing behind them so far");
+        assertEquals(18, creative.matches().size(), "the list holds the machines of the game");
     }
 
     @Test

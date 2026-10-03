@@ -58,6 +58,14 @@ public final class MultiFaceTextures {
             "bronze_casing/bronze_casing_top", "bronze_boiler/bronze_boiler_front",
             "bronze_boiler/bronze_boiler_front_active",
 
+            // The casings of the three ages of the line of the power and the wheel of a steam turbine, which
+            // is its front: a turbine of any tier shows the same wheel over the casing of its own age, and the
+            // overlay of a job - the stub of a pipe, the plug of the power, the vent - is drawn over that
+            // casing while a player works a side, see FaceRole.
+            "machine_hv/machine_hv", "machine_lv/machine_lv", "machine_mv/machine_mv",
+            "machine_overlay/energy_in", "machine_overlay/energy_out", "machine_overlay/pipe",
+            "machine_overlay/vent", "steam_turbine/steam_turbine_front",
+
             // The front and the top of every machine of the age of steam, drawn over the casing the way the
             // mouth of the boiler is: the picture of the machine, and the one of a machine that works, which
             // glows while it runs. The machines of steel carry the same pictures over the casing of their own

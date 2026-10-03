@@ -13,6 +13,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.energy.EnergyGrid;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.machine.Machine;
+import com.philia093.neofactory.machine.ExhaustMachine;
 import com.philia093.neofactory.machine.FaceConfig;
 import com.philia093.neofactory.machine.MachineSides;
 import com.philia093.neofactory.machine.MachineTank;
@@ -182,16 +183,16 @@ public class MachineBlockEntity extends BlockEntity
      * <b>A steam machine has to breathe.</b> The moment a craft that spends steam ends, the block looks at
      * the face the exhaust was set to, and a solid block standing there is reported and the machine refuses
      * the next recipe until the way is open again - the craft that was already running is finished, because
-     * its steam was paid for and used, see {@link SteamMachine}. A machine that is waiting is looked at every
-     * tick as well, so clearing the wall lets it start again by itself.
+     * its steam was paid for and used, see {@link SteamMachine} and {@link ExhaustMachine}. A machine that is
+     * waiting is looked at every tick as well, so clearing the wall lets it start again by itself.
      *
      * @param world world this machine lies in
      */
     private void updateExhaust(World world) {
-        if (!(machine instanceof SteamMachine steam)) {
+        if (!(machine instanceof ExhaustMachine breather)) {
             return;
         }
-        if (!steam.takesAnExhaustCheck() && !steam.isWaitingForExhaust()) {
+        if (!breather.takesAnExhaustCheck() && !breather.isWaitingForExhaust()) {
             return;
         }
         BlockFace face = machine.faces().exhaust();
@@ -203,16 +204,16 @@ public class MachineBlockEntity extends BlockEntity
         // A cell of a chunk that is not loaded reports air, so a machine at the edge of the built world is
         // never blocked by terrain nobody has raised yet.
         boolean blocked = world.peekBlock(x() + face.x(), y() + face.y(), z() + face.z()).isSolid();
-        if (blocked != steam.isWaitingForExhaust()) {
+        if (blocked != breather.isWaitingForExhaust()) {
             if (blocked) {
                 LOGGER.warn("The {} at ({}, {}, {}) cannot blow its steam out of its {} side, a solid block "
-                        + "stands there, so it refuses the next recipe", machine.name(), x(), y(), z(), face);
+                        + "stands there, so it refuses the next work", machine.name(), x(), y(), z(), face);
             } else {
                 LOGGER.info("The {} at ({}, {}, {}) can blow its steam out of its {} side again",
                         machine.name(), x(), y(), z(), face);
             }
         }
-        steam.reportExhaust(blocked);
+        breather.reportExhaust(blocked);
     }
 
     /**

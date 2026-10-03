@@ -84,10 +84,15 @@ class CableTableTest {
         }
         assertEquals(Cables.FIRST_BLOCK_ID + Cables.COUNT, block, "the run of the blocks stays tight");
         assertEquals(Cables.FIRST_ITEM_ID + Cables.COUNT, item, "the run of the items stays tight");
-        assertEquals(Blocks.NEXT_FREE_ID - Cables.COUNT, Cables.FIRST_BLOCK_ID,
-                "the cables take the numbers the blocks of the game left free");
-        assertEquals(Items.NEXT_FREE_ID - Cables.COUNT, Cables.FIRST_ITEM_ID,
-                "and the items the ones the materials of the game used to start at");
+        // Where the run of the cables begins is what a stored world depends on, so both numbers are pinned
+        // here: the cables stood behind every block of the game when they arrived, and everything that came
+        // after them was appended behind the cables, see Blocks#STEAM_TURBINE_LV_ID and Items#NEXT_FREE_ID.
+        assertEquals(188, Cables.FIRST_BLOCK_ID, "the cables keep the block numbers they were given");
+        assertEquals(304, Cables.FIRST_ITEM_ID, "and the run of the items they were given");
+        assertTrue(Cables.FIRST_BLOCK_ID + Cables.COUNT <= Blocks.NEXT_FREE_ID,
+                "every block of the game stands behind the cables");
+        assertTrue(Cables.FIRST_ITEM_ID + Cables.COUNT <= Items.NEXT_FREE_ID,
+                "and so does every item");
     }
 
     @Test
