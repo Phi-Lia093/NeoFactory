@@ -42,8 +42,15 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
      */
     private MachineRecipe craft;
 
-    /** Energy that is owed but was not paid yet, always below one unit. */
-    private float energyDebt;
+    /**
+     * Energy that is owed but was not paid yet, always below one unit.
+     * <p>
+     * A machine that pays in whole ticks of its own - a machine of the electric age, which spends the power of
+     * its tier every tick - reads and writes this very field instead of keeping a second fraction of its own,
+     * see {@code ElectricMachine#payForWork}: the rule "a fraction below a whole unit waits for the frames
+     * after it" then lives in one place and travels with a save game.
+     */
+    protected float energyDebt;
 
     /**
      * Creates a machine.
@@ -102,6 +109,21 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
      */
     protected boolean hasWork() {
         return craft != null;
+    }
+
+    /**
+     * The recipe this machine works on right now, {@code null} while it is idle.
+     * <p>
+     * <b>A type that has to know what the work costs asks this and not the field.</b> A machine of the electric
+     * age reads the power of the recipe it runs to work out the amperes it asks a line for, see
+     * {@code ElectricMachine#requestAmps()}, and it is the recipe of the craft and not the one the input
+     * happens to match: what the machine swallows when the work starts is gone, so looking for a recipe again
+     * would find another one or none.
+     *
+     * @return the recipe that runs, or {@code null} when the machine is idle
+     */
+    protected MachineRecipe currentCraft() {
+        return craft;
     }
 
     /**

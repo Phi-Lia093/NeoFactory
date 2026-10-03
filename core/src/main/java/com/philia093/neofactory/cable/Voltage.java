@@ -103,6 +103,26 @@ public enum Voltage {
         return ordinal() >= other.ordinal();
     }
 
+    /**
+     * The tier whose line carries exactly this many units a tick.
+     * <p>
+     * <b>A recipe names the voltage it asks for as a number and not as a word of this ladder</b> - the
+     * hundred and twenty eight of the middle voltage, the way a screen prints it - so a machine that has to
+     * weigh a recipe against its own tier asks the ladder for the tier behind the number. A number no tier
+     * of the ladder carries is no voltage of the industry, and the answer is {@code null}.
+     *
+     * @param euPerTick energy a tick of the line carries, the way a recipe writes it
+     * @return the tier, or {@code null} when no tier of the ladder carries that much
+     */
+    public static Voltage byEuPerTick(int euPerTick) {
+        for (Voltage tier : values()) {
+            if (tier.euPerTick == euPerTick) {
+                return tier;
+            }
+        }
+        return null;
+    }
+
     @Override
     public String toString() {
         return fileName;

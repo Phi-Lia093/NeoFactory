@@ -78,6 +78,24 @@ public final class MachineEnergyStorage extends SimpleEnergyStorage implements E
         return made;
     }
 
+    /**
+     * Spends the energy of a machine that works, the way {@link #make} fills the buffer of one that makes it.
+     * <p>
+     * <b>A machine that pays for a recipe works out of its own buffer, and the buffer of such a machine is
+     * one a line may not empty.</b> The two are the same ring seen from both sides: a line draws energy out
+     * of a machine that makes it, so that buffer answers {@link #extract(int, boolean)} - while a machine
+     * that works only takes, and its own spending never goes through the contract a line meets. This is that
+     * door, and it is the mirror of {@link #make}: the machine takes what it spent and nothing hands it back.
+     *
+     * @param amount energy the machine is about to spend, at least zero
+     * @return the amount the buffer could give
+     */
+    public int spend(int amount) {
+        int spent = Math.max(0, Math.min(amount, amount()));
+        setAmount(amount() - spent);
+        return spent;
+    }
+
     @Override
     public String toString() {
         return "MachineEnergyStorage(" + amount() + "/" + capacity() + ", " + tier + ")";
