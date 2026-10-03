@@ -16,8 +16,8 @@ package com.philia093.neofactory.machine;
  *         which makes the block keep looking until the way is open again.</li>
  * </ul>
  * A machine that runs on recipes asks for the check once a craft, because the steam of a craft goes out at
- * once, see {@link SteamMachine}; a machine that drinks steam every tick - a turbine - asks every tick that
- * it turned, see {@link SteamTurbineMachine}.
+ * once, see {@link SteamMachine}. <b>The machines that make power have no vent at all</b>: the steam a turbine
+ * drinks becomes the power of its line, so nothing of it is left to blow out, see {@link SteamTurbineMachine}.
  */
 public interface ExhaustMachine {
 

@@ -2,8 +2,6 @@ package com.philia093.neofactory.machine;
 
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.fluid.SimpleFluidStorage;
-import com.philia093.neofactory.util.nbt.NbtCompound;
-import com.philia093.neofactory.world.save.SaveTags;
 
 import java.util.List;
 
@@ -11,10 +9,10 @@ import java.util.List;
  * The steam turbine: the machine that turns the steam of a boiler into the power of a line of cables.
  * <p>
  * This is the first machine of the game that <b>makes</b> energy, and the first one a line of cables hangs on
- * as a source: a tank of steam a line of pipes fills, a buffer of the tier it was built for, and a vent the
- * spent steam goes out of. Every tick it drinks the steam of its tier, fills its buffer with the energy that
- * steam is worth and drives the line at its plug, see {@code MachineBlockEntity#updateEnergy} and
- * {@link TurbineTier} for the numbers of the three of them.
+ * as a source: a tank of steam a line of pipes fills, a buffer of the tier it was built for, and one plug the
+ * power leaves by. Every tick it drinks the steam of its tier, fills its buffer with the energy that steam is
+ * worth and drives the line at that plug, see {@code MachineBlockEntity#updateEnergy} and {@link TurbineTier}
+ * for the numbers of the three of them.
  * <p>
  * <b>The turbine is the pump of its line.</b> A cable carries nothing of its own, so the machine that makes
  * the power is the one that moves it: what it hands its buffer is picked up by the entity of the block and
@@ -23,10 +21,11 @@ import java.util.List;
  * the tank away, which is what lets a player run a turbine and a bank of machines on the same line without
  * watching it.
  * <p>
- * <b>The vent has to be free.</b> A turbine blows steam out every tick that it turns, so it asks the block to
- * look at the vent of that tick and refuses to turn while a wall stands there, the way a machine of recipes
- * asks once a craft, see {@link ExhaustMachine}. A turbine that is waiting starts again by itself the moment
- * the way is open.
+ * <b>The steam is spent, not blown out.</b> A turbine takes the steam in and gives power back, so there is
+ * nothing left of it to blow out of a vent: the steam of its tank is gone the moment its energy stands in the
+ * buffer of the machine. That is why a generator has no side of its own for steam to leave by - one plug and
+ * nothing else - and why the interface of the vent, {@link ExhaustMachine}, is left to the machines of the age
+ * of steam that work away a recipe at a time and really do blow their spent steam into the world.
  * <p>
  * <b>Every tick is the same tick.</b> A turbine has no craft to run and no item to work on, so it turns at a
  * fixed rate whatever the frame took and hands over a whole ampère of its tier a tick. <b>A machine that makes
@@ -35,17 +34,14 @@ import java.util.List;
  * the steam it drinks stands on the row the bar of a machine stands on, see {@link ProgressKind#NONE} and
  * {@code MachineMenu}.
  */
-public class SteamTurbineMachine extends Machine implements ExhaustMachine {
+public class SteamTurbineMachine extends Machine {
 
     private final TurbineTier tier;
 
     private final SimpleFluidStorage steam;
 
-    /** {@code true} while this machine blew steam out and made energy in the tick that just ran. */
+    /** {@code true} while this machine made energy in the tick that just ran. */
     private boolean running;
-
-    /** {@code true} while the next tick waits for the vent of this machine to be free. */
-    private boolean exhaustBlocked;
 
     /**
      * Creates a turbine of a tier.
@@ -69,15 +65,15 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
                 // put a stack into, and what it needs is the steam a line of pipes fills its tank with.
                 new MachineInventory(),
                 // A generator hands power over and takes none: its buffer may be emptied and never filled, so
-                // the machine has one plug - the one its line hangs on - and the vent of its steam is a side of
-                // its own, see MachineEnergyStorage and FaceConfig.
+                // the machine has one plug - the one its line hangs on - and no other side of its own, see
+                // MachineEnergyStorage and FaceConfig.
                 new MachineEnergyStorage(tier.capacity(), 0, tier.euPerTick(), tier.voltage()),
                 List.of(),
                 new MachineTank(tank, MachineTank.Role.INPUT));
         this.tier = tier;
         this.steam = tank;
-        // A turbine blows its steam out, so it has a vent like every machine of its age, see FaceConfig.
-        faces().withExhaust();
+        // No vent is given to a generator: the steam it drinks becomes the power of its line and nothing is
+        // left to blow out, so its only side of its own is the plug of the power, see FaceConfig.
     }
 
     /**
@@ -131,10 +127,10 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
     /**
      * Does one tick of a turbine.
      * <p>
-     * The machine turns while four things hold at once: the vent is free, the tank holds the steam of a tick,
-     * the buffer has room for the ampère it makes, and the fluid in the tank really is steam. Every one of them
-     * that fails leaves the machine standing still with the steam it has, which is what makes a turbine a
-     * machine a player may build before the line it feeds exists.
+     * The machine turns while three things hold at once: the tank holds the steam of a tick, the buffer has
+     * room for the ampère it makes, and the fluid in the tank really is steam. Every one of them that fails
+     * leaves the machine standing still with the steam it has, which is what makes a turbine a machine a player
+     * may build before the line it feeds exists.
      * <p>
      * <b>The frame is not counted.</b> A turbine works by the tick and not by the second: the world ticks
      * twenty times a second whatever the frames do, so the steam of a tick and the energy of a tick are what
@@ -145,9 +141,6 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
     @Override
     protected void update(float delta) {
         running = false;
-        if (exhaustBlocked) {
-            return;
-        }
         int wanted = tier.steamPerTick();
         if (steam.fluid() != Fluids.STEAM || steam.amount() < wanted) {
             return;
@@ -167,47 +160,15 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
 
     @Override
     public MachineError error() {
-        // A generator reports the one thing that stops it and nothing else: a machine that makes power is not
-        // a machine that works on an item, so an empty tank is no error of its own - it simply stands still
-        // until a line of pipes fills it, see MachineError.
-        return exhaustBlocked ? MachineError.NO_EXHAUST : MachineError.NONE;
-    }
-
-    @Override
-    public boolean isWaitingForExhaust() {
-        return exhaustBlocked;
-    }
-
-    @Override
-    public void reportExhaust(boolean blocked) {
-        exhaustBlocked = blocked;
-    }
-
-    /**
-     * {@code true} while this machine has to be looked at, which is after every tick that it turned.
-     * <p>
-     * A turbine blows steam out of its vent every tick it works and not once a craft, so it asks for the look
-     * of the tick it just ran; a machine that is waiting keeps asking, so the way out is looked at until it is
-     * free again, see {@link ExhaustMachine}.
-     */
-    @Override
-    public boolean takesAnExhaustCheck() {
-        return running;
-    }
-
-    @Override
-    protected void saveState(NbtCompound state) {
-        state.putBoolean(SaveTags.EXHAUST_BLOCKED, exhaustBlocked);
-    }
-
-    @Override
-    protected void loadState(NbtCompound state) {
-        exhaustBlocked = state.getBoolean(SaveTags.EXHAUST_BLOCKED, false);
+        // A generator reports nothing: a machine that makes power is not a machine that works on an item, so
+        // an empty tank is no error of its own - it simply stands still until a line of pipes fills it. A
+        // turbine has no vent either, so no side of it can ever be blocked, see MachineError.
+        return MachineError.NONE;
     }
 
     @Override
     public String toString() {
         return "SteamTurbineMachine(" + name() + ", steam " + steam + ", "
-                + (running ? "turning" : "still") + (exhaustBlocked ? ", exhaust blocked" : "") + ")";
+                + (running ? "turning" : "still") + ")";
     }
 }

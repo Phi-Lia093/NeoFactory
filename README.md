@@ -180,9 +180,9 @@ stored on disk so that a session can be continued later.
   while it works.
 - **The steam turbines** - three machines that turn the steam of a boiler into the power of a line of cables,
   and the first machines of the game that **make** energy. A turbine is a tank of sixteen thousand millibuckets
-  of steam, the same tank every machine of its age carries, a buffer of the tier it was built for and a vent
-  the spent steam goes out of: every tick it drinks the steam of its tier, fills its buffer with the energy
-  that steam is worth and drives the line that stands at the side of its plug, see `MachineEnergyStorage` and
+  of steam, the same tank every machine of its age carries, a buffer of the tier it was built for and one plug
+  the power leaves by: every tick it drinks the steam of its tier, fills its buffer with the energy that steam
+  is worth and drives the line that stands at the side of its plug, see `MachineEnergyStorage` and
   `MachineBlockEntity#updateEnergy`. **One energy is worth two millibuckets of steam**, and the blades of a
   turbine do not get all of it: the low turbine turns eighty five of every hundred, the middle one seventy
   five and the high one sixty six, so a better machine of this family drinks more steam for the same ampère
@@ -191,8 +191,9 @@ stored on disk so that a session can be continued later.
   buffer holds a few seconds of that, see `TurbineTier` for the whole table. A turbine of bronze is the
   machine of the first workshop, the two others are the machines a larger one is built around.
   **Nothing is drunk that nobody wants**: a turbine whose buffer is full stands still instead of boiling the
-  steam of its tank away, and one whose vent is walled in waits with the steam it has and reports the wall,
-  the way a machine of recipes waits for its exhaust. **A generator is no machine that works on an item**: the
+  steam of its tank away. **A generator has no vent**: the steam it drank became the power of its line, so
+  there is nothing left to blow out of a side and no wall can ever stop it - the only side of its own is the
+  one its plug stands on, see `ExhaustMachine` for the machines that do breathe. **A generator is no machine that works on an item**: the
   buffer of a turbine may be emptied and never filled, so it has one plug - the one the line hangs on - and no
   side that takes power in at all, its screen holds no slot, so there is no cell a stack could be put into,
   and it shows no bar, because there is no craft to fill one towards: the steam it drinks stands on the row a
@@ -837,7 +838,9 @@ tooltips - is the very code the inventory screen uses, see `ContainerAppearance`
 `ContainerView`: a screen only names the pictures it is drawn from. `gradlew :core:test`
 writes `core/build/reports/machine-preview.png` and `machine-full-preview.png`, the screen of
 the furnace and of a machine that holds everything the layout can carry, the way the game
-paints them, text included and drawn with the bitmap the game uses.
+paints them, text included and drawn with the bitmap the game uses, and
+`machine-generator-preview.png` for a machine that makes power, whose cell of energy wears the
+icon of a battery instead of the plain cell of a slot.
 
 Crafting reads its recipes from `assets/recipes/<type>/<name>.json`: the folder names the
 type, so a new recipe is a file and not a line of code.

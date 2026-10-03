@@ -353,6 +353,7 @@ public final class MachineGui {
             int panelHeight) {
         drawProgress(batch, panelX, panelY, panelHeight);
         drawFluidSlots(batch, panelX, panelY, panelHeight);
+        drawEnergy(batch, panelX, panelY, panelHeight);
         drawFlame(batch, panelX, panelY, panelHeight);
         drawError(batch, panelX, panelY, panelHeight);
         drawMarks(batch, panelX, panelY, panelHeight);
@@ -558,13 +559,6 @@ public final class MachineGui {
     /**
      * Draws the cell of energy at the foot of the panel, between the two pairs of tanks.
      * <p>
-     * The cell is not a slot: no player ever puts anything into it. It shows how much of the buffer of the
-     * machine is filled, the way a tank shows the fluid it holds, so a machine that waits for power says so
-     * on the same row it waits on. A machine of the age of steam has no buffer and shows an empty cell.
-     */
-    /**
-     * Draws the cell of energy at the foot of the panel, between the two pairs of tanks.
-     * <p>
      * The cell is not a slot: no player ever puts anything into it, and nothing may be put into it - a
      * generator has no slot at all and the other machines are reached by the tanks that stand beside it. What
      * it shows is how much of the buffer of the machine is filled, the way a tank shows the fluid it holds, so
@@ -579,9 +573,7 @@ public final class MachineGui {
     private void drawEnergy(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
         float x = panelX + MachineMenu.ENERGY_X;
         float y = panelY + panelHeight - MachineMenu.FOOT_TOP - ContainerLayout.SLOT_SIZE;
-        TextureRegion cell = panel.icon(menu.progressKind().hasBar()
-                ? SlotKind.GENERIC
-                : SlotKind.BATTERY);
+        TextureRegion cell = panel.icon(menu.energySlotKind());
         if (cell != null) {
             batch.draw(cell, x - PanelTextures.SLOT_BEVEL, y - PanelTextures.SLOT_BEVEL,
                     MachineTextures.ICON_CELL, MachineTextures.ICON_CELL);

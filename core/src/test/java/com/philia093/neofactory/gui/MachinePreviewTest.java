@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui;
 
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.gui.container.Slot;
@@ -18,11 +19,14 @@ import com.philia093.neofactory.machine.ProgressKind;
 import com.philia093.neofactory.machine.SimpleEnergyStorage;
 import com.philia093.neofactory.machine.SlotKind;
 import com.philia093.neofactory.machine.SmeltingMachine;
+import com.philia093.neofactory.machine.SteamTurbineMachine;
+import com.philia093.neofactory.machine.TurbineTier;
 import com.philia093.neofactory.render.BlockTextureCache;
 import com.philia093.neofactory.render.PixelFont;
 import com.philia093.neofactory.support.TestIcons;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.Constants;
+import com.philia093.neofactory.world.TickClock;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -65,6 +69,13 @@ class MachinePreviewTest {
     /** Picture of a machine that holds everything the layout can carry. */
     private static final Path FULL_PREVIEW =
             Path.of("build", "reports", "machine-full-preview.png");
+
+    /** Picture of the panel of a generator, whose cell of energy wears the icon of a battery. */
+    private static final Path GENERATOR_PREVIEW =
+            Path.of("build", "reports", "machine-generator-preview.png");
+
+    /** Colour the fill of the cell of energy is painted in, the red of the screen of a machine. */
+    private static final int ENERGY_FILL = 0xFFB81F1F;
 
     /** Colour the preview is filled with, a dark grey that shows the frame. */
     private static final int BACKDROP = 0xFF202020;
@@ -125,6 +136,7 @@ class MachinePreviewTest {
         drawSlots(picture, machine, layout);
         drawContents(picture, layout);
         drawArrow(picture, machine, CRAFT_PROGRESS);
+        drawEnergyCell(picture, machine, menu, layout);
         BufferedImage font = read(FONT_SHEET);
         drawInfo(picture);
         drawFlame(picture, menu);
@@ -166,12 +178,70 @@ class MachinePreviewTest {
         copy(machine, picture, 0, 0, MachineTextures.WIDTH, MachineTextures.HEIGHT, MARGIN, MARGIN);
         drawSlots(picture, machine, layout);
         drawFluidSlots(picture, machine, menu, layout);
+        drawEnergyCell(picture, machine, menu, layout);
         drawArrow(picture, machine, CRAFT_PROGRESS);
         drawInfo(picture);
         drawFlame(picture, menu);
 
         ImageIO.write(picture, "png", FULL_PREVIEW.toFile());
         assertTrue(FULL_PREVIEW.toFile().isFile(), "the preview was not written");
+    }
+
+    /**
+     * Paints the panel of a generator, the one machine whose cell of energy wears the icon of a battery.
+     * <p>
+     * A machine that makes power has no slot and no bar, so what a player reads its power on is the cell at the
+     * foot of its panel: the test pins down that this cell wears the icon of
+     * {@link SlotKind#BATTERY} - the very cell a battery is put into in the screens of the original game - and
+     * writes the whole panel to {@code core/build/reports/machine-generator-preview.png}, which is the picture
+     * to look at when the screen of a generator changes.
+     */
+    @Test
+    void theCellOfAGeneratorIsPaintedAsTheGameDrawsIt() throws IOException {
+        SteamTurbineMachine turbine = new SteamTurbineMachine(TurbineTier.LV);
+        turbine.steam().fill(Fluids.STEAM, TurbineTier.LV.steamPerTick(), false);
+        turbine.tick(TickClock.TICK_SECONDS);
+        MachineMenu menu = new MachineMenu(turbine, new PlayerInventory());
+        ContainerLayout layout = menu.container().layout();
+
+        assertEquals(ProgressKind.NONE, menu.progressKind(), "a generator has no bar");
+        assertEquals(SlotKind.BATTERY, menu.energySlotKind(),
+                "so its power is read on the cell of the electricity");
+
+        BufferedImage machine = read(MACHINE_SHEET);
+        BufferedImage picture = new BufferedImage(
+                MachineTextures.WIDTH + 2 * MARGIN, MachineTextures.HEIGHT + 2 * MARGIN,
+                BufferedImage.TYPE_INT_ARGB);
+        fill(picture, BACKDROP);
+        copy(machine, picture, 0, 0, MachineTextures.WIDTH, MachineTextures.HEIGHT, MARGIN, MARGIN);
+        drawSlots(picture, machine, layout);
+        drawFluidSlots(picture, machine, menu, layout);
+        drawEnergyCell(picture, machine, menu, layout);
+        drawInfo(picture);
+        drawFlame(picture, menu);
+
+        ImageIO.write(picture, "png", GENERATOR_PREVIEW.toFile());
+        assertTrue(GENERATOR_PREVIEW.toFile().isFile(), "the preview was not written");
+    }
+
+    /**
+     * Draws the cell of energy at the foot of the panel, the way {@code MachineGui#drawEnergy} does it.
+     * <p>
+     * The icon is the one {@link MachineMenu#energySlotKind()} names - the plain cell of a machine of recipes
+     * and the cell of the electricity for a machine that makes power - and the lower part of it is filled with
+     * the colour of the energy up to the middle, the way a buffer that is half full is shown.
+     */
+    private static void drawEnergyCell(BufferedImage picture, BufferedImage machine, MachineMenu menu,
+            ContainerLayout layout) {
+        SlotKind kind = menu.energySlotKind();
+        int x = MARGIN + MachineMenu.ENERGY_X - PanelTextures.SLOT_BEVEL;
+        int y = MARGIN + layout.panelHeight() - MachineMenu.FOOT_TOP - ContainerLayout.SLOT_SIZE
+                - PanelTextures.SLOT_BEVEL;
+        copy(machine, picture, MachineTextures.iconX(kind.column()), MachineTextures.iconY(kind.row()),
+                MachineTextures.ICON_CELL, MachineTextures.ICON_CELL, x, y);
+        int inside = ContainerLayout.SLOT_SIZE - 2;
+        fillBox(picture, x + PanelTextures.SLOT_BEVEL + 1, y + PanelTextures.SLOT_BEVEL + 1, inside,
+                inside / 2, ENERGY_FILL);
     }
 
     /** Draws the tanks of the foot of the panel. */

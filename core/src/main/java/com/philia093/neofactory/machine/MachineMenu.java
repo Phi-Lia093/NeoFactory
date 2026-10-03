@@ -548,6 +548,21 @@ public final class MachineMenu {
         return machine.screen().progress();
     }
 
+    /**
+     * Icon the cell of energy at the foot of the panel wears.
+     * <p>
+     * A machine that works on recipes shows a plain cell, drawn the way the slots of its screen are drawn;
+     * <b>a generator shows the cell of the electricity</b>, the icon a battery is put into in the screens of the
+     * original game, because the cell of a machine that makes power is where a player reads its power and not a
+     * cell that was left empty, see {@link ProgressKind#hasBar} and
+     * {@link com.philia093.neofactory.gui.MachineGui#drawEnergy}.
+     *
+     * @return kind of the icon of that cell
+     */
+    public SlotKind energySlotKind() {
+        return progressKind().hasBar() ? SlotKind.GENERIC : SlotKind.BATTERY;
+    }
+
     /** Style the machine is drawn in, which is the panel and the slots its screen uses. */
     public MachineStyle style() {
         return machine.screen().style();

@@ -24,13 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Checks a steam turbine against a world: the steam it drinks, the line it feeds and the vent it has to keep
- * open.
+ * Checks a steam turbine against a world: the steam it drinks and the line it feeds.
  * <p>
  * The machine is the one the block of the game carries and it is put into the world the way a player builds
  * it, so what is checked is the way from the tank of the turbine through the line of cables into the buffer of
  * the next machine - the whole of what the first machine of the game that makes power is for, see
- * {@link SteamTurbineMachine} and {@code MachineBlockEntity#updateEnergy}.
+ * {@link SteamTurbineMachine} and {@code MachineBlockEntity#updateEnergy}. <b>A turbine has no vent</b>, so a
+ * wall behind it is none of its business, see {@link #aWallBehindATurbineDoesNotStopIt}.
  */
 class TurbineLineTest {
 
@@ -81,18 +81,19 @@ class TurbineLineTest {
     }
 
     @Test
-    void aTurbineWhoseVentIsWalledInStandsStill() {
+    void aWallBehindATurbineDoesNotStopIt() {
         World world = new World(SEED, 2, 0);
         SteamTurbineMachine turbine = turbine(world, 0, Y, 0);
-        // The vent of a machine that looks north blows out of its back, so the wall is built there.
+        // A machine that looks north has its plug on the left flank; the wall stands at its back, where the
+        // vent of a machine of recipes of its age would blow - a generator has no vent, so it does not care.
         world.setBlock(0, Y, 1, Blocks.STONE);
 
         settle(world, 2);
 
-        assertEquals(STEAM - turbine.steamPerTick(), turbine.steam().amount(),
-                "the steam of the first tick is gone and no more is drunk");
-        assertEquals(turbine.euPerTick(), turbine.energy().amount());
-        assertEquals(MachineError.NO_EXHAUST, turbine.error(), "and the machine reports its walled vent");
+        assertEquals(2 * turbine.steamPerTick(), STEAM - turbine.steam().amount(),
+                "the turbine turned both ticks: no wall can stop a machine that blows nothing out");
+        assertEquals(2 * turbine.euPerTick(), turbine.energy().amount());
+        assertEquals(MachineError.NONE, turbine.error(), "and there is nothing to report");
     }
 
     /** Places a turbine of bronze with its tank full, the way a player builds one. */

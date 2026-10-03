@@ -185,6 +185,8 @@ class MachineMenuTest {
 
         assertEquals("Furnace", furnace.title());
         assertEquals(ProgressKind.GENERIC, furnace.progressKind());
+        assertEquals(SlotKind.GENERIC, furnace.energySlotKind(),
+                "a machine of recipes reads its power on the plain cell of a slot");
         assertEquals("Remain fuel: 0s", furnace.statusText(), "an empty furnace reports zero");
         assertEquals(MachineError.NONE, furnace.error());
     }
