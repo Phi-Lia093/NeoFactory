@@ -9,6 +9,7 @@ import com.philia093.neofactory.util.Constants;
 import com.philia093.neofactory.world.Chunk;
 import com.philia093.neofactory.world.Section;
 import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceAppearance;
 
 import java.util.List;
 
@@ -139,8 +140,19 @@ public class SectionMeshCache implements Disposable {
             return SectionMesher.packLight(world.peekSkyLight(originX + x, worldY, originZ + z),
                     world.peekBlockLight(originX + x, worldY, originZ + z));
         };
+        // A block entity that owns its sides says what they are drawn with: a machine shows the casing of
+        // the tier it is built of and the overlay of what a side does - the stub of a pipe, the plug of
+        // the power - instead of the picture its state carries there, see FaceAppearance. A block entity
+        // that keeps the faces of its model answers null, and a cell that carries no entity is not asked
+        // at all, see SectionMesher#Appearances.
+        SectionMesher.Appearances appearances = (x, y, z) -> {
+            if (world.blockEntity(originX + x, originY + y, originZ + z) instanceof FaceAppearance owned) {
+                return owned;
+            }
+            return null;
+        };
         List<MeshData> data = SectionMesher.build(section, originX, originY, originZ, blocks, states,
-                lighting, pictures);
+                lighting, pictures, appearances);
         section.clearDirty();
 
         Array<Mesh> meshes = new Array<>();

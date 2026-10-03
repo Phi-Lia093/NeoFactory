@@ -10,6 +10,8 @@ import com.philia093.neofactory.block.model.ModelBox;
 import com.philia093.neofactory.block.model.ModelFace;
 import com.philia093.neofactory.block.state.BlockStateRegistry;
 import com.philia093.neofactory.world.Section;
+import com.philia093.neofactory.world.interaction.FaceAppearance;
+import com.philia093.neofactory.world.interaction.FacePicture;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -222,8 +224,39 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, Pictures pictures) {
-        return build(section, originX, originY, originZ, blocks, section::state, NO_LIGHT, pictures);
+        return build(section, originX, originY, originZ, blocks, section::state, NO_LIGHT, pictures,
+                NO_APPEARANCES);
     }
+
+    /**
+     * The block entities of a section, asked what their sides are drawn with.
+     * <p>
+     * A block that moves items, fluids or power is not one picture. A side that carries a pipe wears the
+     * stub of that pipe, a side the power leaves through wears a plug, and which side does what is decided
+     * while the game runs - a wrench turns a machine, a wheel scrolls through the faces of a tank - so the
+     * picture of such a side can stand in no model file. The block entity of the cell answers instead, and
+     * the mesher writes that answer over the picture the model carries there, see {@link FaceAppearance}.
+     * <p>
+     * <b>The mesher asks once per cell, and only for a cell whose block carries a block entity.</b> A world
+     * of stone costs no ask at all and the six faces of a machine cost one, which is why this interface
+     * hands back the block entity and not the picture of a single face.
+     */
+    @FunctionalInterface
+    public interface Appearances {
+
+        /**
+         * The block entity that owns the sides of a cell.
+         *
+         * @param x local X coordinate, {@code 0} to {@link Section#SIZE} minus one
+         * @param y local Y coordinate, {@code 0} to {@link Section#SIZE} minus one
+         * @param z local Z coordinate, {@code 0} to {@link Section#SIZE} minus one
+         * @return the block entity, or {@code null} when the model of the cell stands as it is
+         */
+        FaceAppearance appearanceAt(int x, int y, int z);
+    }
+
+    /** The block entities that own no side, which is what a build without a world is meshed with. */
+    public static final Appearances NO_APPEARANCES = (x, y, z) -> null;
 
     /**
      * Meshes the cells of a section.
@@ -239,7 +272,8 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, States states, Pictures pictures) {
-        return build(section, originX, originY, originZ, blocks, states, NO_LIGHT, pictures);
+        return build(section, originX, originY, originZ, blocks, states, NO_LIGHT, pictures,
+                NO_APPEARANCES);
     }
 
     /**
@@ -263,6 +297,34 @@ public final class SectionMesher {
      */
     public static List<MeshData> build(Section section, int originX, int originY, int originZ,
             Blocks blocks, States states, Lighting lighting, Pictures pictures) {
+        return build(section, originX, originY, originZ, blocks, states, lighting, pictures,
+                NO_APPEARANCES);
+    }
+
+    /**
+     * Meshes the cells of a section in the light that stands in it, with the sides that a block entity
+     * owns drawn as that block entity says.
+     * <p>
+     * A face of a model is what a cell shows, and a block entity may have taken some of those faces over:
+     * the machine of a cell shows the casing of its tier and the overlay of what a side does - the stub of
+     * a pipe, the plug of the power - instead of the picture the model put there, see
+     * {@link Appearances} and {@link FaceAppearance}.
+     *
+     * @param section section to mesh
+     * @param originX world X coordinate of the column of the section
+     * @param originY world Y coordinate the section starts at
+     * @param originZ world Z coordinate of the column of the section
+     * @param blocks blocks of the section and of the shell around it
+     * @param states states of the cells of the section
+     * @param lighting light of the section and of the shell around it
+     * @param pictures layers the pictures live in
+     * @param appearances block entities that own their sides, {@link #NO_APPEARANCES} for a build that
+     *        draws every side the way its model writes it
+     * @return the meshes to draw, empty when the section shows nothing
+     */
+    public static List<MeshData> build(Section section, int originX, int originY, int originZ,
+            Blocks blocks, States states, Lighting lighting, Pictures pictures,
+            Appearances appearances) {
         // The blocks around the section are read once and kept as one flag per cell: whether that cell
         // hides the face of the block behind it. The mesher asks that question thousands of times - once
         // per face and three times per corner of a face - and every single ask used to be a read of the
@@ -285,6 +347,11 @@ public final class SectionMesher {
                     // Only a whole cube may have a face hidden or shaded by a neighbour, because only
                     // then does every face of it lie on the border of the block, see BlockModel.
                     boolean[] shadow = model.isWholeCube() ? hiding : null;
+                    // The block entity of the cell may have taken the sides of the block over, and it is
+                    // asked once for the six of them. A cell whose block carries no entity is never asked:
+                    // a world of stone and of planks costs nothing here, see Appearances.
+                    FaceAppearance owner = block.hasBlockEntity() ? appearances.appearanceAt(x, y, z)
+                            : null;
                     for (ModelBox box : model.boxes()) {
                         for (BlockFace face : BlockFace.ALL) {
                             ModelFace picture = box.face(face);
@@ -292,6 +359,15 @@ public final class SectionMesher {
                                 continue;
                             }
                             BlockFace against = turned(face, shown.rotateY());
+                            FacePicture owned = owner == null ? null : owner.pictureOn(against);
+                            if (owned != null) {
+                                // The side belongs to the block entity: its two pictures cover the whole
+                                // face - the casing of the block below, the overlay of the role above -
+                                // and the turn of the state has already been applied, because a block
+                                // entity names the sides of the world and not the sides of a model.
+                                picture = new ModelFace(owned.texture(), owned.overlay(), 0.0f, 0.0f,
+                                        1.0f, 1.0f, against, 0, false);
+                            }
                             if (shadow != null && picture.isCulled()
                                     && hiding(hiding, x + against.x(), y + against.y(), z + against.z())) {
                                 continue;

@@ -11,6 +11,7 @@ import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.util.Constants;
+import com.philia093.neofactory.world.interaction.FaceRole;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -316,6 +317,12 @@ public class BlockPictures implements Disposable, SectionMesher.Pictures {
                 nextLayer = collect(ITEMS_FOLDER + item.texture(), names, layers, frames, exists,
                         frameCount, nextLayer);
             }
+        }
+        // The overlays of the sides of a machine are drawn by a block entity and named by no model file:
+        // the stub of a pipe, the plug of the power, the vent of an exhaust. They are collected here, or
+        // the mesher would find no layer for a side that a block entity owns, see FaceRole.
+        for (String overlay : FaceRole.overlays()) {
+            nextLayer = collect(overlay, names, layers, frames, exists, frameCount, nextLayer);
         }
         for (String face : SkinRegions.names()) {
             nextLayer = collect(face, names, layers, frames, exists, frameCount, nextLayer);

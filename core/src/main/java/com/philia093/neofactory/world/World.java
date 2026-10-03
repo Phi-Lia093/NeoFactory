@@ -553,6 +553,35 @@ public final class World implements BlockAccess {
     }
 
     /**
+     * Marks the mesh of a cell as out of date without changing the cell.
+     * <p>
+     * A block entity changes what a cell looks like without changing its block or its state: a machine
+     * that is turned shows another picture on its sides, and a side a player gave another job wears the
+     * overlay of that job, see {@code FaceAppearance}. The state of such a cell stays what it was, so
+     * {@link #setState} would not be asked - and would answer that nothing changed if it were - which is
+     * why a block entity calls this instead. The chunk is marked as changed as well, or the new sides of
+     * a machine would never reach the save game.
+     * <p>
+     * A cell of a chunk that is not loaded is left alone: nothing is drawn there and nothing is stored
+     * there either, so the mark would mean nothing, see {@link #peekBlock}.
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     */
+    public void markDirty(int x, int y, int z) {
+        Chunk chunk = loadedChunk(x, y, z);
+        if (chunk == null) {
+            return;
+        }
+        Section section = chunk.section(y / Section.SIZE);
+        if (section != null) {
+            section.markDirty();
+        }
+        chunk.markModified();
+    }
+
+    /**
      * Level of sky light of a cell.
      * <p>
      * <b>Nothing is generated here.</b> The mesher asks about the cells just outside a section, which may
