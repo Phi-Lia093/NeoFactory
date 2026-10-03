@@ -1,5 +1,6 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerMenu;
@@ -29,6 +30,9 @@ import java.util.Objects;
  *         left, the ones a machine fills on the right - with the cell of energy between the
  *         two pairs of them. The panel of a machine of this workshop has no column for
  *         upgrades and no corner to configure;</li>
+ *     <li>the sides of the machine are read from its front and are set from here as well as with the wrench:
+ *         the tooltip of a tank names the side the tank is reached through while the modifier key is held,
+ *         and the wheel walks that side on, see {@link #cycleTank(int, int, int)};</li>
  *     <li>the inventory of the player follows below, on the rows its own panel carries.</li>
  * </ul>
  * A window only has to hand the {@link #container()} to
@@ -134,6 +138,21 @@ public final class MachineMenu {
     /** Name the tooltip of a tank writes while nothing is in it. */
     public static final String EMPTY_TANK = "Empty";
 
+    /** Word the tooltip of a tank writes before the side it is reached through. */
+    public static final String FACING_PREFIX = "FACING: ";
+
+    /** Name the cell of energy at the foot of the panel is written with in its tooltip. */
+    public static final String ENERGY = "Energy";
+
+    /** Unit the tooltip of the buffer writes behind an amount of energy, the unit of the original game. */
+    public static final String ENERGY_UNIT = "EU";
+
+    /** Word the tooltip of the buffer writes before the side the power of a line comes in through. */
+    public static final String POWER_IN_PREFIX = "POWER IN: ";
+
+    /** Word the tooltip of the buffer writes before the side the power of the machine leaves through. */
+    public static final String POWER_OUT_PREFIX = "POWER OUT: ";
+
     /** Left edge of the first slot of the player inventory. */
     public static final int PLAYER_LEFT = ContainerLayout.PADDING;
 
@@ -165,17 +184,43 @@ public final class MachineMenu {
     private final ContainerMenu container;
     private final List<FluidSlot> fluidSlots;
 
+    /** Side the machine looks in, which is the front its sides are named from. */
+    private final BlockFace facing;
+
     /**
-     * Creates the menu of a machine.
+     * Creates the menu of a machine nobody has turned.
      *
      * @param machine machine to show
      * @param player inventory of the player, shown below the machine
-     * @throws IllegalArgumentException when the screen of the machine does not describe the
-     *         slots its inventory holds, which is a mistake of the machine and not of the
-     *         player
      */
     public MachineMenu(Machine machine, PlayerInventory player) {
+        this(machine, player, MachineSides.DEFAULT_FRONT);
+    }
+
+    /**
+     * Creates the menu of a machine.
+     * <p>
+     * <b>The side the machine looks in is what its sides are named from.</b> The tooltip of a tank says
+     * {@code FACING: LEFT} and never {@code north}, because a player who turned a machine wants to read
+     * where a side lies on the machine and not where it lies in the world, see
+     * {@link MachineSides#nameOf(BlockFace, BlockFace)}. A menu that is built without a front is the menu of
+     * a machine nobody has turned, see {@link MachineSides#DEFAULT_FRONT}.
+     *
+     * @param machine machine to show
+     * @param player inventory of the player, shown below the machine
+     * @param facing side the machine looks in, one of the four sides of the horizon
+     * @throws IllegalArgumentException when the screen of the machine does not describe the
+     *         slots its inventory holds, which is a mistake of the machine and not of the
+     *         player, or when the side the machine looks in is not a side of the horizon
+     */
+    public MachineMenu(Machine machine, PlayerInventory player, BlockFace facing) {
         this.machine = Objects.requireNonNull(machine, "machine");
+        if (!MachineSides.isHorizontal(facing)) {
+            // The four names around a front only mean something while the front is horizontal, so a machine
+            // that is turned looks along the horizon, see MachineSides#isHorizontal.
+            throw new IllegalArgumentException("A machine looks along the horizon and not " + facing);
+        }
+        this.facing = facing;
         MachineInventory inventory = machine.inventory();
         MachineScreen screen = machine.screen();
 
@@ -258,19 +303,117 @@ public final class MachineMenu {
     }
 
     /**
-     * Lines the tooltip of a tank is drawn from.
-     * <p>
-     * A player who is about to click a tank wants to know what is in it and how much room is left, so the
-     * box names the fluid first and then what the tank holds of how much it takes. A tank that is empty
-     * says so, and a fluid the player has never seen is named by the fluid itself.
+     * Lines the tooltip of a tank is drawn from, without the side it is reached through.
      *
      * @param slot tank to describe
      * @return the lines of the box
      */
     public List<String> tankTooltip(FluidSlot slot) {
+        return tankTooltip(slot, false);
+    }
+
+    /**
+     * Lines the tooltip of a tank is drawn from.
+     * <p>
+     * A player who is about to click a tank wants to know what is in it and how much room is left, so the
+     * box names the fluid first and then what the tank holds of how much it takes. A tank that is empty
+     * says so, and a fluid the player has never seen is named by the fluid itself.
+     * <p>
+     * <b>The side the tank is reached through is named while the modifier key is held.</b> The last line
+     * says {@code FACING: LEFT} - a side of the machine and not of the world, so a player who turned the
+     * machine reads the flanks of the machine they are looking at - and a tank that no side reaches says
+     * {@code FACING: NONE}, which is what a tank the wheel walked past the front reports, see
+     * {@link #cycleTank(int, int, int)}.
+     *
+     * @param slot tank to describe
+     * @param showSide {@code true} while the modifier key is held, which names the side of the tank
+     * @return the lines of the box
+     */
+    public List<String> tankTooltip(FluidSlot slot, boolean showSide) {
         FluidStorage tank = machine.tank(slot.tank()).storage();
         String name = tank.isEmpty() ? EMPTY_TANK : Item.prettify(tank.fluid().name());
-        return List.of(name, tank.amount() + " / " + tank.capacity() + " " + FLUID_UNIT);
+        String amount = tank.amount() + " / " + tank.capacity() + " " + FLUID_UNIT;
+        if (!showSide) {
+            return List.of(name, amount);
+        }
+        return List.of(name, amount, FACING_PREFIX + sideName(slot.tank()));
+    }
+
+    /**
+     * Lines the tooltip of the cell of energy is drawn from.
+     * <p>
+     * The cell at the foot of the panel shows how much of the buffer of a machine is filled, so the box says
+     * what that amount is; a machine of the age of steam has no buffer at all and says nothing, which is why
+     * the answer may be empty. With the modifier key held the box names the sides the power is reached
+     * through - the plug a line of cables feeds and the plug a generator hands its power over to it - in the
+     * words a player reads, see {@link MachineSides#nameOf(BlockFace, BlockFace)}.
+     *
+     * @param showSide {@code true} while the modifier key is held, which names the plugs of the power
+     * @return the lines of the box, empty for a machine without a buffer
+     */
+    public List<String> energyTooltip(boolean showSide) {
+        EnergyStorage buffer = machine.energy();
+        if (buffer == null || buffer.capacity() <= 0) {
+            return List.of();
+        }
+        List<String> lines = new ArrayList<>();
+        lines.add(ENERGY);
+        lines.add(buffer.amount() + " / " + buffer.capacity() + " " + ENERGY_UNIT);
+        FaceConfig faces = machine.faces();
+        if (showSide && faces.takesPower()) {
+            lines.add(POWER_IN_PREFIX + MachineSides.nameOf(facing, faces.energyIn()));
+        }
+        if (showSide && faces.givesPower()) {
+            lines.add(POWER_OUT_PREFIX + MachineSides.nameOf(facing, faces.energyOut()));
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * Walks the tank under a point of the panel to its next side, which is what the wheel of the interface
+     * does.
+     * <p>
+     * A tank of a machine is reached through one side of its block, and while its screen is open that side is
+     * set with the wheel the way it is set with the wrench in the world: the sides are walked in the order a
+     * player reads them and <b>the walk steps over the front and over what another part of the machine
+     * owns</b>, so the wheel of a tank never takes the plug of the power away, see
+     * {@link FaceConfig#cycleTank(int, int, BlockFace)}. A tank that is reached from nowhere is where the
+     * walk starts, which is how a player takes a side away from a tank again.
+     * <p>
+     * A point that is not on a tank is not the business of the wheel, so nothing happens there.
+     *
+     * @param localX X coordinate relative to the panel
+     * @param localY Y coordinate relative to the panel, measured downwards
+     * @param notches notches the wheel was rolled, positive for forwards
+     * @return {@code true} when the side of a tank changed
+     */
+    public boolean cycleTank(int localX, int localY, int notches) {
+        FluidSlot slot = fluidSlotAt(localX, localY);
+        if (slot == null || notches == 0) {
+            return false;
+        }
+        return machine.faces().cycleTank(slot.tank(), notches > 0 ? 1 : -1, facing);
+    }
+
+    /** Side the machine looks in, which its front shows and which no job is ever put on. */
+    public BlockFace facing() {
+        return facing;
+    }
+
+    /**
+     * Name of the side one tank is reached through, in the words a player reads.
+     *
+     * @param tank index of the tank, {@code 0 <= tank < machine.tankCount()}
+     * @return the name, {@link MachineSides#NONE} for a tank no side reaches
+     * @throws IllegalArgumentException when the machine holds no tank of that index
+     */
+    public String sideName(int tank) {
+        FaceConfig faces = machine.faces();
+        if (tank < 0 || tank >= faces.tankCount()) {
+            throw new IllegalArgumentException("The machine " + machine.name() + " holds " + faces.tankCount()
+                    + " tanks and has no tank " + tank);
+        }
+        return MachineSides.nameOf(facing, faces.faceOfTank(tank));
     }
 
     /**

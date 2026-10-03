@@ -47,6 +47,15 @@ public final class MachineSides {
     /** Name of the flank to the right of that player. */
     public static final String RIGHT = "RIGHT";
 
+    /**
+     * Side a machine looks in before anybody turns it.
+     * <p>
+     * A machine is built with its front to the north and keeps that front until a wrench turns it, which is
+     * also the front the default assignment of {@link FaceConfig} is written for: a player who built a
+     * machine and never touched it reads the same names on its sides as a machine that was turned does.
+     */
+    public static final BlockFace DEFAULT_FRONT = BlockFace.NORTH;
+
     private MachineSides() {
         // Utility class: never instantiated.
     }

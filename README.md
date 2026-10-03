@@ -109,7 +109,8 @@ stored on disk so that a session can be continued later.
   empty cell from a tank it makes fluid in, see `CellTransfer`. Nothing is ever lost - a tank is only
   emptied when it holds a whole cell's worth and a cell is only poured into a tank that is empty of
   anything else or holds the very fluid and still has room for all of it - and hovering a tank names the
-  fluid, what it holds and what it takes.
+  fluid, what it holds and what it takes, and, while `SHIFT` is held, the side of the block the tank is
+  reached through, which the wheel walks on.
   A machine swallows what a recipe needs the moment the work starts and not when it ends, so a craft
   that is interrupted - the block broken, the buffer empty, a flame gone for good - costs the portion
   that was being worked on and hands nothing back. A machine that cannot pay for a frame takes nothing
@@ -134,11 +135,27 @@ stored on disk so that a session can be continued later.
   reaches it while it is still that hot cracks the metal: filling a red hot boiler by hand is as dangerous
   as leaving it alone, while one that had time to cool down below the boiling point takes water again. Its
   mouth glows while it burns, which is the state of the cell and therefore part of the saved world. **Water
-  arrives through a pipe and the steam leaves the same way**: the machine names the tanks behind its sides,
-  so a line may be built towards it - the mouth of its front is where water runs in and every other side is
-  a hatch that gives the steam away, see `FluidNode`. A machine is the pump of that exchange: every tick it
-  pours its kettle into the pipes around it, and a pipe pours what it holds into the mouth. A boiler is still
-  filled and emptied by clicking its tanks with a cell as well, and a
+  arrives through one side of its block and the steam leaves through another**: every part of a machine is
+  reached through a side of its own - the tank of water through one, the tank of steam through another - and
+  the front of the machine carries nothing at all, because the player who built it is looking at that side,
+  see `FaceConfig` and `MachineSides`. A line of pipes is built towards the side of the water to fill it and
+  towards the side of the steam to take what the boiler boiled, see `FluidNode`.
+  **Which side that is is set with the wrench**: a right click turns the machine onto the side a player
+  clicked, `SHIFT` with the left button gives a side the job of taking something in - the vent of a machine
+  that breathes, the plug the power arrives through - and `SHIFT` with the right button the job of giving
+  something out, the plug a machine hands its power over to. The same click takes the job away again, a side
+  the machine has no use for is refused, the front takes no job at all, and **giving a side a job takes the
+  job that stood there away**, which is how a player moves the mouth of a pipe that was built against the
+  wrong side. The sides travel with the machine, and a machine that is turned gives up the job of the side it
+  turns onto.
+  **The panel says the same thing**: the box of a tank names the side it is reached through while `SHIFT` is
+  held and the wheel walks that side on, stepping over the front and over the sides another part of the very
+  machine owns - the plug of the power is not taken away by a wheel that runs over a tank. A machine is built
+  with the water on its right flank, the steam on its left one, the vent of a machine that breathes on the
+  back and the plugs of the power on the back and on the left flank, and it keeps those sides until a player
+  sets another one. A machine is the pump of that exchange: every tick it pours a tank it fills into the pipe
+  that stands on the side of that tank, and a pipe pours what it holds into the side of a tank it feeds.
+  A boiler is still filled and emptied by clicking its tanks with a cell as well, and a
   boiler that cannot let its steam out is a boiler that ruins itself - a wooden pipe at its hatch bursts
   with the steam of three hundred and seventy three kelvin.
 - **The machines of the age of steam** - six machines that run on the steam of the boiler instead of on a
@@ -151,9 +168,10 @@ stored on disk so that a session can be continued later.
   craft takes and how many millibuckets of steam it spends. **Steam is spent while a craft runs**, the way a
   machine of the electrical age spends its energy: one frame pays the share of the craft it is worth, so a
   machine whose tank is empty waits with its input in the slot until the boiler catches up.
-  **A machine of the bronze age blows its steam out.** The wrench sets which side of the block is its front
-  and which one is its exhaust - a plain right click turns the machine, a right click with `SHIFT` held moves
-  the exhaust - and the moment a craft ends the machine looks at that face: a solid block standing there is
+  **A machine of the bronze age blows its steam out of one side of its block.** The vent is a side of the
+  machine like every other part of it and is set with the wrench - `SHIFT` with the left button, the click
+  that gives a side the job of taking something in - and the moment a craft ends the machine looks at that
+  side: a solid block standing there is
   reported in the corner of its panel and the machine refuses the next recipe until the way out is open again.
   The craft that was already running is always finished, because the steam of it was paid for. A machine of
   this age is built of bronze casing like the boiler, is taken apart with the wrench, and its front glows
@@ -182,8 +200,9 @@ stored on disk so that a session can be continued later.
   block behind it is taken away. Nothing of the world is read and no mask heals itself, so a player gets
   exactly the lines they built: two lines that meet at a wall stay apart, and a line that runs past a
   machine does not take from it by accident. Two pipes always join, whatever their material and their size;
-  a machine joins as well, because it names the tanks behind its sides - the mouth of its front takes fluid
-  in and every other side gives it - which is what a line is built towards, see `FluidNode`. A pipe is not a wall: it is
+  a machine joins as well, because it names the tanks behind its sides - each tank through a side of its own,
+  set with the wrench, and the front of the machine through none at all - which is what a line is built
+  towards, see `FluidNode`. A pipe is not a wall: it is
   walked through like a torch, it is drawn from the eight grey scale pictures of the pack that every metal
   shares (its colour is painted over them, so a new metal needs no art at all), and its geometry is a thin
   tube that ends at the border of its cell in the plate of its own size. That plate is what a joined side
@@ -229,9 +248,10 @@ stored on disk so that a session can be continued later.
   them faster than with a bare hand and always gets the item. **The modifier key builds against a machine
   instead of opening it**: a player who aims at a boiler with a pipe in hand and the key held lays the pipe
   instead of seeing the slots of the boiler. **A machine and a line meet in the two directions of
-  `FluidNode`**: the pipe pours what it holds into the mouth of the machine, the machine pours what it made
-  into every pipe at its hatches, and a machine weighs one at a junction, because it names no rate of its
-  own - a boiler empties its kettle at the rate of the widest line that stands at it.
+  `FluidNode`**: the pipe pours what it holds into the side a player gave to a tank the machine is filled
+  through, the machine pours what it made out of the sides of the tanks it fills, and a machine weighs one at
+  a junction, because it names no rate of its own - a boiler empties its kettle at the rate of the widest line
+  that stands at it.
 
 - **Fixed ticks** - the world advances in twenty steps a second no matter how fast the
   frames come, so a machine does the same work at any frame rate.
@@ -256,7 +276,13 @@ stored on disk so that a session can be continued later.
   `ToolType.WRENCH`, so it opens no block and is held at a face - and the pipe is the first block that
   answers to a grid: a click on a cell turns the side of the pipe that the cell stands for - either button
   works, and holding the left one does not start to break the block - so the four corners of the grid reach
-  the four sides a player cannot see from where they stand. The wire cutter, the
+  the four sides a player cannot see from where they stand. **A machine answers the grid as well**: its front
+  is crossed out, a side that takes something in carries the arrow into the block and a side that gives
+  something out the arrow out of it, see `FaceMark`. All four clicks of the wrench have a meaning on a machine
+  where a pipe only reads the right button: the right button turns the machine onto the side that was clicked,
+  `SHIFT` with the left button gives a side the job of taking something in, `SHIFT` with the right button the
+  job of giving something out, and the left button without the key is the click that mines, which is why it
+  never reaches the machine at all, see `FaceClick`. The wire cutter, the
   crowbar and the screwdriver are items the art of the machine mod brings and will follow.
 - **Shapes and states** - a block is not one picture but a shape, and the skin of its faces lives in
   `assets/models/block`: a model names the picture of every face of every box, a template is written
@@ -344,6 +370,7 @@ stored on disk so that a session can be continued later.
 | `W`, `A`, `S`, `D` | walk |
 | mouse | turn the view, the block the eyes meet is what an action applies to |
 | mouse wheel | select a hotbar slot, `CTRL` with it zooms the view instead; a notch rolled forwards walks towards the first slot |
+| mouse wheel on the panel of a machine | walk the side of the block the tank under the mouse is reached through, stepping over the front and over the sides another part of the machine owns; `SHIFT` names the sides of a tank and of the cell of energy in their boxes |
 | `-` / `=` | zoom out / in while held (numpad `-` and `+` do the same) |
 | left mouse button | break the block the eyes meet while held; a click on the hotbar selects that slot |
 | `1` to `9` | select a hotbar slot |
@@ -374,7 +401,7 @@ stored on disk so that a session can be continued later.
 | `pipe` | the pipes of the industry: the materials and the sizes each of them comes in, what one of them moves a second and how hot a fluid may be in it, the mask of the sides it joins, the valve of every side and the arithmetic that divides a junction between pipes - a side is turned with the wrench of the game, see `blockentity` and `world.interaction` |
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry, the machine behind a block and the container that keeps items |
-| `machine` | what a machine is built from: slots and tanks with a role, energy and the recipes it runs |
+| `machine` | what a machine is built from: slots and tanks with a role, energy, the recipes it runs and the side of the block each of those is reached through (`FaceConfig`, `MachineSides`, `FaceClick`) |
 | `recipe` | the files behind `assets/recipes`: what a recipe is, the grid it is offered, the loader that reads a file, and the work field of nine cells a table of the workshop holds |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |

@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.gui.container.ContainerLayout;
@@ -19,6 +20,7 @@ import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.machine.EnergyStorage;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.MachineMenu;
+import com.philia093.neofactory.machine.MachineSides;
 import com.philia093.neofactory.machine.MachineStyle;
 import com.philia093.neofactory.machine.ProgressKind;
 import com.philia093.neofactory.machine.SlotKind;
@@ -48,7 +50,10 @@ import java.util.List;
  * The tanks at the foot of the panel are not slots: they are described by a tooltip of their
  * own while the mouse rests on one - what fluid lies in it, how much of it and how much the
  * tank takes - and a click on one trades a cell with the tank, see
- * {@link com.philia093.neofactory.item.CellTransfer}.
+ * {@link com.philia093.neofactory.item.CellTransfer}. <b>A tank is also reached through one side of the
+ * block</b>, and that side is set from here as well as with the wrench: the box names it while the modifier
+ * key is held and the wheel walks it on, see {@link #scrolled(float, float, float)} and
+ * {@link com.philia093.neofactory.machine.MachineSides}.
  * <p>
  * The screen is opened by using a block, see
  * {@link com.philia093.neofactory.screen.GameScreen}, and it takes the input while it is
@@ -138,16 +143,30 @@ public final class MachineGui {
     }
 
     /**
-     * Opens the screen on a machine.
-     * <p>
-     * The menu is built for the machine that was used, so the screen always shows the
-     * slots of the block the player stands at.
+     * Opens the screen on a machine nobody has turned.
      *
      * @param machine machine to show
      * @param player inventory of the player, shown below the machine
      */
     public void open(Machine machine, PlayerInventory player) {
-        menu = new MachineMenu(machine, player);
+        open(machine, player, MachineSides.DEFAULT_FRONT);
+    }
+
+    /**
+     * Opens the screen on a machine.
+     * <p>
+     * The menu is built for the machine that was used, so the screen always shows the
+     * slots of the block the player stands at. The side the machine looks in is handed over with it, because
+     * the screen names the sides of the machine - {@code FACING: LEFT} is the flank a player who faces the
+     * machine reads - and a name that is read off the world would be a name of the wrong machine, see
+     * {@link MachineMenu}.
+     *
+     * @param machine machine to show
+     * @param player inventory of the player, shown below the machine
+     * @param facing side the machine looks in
+     */
+    public void open(Machine machine, PlayerInventory player, BlockFace facing) {
+        menu = new MachineMenu(machine, player, facing);
         menu.container().open();
         // A machine is drawn with the panel of its own age, which is empty where its slots stand.
         panel = panels[menu.style().ordinal()];
@@ -232,6 +251,7 @@ public final class MachineGui {
         elapsed += Gdx.graphics.getDeltaTime();
         view.render(batch, menu.container(), panelX(), panelY(), mouseX, mouseY, this::drawMachine);
         drawTankTooltip(batch, mouseX, mouseY);
+        drawEnergyTooltip(batch, mouseX, mouseY);
         drawMarkTooltips(batch, mouseX, mouseY);
     }
 
@@ -240,7 +260,10 @@ public final class MachineGui {
      * <p>
      * A tank is not a slot and has no item to name, so the box is not what {@link ContainerView} draws: it
      * names the fluid and says how much of it lies in the tank and how much room is left, see
-     * {@link MachineMenu#tankTooltip}. It is drawn last, so it lies over everything else the screen shows.
+     * {@link MachineMenu#tankTooltip}. A player who holds the modifier key reads the side the tank is
+     * reached through on the same box, and the wheel walks that side on while the mouse rests on the tank,
+     * see {@link #scrolled(float, float, float)}. It is drawn last, so it lies over everything else the
+     * screen shows.
      *
      * @param batch batch switched to the projection of the interface viewport
      * @param mouseX X coordinate of the mouse inside the interface
@@ -251,8 +274,53 @@ public final class MachineGui {
         if (tank == null) {
             return;
         }
-        ItemTooltip.draw(batch, font, textures.whitePixel(), menu.tankTooltip(tank), mouseX, mouseY,
-                viewport.guiWidth(), viewport.guiHeight());
+        ItemTooltip.draw(batch, font, textures.whitePixel(), menu.tankTooltip(tank, isShiftHeld()),
+                mouseX, mouseY, viewport.guiWidth(), viewport.guiHeight());
+    }
+
+    /**
+     * Draws what the cell of energy at the foot of the panel holds, beside the mouse.
+     * <p>
+     * The cell is not a slot either: what it shows is how much of the buffer of the machine is filled, and
+     * the box names that amount - and, while the modifier key is held, the sides the power is reached
+     * through, see {@link MachineMenu#energyTooltip}. A machine of the age of steam has no buffer and draws
+     * no box at all.
+     *
+     * @param batch batch switched to the projection of the interface viewport
+     * @param mouseX X coordinate of the mouse inside the interface
+     * @param mouseY Y coordinate of the mouse inside the interface, from the bottom
+     */
+    private void drawEnergyTooltip(SpriteBatch batch, float mouseX, float mouseY) {
+        if (!isOnEnergy(localX(mouseX), localY(mouseY))) {
+            return;
+        }
+        List<String> lines = menu.energyTooltip(isShiftHeld());
+        if (lines.isEmpty()) {
+            return;
+        }
+        ItemTooltip.draw(batch, font, textures.whitePixel(), lines, mouseX, mouseY, viewport.guiWidth(),
+                viewport.guiHeight());
+    }
+
+    /**
+     * Walks the tank under the mouse to its next side, which is what the wheel of the interface does.
+     * <p>
+     * A tank of a machine is reached through one side of its block, and while its screen is up that side is
+     * set from here as well as with the wrench in the world: rolling the wheel forwards walks the sides the
+     * machine reads, and the walk steps over the front and over the sides another part of the machine owns,
+     * see {@link MachineMenu#cycleTank(int, int, int)}. The screen keeps the notches while the mouse rests on
+     * a tank, so the wheel of the hotbar is not moved by a player who is setting the sides of a machine.
+     *
+     * @param notches notches the wheel was rolled, positive for forwards
+     * @param guiX X coordinate of the mouse inside the interface
+     * @param guiY Y coordinate of the mouse inside the interface, from the bottom
+     * @return {@code true} when the wheel walked the side of a tank, so the world has to be drawn again
+     */
+    public boolean scrolled(float notches, float guiX, float guiY) {
+        if (!isOpen() || notches == 0.0f) {
+            return false;
+        }
+        return menu.cycleTank(localX(guiX), localY(guiY), notches > 0.0f ? 1 : -1);
     }
 
     /** X coordinate of the left edge of the panel, centred in the interface. */
@@ -411,6 +479,13 @@ public final class MachineGui {
     private static boolean isOnInfo(int localX, int localY) {
         return localX >= MachineMenu.INFO_LEFT && localX < MachineMenu.INFO_LEFT + MachineMenu.INFO_SIZE
                 && localY >= MachineMenu.INFO_TOP && localY < MachineMenu.INFO_TOP + MachineMenu.INFO_SIZE;
+    }
+
+    /** {@code true} while a point of the panel lies on the cell of energy at its foot. */
+    private static boolean isOnEnergy(int localX, int localY) {
+        return localX >= MachineMenu.ENERGY_X && localX < MachineMenu.ENERGY_X + ContainerLayout.SLOT_SIZE
+                && localY >= MachineMenu.FOOT_TOP
+                && localY < MachineMenu.FOOT_TOP + ContainerLayout.SLOT_SIZE;
     }
 
     /** {@code true} while a point of the panel lies on the flame of the machine, if it has one. */

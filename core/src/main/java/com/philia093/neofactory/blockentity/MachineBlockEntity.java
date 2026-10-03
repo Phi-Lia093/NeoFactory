@@ -58,8 +58,11 @@ public class MachineBlockEntity extends BlockEntity
      * The front is the side the art of a machine shows and the one side of it that carries nothing: no pipe,
      * no cable and no belt is ever built against it, see {@link FaceConfig}. A machine is turned with the
      * wrench and keeps to the four sides of the horizon while it is, see {@link #operateFace}.
+     * <p>
+     * The side is the one {@link MachineSides#DEFAULT_FRONT} names, so the place the front of a machine
+     * starts lies in one class only.
      */
-    public static final BlockFace MOUTH = BlockFace.NORTH;
+    public static final BlockFace MOUTH = MachineSides.DEFAULT_FRONT;
 
     /**
      * Property a block of a machine uses to say which way its front looks.

@@ -1299,6 +1299,14 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
             // While the creative inventory is up the wheel walks through its list
             // instead of zooming the camera.
             creativeGui.scrolled(zoomSteps);
+        } else if (machineGui.isOpen()) {
+            // While the screen of a machine is up the wheel walks the tank under the mouse to its next side,
+            // which is the wrench of the interface, see MachineGui#scrolled. A side that changed is a side of
+            // the block, and the state of the cell says nothing about it, so the section of the machine is
+            // asked to be drawn again.
+            if (machineGui.scrolled(zoomSteps, interfaceMouse.x, interfaceMouse.y)) {
+                markOpenContainerDirty();
+            }
         }
         if (isInterfaceOpen()) {
             // The world keeps running while an interface is open: a drop lying next to
@@ -1602,6 +1610,20 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         }
     }
 
+    /**
+     * Asks for the cell of the open container to be drawn again.
+     * <p>
+     * The sides of a machine are what its block entity draws, and none of them is written in the state of the
+     * cell, so the mesher of a section only learns of a side that changed when it is told, see
+     * {@code World#markDirty}. A player who walks a tank of a machine to another side with the wheel of the
+     * screen is not looking at the block, but the next player who walks past it is.
+     */
+    private void markOpenContainerDirty() {
+        if (openContainer != null) {
+            world.markDirty(openContainer.x(), openContainer.y(), openContainer.z());
+        }
+    }
+
     private boolean openContainer() {
         BlockEntity entity = world.blockEntity(target.x(), target.y(), target.z());
         // A container takes the interface for itself: the screens of the player - the inventory, the list of
@@ -1609,7 +1631,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // them are never up at the same time.
         closePlayerScreens();
         if (entity instanceof MachineBlockEntity machine) {
-            machineGui.open(machine.machine(), player.inventory());
+            machineGui.open(machine.machine(), player.inventory(), machine.facing());
             openContainer = machine;
             LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
                     target.x(), target.y(), target.z());

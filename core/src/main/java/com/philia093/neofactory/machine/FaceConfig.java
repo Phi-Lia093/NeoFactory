@@ -102,11 +102,14 @@ public final class FaceConfig {
     /**
      * Puts the sides where a machine that nobody has touched starts, with its front to the north.
      * <p>
-     * The sides are named as the machine stands when it is built - its front to the north - and every part
-     * of it is put on a side of its own: the first tank that is filled takes the left flank, the first tank
-     * that is emptied the right one, the exhaust and the plug that takes power the back, and the plug that
-     * gives power the right flank. A machine whose front is turned afterwards keeps those sides, so a player
-     * always meets the same machine, see {@link #turned(BlockFace)}.
+     * The sides are named as the machine stands when it is built - its front to the north, see
+     * {@link MachineSides#DEFAULT_FRONT} - and every part of it is put on a side of its own, named the way a
+     * player who stands in front of the machine reads it: the first tank that is filled takes the right flank,
+     * the first tank that is emptied the left one, the vent of the steam and the plug that takes power the
+     * back, and the plug that gives power the left flank. A second tank of a kind takes the ceiling or the
+     * floor, and a third is reached from nowhere until a player gives it a side. A machine whose front is
+     * turned afterwards keeps those sides, so a player always meets the same machine, see
+     * {@link #turned(BlockFace)}.
      */
     private void defaultSides() {
         int filled = 0;
