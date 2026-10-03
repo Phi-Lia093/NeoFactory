@@ -3,14 +3,18 @@ package com.philia093.neofactory.machine;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.fluid.Fluids;
+import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.world.TickClock;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -79,12 +83,14 @@ class SteamTurbineTest {
     }
 
     @Test
-    void aTurbineWithoutSteamSaysSo() {
+    void aTurbineWithoutSteamStandsStill() {
         SteamTurbineMachine turbine = new SteamTurbineMachine(TurbineTier.LV);
 
         turbine.tick(TickClock.TICK_SECONDS);
 
-        assertEquals(MachineError.NO_STEAM, turbine.error());
+        // A generator reports the one thing that stops it and nothing else: an empty tank is no error of a
+        // machine that works on nothing but a fluid, it simply stands still until a line fills it.
+        assertEquals(MachineError.NONE, turbine.error());
         assertEquals(0, turbine.energy().amount());
         assertFalse(turbine.isRunning());
 
@@ -92,7 +98,7 @@ class SteamTurbineTest {
         turbine.steam().fill(Fluids.WATER, STEAM, false);
         turbine.tick(TickClock.TICK_SECONDS);
 
-        assertEquals(MachineError.NO_STEAM, turbine.error());
+        assertEquals(MachineError.NONE, turbine.error());
         assertEquals(STEAM, turbine.steam().amount(), "and nothing was drunk");
     }
 
@@ -140,6 +146,35 @@ class SteamTurbineTest {
                 "the buffer holds what the table of the tiers names");
         assertEquals(TurbineTier.HV.casing(), turbine.casing(),
                 "and the machine is built of the casing of its age");
+        assertFalse(buffer.canReceive(), "a generator hands power over and takes none");
+        assertFalse(turbine.faces().takesPower(), "so it has no plug to take power in through");
+        assertNull(turbine.faces().energyIn(), "and no side of it carries one");
+        assertFalse(turbine.faces().energyIn() == turbine.faces().exhaust(),
+                "the plug of the power and the vent are two sides of their own");
+    }
+
+    @Test
+    void theScreenOfAGeneratorHoldsNoSlotAndNoBar() {
+        // A generator is no machine that works on an item: its screen holds no slot at all, so no stack may be
+        // put into it, and no bar either - the steam it drinks stands where the bar of a machine stands, and
+        // the power it holds is read on the cell of energy at the foot of the panel, see ProgressKind#NONE.
+        SteamTurbineMachine turbine = new SteamTurbineMachine(TurbineTier.LV);
+        MachineMenu menu = new MachineMenu(turbine, new PlayerInventory());
+
+        assertEquals(0, turbine.inventory().size(), "a turbine reads no item");
+        assertEquals(ProgressKind.NONE, menu.progressKind());
+        assertFalse(menu.progressKind().hasBar(), "there is no craft to fill a bar towards");
+        assertEquals(1, menu.fluidSlots().size(), "and the one tank of the panel is its steam");
+        assertEquals(MachineMenu.ARROW_Y, menu.fluidSlots().get(0).y(),
+                "the steam stands on the row the bar of a machine stands on");
+        assertEquals(PlayerInventory.SLOT_COUNT, menu.container().layout().slots().size(),
+                "the panel holds the slots of the player and none of the machine");
+
+        // The box of the cell of energy names the power and where it leaves the machine, and it names no plug
+        // to take power in, because a generator has none.
+        assertEquals(List.of(MachineMenu.ENERGY, "0 / " + TurbineTier.LV.capacity() + " "
+                        + MachineMenu.ENERGY_UNIT, MachineMenu.POWER_OUT_PREFIX + MachineSides.LEFT),
+                menu.energyTooltip(true));
     }
 
     @Test

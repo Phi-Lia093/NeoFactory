@@ -119,7 +119,7 @@ class TurbineLineTest {
         world.setBlock(x, y, z, Blocks.FURNACE);
         MachineBlockEntity entity = new MachineBlockEntity(BlockEntityTypes.FURNACE, new TestSink());
         entity.setPosition(x, y, z);
-        entity.machine().faces().setEnergyIn(BlockFace.WEST, entity.facing());
+        entity.machine().faces().setEnergyIn(BlockFace.WEST);
         world.addBlockEntity(entity);
         return entity;
     }

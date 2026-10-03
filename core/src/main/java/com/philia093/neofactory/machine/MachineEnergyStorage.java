@@ -55,6 +55,23 @@ public final class MachineEnergyStorage extends SimpleEnergyStorage implements E
         return tier;
     }
 
+    /**
+     * Fills the buffer with the energy the machine behind it just made.
+     * <p>
+     * <b>A generator makes its power and hands it to its own buffer</b>, which is why the amount does not
+     * travel through {@link #receive(int, boolean)}: that limit is the one a <b>line</b> meets, and no line may
+     * feed a machine that only hands power over, see {@link #canReceive()} and
+     * {@link com.philia093.neofactory.machine.SteamTurbineMachine}. What is made is what fits into the buffer.
+     *
+     * @param amount energy the machine made, at least zero
+     * @return the amount the buffer took
+     */
+    public int make(int amount) {
+        int made = Math.max(0, Math.min(amount, capacity() - amount()));
+        setAmount(amount() + made);
+        return made;
+    }
+
     @Override
     public String toString() {
         return "MachineEnergyStorage(" + amount() + "/" + capacity() + ", " + tier + ")";

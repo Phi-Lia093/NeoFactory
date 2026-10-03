@@ -112,6 +112,17 @@ public abstract class SteamMachine extends RecipeMachine implements ExhaustMachi
     }
 
     /**
+     * Casing this machine is built of.
+     * <p>
+     * A side of a machine that carries a job shows the casing of the age of the machine with the overlay of
+     * that job over it, so a machine of steel is reached through steel, see {@link MachinePressure#casing()}.
+     */
+    @Override
+    public String casing() {
+        return pressure.casing();
+    }
+
+    /**
      * Seconds one craft takes in this machine, which is what its pressure does to the recipe.
      * <p>
      * A machine of pressure runs the very recipes of its bronze twin in half the time, and because the steam a

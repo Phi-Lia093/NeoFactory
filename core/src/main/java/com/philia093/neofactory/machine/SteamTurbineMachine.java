@@ -29,9 +29,11 @@ import java.util.List;
  * the way is open.
  * <p>
  * <b>Every tick is the same tick.</b> A turbine has no craft to run and no item to work on, so it turns at a
- * fixed rate whatever the frame took and hands over a whole ampère of its tier a tick; the slot it holds is
- * the one the rotor of a later age will sit in, which is why the screen of a turbine draws one slot and one
- * tank of steam.
+ * fixed rate whatever the frame took and hands over a whole ampère of its tier a tick. <b>A machine that makes
+ * power is no machine that works on an item</b>: the screen of a turbine holds no slot at all - there is no
+ * cell a player could put a stack into - it shows no bar, because there is no craft to fill one towards, and
+ * the steam it drinks stands on the row the bar of a machine stands on, see {@link ProgressKind#NONE} and
+ * {@code MachineMenu}.
  */
 public class SteamTurbineMachine extends Machine implements ExhaustMachine {
 
@@ -63,10 +65,13 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
      */
     protected SteamTurbineMachine(TurbineTier tier, MachineScreen screen, SimpleFluidStorage tank) {
         super(screen,
-                // A turbine reads no item: the one slot it holds is the one a rotor will sit in, see the
-                // javadoc of the class.
-                new MachineInventory(MachineInventory.Role.INPUT),
-                new MachineEnergyStorage(tier.capacity(), tier.voltage()),
+                // A turbine reads no item at all: its screen holds no slot, so there is no cell a player could
+                // put a stack into, and what it needs is the steam a line of pipes fills its tank with.
+                new MachineInventory(),
+                // A generator hands power over and takes none: its buffer may be emptied and never filled, so
+                // the machine has one plug - the one its line hangs on - and the vent of its steam is a side of
+                // its own, see MachineEnergyStorage and FaceConfig.
+                new MachineEnergyStorage(tier.capacity(), 0, tier.euPerTick(), tier.voltage()),
                 List.of(),
                 new MachineTank(tank, MachineTank.Role.INPUT));
         this.tier = tier;
@@ -85,8 +90,12 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
      * @return the screen of that turbine
      */
     public static MachineScreen screen(TurbineTier tier) {
-        return new MachineScreen(tier.displayName(), tier.style(), ProgressKind.BRONZE,
-                List.of(SlotKind.GENERIC), List.of(), 1, 0, false);
+        // The panel of every machine that makes power is the grey one of the age of electricity, whatever the
+        // casing of the machine is built of: what a player reads the age of a turbine off is its block, see
+        // TurbineTier#casing. A generator has no bar either - it works by the tick and has no progress to
+        // show - and the steam it drinks stands where the bar of a machine stands, see MachineMenu.
+        return new MachineScreen(tier.displayName(), MachineStyle.NORMAL, ProgressKind.NONE,
+                List.of(), List.of(), 1, 0, false);
     }
 
     /** Tier this machine was built for, which is what its numbers come from. */
@@ -143,7 +152,7 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
         if (steam.fluid() != Fluids.STEAM || steam.amount() < wanted) {
             return;
         }
-        EnergyStorage buffer = energy();
+        MachineEnergyStorage buffer = (MachineEnergyStorage) energy();
         if (buffer.capacity() - buffer.amount() < tier.euPerTick()) {
             // Nobody is taking the power of this machine at the moment: a turbine stands still instead of
             // boiling the steam of its tank away, see MachineBlockEntity#updateEnergy.
@@ -152,19 +161,16 @@ public class SteamTurbineMachine extends Machine implements ExhaustMachine {
         if (steam.drain(wanted, false) < wanted) {
             return;
         }
-        buffer.receive(tier.euPerTick(), false);
+        buffer.make(tier.euPerTick());
         running = true;
     }
 
     @Override
     public MachineError error() {
-        if (exhaustBlocked) {
-            return MachineError.NO_EXHAUST;
-        }
-        if (steam.fluid() != Fluids.STEAM || steam.amount() < tier.steamPerTick()) {
-            return MachineError.NO_STEAM;
-        }
-        return MachineError.NONE;
+        // A generator reports the one thing that stops it and nothing else: a machine that makes power is not
+        // a machine that works on an item, so an empty tank is no error of its own - it simply stands still
+        // until a line of pipes fills it, see MachineError.
+        return exhaustBlocked ? MachineError.NO_EXHAUST : MachineError.NONE;
     }
 
     @Override

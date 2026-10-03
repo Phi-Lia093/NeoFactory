@@ -5,6 +5,7 @@ import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.item.PlayerInventory;
 import com.philia093.neofactory.support.TestRegistries;
+import com.philia093.neofactory.world.interaction.FaceRole;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -65,17 +66,22 @@ class MachineFaceInterfaceTest {
     }
 
     @Test
-    void aMachineThatWasTurnedNamesTheSidesOfItsNewFront() {
+    void aMachineThatWasTurnedKeepsTheSidesAPlayerReads() {
         SteamBoilerMachine boiler = new SteamBoilerMachine();
-        // The wrench of the world turns the sides of the machine with the machine, see FaceConfig#turned.
-        boiler.faces().turned(BlockFace.EAST);
-        MachineMenu menu = new MachineMenu(boiler, new PlayerInventory(), BlockFace.EAST);
+        // A machine is turned by its front, and the sides a player reads travel with the machine, see
+        // FaceConfig#facing.
+        boiler.faces().facing(BlockFace.EAST);
+        MachineMenu menu = new MachineMenu(boiler, new PlayerInventory());
 
-        // The water stood on the west, which lies behind a machine that looks east.
-        assertEquals(MachineMenu.FACING_PREFIX + MachineSides.BACK, sideOf(menu, 0));
-        // The steam stood on the east, which is the front a player turned towards: the front carries nothing,
-        // so the tank is reached from nowhere until the player gives it another side.
-        assertEquals(MachineMenu.FACING_PREFIX + MachineSides.NONE, sideOf(menu, 1));
+        assertEquals(MachineMenu.FACING_PREFIX + MachineSides.RIGHT, sideOf(menu, 0),
+                "the water keeps the right flank of the machine");
+        assertEquals(MachineMenu.FACING_PREFIX + MachineSides.LEFT, sideOf(menu, 1),
+                "and the steam of the boiler the left one");
+        assertEquals(BlockFace.NORTH, boiler.faces().faceOfTank(0),
+                "the right flank of a machine that looks east is its north");
+        assertEquals(BlockFace.SOUTH, boiler.faces().faceOfTank(1), "and its left flank the south of it");
+        assertEquals(FaceRole.NONE, boiler.faces().roleOn(BlockFace.EAST),
+                "while the front a player turned towards carries nothing at all");
     }
 
     @Test
@@ -189,14 +195,18 @@ class MachineFaceInterfaceTest {
 
     @Test
     void theSidesOfAMachineAreReadFromTheSideItLooksIn() {
-        // A machine that does not look along the horizon has no flanks, so no name for its sides either.
-        assertThrows(IllegalArgumentException.class,
-                () -> new MachineMenu(new SteamBoilerMachine(), new PlayerInventory(), BlockFace.TOP));
+        // The front of a machine is one of the four sides of the horizon, and so is every side a part of it is
+        // set to: a machine that looks at the ceiling has no flanks a player could read, so no such turn is
+        // taken, see FaceConfig#facing.
+        SteamBoilerMachine boiler = new SteamBoilerMachine();
+        boiler.faces().facing(BlockFace.TOP);
 
-        MachineMenu menu = boiler();
-        assertEquals(BlockFace.NORTH, menu.facing(), "a machine nobody turned looks north");
+        assertEquals(BlockFace.NORTH, boiler.faces().facing(), "a machine that looks north keeps looking north");
+        assertEquals(BlockFace.WEST, boiler.faces().faceOfTank(0), "and its water is where it was");
+
+        MachineMenu menu = new MachineMenu(boiler, new PlayerInventory());
         assertThrows(IllegalArgumentException.class, () -> menu.sideName(7),
-                "and a tank the machine does not hold cannot be named");
+                "a tank the machine does not hold cannot be named");
     }
 
     /** The menu of a boiler that nobody turned. */

@@ -7,6 +7,8 @@ import com.philia093.neofactory.world.save.SaveTags;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * What a player made of the sides of a machine: the side each of its parts is reached through.
@@ -23,10 +25,13 @@ import java.util.List;
  * side reports {@code FACING: NONE} until the player gives it another one, and the rule is applied here and
  * not by the player.
  * <p>
- * <b>The front carries nothing at all.</b> The side a machine looks in shows the machine itself and no pipe,
- * cable or belt is ever built against it, so {@link FaceRole#NONE} is the only job it may answer with: the
- * side is refused when a player tries to set a job on the front and it loses whatever job it had when the
- * machine is turned onto it, see {@link #turned(BlockFace)}.
+ * <b>A side is named from the front of the machine.</b> What a part of a machine is set to is one of the words
+ * a player reads at its block - {@code RIGHT}, {@code LEFT}, {@code UP}, {@code DOWN} and {@code BACK}, see
+ * {@link MachineSides} - and never a side of the world: <b>the sides of a machine travel with the machine</b>,
+ * so a tank a player set to the right flank is reached through that flank whatever the front of the machine is
+ * turned to, and a line that was built towards a machine keeps reaching it. That is also what keeps the front
+ * of a machine out of it: {@code FRONT} is no word a part is set to, so no side of a machine ever covers the
+ * face the machine shows.
  * <p>
  * <b>Which jobs a machine has is read from the machine itself.</b> A tank of the machine gives a side that
  * carries a fluid, the buffer of the machine gives the plugs: a machine whose buffer may be filled takes
@@ -49,6 +54,26 @@ public final class FaceConfig {
     /** Start of the keys the tanks are stored under, one key per tank. */
     private static final String TANK = "Tank";
 
+    /** Sides the tanks that are filled start on, in the words a player reads. */
+    private static final String[] FILLED_DEFAULTS = {MachineSides.RIGHT, MachineSides.UP};
+
+    /** Sides the tanks that are emptied start on, in the words a player reads. */
+    private static final String[] EMPTIED_DEFAULTS = {MachineSides.LEFT, MachineSides.DOWN};
+
+    /** Side the vent of a machine of steam and the plug it takes power in through start on. */
+    private static final String BACK_DEFAULT = MachineSides.BACK;
+
+    /** Side the plug a machine gives its power out through starts on. */
+    private static final String OUT_DEFAULT = MachineSides.LEFT;
+
+    /**
+     * The words a part of a machine is walked through by the wheel of its screen, in the order a player reads
+     * them: nothing at all first, then the back of the machine, then its ceiling and its floor, and then the
+     * two flanks.
+     */
+    private static final List<String> WALK = List.of(MachineSides.NONE, MachineSides.BACK, MachineSides.UP,
+            MachineSides.DOWN, MachineSides.LEFT, MachineSides.RIGHT);
+
     /** Role of every tank of the machine, in the order {@link Machine#tank(int)} names them. */
     private final MachineTank.Role[] tankRoles;
 
@@ -61,12 +86,20 @@ public final class FaceConfig {
     /** {@code true} when this machine blows its spent steam out of a side. */
     private boolean blowsSteam;
 
-    /** Side of each tank of the machine, {@code null} for a tank that is reached from nowhere. */
-    private final BlockFace[] tanks;
+    /** Side of each tank in the words a player reads, {@code null} for a tank nothing reaches. */
+    private final String[] tanks;
 
-    private BlockFace energyIn;
-    private BlockFace energyOut;
-    private BlockFace exhaust;
+    /** Side the power of a line comes in through, {@code null} for a machine that takes none. */
+    private String energyIn;
+
+    /** Side the power this machine makes leaves through, {@code null} for a machine that gives none. */
+    private String energyOut;
+
+    /** Side the spent steam blows out of, {@code null} for a machine that breathes not. */
+    private String exhaust;
+
+    /** Side of the world the front of this machine looks in, which every word above is read from. */
+    private BlockFace facing = MachineSides.DEFAULT_FRONT;
 
     /**
      * Creates the sides of a machine and puts them where a machine of that shape starts.
@@ -76,7 +109,7 @@ public final class FaceConfig {
      */
     public FaceConfig(MachineTank.Role[] tankRoles, EnergyStorage energy) {
         this.tankRoles = tankRoles.clone();
-        this.tanks = new BlockFace[tankRoles.length];
+        this.tanks = new String[tankRoles.length];
         this.takesPower = energy.capacity() > 0 && energy.canReceive();
         this.givesPower = energy.capacity() > 0 && energy.canExtract();
         defaultSides();
@@ -94,58 +127,43 @@ public final class FaceConfig {
     public FaceConfig withExhaust() {
         blowsSteam = true;
         if (exhaust == null) {
-            exhaust = BlockFace.SOUTH;
+            exhaust = BACK_DEFAULT;
         }
         return this;
     }
 
     /**
-     * Puts the sides where a machine that nobody has touched starts, with its front to the north.
+     * Puts the sides where a machine that nobody has touched starts.
      * <p>
-     * The sides are named as the machine stands when it is built - its front to the north, see
-     * {@link MachineSides#DEFAULT_FRONT} - and every part of it is put on a side of its own, named the way a
-     * player who stands in front of the machine reads it: the first tank that is filled takes the right flank,
-     * the first tank that is emptied the left one, the vent of the steam and the plug that takes power the
-     * back, and the plug that gives power the left flank. A second tank of a kind takes the ceiling or the
-     * floor, and a third is reached from nowhere until a player gives it a side. A machine whose front is
-     * turned afterwards keeps those sides, so a player always meets the same machine, see
-     * {@link #turned(BlockFace)}.
+     * The words below are the ones a player reads at the machine and not sides of the world, so the table is
+     * the same for every machine whatever way it is built and whichever way its front is turned afterwards:
+     * the first tank that is filled takes the right flank, a second one the ceiling, the first tank that is
+     * emptied the left flank and a second one the floor, the vent of the steam and the plug that takes power
+     * the back, and the plug that gives power the left flank. A third tank of a kind is reached from nowhere
+     * until a player gives it a side, see {@link #cycleTank(int, int)}.
      */
     private void defaultSides() {
         int filled = 0;
         int emptied = 0;
         for (int index = 0; index < tanks.length; index++) {
             tanks[index] = tankRoles[index] == MachineTank.Role.INPUT
-                    ? filledDefault(filled++)
-                    : emptiedDefault(emptied++);
+                    ? nth(FILLED_DEFAULTS, filled++)
+                    : nth(EMPTIED_DEFAULTS, emptied++);
         }
         if (blowsSteam) {
-            exhaust = BlockFace.SOUTH;
+            exhaust = BACK_DEFAULT;
         }
         if (takesPower) {
-            energyIn = BlockFace.SOUTH;
+            energyIn = BACK_DEFAULT;
         }
         if (givesPower) {
-            energyOut = BlockFace.EAST;
+            energyOut = OUT_DEFAULT;
         }
     }
 
-    /** Side the n-th tank that is filled starts on. */
-    private static BlockFace filledDefault(int nth) {
-        return switch (nth) {
-            case 0 -> BlockFace.WEST;
-            case 1 -> BlockFace.TOP;
-            default -> null;
-        };
-    }
-
-    /** Side the n-th tank that is emptied starts on. */
-    private static BlockFace emptiedDefault(int nth) {
-        return switch (nth) {
-            case 0 -> BlockFace.EAST;
-            case 1 -> BlockFace.BOTTOM;
-            default -> null;
-        };
+    /** The side the n-th tank of a kind starts on, {@code null} for a tank beyond the table. */
+    private static String nth(String[] table, int index) {
+        return index < table.length ? table[index] : null;
     }
 
     /** Amount of tanks this machine holds, which is how many sides it has to offer them. */
@@ -168,29 +186,85 @@ public final class FaceConfig {
         return blowsSteam;
     }
 
-    /** Side the power of the line enters this machine through, {@code null} for no plug. */
-    public BlockFace energyIn() {
-        return energyIn;
-    }
-
-    /** Side the power this machine makes leaves it through, {@code null} for no plug. */
-    public BlockFace energyOut() {
-        return energyOut;
-    }
-
-    /** Side this machine blows its spent steam out of, {@code null} for a machine that breathes not. */
-    public BlockFace exhaust() {
-        return exhaust;
+    /** Side of the world the front of this machine looks in, which every word above is read from. */
+    public BlockFace facing() {
+        return facing;
     }
 
     /**
-     * Side one tank is reached through.
+     * Says which way the front of this machine looks.
+     * <p>
+     * Called by the block entity of the machine while it is placed and while it is turned: the words of this
+     * assignment are read from the front, so a machine that is turned keeps every side a player gave it - the
+     * tank that was reached over the right flank is reached over the right flank of the new front as well -
+     * and no side of it can ever cover the face the machine shows, see {@link MachineSides}.
+     *
+     * @param facing side of the world the front looks in, one of the four sides of the horizon
+     */
+    public void facing(BlockFace facing) {
+        if (MachineSides.isHorizontal(facing)) {
+            this.facing = facing;
+        }
+    }
+
+    /** Side of the world the power of a line enters this machine through, {@code null} for no plug. */
+    public BlockFace energyIn() {
+        return sideOf(energyIn);
+    }
+
+    /** Side of the world the power this machine makes leaves it through, {@code null} for no plug. */
+    public BlockFace energyOut() {
+        return sideOf(energyOut);
+    }
+
+    /** Side the vent of this machine looks at, {@code null} for a machine that breathes not. */
+    public BlockFace exhaust() {
+        return sideOf(exhaust);
+    }
+
+    /**
+     * Side of the world one tank is reached through.
      *
      * @param index tank index, {@code 0 <= index < tankCount()}
      * @return the side, or {@code null} when nothing reaches that tank
      */
     public BlockFace faceOfTank(int index) {
-        return tanks[index];
+        return sideOf(tanks[index]);
+    }
+
+    /**
+     * Name of the side one tank is reached through, in the words a player reads.
+     *
+     * @param index tank index, {@code 0 <= index < tankCount()}
+     * @return the name, {@link MachineSides#NONE} for a tank nothing reaches
+     */
+    public String nameOfTank(int index) {
+        return word(tanks[index]);
+    }
+
+    /** Name of the side the power of a line comes in through, in the words a player reads. */
+    public String nameOfEnergyIn() {
+        return word(energyIn);
+    }
+
+    /** Name of the side the power of this machine leaves through, in the words a player reads. */
+    public String nameOfEnergyOut() {
+        return word(energyOut);
+    }
+
+    /** Name of the side the spent steam blows out of, in the words a player reads. */
+    public String nameOfExhaust() {
+        return word(exhaust);
+    }
+
+    /** Side of the world a word names, {@code null} for a part that nothing reaches. */
+    private BlockFace sideOf(String name) {
+        return MachineSides.sideOf(facing, name);
+    }
+
+    /** The word a name is written with, {@link MachineSides#NONE} for a part that nothing reaches. */
+    private static String word(String name) {
+        return name == null ? MachineSides.NONE : name;
     }
 
     /** Role of one tank of this machine, which decides whether a side of it takes or gives. */
@@ -201,114 +275,109 @@ public final class FaceConfig {
     /**
      * Gives the power of the line a side of the machine of its own.
      *
-     * @param face side the power enters through, {@code null} to take the plug away
-     * @param facing side the machine looks in, which carries nothing
+     * @param face side of the world the power enters through, {@code null} to take the plug away
      * @return {@code true} when the sides changed
      */
-    public boolean setEnergyIn(BlockFace face, BlockFace facing) {
+    public boolean setEnergyIn(BlockFace face) {
         if (!takesPower || face == facing) {
             return false;
         }
-        boolean changed = face != energyIn || owners(face) > 1;
-        release(face);
-        energyIn = face;
-        return changed;
+        return assign(face, name -> energyIn = name, energyIn);
     }
 
     /**
      * Gives the power this machine makes a side of the machine of its own.
      *
-     * @param face side the power leaves through, {@code null} to take the plug away
-     * @param facing side the machine looks in, which carries nothing
+     * @param face side of the world the power leaves through, {@code null} to take the plug away
      * @return {@code true} when the sides changed
      */
-    public boolean setEnergyOut(BlockFace face, BlockFace facing) {
+    public boolean setEnergyOut(BlockFace face) {
         if (!givesPower || face == facing) {
             return false;
         }
-        boolean changed = face != energyOut || owners(face) > 1;
-        release(face);
-        energyOut = face;
-        return changed;
+        return assign(face, name -> energyOut = name, energyOut);
     }
 
     /**
      * Gives the spent steam of the machine a side of its own.
      *
-     * @param face side the steam blows out of, {@code null} for a machine that has no vent
-     * @param facing side the machine looks in, which carries nothing
+     * @param face side of the world the steam blows out of, {@code null} for a machine that has no vent
      * @return {@code true} when the sides changed
      */
-    public boolean setExhaust(BlockFace face, BlockFace facing) {
+    public boolean setExhaust(BlockFace face) {
         if (!blowsSteam || face == facing) {
             return false;
         }
-        boolean changed = face != exhaust || owners(face) > 1;
-        release(face);
-        exhaust = face;
-        return changed;
+        return assign(face, name -> exhaust = name, exhaust);
     }
 
     /**
      * Gives one tank of the machine a side of its own.
      *
      * @param index tank index, {@code 0 <= index < tankCount()}
-     * @param face side the tank is reached through, {@code null} for a tank nothing reaches
-     * @param facing side the machine looks in, which carries nothing
+     * @param face side of the world the tank is reached through, {@code null} for a tank nothing reaches
      * @return {@code true} when the sides changed
      */
-    public boolean setTank(int index, BlockFace face, BlockFace facing) {
+    public boolean setTank(int index, BlockFace face) {
         if (index < 0 || index >= tanks.length || face == facing) {
             return false;
         }
-        boolean changed = face != tanks[index] || owners(face) > 1;
-        release(face);
-        tanks[index] = face;
-        return changed;
+        return assign(face, name -> tanks[index] = name, tanks[index]);
     }
 
     /**
-     * Takes every job away from the side a machine was turned onto.
-     * <p>
-     * The front of a machine carries nothing, so the side that becomes the front loses whatever it had: a
-     * machine that is turned onto the side a pipe was built against leaves the pipe behind with a mouth
-     * that reaches nothing, which is the rule of the front and of every other side of the machine.
+     * Puts one part of the machine on the side a click named and takes the job of that side from whoever has
+     * it, which is the rule of one job to a side.
      *
-     * @param facing side the machine now looks in
-     * @return {@code true} when a job was taken away
+     * @param face side of the world that was clicked, {@code null} for the side the wheel walked to
+     * @param setter what the part is set to
+     * @param held the word the part carried until now
+     * @return {@code true} when the sides changed
      */
-    public boolean turned(BlockFace facing) {
-        if (facing == null) {
+    private boolean assign(BlockFace face, Consumer<String> setter, String held) {
+        String name = face == null ? null : relative(face);
+        if (name != null && name.equals(held)) {
+            // The click landed on the side the part already carries: it stays there and nobody loses a side.
             return false;
         }
-        return release(facing);
+        boolean moved = !Objects.equals(name, held);
+        boolean taken = release(name);
+        setter.accept(name);
+        return moved || taken;
+    }
+
+    /** The word a side of the world stands for, {@code null} for the front of the machine. */
+    private String relative(BlockFace face) {
+        String name = MachineSides.nameOf(facing, face);
+        // The front of a machine carries nothing: a side that is the front is no side a part may be set to.
+        return MachineSides.FRONT.equals(name) ? null : name;
     }
 
     /**
      * Takes a job away from every part of the machine that has it.
      *
-     * @param face side to clear, {@code null} does nothing
+     * @param name side to clear, {@code null} does nothing
      * @return {@code true} when a job was taken away
      */
-    private boolean release(BlockFace face) {
-        if (face == null) {
+    private boolean release(String name) {
+        if (name == null) {
             return false;
         }
         boolean cleared = false;
-        if (energyIn == face) {
+        if (name.equals(energyIn)) {
             energyIn = null;
             cleared = true;
         }
-        if (energyOut == face) {
+        if (name.equals(energyOut)) {
             energyOut = null;
             cleared = true;
         }
-        if (exhaust == face) {
+        if (name.equals(exhaust)) {
             exhaust = null;
             cleared = true;
         }
         for (int index = 0; index < tanks.length; index++) {
-            if (tanks[index] == face) {
+            if (name.equals(tanks[index])) {
                 tanks[index] = null;
                 cleared = true;
             }
@@ -317,22 +386,22 @@ public final class FaceConfig {
     }
 
     /** How many parts of the machine are reached through one side. */
-    private int owners(BlockFace face) {
-        if (face == null) {
+    private int owners(String name) {
+        if (name == null) {
             return 0;
         }
         int count = 0;
-        if (energyIn == face) {
+        if (name.equals(energyIn)) {
             count++;
         }
-        if (energyOut == face) {
+        if (name.equals(energyOut)) {
             count++;
         }
-        if (exhaust == face) {
+        if (name.equals(exhaust)) {
             count++;
         }
-        for (BlockFace tank : tanks) {
-            if (tank == face) {
+        for (String tank : tanks) {
+            if (name.equals(tank)) {
                 count++;
             }
         }
@@ -342,25 +411,28 @@ public final class FaceConfig {
     /**
      * The job one side of a machine carries.
      *
-     * @param face side of the machine
-     * @param facing side the machine looks in
+     * @param face side of the world
      * @return the job of that side, {@link FaceRole#NONE} for a side that carries nothing
      */
-    public FaceRole roleOn(BlockFace face, BlockFace facing) {
+    public FaceRole roleOn(BlockFace face) {
         if (face == null || face == facing) {
             return FaceRole.NONE;
         }
-        if (face == energyIn) {
+        String name = relative(face);
+        if (name == null) {
+            return FaceRole.NONE;
+        }
+        if (name.equals(energyIn)) {
             return FaceRole.ENERGY_IN;
         }
-        if (face == energyOut) {
+        if (name.equals(energyOut)) {
             return FaceRole.ENERGY_OUT;
         }
-        if (face == exhaust) {
+        if (name.equals(exhaust)) {
             return FaceRole.EXHAUST;
         }
         for (int index = 0; index < tanks.length; index++) {
-            if (tanks[index] == face) {
+            if (name.equals(tanks[index])) {
                 return tankRoles[index] == MachineTank.Role.INPUT
                         ? FaceRole.FLUID_IN
                         : FaceRole.FLUID_OUT;
@@ -379,26 +451,25 @@ public final class FaceConfig {
      *
      * @param index tank index, {@code 0 <= index < tankCount()}
      * @param step notches to walk, positive or negative
-     * @param facing side the machine looks in
      * @return {@code true} when the side of that tank changed
      */
-    public boolean cycleTank(int index, int step, BlockFace facing) {
+    public boolean cycleTank(int index, int step) {
         if (index < 0 || index >= tanks.length || step == 0) {
             return false;
         }
-        List<BlockFace> walk = new ArrayList<>();
-        walk.add(null);
-        for (BlockFace side : MachineSides.order(facing)) {
-            if (side != facing && (owners(side) == 0 || side == tanks[index])) {
+        List<String> walk = new ArrayList<>();
+        for (String side : WALK) {
+            if (MachineSides.NONE.equals(side) || owners(side) == 0 || side.equals(tanks[index])) {
                 walk.add(side);
             }
         }
-        int at = walk.indexOf(tanks[index]);
-        BlockFace wanted = walk.get(Math.floorMod((at < 0 ? 0 : at) + step, walk.size()));
-        if (wanted == tanks[index]) {
+        String held = word(tanks[index]);
+        int at = walk.indexOf(held);
+        String wanted = walk.get(Math.floorMod((at < 0 ? 0 : at) + step, walk.size()));
+        if (wanted.equals(held)) {
             return false;
         }
-        tanks[index] = wanted;
+        tanks[index] = MachineSides.NONE.equals(wanted) ? null : wanted;
         return true;
     }
 
@@ -407,13 +478,21 @@ public final class FaceConfig {
      *
      * @param data group of the machine
      */
+    /**
+     * Writes the sides into the group a machine is stored in.
+     * <p>
+     * What is written is the words a player reads - {@code RIGHT}, {@code BACK} and the rest - and never a side
+     * of the world, so a stored machine keeps its sides when its front is turned, see {@link #facing(BlockFace)}.
+     *
+     * @param data group of the machine
+     */
     public void save(NbtCompound data) {
         NbtCompound faces = new NbtCompound(SaveTags.MACHINE_FACES);
-        faces.putString(ENERGY_IN, name(energyIn));
-        faces.putString(ENERGY_OUT, name(energyOut));
-        faces.putString(EXHAUST, name(exhaust));
+        faces.putString(ENERGY_IN, word(energyIn));
+        faces.putString(ENERGY_OUT, word(energyOut));
+        faces.putString(EXHAUST, word(exhaust));
         for (int index = 0; index < tanks.length; index++) {
-            faces.putString(TANK + index, name(tanks[index]));
+            faces.putString(TANK + index, word(tanks[index]));
         }
         data.put(faces);
     }
@@ -424,7 +503,8 @@ public final class FaceConfig {
      * A machine that was never touched was stored without a group of sides, and a machine of a world that is
      * older than this group keeps the sides it was built with: a key that is not there leaves that part of
      * the machine where {@link #defaultSides()} put it, while a side that was stored as {@code NONE} really
-     * is no side at all.
+     * is no side at all. A word that names no side of a machine - a side of the world, as they were stored
+     * before the sides became words - is read as no side either.
      *
      * @param data group of the machine
      */
@@ -434,39 +514,42 @@ public final class FaceConfig {
             return;
         }
         if (faces.contains(ENERGY_IN)) {
-            energyIn = stored(faces, ENERGY_IN);
+            energyIn = stored(faces.getString(ENERGY_IN, ""));
         }
         if (faces.contains(ENERGY_OUT)) {
-            energyOut = stored(faces, ENERGY_OUT);
+            energyOut = stored(faces.getString(ENERGY_OUT, ""));
         }
         if (faces.contains(EXHAUST)) {
-            exhaust = stored(faces, EXHAUST);
+            exhaust = stored(faces.getString(EXHAUST, ""));
         }
         for (int index = 0; index < tanks.length; index++) {
             if (faces.contains(TANK + index)) {
-                tanks[index] = stored(faces, TANK + index);
+                tanks[index] = stored(faces.getString(TANK + index, ""));
             }
         }
     }
 
-    /** Name a side is stored under, empty for a side that carries nothing. */
-    private static String name(BlockFace face) {
-        return face == null ? "" : face.name();
-    }
-
-    /** Side a group holds under a key, {@code null} for a key that names no side. */
-    private static BlockFace stored(NbtCompound faces, String key) {
-        return BlockFace.byName(faces.getString(key, ""));
+    /** The side a stored word names, {@code null} for nothing and for a word that names no side of a machine. */
+    private static String stored(String word) {
+        if (word == null || word.isEmpty() || MachineSides.NONE.equals(word)) {
+            return null;
+        }
+        for (String known : WALK) {
+            if (known.equals(word)) {
+                return known;
+            }
+        }
+        return null;
     }
 
     @Override
     public String toString() {
-        StringBuilder text = new StringBuilder("FaceConfig(");
-        text.append("power in ").append(energyIn).append(", power out ").append(energyOut)
-                .append(", exhaust ").append(exhaust);
+        StringBuilder text = new StringBuilder("FaceConfig(front ").append(facing);
+        text.append(", power in ").append(word(energyIn)).append(", power out ").append(word(energyOut))
+                .append(", exhaust ").append(word(exhaust));
         for (int index = 0; index < tanks.length; index++) {
             text.append(", ").append(tankRoles[index]).append(' ').append(index).append(' ')
-                    .append(tanks[index]);
+                    .append(word(tanks[index]));
         }
         return text.append(')').toString();
     }

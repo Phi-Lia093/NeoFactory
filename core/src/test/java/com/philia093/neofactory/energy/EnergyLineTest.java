@@ -126,7 +126,7 @@ class EnergyLineTest {
         // cable is built there: a machine feeds the line of the side a player set, see FaceConfig.
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, machine(Voltage.MEDIUM), 2, Y, 0);
-        sink.machine().faces().setEnergyIn(BlockFace.WEST, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
         EnergyGrid.Line line = lineOf(world, 1, Y, 0);
 
         settle(world, 1);
@@ -149,7 +149,7 @@ class EnergyLineTest {
         bufferOf(generator).setAmount(CAPACITY);
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, machine(Voltage.MEDIUM), 2, Y, 0);
-        sink.machine().faces().setEnergyIn(BlockFace.WEST, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
         EnergyGrid.Line line = lineOf(world, 1, Y, 0);
         int perTick = line.net().capacity() - line.net().totalLoss();
 
@@ -169,7 +169,7 @@ class EnergyLineTest {
         // the line never reaches the generator, which is what a player who cut the join asked for.
         cable(world, 1, Y, 0, BlockFace.NORTH);
         MachineBlockEntity sink = place(world, machine(Voltage.MEDIUM), 1, Y, -1);
-        sink.machine().faces().setEnergyIn(BlockFace.SOUTH, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.SOUTH);
 
         settle(world, 2);
 
@@ -187,7 +187,7 @@ class EnergyLineTest {
         MachineBlockEntity sink = place(world, machine(Voltage.MEDIUM), 2, Y, 0);
         // The cable reaches the sink from the west, but the power of the sink is taken in through its back: a
         // line hangs on the side a player set and on no other, see EnergyGrid.Cells#buffer.
-        sink.machine().faces().setEnergyIn(BlockFace.SOUTH, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.SOUTH);
 
         settle(world, 2);
 
@@ -204,7 +204,7 @@ class EnergyLineTest {
         // low one: the machine and every cable of the line go, see EnergyAcceptor.
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, machine(Voltage.LOW), 2, Y, 0);
-        sink.machine().faces().setEnergyIn(BlockFace.WEST, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
         settle(world, 1);
 
@@ -222,7 +222,7 @@ class EnergyLineTest {
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, machine(Voltage.MEDIUM), 2, Y, 0);
         bufferOf(sink).setAmount(sink.machine().energy().capacity());
-        sink.machine().faces().setEnergyIn(BlockFace.WEST, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
         settle(world, 2);
 
@@ -243,7 +243,7 @@ class EnergyLineTest {
         world.addBlockEntity(boiler);
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, machine(Voltage.LOW), 2, Y, 0);
-        sink.machine().faces().setEnergyIn(BlockFace.WEST, sink.facing());
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
         settle(world, 3);
 

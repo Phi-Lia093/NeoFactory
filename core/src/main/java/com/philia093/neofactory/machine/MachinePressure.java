@@ -23,17 +23,32 @@ import java.util.Locale;
 public enum MachinePressure {
 
     /** The machine of bronze, the first of the age of steam. */
-    LOW(1.0f, ""),
+    LOW(1.0f, "", "bronze_casing/bronze_casing_side"),
 
     /** The machine of steel, which works the same recipes at twice the rate. */
-    HIGH(0.5f, "High Pressure ");
+    HIGH(0.5f, "High Pressure ", "steel_casing/steel_casing_side");
 
     private final float timeShare;
     private final String prefix;
+    private final String casing;
 
-    MachinePressure(float timeShare, String prefix) {
+    MachinePressure(float timeShare, String prefix, String casing) {
         this.timeShare = timeShare;
         this.prefix = prefix;
+        this.casing = casing;
+    }
+
+    /**
+     * Casing a machine of this pressure is built of.
+     * <p>
+     * A side of a machine that carries a job shows the casing of the machine with the overlay of that job over
+     * it, and the casing of a machine of steel is the steel one: a pipe that stands at the side of a grinder of
+     * steel meets a machine of steel and not the bronze of its smaller twin, see {@code Machine#casing}.
+     *
+     * @return the name of the picture of that casing, relative to {@code blocks/}
+     */
+    public String casing() {
+        return casing;
     }
 
     /**

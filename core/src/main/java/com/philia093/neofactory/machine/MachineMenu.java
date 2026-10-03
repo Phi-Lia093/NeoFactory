@@ -184,43 +184,23 @@ public final class MachineMenu {
     private final ContainerMenu container;
     private final List<FluidSlot> fluidSlots;
 
-    /** Side the machine looks in, which is the front its sides are named from. */
-    private final BlockFace facing;
-
-    /**
-     * Creates the menu of a machine nobody has turned.
-     *
-     * @param machine machine to show
-     * @param player inventory of the player, shown below the machine
-     */
-    public MachineMenu(Machine machine, PlayerInventory player) {
-        this(machine, player, MachineSides.DEFAULT_FRONT);
-    }
-
     /**
      * Creates the menu of a machine.
      * <p>
-     * <b>The side the machine looks in is what its sides are named from.</b> The tooltip of a tank says
-     * {@code FACING: LEFT} and never {@code north}, because a player who turned a machine wants to read
-     * where a side lies on the machine and not where it lies in the world, see
-     * {@link MachineSides#nameOf(BlockFace, BlockFace)}. A menu that is built without a front is the menu of
-     * a machine nobody has turned, see {@link MachineSides#DEFAULT_FRONT}.
+     * <b>The sides of a machine are named from its own front.</b> The tooltip of a tank says
+     * {@code FACING: LEFT} and never {@code north}, because a player who turned a machine reads the flanks of
+     * the machine they are looking at and not sides of the world - and the machine holds those words itself,
+     * so a screen that is opened after the machine was turned names them the same way, see
+     * {@link FaceConfig#nameOfTank(int)}.
      *
      * @param machine machine to show
      * @param player inventory of the player, shown below the machine
-     * @param facing side the machine looks in, one of the four sides of the horizon
      * @throws IllegalArgumentException when the screen of the machine does not describe the
      *         slots its inventory holds, which is a mistake of the machine and not of the
-     *         player, or when the side the machine looks in is not a side of the horizon
+     *         player
      */
-    public MachineMenu(Machine machine, PlayerInventory player, BlockFace facing) {
+    public MachineMenu(Machine machine, PlayerInventory player) {
         this.machine = Objects.requireNonNull(machine, "machine");
-        if (!MachineSides.isHorizontal(facing)) {
-            // The four names around a front only mean something while the front is horizontal, so a machine
-            // that is turned looks along the horizon, see MachineSides#isHorizontal.
-            throw new IllegalArgumentException("A machine looks along the horizon and not " + facing);
-        }
-        this.facing = facing;
         MachineInventory inventory = machine.inventory();
         MachineScreen screen = machine.screen();
 
@@ -361,10 +341,10 @@ public final class MachineMenu {
         lines.add(buffer.amount() + " / " + buffer.capacity() + " " + ENERGY_UNIT);
         FaceConfig faces = machine.faces();
         if (showSide && faces.takesPower()) {
-            lines.add(POWER_IN_PREFIX + MachineSides.nameOf(facing, faces.energyIn()));
+            lines.add(POWER_IN_PREFIX + faces.nameOfEnergyIn());
         }
         if (showSide && faces.givesPower()) {
-            lines.add(POWER_OUT_PREFIX + MachineSides.nameOf(facing, faces.energyOut()));
+            lines.add(POWER_OUT_PREFIX + faces.nameOfEnergyOut());
         }
         return List.copyOf(lines);
     }
@@ -377,7 +357,7 @@ public final class MachineMenu {
      * set with the wheel the way it is set with the wrench in the world: the sides are walked in the order a
      * player reads them and <b>the walk steps over the front and over what another part of the machine
      * owns</b>, so the wheel of a tank never takes the plug of the power away, see
-     * {@link FaceConfig#cycleTank(int, int, BlockFace)}. A tank that is reached from nowhere is where the
+     * {@link FaceConfig#cycleTank(int, int)}. A tank that is reached from nowhere is where the
      * walk starts, which is how a player takes a side away from a tank again.
      * <p>
      * A point that is not on a tank is not the business of the wheel, so nothing happens there.
@@ -392,12 +372,7 @@ public final class MachineMenu {
         if (slot == null || notches == 0) {
             return false;
         }
-        return machine.faces().cycleTank(slot.tank(), notches > 0 ? 1 : -1, facing);
-    }
-
-    /** Side the machine looks in, which its front shows and which no job is ever put on. */
-    public BlockFace facing() {
-        return facing;
+        return machine.faces().cycleTank(slot.tank(), notches > 0 ? 1 : -1);
     }
 
     /**
@@ -413,7 +388,7 @@ public final class MachineMenu {
             throw new IllegalArgumentException("The machine " + machine.name() + " holds " + faces.tankCount()
                     + " tanks and has no tank " + tank);
         }
-        return MachineSides.nameOf(facing, faces.faceOfTank(tank));
+        return faces.nameOfTank(tank);
     }
 
     /**
@@ -485,17 +460,51 @@ public final class MachineMenu {
      * {@link #ENERGY_X} and {@link #FLUID_OUTPUT_X}. A second tank of a side stands one pitch further out,
      * so an even number of tanks reads as a pair and never covers the cell of energy.
      */
+    /**
+     * Places the tanks at the foot of the panel.
+     * <p>
+     * The tank a recipe is drained from stands at the left of the foot and the tank a machine fills at the
+     * right of it, and the cell of energy lies between the two pairs, see {@link #FLUID_INPUT_X},
+     * {@link #ENERGY_X} and {@link #FLUID_OUTPUT_X}. A second tank of a side stands one pitch further out,
+     * so an even number of tanks reads as a pair and never covers the cell of energy.
+     * <p>
+     * <b>A machine without a bar stands its tanks on the row of the bar.</b> The screen of a generator names
+     * no progress to show, see {@link ProgressKind#NONE}, so the row the bar of every other machine stands on
+     * - the row its slots stand on - carries the fluid the generator drinks and the fluid it makes: the place
+     * of a bar that never fills shows what the machine works on instead.
+     */
     private static List<FluidSlot> buildFluidSlots(Machine machine, MachineScreen screen) {
+        int row = screen.progress().hasBar() ? FOOT_TOP : ARROW_Y;
         List<FluidSlot> found = new ArrayList<>();
         for (int index = 0; index < screen.fluidInputs(); index++) {
-            found.add(new FluidSlot(FLUID_INPUT_X - index * ContainerLayout.SLOT_PITCH, FOOT_TOP,
+            found.add(new FluidSlot(rowX(screen, true, index), row,
                     tankIndex(machine, MachineTank.Role.INPUT, index), true));
         }
         for (int index = 0; index < screen.fluidOutputs(); index++) {
-            found.add(new FluidSlot(FLUID_OUTPUT_X - index * ContainerLayout.SLOT_PITCH, FOOT_TOP,
+            found.add(new FluidSlot(rowX(screen, false, index), row,
                     tankIndex(machine, MachineTank.Role.OUTPUT, index), false));
         }
         return List.copyOf(found);
+    }
+
+    /**
+     * X coordinate of one tank on its row.
+     * <p>
+     * A tank of a machine that has a bar stands at the foot of the panel, where the two pairs of tanks and the
+     * cell of energy between them were laid out; a tank of a generator is set out around the place of the bar,
+     * the ones it drinks at the left of it and the ones it makes at the right.
+     *
+     * @param screen screen of the machine
+     * @param input {@code true} for a tank a recipe drains
+     * @param index tank index among the tanks of that side
+     * @return the coordinate of its left edge
+     */
+    private static int rowX(MachineScreen screen, boolean input, int index) {
+        if (screen.progress().hasBar()) {
+            return (input ? FLUID_INPUT_X : FLUID_OUTPUT_X) - index * ContainerLayout.SLOT_PITCH;
+        }
+        return ARROW_X - (input ? 0 : -ContainerLayout.SLOT_SIZE)
+                - (input ? index : -index) * ContainerLayout.SLOT_PITCH;
     }
 
     /** Index of the n-th tank of a role inside a machine, {@code -1} when there is none. */

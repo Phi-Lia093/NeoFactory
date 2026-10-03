@@ -1631,7 +1631,7 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // them are never up at the same time.
         closePlayerScreens();
         if (entity instanceof MachineBlockEntity machine) {
-            machineGui.open(machine.machine(), player.inventory(), machine.facing());
+            machineGui.open(machine.machine(), player.inventory());
             openContainer = machine;
             LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
                     target.x(), target.y(), target.z());

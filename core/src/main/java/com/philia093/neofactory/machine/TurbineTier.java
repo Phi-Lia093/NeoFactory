@@ -29,18 +29,18 @@ import com.philia093.neofactory.cable.Voltage;
  * test, see {@code SteamTurbineTest}: a change of a price here has to be a change of the test as well.
  * <p>
  * The tier also names the casing the machine is built of and the panel its screen is drawn in, so a player
- * reads the age of a turbine off its block and not off its name, see {@link #casing()} and {@link #style()}.
+ * reads the age of a turbine off its block and not off its name, see {@link #casing()}.
  */
 public enum TurbineTier {
 
     /** The first turbine, the machine that feeds the first machines of the electrical age. */
-    LV(Voltage.LOW, 0.85f, 3072, MachineStyle.BRONZE, "machine_lv/machine_lv"),
+    LV(Voltage.LOW, 0.85f, 3072, "machine_lv/machine_lv"),
 
     /** The turbine of the middle voltage, built of steel with the blades of a faster machine. */
-    MV(Voltage.MEDIUM, 0.75f, 10752, MachineStyle.STEEL, "machine_mv/machine_mv"),
+    MV(Voltage.MEDIUM, 0.75f, 10752, "machine_mv/machine_mv"),
 
     /** The turbine of the high voltage, the machine a workshop of some size is built around. */
-    HV(Voltage.HIGH, 0.66f, 41472, MachineStyle.NORMAL, "machine_hv/machine_hv");
+    HV(Voltage.HIGH, 0.66f, 41472, "machine_hv/machine_hv");
 
     /** Steam one unit of energy is worth, in millibuckets, before the efficiency of a machine is counted. */
     public static final float STEAM_PER_EU = 2.0f;
@@ -48,14 +48,12 @@ public enum TurbineTier {
     private final Voltage voltage;
     private final float efficiency;
     private final int capacity;
-    private final MachineStyle style;
     private final String casing;
 
-    TurbineTier(Voltage voltage, float efficiency, int capacity, MachineStyle style, String casing) {
+    TurbineTier(Voltage voltage, float efficiency, int capacity, String casing) {
         this.voltage = voltage;
         this.efficiency = efficiency;
         this.capacity = capacity;
-        this.style = style;
         this.casing = casing;
     }
 
@@ -86,11 +84,6 @@ public enum TurbineTier {
     /** Energy the buffer of this machine holds, which is a few seconds of what it makes. */
     public int capacity() {
         return capacity;
-    }
-
-    /** Panel the screen of this machine is drawn in, which is the age its casing belongs to. */
-    public MachineStyle style() {
-        return style;
     }
 
     /** Casing this machine is built of, the picture a side that carries a job is drawn with. */

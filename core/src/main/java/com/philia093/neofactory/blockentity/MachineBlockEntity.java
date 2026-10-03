@@ -33,7 +33,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -290,7 +289,9 @@ public class MachineBlockEntity extends BlockEntity
         }
         facing = face;
         facingSettled = true;
-        machine.faces().turned(face);
+        // The words a player reads at the sides of this machine are read from its front, so the machine keeps
+        // every side it was given whatever way it is turned, see FaceConfig#facing.
+        machine.faces().facing(face);
         updateFacingState(world);
         LOGGER.info("The {} at ({}, {}, {}) now looks towards its {} side", machine.name(), x(), y(), z(),
                 face);
@@ -312,11 +313,11 @@ public class MachineBlockEntity extends BlockEntity
         FaceConfig faces = machine.faces();
         if (incoming) {
             if (faces.blowsSteam()) {
-                return faces.setExhaust(away(faces.exhaust(), face), facing);
+                return faces.setExhaust(away(faces.exhaust(), face));
             }
-            return faces.setEnergyIn(away(faces.energyIn(), face), facing);
+            return faces.setEnergyIn(away(faces.energyIn(), face));
         }
-        return faces.setEnergyOut(away(faces.energyOut(), face), facing);
+        return faces.setEnergyOut(away(faces.energyOut(), face));
     }
 
     /** The side a job moves to, {@code null} when the click lands on the side that already carries it. */
@@ -353,7 +354,9 @@ public class MachineBlockEntity extends BlockEntity
         BlockFace placed = BlockFace.byName(states.decode(world.getState(x(), y(), z())).get(FACING));
         if (placed != null && MachineSides.isHorizontal(placed) && placed != facing) {
             facing = placed;
-            machine.faces().turned(placed);
+            // The sides of a machine are read from its front, so the machine that was placed keeps the sides it
+            // was built with and shows them on the flanks of the front it was placed with, see FaceConfig.
+            machine.faces().facing(placed);
         }
         updateFacingState(world);
     }
@@ -395,7 +398,7 @@ public class MachineBlockEntity extends BlockEntity
      */
     @Override
     public FacePicture pictureOn(BlockFace face) {
-        FaceRole role = machine.faces().roleOn(face, facing);
+        FaceRole role = machine.faces().roleOn(face);
         return role == FaceRole.NONE ? null : FacePicture.of(machine.casing(), role);
     }
 
@@ -416,9 +419,12 @@ public class MachineBlockEntity extends BlockEntity
         if (face == facing) {
             return FaceMark.CLOSED;
         }
-        return switch (machine.faces().roleOn(face, facing)) {
-            case FLUID_IN, ENERGY_IN, ITEM_IN -> FaceMark.IN;
-            case FLUID_OUT, ENERGY_OUT, EXHAUST, ITEM_OUT -> FaceMark.OUT;
+        return switch (machine.faces().roleOn(face)) {
+            case FLUID_IN -> FaceMark.IN;
+            case FLUID_OUT -> FaceMark.OUT;
+            case ENERGY_IN -> FaceMark.ENERGY_IN;
+            case ENERGY_OUT -> FaceMark.ENERGY_OUT;
+            case EXHAUST -> FaceMark.EXHAUST;
             default -> FaceMark.NOTHING;
         };
     }
@@ -571,6 +577,9 @@ public class MachineBlockEntity extends BlockEntity
         // A machine looks along the horizon, see MachineSides: a world that was stored before that rule
         // existed keeps the front the machine is built with.
         facing = MachineSides.isHorizontal(stored) ? stored : MOUTH;
+        // The sides of the machine are read from its front, so the front the machine was stored with is handed
+        // to the assignment of its sides before anything else reads it, see FaceConfig#facing.
+        machine.faces().facing(facing);
         facingSettled = false;
     }
 

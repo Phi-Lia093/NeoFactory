@@ -99,8 +99,16 @@ public final class SaveFormat {
      * material stands three numbers higher than it did and a stored inventory of version 15 names the wrong
      * items for every material - what version 8 said about a stored inventory holds here word for word, see
      * {@code Items#STEAM_TURBINE_LV_ID}.
+     * <p>
+     * <b>What version 17 changed.</b> The sides of a machine are words a player reads at the machine now - the
+     * right flank, the left one, the back, the ceiling and the floor - and no longer sides of the world: the
+     * group a machine stores its sides in holds {@code RIGHT} where it held {@code WEST}, so the sides of a
+     * machine travel with it when it is turned and its front can never carry a job, see
+     * {@code FaceConfig#save(NbtCompound)}. Nothing else of the format moved: the words stand under the very
+     * keys they always did, and a world of version 16 is refused for the one reason that its words name sides
+     * of the world, which no machine of this game reads.
      */
-    public static final int DATA_VERSION = 16;
+    public static final int DATA_VERSION = 17;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

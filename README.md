@@ -146,8 +146,10 @@ stored on disk so that a session can be continued later.
   something out, the plug a machine hands its power over to. The same click takes the job away again, a side
   the machine has no use for is refused, the front takes no job at all, and **giving a side a job takes the
   job that stood there away**, which is how a player moves the mouth of a pipe that was built against the
-  wrong side. The sides travel with the machine, and a machine that is turned gives up the job of the side it
-  turns onto.
+  wrong side. **The sides of a machine travel with it**: they are words a player reads at the machine - the
+  right flank, the back, the ceiling - and not sides of the world, so a machine that is turned shows the pipe
+  a player built against it on the same flank of its new front, and the face the machine shows can never be
+  covered by one of its own parts.
   **The panel says the same thing**: the box of a tank names the side it is reached through while `SHIFT` is
   held and the wheel walks that side on, stepping over the front and over the sides another part of the very
   machine owns - the plug of the power is not taken away by a wheel that runs over a tank. A machine is built
@@ -190,14 +192,23 @@ stored on disk so that a session can be continued later.
   machine of the first workshop, the two others are the machines a larger one is built around.
   **Nothing is drunk that nobody wants**: a turbine whose buffer is full stands still instead of boiling the
   steam of its tank away, and one whose vent is walled in waits with the steam it has and reports the wall,
-  the way a machine of recipes waits for its exhaust. The tiers are read off the block - each of them is built
-  of the casing of its age - and a player may build a turbine before the line it feeds exists, because a
-  machine that takes power later is the one that makes it worth drinking. The wheel on the front of a turbine
-  is one picture of the pack, so it stands still while the machine turns; what a player reads the work of a
-  turbine off is its panel, whose cell of energy fills as the machine makes power.
+  the way a machine of recipes waits for its exhaust. **A generator is no machine that works on an item**: the
+  buffer of a turbine may be emptied and never filled, so it has one plug - the one the line hangs on - and no
+  side that takes power in at all, its screen holds no slot, so there is no cell a stack could be put into,
+  and it shows no bar, because there is no craft to fill one towards: the steam it drinks stands on the row a
+  bar stands on and what the machine holds is read on the cell of energy at the foot of its panel, which wears
+  the picture of the cell of the electricity - the cell a battery is put into in the screens of the original
+  game - and names the power in a box while the mouse rests on it. An empty tank is no error of a generator
+  either: it stands still until a line of pipes fills it, see `ProgressKind#NONE`. The tiers are read off the
+  block - each of them is built of the casing of its age, while the panel of every machine that makes power is
+  the grey one of the age of electricity - and a player may build a turbine before the line it feeds exists,
+  because a machine that takes power later is the one that makes it worth drinking. The wheel on the front of a
+  turbine is one picture of the pack, so it stands still while the machine turns; what a player reads the work
+  of a turbine off is the cell of energy of its panel, which fills as the machine makes power.
   The block ids 728 to 730 were appended behind the cables, so no block of the game moved; the items took the
-  numbers the materials of the game used to start at, so every item of every material stands three numbers
-  higher and `DATA_VERSION` is 16, see `SaveFormat`.
+  numbers the materials of the game used to start at, so every item of every material stood three numbers
+  higher - which is the version 16, and the sides of a machine became words a player reads at it in version
+  17, see `SaveFormat`.
 - **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
   comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
   medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
@@ -325,7 +336,11 @@ stored on disk so that a session can be continued later.
   does**: a side that is not joined is crossed out by the two diagonals of its cell, a side that carries
   the valve of a one way line carries the small arrow of it - out of the block or into it, the head of
   the arrow sitting at the far end of the shaft or at the face itself - and a side that runs both ways
-  stays plain, see `FaceMark`. The grid appears while a tool is held - a wrench, a wire cutter, a crowbar
+  stays plain, see `FaceMark`. **The colour of an arrow says what that side moves**: the yellow of the
+  fluid system for a pipe, the green of the power for a plug of a line of cables and the red of what a
+  machine of steam spent for its vent - which wears the very same picture as a pipe, so the colour is what
+  tells a player that nothing is caught on the other side of it. The grid appears while a tool is held - a
+  wrench, a wire cutter, a crowbar
   or a screwdriver - or while
   a crouching player holds nothing at all, and a click on a cell does what the tool is good for on the
   face that cell stands for, see `FaceOperable`. **A grid changes nothing about the shape of a block**: it
@@ -338,8 +353,9 @@ stored on disk so that a session can be continued later.
   answers to a grid: a click on a cell turns the side of the pipe that the cell stands for - either button
   works, and holding the left one does not start to break the block - so the four corners of the grid reach
   the four sides a player cannot see from where they stand. **A machine answers the grid as well**: its front
-  is crossed out, a side that takes something in carries the arrow into the block and a side that gives
-  something out the arrow out of it, see `FaceMark`. All four clicks of the wrench have a meaning on a machine
+  is crossed out, a side that takes something in carries the arrow of what it takes into the block and a side
+  that gives something out the arrow out of it, in the green of the power or the yellow of a fluid, see
+  `FaceMark`. All four clicks of the wrench have a meaning on a machine
   where a pipe only reads the right button: the right button turns the machine onto the side that was clicked,
   `SHIFT` with the left button gives a side the job of taking something in, `SHIFT` with the right button the
   job of giving something out, and the left button without the key is the click that mines, which is why it

@@ -17,12 +17,16 @@ public class Inventory {
 
     /**
      * Creates an empty inventory.
+     * <p>
+     * <b>An inventory may hold nothing at all</b>, which is the shape of a machine that works on a fluid and
+     * nothing else: a steam turbine reads no item, so its screen holds no slot and there is no cell a player
+     * could put a stack into, see {@code MachineInventory}.
      *
-     * @param size amount of slots, must be positive
+     * @param size amount of slots, {@code 0} for an inventory that holds nothing
      */
     public Inventory(int size) {
-        if (size <= 0) {
-            throw new IllegalArgumentException("Inventory size must be positive: " + size);
+        if (size < 0) {
+            throw new IllegalArgumentException("Inventory size must not be negative: " + size);
         }
         this.slots = new ItemStack[size];
         Arrays.fill(slots, ItemStack.EMPTY);

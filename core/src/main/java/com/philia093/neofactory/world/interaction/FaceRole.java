@@ -50,9 +50,11 @@ public enum FaceRole {
      * The side a machine of the age of steam blows its spent steam out of.
      * <p>
      * An exhaust is a role of the world and not of a tank: the steam that leaves a machine this way is
-     * gone and is caught by nothing, which is why the side carries a vent and no pipe.
+     * gone and is caught by nothing, which is why the side carries the stub of a pipe like every other side
+     * that moves a fluid - the grid of faces is what tells the two apart, and it draws the arrow of the vent
+     * in red, see {@code FaceMark}.
      */
-    EXHAUST("machine_overlay/vent"),
+    EXHAUST("machine_overlay/pipe"),
 
     /** The side an item is put into the block through, which no machine of the game offers yet. */
     ITEM_IN(""),

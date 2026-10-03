@@ -5,7 +5,6 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.gui.container.ContainerLayout;
@@ -117,6 +116,11 @@ public final class MachineGui {
         this.arrows = new ArrowElement[MachineStyle.values().length][ProgressKind.values().length];
         for (MachineStyle style : MachineStyle.values()) {
             for (ProgressKind kind : ProgressKind.values()) {
+                if (!kind.hasBar()) {
+                    // A generator names no bar at all: the place of the bar carries the tank it drinks from,
+                    // so there is no element of the sheet to build for it, see ProgressKind#NONE.
+                    continue;
+                }
                 arrows[style.ordinal()][kind.ordinal()] = panels[style.ordinal()].arrows(kind);
             }
         }
@@ -143,30 +147,18 @@ public final class MachineGui {
     }
 
     /**
-     * Opens the screen on a machine nobody has turned.
+     * Opens the screen on a machine.
+     * <p>
+     * The menu is built for the machine that was used, so the screen always shows the slots of the block the
+     * player stands at. The sides of the machine are named from its own front, which the machine itself holds,
+     * so a screen of a machine that was turned names its flanks the way its machine reads them, see
+     * {@link MachineMenu}.
      *
      * @param machine machine to show
      * @param player inventory of the player, shown below the machine
      */
     public void open(Machine machine, PlayerInventory player) {
-        open(machine, player, MachineSides.DEFAULT_FRONT);
-    }
-
-    /**
-     * Opens the screen on a machine.
-     * <p>
-     * The menu is built for the machine that was used, so the screen always shows the
-     * slots of the block the player stands at. The side the machine looks in is handed over with it, because
-     * the screen names the sides of the machine - {@code FACING: LEFT} is the flank a player who faces the
-     * machine reads - and a name that is read off the world would be a name of the wrong machine, see
-     * {@link MachineMenu}.
-     *
-     * @param machine machine to show
-     * @param player inventory of the player, shown below the machine
-     * @param facing side the machine looks in
-     */
-    public void open(Machine machine, PlayerInventory player, BlockFace facing) {
-        menu = new MachineMenu(machine, player, facing);
+        menu = new MachineMenu(machine, player);
         menu.container().open();
         // A machine is drawn with the panel of its own age, which is empty where its slots stand.
         panel = panels[menu.style().ordinal()];
@@ -538,6 +530,11 @@ public final class MachineGui {
 
     /** Draws the bar that shows how far the work of the machine has come. */
     private void drawProgress(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        if (!menu.progressKind().hasBar()) {
+            // A generator has no bar: what its panel shows on that row is the fluid it drinks, see
+            // MachineMenu#buildFluidSlots.
+            return;
+        }
         ArrowElement bar = arrows[menu.style().ordinal()][menu.progressKind().ordinal()];
         bar.draw(batch, panelX + MachineMenu.ARROW_X,
                 panelY + panelHeight - MachineMenu.ARROW_Y - bar.height(), menu.craftProgress());
@@ -565,10 +562,26 @@ public final class MachineGui {
      * machine is filled, the way a tank shows the fluid it holds, so a machine that waits for power says so
      * on the same row it waits on. A machine of the age of steam has no buffer and shows an empty cell.
      */
+    /**
+     * Draws the cell of energy at the foot of the panel, between the two pairs of tanks.
+     * <p>
+     * The cell is not a slot: no player ever puts anything into it, and nothing may be put into it - a
+     * generator has no slot at all and the other machines are reached by the tanks that stand beside it. What
+     * it shows is how much of the buffer of the machine is filled, the way a tank shows the fluid it holds, so
+     * a machine that waits for power says so on the same row it waits on.
+     * <p>
+     * <b>A generator wears the picture of the cell of the electricity instead of a plain one.</b> The place
+     * where the power of a machine is read is the very cell a battery would be put into in the screens of the
+     * original game - the icon at the column and row of {@link SlotKind#BATTERY} - so a player reads it as the
+     * cell of the power of the machine and not as a slot that was left empty, and the box of that cell names
+     * the energy it holds while the mouse rests on it, see {@link MachineMenu#energyTooltip(boolean)}.
+     */
     private void drawEnergy(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
         float x = panelX + MachineMenu.ENERGY_X;
         float y = panelY + panelHeight - MachineMenu.FOOT_TOP - ContainerLayout.SLOT_SIZE;
-        TextureRegion cell = panel.icon(SlotKind.GENERIC);
+        TextureRegion cell = panel.icon(menu.progressKind().hasBar()
+                ? SlotKind.GENERIC
+                : SlotKind.BATTERY);
         if (cell != null) {
             batch.draw(cell, x - PanelTextures.SLOT_BEVEL, y - PanelTextures.SLOT_BEVEL,
                     MachineTextures.ICON_CELL, MachineTextures.ICON_CELL);

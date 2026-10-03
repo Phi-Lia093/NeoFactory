@@ -160,6 +160,9 @@ public class SteamBoilerMachine extends Machine implements StatusMachine, Progre
     /** {@code true} once the boiler boiled dry while it was hot. */
     private boolean scorched;
 
+    /** Pressure this boiler works at, which is the age it is built of. */
+    private final MachinePressure pressure;
+
     /** Creates the bronze boiler of the first age of the industry. */
     public SteamBoilerMachine() {
         this(MachinePressure.LOW, BRONZE_STEAM_PER_SECOND, BRONZE_FUEL_SHARE);
@@ -187,6 +190,24 @@ public class SteamBoilerMachine extends Machine implements StatusMachine, Progre
         this.steam = (SimpleFluidStorage) tank(1).storage();
         this.steamPerSecond = steamPerSecond;
         this.fuelShare = fuelShare;
+        this.pressure = pressure;
+    }
+
+    /** Pressure this boiler works at, which is the age it is built of. */
+    public MachinePressure pressure() {
+        return pressure;
+    }
+
+    /**
+     * Casing this boiler is built of.
+     * <p>
+     * A side of a boiler that carries a job - the water a line of pipes fills, the steam a line takes away -
+     * shows the casing of the age of the boiler, so a boiler of steel is reached through steel and not through
+     * the bronze of its smaller twin, see {@link MachinePressure#casing()}.
+     */
+    @Override
+    public String casing() {
+        return pressure.casing();
     }
 
     /** Tank of water this boiler boils. */

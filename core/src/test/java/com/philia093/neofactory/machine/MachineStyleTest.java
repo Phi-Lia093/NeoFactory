@@ -171,6 +171,11 @@ class MachineStyleTest {
             }
         }
         for (ProgressKind kind : ProgressKind.values()) {
+            if (!kind.hasBar()) {
+                // A machine that makes power has no bar at all, so it names no cell of the sheet, see
+                // ProgressKind#NONE.
+                continue;
+            }
             assertPainted(sheet, MachineTextures.iconX(kind.fullColumn()),
                     MachineTextures.iconY(kind.fullRow()), MachineTextures.ICON_CELL,
                     MachineTextures.ICON_CELL, "the bright part of " + kind);

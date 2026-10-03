@@ -317,13 +317,17 @@ public class WorldRenderer3D implements Disposable {
                     gridDiagonals);
             drawLines(gridDiagonals, FaceOverlay.DIAGONAL_LINES);
         }
-        frame.setColor(0.98f, 0.78f, 0.24f, 0.95f);
+        // The colour of an arrow says what the side it stands on moves: the yellow of the fluid system, the
+        // green of the plug of the power and the red of a vent, which blows its steam into nothing, see
+        // FaceMark#colour.
         for (int at = 0; at < FaceGrid.CELLS; at++) {
             if (marks == null || at >= marks.length || marks[at] == null || !marks[at].isArrow()) {
                 continue;
             }
+            FaceMark mark = marks[at];
+            frame.setColor(red(mark), green(mark), blue(mark), 0.95f);
             FaceOverlay.arrow(target.x(), target.y(), target.z(), target.face(), viewerFacing, at,
-                    marks[at].pointsOut(), gridArrow);
+                    mark.pointsOut(), gridArrow);
             drawLines(gridArrow, FaceOverlay.ARROW_LINES);
         }
         // The cell under the mouse is traced in white, so a player sees which face a click would take.
@@ -337,6 +341,21 @@ public class WorldRenderer3D implements Disposable {
         frame.end();
         Gdx.gl.glLineWidth(1.0f);
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /** Red channel of the colour a mark is drawn in, from nothing to everything. */
+    private static float red(FaceMark mark) {
+        return ((mark.colour() >> 16) & 0xFF) / 255.0f;
+    }
+
+    /** Green channel of the colour a mark is drawn in. */
+    private static float green(FaceMark mark) {
+        return ((mark.colour() >> 8) & 0xFF) / 255.0f;
+    }
+
+    /** Blue channel of the colour a mark is drawn in. */
+    private static float blue(FaceMark mark) {
+        return (mark.colour() & 0xFF) / 255.0f;
     }
 
     /** Draws the first lines of a block of points the overlay wrote, two points to a line. */

@@ -294,7 +294,7 @@ class PipeFlowTest {
         entity.setPosition(x, Y, -1);
         // The tank of steam of the machine is reached through the side the pipe of the test line stands on,
         // which is what a player sets with the wrench or with the wheel of the screen, see FaceConfig.
-        entity.machine().faces().setTank(0, BlockFace.SOUTH, entity.facing());
+        entity.machine().faces().setTank(0, BlockFace.SOUTH);
         world.addBlockEntity(entity);
         return entity;
     }

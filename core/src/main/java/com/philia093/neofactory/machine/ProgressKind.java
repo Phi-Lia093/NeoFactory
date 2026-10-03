@@ -19,6 +19,17 @@ package com.philia093.neofactory.machine;
  */
 public enum ProgressKind {
 
+    /**
+     * A machine that has no bar at all, which is what a machine that makes power is.
+     * <p>
+     * A generator works by the tick and has no craft to show: a turbine drinks its steam and hands the power
+     * over, so there is nothing a bar could fill towards. <b>A screen that names this kind is the screen of a
+     * generator</b>, and the panel of such a machine stands its tanks on the row the bar of a machine stands
+     * on, so the place of the bar shows the fluid the machine works on instead of a bar that never fills, see
+     * {@code MachineMenu#buildFluidSlots} and {@code MachineGui#drawMachine}.
+     */
+    NONE(-1, -1, -1, -1, false),
+
     /** The plain pair, used by a machine that works on items. */
     GENERIC(1, 0, 2, 0, false),
 
@@ -71,6 +82,18 @@ public enum ProgressKind {
         this.emptyColumn = emptyColumn;
         this.emptyRow = emptyRow;
         this.vertical = vertical;
+    }
+
+    /**
+     * {@code true} when a machine of this kind has a bar to draw at all.
+     * <p>
+     * A machine that names {@link #NONE} has none: the screen it belongs to is the screen of a generator and
+     * the place of the bar carries the tank the machine drinks from instead, see {@code MachineMenu}.
+     *
+     * @return {@code false} for {@link #NONE}, {@code true} for every bar of the game
+     */
+    public boolean hasBar() {
+        return this != NONE;
     }
 
     /** Column of the bright arrow, the part that grows with the progress. */
