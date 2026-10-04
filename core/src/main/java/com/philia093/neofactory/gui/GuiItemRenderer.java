@@ -19,7 +19,11 @@ import com.philia093.neofactory.util.Constants;
  * <p>
  * The bar is drawn for everything that wears out and not only for a tool, which is what
  * {@link DurabilityBar} asks a stack; a piece that is untouched and an item that never wears
- * show nothing at all.
+ * show nothing at all. For a battery that bar reads as what is left in it, which is what its life is.
+ * <p>
+ * A battery is the one icon that is read out of its stack: the picture of a cell carries a frame per
+ * amount it may hold, so a stack that was drained half way shows a cell that is half full, see
+ * {@link com.philia093.neofactory.render.BatteryIcon}.
  */
 public class GuiItemRenderer {
 
@@ -58,7 +62,7 @@ public class GuiItemRenderer {
             return;
         }
         Item item = stack.item();
-        TextureRegion icon = textures.itemIcon(item);
+        TextureRegion icon = textures.itemIcon(stack);
         if (icon != null) {
             batch.setColor(item.tint());
             batch.draw(icon, x, y, Constants.ITEM_ICON_SIZE, Constants.ITEM_ICON_SIZE);

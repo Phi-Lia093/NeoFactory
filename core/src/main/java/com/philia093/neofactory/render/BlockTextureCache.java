@@ -11,7 +11,9 @@ import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.item.Battery;
 import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.util.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -286,6 +288,38 @@ public class BlockTextureCache implements Disposable {
             LOGGER.warn("The icon of '{}' cannot be read, so a slot holding it stays empty", item.name());
         }
         return icon;
+    }
+
+    /**
+     * Returns the icon the interface shows for a stack.
+     * <p>
+     * <b>A battery is drawn from the frame of its charge.</b> The picture of a cell is a strip that holds
+     * the window of the cell at every amount it may carry, so a stack that was drained half way shows a
+     * cell that is half full, while the icon of the item itself - the one a list of items draws, where no
+     * stack is at hand - is the full cell of frame zero, see {@link BatteryIcon}. Nothing else reads its
+     * stack that way: the icon of a tool, a material or a block is the same however worn or how many of it
+     * a stack holds.
+     *
+     * @param stack stack to draw, an empty stack draws nothing
+     * @return the icon, or {@code null} when the picture is missing
+     */
+    public TextureRegion itemIcon(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return null;
+        }
+        Item item = stack.item();
+        Battery battery = item.battery();
+        if (battery == null) {
+            return itemIcon(item);
+        }
+        TextureRegion sheet = region(item.texture());
+        if (sheet == null) {
+            return itemIcon(item);
+        }
+        // How many frames a picture carries is read from the picture itself, the way every other sheet of
+        // the game is read, see frameRegion: a strip that grew a frame needs no second place to be named.
+        int frames = Math.max(1, sheet.getTexture().getHeight() / Constants.ITEM_ICON_SIZE);
+        return iconRegion(item.texture(), BatteryIcon.frameOf(battery, stack, frames));
     }
 
     /** The icon of an item, or {@code null} when none of the ways to a picture worked. */

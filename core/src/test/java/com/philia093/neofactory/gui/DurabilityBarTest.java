@@ -1,7 +1,11 @@
 package com.philia093.neofactory.gui;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.item.Batteries;
+import com.philia093.neofactory.item.BatteryChemistry;
 import com.philia093.neofactory.item.Damageable;
+import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.support.TestRegistries;
@@ -77,6 +81,26 @@ class DurabilityBarTest {
                 "and it lies inside it");
         assertTrue(DurabilityBar.OFFSET_X + DurabilityBar.WIDTH <= Constants.ITEM_ICON_SIZE,
                 "a full bar is not wider than its icon");
+    }
+
+    @Test
+    void theBarOfACellOfEnergyReadsAsWhatIsLeftInIt() {
+        // A battery is not a tool and wears all the same: its life is what it holds, see Battery, so the bar
+        // under the icon of a cell reads as its charge without an arithmetic of its own. A cell of the low
+        // voltage holds a hundred thousand units, which is what a fresh stack of one carries.
+        Batteries.Cell cell = Batteries.of(BatteryChemistry.LITHIUM, Voltage.LOW);
+        ItemStack stack = ItemStack.of(ItemRegistry.byName(Batteries.itemNameOf(cell)), 1);
+
+        assertEquals(DurabilityBar.WIDTH, DurabilityBar.widthOf(stack),
+                "a cell that is full keeps a whole bar, which is what drawing skips, see DurabilityBar#draw");
+
+        assertEquals(cell.capacity() / 2, cell.extract(stack, cell.capacity() / 2));
+        assertEquals(7, DurabilityBar.widthOf(stack), "a cell that is half spent draws half a bar");
+        assertColour(new Color(1.0f, 1.0f, 0.0f, 1.0f), DurabilityBar.colorOf(stack));
+
+        assertEquals(cell.capacity() / 2, cell.extract(stack, cell.capacity()));
+        assertEquals(0, DurabilityBar.widthOf(stack), "and a spent cell draws an empty one");
+        assertColour(new Color(1.0f, 0.0f, 0.0f, 1.0f), DurabilityBar.colorOf(stack));
     }
 
     /** Checks a colour channel by channel, because the hue of a bar is computed in float. */
