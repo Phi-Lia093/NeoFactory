@@ -205,6 +205,21 @@ public abstract class Machine {
         return energy() instanceof EnergyAcceptor acceptor ? acceptor.accepted() : null;
     }
 
+    /**
+     * {@code true} when this machine has a panel of its own to open.
+     * <p>
+     * <b>A panel is for what a player has to look at or to set</b> - the slots, the tanks, the cell of energy
+     * and the wheel of the sides - and a machine that holds none of those has nothing to open: a diode is a
+     * piece of a line of cables that is read off its block and aimed with the wrench, so a click of a player
+     * at it opens nothing at all, see {@link com.philia093.neofactory.machine.DiodeMachine} and
+     * {@code GameScreen#openContainer}.
+     *
+     * @return {@code true} when a click at this machine opens the interface of it
+     */
+    public boolean opensPanel() {
+        return true;
+    }
+
     /** Role of every tank of this machine, in the order the tanks are held. */
     private MachineTank.Role[] rolesOfTanks() {
         MachineTank.Role[] roles = new MachineTank.Role[tanks.length];

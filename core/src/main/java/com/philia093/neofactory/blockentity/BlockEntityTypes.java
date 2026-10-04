@@ -15,6 +15,8 @@ import com.philia093.neofactory.machine.HighPressureGrinderMachine;
 import com.philia093.neofactory.machine.HighPressureSteamFurnaceMachine;
 import com.philia093.neofactory.machine.BatteryBoxMachine;
 import com.philia093.neofactory.machine.BatteryBoxes;
+import com.philia093.neofactory.machine.DiodeMachine;
+import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.SmeltingMachine;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
@@ -190,6 +192,16 @@ public final class BlockEntityTypes {
             for (int cells : BatteryBoxes.CELLS) {
                 BlockEntityRegistry.register(new BlockEntityType(BatteryBoxes.nameOf(tier, cells),
                         type -> new MachineBlockEntity(type, new BatteryBoxMachine(tier, cells))));
+            }
+        }
+        // The fifteen diodes of the industry, one type per width and tier, the same way: the table of the
+        // diodes names every one of them and the machine behind a block is a diode of that tier and width,
+        // see Diodes. A diode is the one block of the line that is not a machine of the usual kind: it carries
+        // a line of cables through itself one way and holds nothing at all.
+        for (Voltage tier : Diodes.tiers()) {
+            for (int width : Diodes.WIDTHS) {
+                BlockEntityRegistry.register(new BlockEntityType(Diodes.nameOf(tier, width),
+                        type -> new DiodeBlockEntity(type, new DiodeMachine(tier, width))));
             }
         }
         registered = true;

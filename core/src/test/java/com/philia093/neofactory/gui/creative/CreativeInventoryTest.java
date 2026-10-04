@@ -8,6 +8,7 @@ import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.machine.BatteryBoxes;
+import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.pipe.PipeMaterials;
 import com.philia093.neofactory.pipe.PipeSize;
@@ -144,7 +145,6 @@ class CreativeInventoryTest {
         // machines of the batteries are machines like every other one, see BatteryBoxes. The grid of the screen
         // shows the front of that list, so the whole of it is read from the list itself.
         List<Item> listed = creative.matches();
-        assertEquals(36 + BatteryBoxes.COUNT, listed.size(), "the list holds the machines of the game");
         int at = 36;
         for (Voltage tier : BatteryBoxes.tiers()) {
             for (int cells : BatteryBoxes.CELLS) {
@@ -153,6 +153,17 @@ class CreativeInventoryTest {
                         BatteryBoxes.titleOf(tier, cells) + " is listed with the machines");
             }
         }
+        // And the fifteen diodes behind them, five widths of each of the three tiers: a diode is a block a
+        // line of cables runs through and is listed with the machines for the same reason, see Diodes.
+        for (Voltage tier : Diodes.tiers()) {
+            for (int width : Diodes.WIDTHS) {
+                String name = Diodes.nameOf(tier, width);
+                assertEquals(ItemRegistry.byName(name), listed.get(at++),
+                        Diodes.titleOf(tier, width) + " is listed with the machines");
+            }
+        }
+        assertEquals(36 + BatteryBoxes.COUNT + Diodes.COUNT, listed.size(), "the list holds the machines of the game");
+        assertEquals(listed.size(), at, "and every one of them was walked");
         assertEquals(ItemRegistry.byName(MachineFamilies.all().get(0).nameOf(Voltage.LOW)),
                 listed.get(18), "the machines of the line come first");
         assertFalse(creative.stackAt(36).isEmpty(), "and the front of the boxes is shown in the grid");

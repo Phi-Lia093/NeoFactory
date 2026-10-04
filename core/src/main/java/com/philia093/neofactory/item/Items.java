@@ -4,6 +4,7 @@ import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.machine.BatteryBoxes;
+import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.TurbineTier;
 import com.philia093.neofactory.fluid.Fluid;
@@ -502,14 +503,26 @@ public final class Items {
     public static final int BATTERY_BOX_FIRST_ID = BATTERY_FIRST_ID + Batteries.all().size();
 
     /**
+     * Id of the first diode, the first of the fifteen.
+     * <p>
+     * The diodes take the numbers right behind the twelve boxes of cells, which is where the items of the
+     * materials of the game used to start: <b>every item of every material therefore stands fifteen numbers
+     * higher than it did</b> - the fifteen diodes - so a stored inventory of an older version names the wrong
+     * items for every material and that version is refused, see
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
+     */
+    public static final int DIODE_FIRST_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
+
+    /**
      * Next unused item id, used to verify that a new item got a fresh id.
      * <p>
      * The three turbines moved this number, because they stand in front of the items of the materials, and the
-     * eighteen machines of the line moved it again; the fifteen batteries of {@link Batteries} and the twelve
-     * boxes of {@link BatteryBoxes} stand behind those, so the materials begin at the number written here, see
-     * {@link com.philia093.neofactory.cable.Cables} for the run of the cables that stands in front of them.
+     * eighteen machines of the line moved it again; the fifteen batteries of {@link Batteries}, the twelve
+     * boxes of {@link BatteryBoxes} and the fifteen diodes of {@link Diodes} stand behind those, so the
+     * materials begin at the number written here, see {@link com.philia093.neofactory.cable.Cables} for the run
+     * of the cables that stands in front of them.
      */
-    public static final int NEXT_FREE_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
+    public static final int NEXT_FREE_ID = DIODE_FIRST_ID + Diodes.COUNT;
 
     /**
      * Amount an empty container stacks to.
@@ -1212,6 +1225,20 @@ public final class Items {
                 String name = BatteryBoxes.nameOf(tier, cells);
                 register(Item.builder(boxId++, name)
                         .displayName(BatteryBoxes.titleOf(tier, cells))
+                        .buildBlock(BlockRegistry.byName(name)));
+            }
+        }
+
+        // The fifteen diodes of the industry, five widths of each of the three tiers. They are block items
+        // like every machine of the line: each borrows the picture of its block - the casing of its tier - and
+        // the block names the entity behind it, see Diodes. They take the numbers right behind the boxes,
+        // which is where the items of the materials of the game used to start, see DIODE_FIRST_ID.
+        int diodeId = DIODE_FIRST_ID;
+        for (Voltage tier : Diodes.tiers()) {
+            for (int width : Diodes.WIDTHS) {
+                String name = Diodes.nameOf(tier, width);
+                register(Item.builder(diodeId++, name)
+                        .displayName(Diodes.titleOf(tier, width))
                         .buildBlock(BlockRegistry.byName(name)));
             }
         }

@@ -116,8 +116,16 @@ public final class SaveFormat {
      * eighteen machines of the line, so no block of the game moved at all, see {@code Items#BATTERY_BOX_FIRST_ID}
      * and {@code Blocks#BATTERY_BOX_FIRST_ID}. A world of version 17 is therefore refused for the stored items
      * of its materials and not for its blocks.
+     * <p>
+     * <b>What version 19 changed.</b> The diodes of the line arrived: the fifteen diodes of {@code Diodes} took
+     * the numbers the items of the materials of the game started at in version 18, so <b>every item of every
+     * material stands fifteen numbers higher than it did</b>. That is the very reason version 18 refuses a world
+     * of version 17 - what version 8 said about a stored inventory holds here word for word as well - and it is
+     * again the only thing this version moved: the blocks of the diodes went behind the twelve boxes of cells,
+     * so no block of the game moved at all, see {@code Items#DIODE_FIRST_ID} and {@code Blocks#DIODE_FIRST_ID}.
+     * A world of version 18 is therefore refused for the stored items of its materials and not for its blocks.
      */
-    public static final int DATA_VERSION = 18;
+    public static final int DATA_VERSION = 19;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

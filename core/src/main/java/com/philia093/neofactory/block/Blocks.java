@@ -5,6 +5,7 @@ import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.ToolType;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.machine.BatteryBoxes;
+import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineCasing;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.pipe.Pipes;
@@ -179,8 +180,19 @@ public final class Blocks {
     public static final int BATTERY_BOX_FIRST_ID = LINE_FIRST_ID + MachineFamilies.all().size()
             * MachineFamilies.TIERS.size();
 
+    /**
+     * Id of the first diode, the first of the fifteen.
+     * <p>
+     * The diodes take the numbers right behind the twelve boxes of cells, so no block of the game moved and
+     * the save game needs no new version, see {@link #NEXT_FREE_ID}. <b>The ids are handed out by the table of
+     * the diodes:</b> the five widths of a tier in the order {@link Diodes#WIDTHS} writes them down and the
+     * three tiers of the line behind each other, so the machine casing of the low voltage takes the first
+     * number and the cable diode of sixteen amperes of the high voltage the last.
+     */
+    public static final int DIODE_FIRST_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
+    public static final int NEXT_FREE_ID = DIODE_FIRST_ID + Diodes.COUNT;
 
     /**
      * Light the torch gives away, the first source of light of the game.
@@ -767,6 +779,19 @@ public final class Blocks {
             }
         }
 
+        // ------------------------------------------------------------------
+        // The fifteen diodes of the industry, five widths of each of the three tiers of the line. They are the
+        // blocks a line of cables runs through the way it runs through a cable: a cube of the casing of its
+        // tier that is turned with the wrench, whose two flanks a line enters and leaves by are drawn by the
+        // block entity of the diode, exactly the way a side of a machine of the line is drawn, see Diodes.
+        // ------------------------------------------------------------------
+        int diodeId = DIODE_FIRST_ID;
+        for (Voltage tier : Diodes.tiers()) {
+            for (int width : Diodes.WIDTHS) {
+                diodeBlock(diodeId++, Diodes.nameOf(tier, width), tier);
+            }
+        }
+
         BlockRegistry.freeze();
     }
 
@@ -851,6 +876,34 @@ public final class Blocks {
                 .toolType(ToolType.WRENCH)
                 .blockEntity(name)
                 .carriesFluid()
+                .build();
+        BlockRegistry.register(block);
+        return block;
+    }
+
+    /**
+     * Builds one of the diodes of the industry.
+     * <p>
+     * A diode is a machine like every other one - a whole cube that is taken apart with the wrench and that
+     * names the block entity behind it - and the casing it is built of is the one of its tier, see
+     * {@link MachineCasing}. <b>It carries a front and is turned like every machine</b>, because turning a
+     * diode is how a player aims the way a line runs through it, while the box of cells - the other block of
+     * the industry that works no recipe - is built without a front at all, see {@code DiodeMachine}. It holds
+     * no tank and no slot, so no pipe is built towards it and nothing is put into it.
+     *
+     * @param id block id of the diode, taken from {@link #DIODE_FIRST_ID}
+     * @param name name of the diode, which is the name of the block entity behind it
+     * @param tier tier the diode was built for, which is the casing it stands in
+     * @return the registered block
+     */
+    private static Block diodeBlock(int id, String name, Voltage tier) {
+        Block block = Block.builder(id, name)
+                .texture(MachineCasing.pictureOf(tier))
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
+                .blockEntity(name)
                 .build();
         BlockRegistry.register(block);
         return block;

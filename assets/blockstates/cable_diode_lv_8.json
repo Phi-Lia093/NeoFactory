@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"]
+  },
+  "variants": {
+    "facing=north": { "model": "machine_casing_lv", "y": 0 },
+    "facing=east": { "model": "machine_casing_lv", "y": 270 },
+    "facing=south": { "model": "machine_casing_lv", "y": 180 },
+    "facing=west": { "model": "machine_casing_lv", "y": 90 }
+  }
+}

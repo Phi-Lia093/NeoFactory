@@ -463,6 +463,14 @@ stored on disk so that a session can be continued later.
   it stands in one-way with it, see `LineNode` and `EnergyGrid#line`. What a line carries is the worst of
   **every** piece of it, so a diode of one ampere in a run of a wide cable is a line of one ampere, and a
   diode of an earlier age melts where it stands in a line of a later one, exactly like a cable.
+  **A diode is built in five widths and three ages**: one, two, four, eight or sixteen amperes of the low, the
+  middle or the high voltage, and the narrowest one of an age is named for the casing it is built of - the
+  `LV Machine Casing` is the diode of one ampere of that age, and every wider one is a `Cable Diode` of its
+  width up to `16x`. A diode carries a line through its **two flanks** - what enters it by the left one leaves
+  it by the right one - and a player **aims it by turning the whole block with the wrench**, which is the one
+  thing the wrench does at a diode: the two sides it runs a line through are what the block was built for, and
+  no player moves one of them. A diode has no panel at all: there is nothing in it to look at and nothing to
+  set, so a click at one opens nothing.
   **A line is drawn by the machine that works and never pushed by the one that makes.** A cable carries
   nothing of its own, so the machine that wants the power is the one that moves it: every tick the block entity
   of a machine walks the line that stands at the plug it takes power in through and draws out of the buffers

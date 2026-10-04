@@ -2,8 +2,11 @@ package com.philia093.neofactory.energy;
 
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
+import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
+import com.philia093.neofactory.blockentity.DiodeBlockEntity;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.CableKind;
 import com.philia093.neofactory.cable.CableMaterial;
@@ -11,6 +14,8 @@ import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.machine.DiodeMachine;
+import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.MachineEnergyStorage;
 import com.philia093.neofactory.machine.MachineInventory;
@@ -25,6 +30,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -274,6 +280,81 @@ class EnergyLineTest {
     }
 
     @Test
+    void aDiodeCarriesALineTheWayItsPowerRuns() {
+        World world = new World(SEED, 9, 0);
+        MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
+        bufferOf(generator).setAmount(CAPACITY);
+        cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // The diode lies in the run with its input towards the machine that gives and its output towards the
+        // machine that works, which a player builds by turning the block: a machine that looks south has its
+        // left flank towards the west, so the power of the diode runs in from there and out towards the east,
+        // see DiodeMachine.
+        diode(world, Voltage.MEDIUM, 4, 2, 0, BlockFace.SOUTH);
+        cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        MachineBlockEntity sink = place(world, consumer(Voltage.MEDIUM), 4, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 1);
+
+        // The facing of a diode is read off its cell while it ticks, so the line is walked after the first
+        // tick of the world, see MachineBlockEntity#settleFacing.
+        EnergyGrid.Line line = lineOf(world, 3, Y, 0);
+        int perTick = line.net().capacity() - line.net().totalLoss();
+        assertEquals(3, line.length(), "the two cables and the diode between them");
+        assertEquals(1, line.net().amperage(), "the narrowest piece of the run carries one ampere");
+        assertEquals(perTick, bufferOf(sink).amount(), "and what the machine asked for arrived");
+        assertEquals(CAPACITY - line.net().capacity(), bufferOf(generator).amount(),
+                "while the machine that gives paid a tick of the line");
+        assertEquals(Diodes.nameOf(Voltage.MEDIUM, 4),
+                world.getBlock(2, Y, 0).name(), "and the diode stands where it was built");
+    }
+
+    @Test
+    void aDiodeRefusesALineThatArrivesTheOtherWay() {
+        World world = new World(SEED, 11, 0);
+        MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
+        bufferOf(generator).setAmount(CAPACITY);
+        cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // The same run with the diode turned the other way: its power now runs in from the east and out
+        // towards the west, so the machine that works reaches it the way its power does not run and no line
+        // is walked at all, see LineNode#through.
+        diode(world, Voltage.MEDIUM, 4, 2, 0, BlockFace.NORTH);
+        cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        MachineBlockEntity sink = place(world, consumer(Voltage.MEDIUM), 4, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 1);
+
+        assertEquals(0, bufferOf(sink).amount(), "the walk of the machine was refused, so nothing arrived");
+        assertEquals(CAPACITY, bufferOf(generator).amount(), "and the machine that gives kept what it holds");
+        assertEquals(Diodes.nameOf(Voltage.MEDIUM, 4), world.getBlock(2, Y, 0).name(),
+                "while the diode stands where it was built");
+    }
+
+    @Test
+    void aDiodeThatCannotTakeItsLineMeltsWhereItStands() {
+        World world = new World(SEED, 12, 0);
+        MachineBlockEntity generator = place(world, machine(Voltage.HIGH), 0, Y, 0);
+        bufferOf(generator).setAmount(CAPACITY);
+        cable(world, CableMaterials.SILVER, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // A diode of the low voltage in a line a machine of the high voltage feeds, with silver cables around
+        // it, which take that voltage: what a line is fed with is what every piece of it has to take, and the
+        // diode does not take it, see EnergyGrid.Line#melt.
+        diode(world, Voltage.LOW, 16, 2, 0, BlockFace.SOUTH);
+        cable(world, CableMaterials.SILVER, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        MachineBlockEntity sink = place(world, consumer(Voltage.HIGH), 4, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 1);
+
+        assertEquals(Blocks.AIR, world.getBlock(2, Y, 0), "the diode, which cannot take what the line is fed with");
+        assertEquals(cableBlock(CableMaterials.SILVER), world.getBlock(1, Y, 0),
+                "while the cables of the run, which take it, stand");
+        assertEquals(Blocks.FURNACE, world.getBlock(4, Y, 0), "and so does the machine that was built for it");
+        assertEquals(0, bufferOf(sink).amount(), "and nothing was handed over while it melted");
+    }
+
+    @Test
     void aLineThatNobodyTakesFromLeavesTheGeneratorAlone() {
         World world = new World(SEED, 5, 0);
         MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
@@ -313,6 +394,19 @@ class EnergyLineTest {
         assertEquals(Blocks.FURNACE, world.getBlock(2, Y, 0),
                 "and a line that was never fed burns nothing");
         assertNotNull(world.getBlock(1, Y, 0), "the cable of that line is still there");
+    }
+
+    /** Places one diode of the game, turned towards a side, and hands its block entity back. */
+    private static DiodeBlockEntity diode(World world, Voltage tier, int width, int x, int z, BlockFace facing) {
+        String name = Diodes.nameOf(tier, width);
+        Block block = BlockRegistry.byName(name);
+        world.setBlock(x, Y, z, block);
+        world.setState(x, Y, z, block.states().stateOf(Map.of("facing", facing.toString())));
+        DiodeBlockEntity entity = new DiodeBlockEntity(BlockEntityRegistry.byName(name),
+                new DiodeMachine(tier, width));
+        entity.setPosition(x, Y, z);
+        world.addBlockEntity(entity);
+        return entity;
     }
 
     /** A machine of the power network: a buffer of a tier and one slot that nothing is ever put into. */

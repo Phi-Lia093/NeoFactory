@@ -75,7 +75,8 @@ class BatteryBoxesTest {
             }
         }
 
-        assertEquals(Blocks.NEXT_FREE_ID, blockId, "the boxes stand behind the machines of the line");
+        assertEquals(Blocks.DIODE_FIRST_ID, blockId,
+                "the boxes stand behind the machines of the line and in front of the diodes");
         assertEquals(Items.BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT, itemId,
                 "and in front of the items of the materials");
     }

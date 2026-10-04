@@ -1631,6 +1631,13 @@ public class GameScreen extends NeoFactoryScreen implements CommandContext {
         // them are never up at the same time.
         closePlayerScreens();
         if (entity instanceof MachineBlockEntity machine) {
+            if (!machine.machine().opensPanel()) {
+                // A diode has no panel: what it does is read off the block and aimed with the wrench, and
+                // nothing of it is a slot or a tank, see Machine#opensPanel.
+                LOGGER.info("The {} at block ({}, {}) of layer {} holds nothing to open",
+                        machine.machine().name(), target.x(), target.y(), target.z());
+                return false;
+            }
             machineGui.open(machine.machine(), player.inventory());
             openContainer = machine;
             LOGGER.info("Opened {} at block ({}, {}) of layer {}", machine.machine().name(),
