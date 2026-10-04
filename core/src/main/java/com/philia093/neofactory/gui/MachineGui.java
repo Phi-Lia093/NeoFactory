@@ -273,10 +273,12 @@ public final class MachineGui {
     /**
      * Draws what the cell of energy at the foot of the panel holds, beside the mouse.
      * <p>
-     * The cell is not a slot either: what it shows is how much of the buffer of the machine is filled, and
-     * the box names that amount - and, while the modifier key is held, the sides the power is reached
-     * through, see {@link MachineMenu#energyTooltip}. A machine of the age of steam has no buffer and draws
-     * no box at all.
+     * <b>A machine of the line is fed through that cell, and the box of a slot does not name the item in
+     * it.</b> What a player reads at the cell is how much of the buffer of the machine is filled - and, while
+     * the modifier key is held, the sides the power is reached through: the box belongs to the machine and not
+     * to the piece of redstone a player put there, see {@link MachineMenu#energyTooltip(boolean)} and
+     * {@link com.philia093.neofactory.gui.container.ContainerMenu#namesItsStack}. A machine of the age of steam
+     * has no buffer and draws no box at all.
      *
      * @param batch batch switched to the projection of the interface viewport
      * @param mouseX X coordinate of the mouse inside the interface
@@ -559,18 +561,22 @@ public final class MachineGui {
     /**
      * Draws the cell of energy at the foot of the panel, between the two pairs of tanks.
      * <p>
-     * The cell is not a slot: no player ever puts anything into it, and nothing may be put into it - a
-     * generator has no slot at all and the other machines are reached by the tanks that stand beside it. What
-     * it shows is how much of the buffer of the machine is filled, the way a tank shows the fluid it holds, so
-     * a machine that waits for power says so on the same row it waits on.
+     * <b>The cell of a machine of the line is a slot and is drawn with the slots of the panel.</b> What a
+     * player reads there is what they put into it - the reagent the machine burns - and what the buffer holds
+     * is what the box of that cell names while the mouse rests on it, see {@link MachineMenu#hasEnergySlot} and
+     * {@link MachineMenu#energyTooltip(boolean)}. Nothing of it is drawn here, and no bar of it either: a bar
+     * would tell a player nothing about what to put into the cell.
      * <p>
-     * <b>A generator wears the picture of the cell of the electricity instead of a plain one.</b> The place
-     * where the power of a machine is read is the very cell a battery would be put into in the screens of the
-     * original game - the icon at the column and row of {@link SlotKind#BATTERY} - so a player reads it as the
-     * cell of the power of the machine and not as a slot that was left empty, and the box of that cell names
-     * the energy it holds while the mouse rests on it, see {@link MachineMenu#energyTooltip(boolean)}.
+     * <b>What is left is the cell of a machine that may not be filled by hand</b>, and there the cell is a
+     * picture of the state of the machine and not a slot: a generator fills its own buffer and a player reads
+     * the power it makes off the cell - the picture of the cell of the electricity, drawn the way a tank shows
+     * the fluid it holds - so it fills from its own bottom up. A machine of the age of steam has no buffer at
+     * all, so its cell stays empty.
      */
     private void drawEnergy(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
+        if (menu.hasEnergySlot()) {
+            return;
+        }
         float x = panelX + MachineMenu.ENERGY_X;
         float y = panelY + panelHeight - MachineMenu.FOOT_TOP - ContainerLayout.SLOT_SIZE;
         TextureRegion cell = panel.icon(menu.energySlotKind());

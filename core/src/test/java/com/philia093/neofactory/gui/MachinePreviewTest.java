@@ -256,8 +256,14 @@ class MachinePreviewTest {
         ContainerLayout layout = menu.container().layout();
 
         assertEquals(ProgressKind.GENERIC, menu.progressKind(), "a machine of the line fills the bar");
-        assertEquals(SlotKind.GENERIC, menu.energySlotKind(),
-                "and reads its power on the plain cell of the panel");
+        assertEquals(SlotKind.BATTERY, menu.energySlotKind(),
+                "and is fed through the cell of energy at the foot of its panel");
+        assertTrue(menu.hasEnergySlot(), "which is a slot and not a picture of how full its buffer is");
+        assertEquals(macerator.reagentSlot(), menu.energySlot(), "the cell the reagent is put into");
+        // The cell of energy of a machine of the line is where the reagent goes, so the preview shows a
+        // handful of redstone dust in it, see Reagents.
+        ItemStack reagent = ItemStack.of(Items.REDSTONE_DUST, 4);
+        macerator.inventory().set(macerator.reagentSlot(), reagent);
         assertEquals(MachineError.NO_POWER, menu.error(),
                 "an input that waits for the line reports the alarm of a machine without power");
 
@@ -269,6 +275,7 @@ class MachinePreviewTest {
         copy(machine, picture, 0, 0, MachineTextures.WIDTH, MachineTextures.HEIGHT, MARGIN, MARGIN);
         drawSlots(picture, machine, layout);
         drawContents(picture, layout);
+        drawStack(picture, layout, macerator.reagentSlot(), reagent);
         drawArrow(picture, machine, CRAFT_PROGRESS);
         drawEnergyCell(picture, machine, menu, layout);
         drawErrorMark(picture, machine, menu, layout);
@@ -281,12 +288,17 @@ class MachinePreviewTest {
     /**
      * Draws the cell of energy at the foot of the panel, the way {@code MachineGui#drawEnergy} does it.
      * <p>
-     * The icon is the one {@link MachineMenu#energySlotKind()} names - the plain cell of a machine of recipes
-     * and the cell of the electricity for a machine that makes power - and the lower part of it is filled with
-     * the colour of the energy up to the middle, the way a buffer that is half full is shown.
+     * <b>A machine of the line is fed through that cell, so it is a slot and the slots of the panel already
+     * carry it</b> - what lies in it is drawn with the items of the machine, see {@link MachineMenu#energySlot}.
+     * What is left here is the cell of a machine that may not be filled by hand: the icon
+     * {@link MachineMenu#energySlotKind()} names, with the lower half filled with the colour of the energy, the
+     * way a buffer that is half full is shown.
      */
     private static void drawEnergyCell(BufferedImage picture, BufferedImage machine, MachineMenu menu,
             ContainerLayout layout) {
+        if (menu.hasEnergySlot()) {
+            return;
+        }
         SlotKind kind = menu.energySlotKind();
         int x = MARGIN + MachineMenu.ENERGY_X - PanelTextures.SLOT_BEVEL;
         int y = MARGIN + layout.panelHeight() - MachineMenu.FOOT_TOP - ContainerLayout.SLOT_SIZE

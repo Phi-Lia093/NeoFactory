@@ -207,7 +207,9 @@ stored on disk so that a session can be continued later.
   and it shows no bar, because there is no craft to fill one towards: the steam it drinks stands on the row a
   bar stands on and what the machine holds is read on the cell of energy at the foot of its panel, which wears
   the picture of the cell of the electricity - the cell a battery is put into in the screens of the original
-  game - and names the power in a box while the mouse rests on it. An empty tank is no error of a generator
+  game - and names the power in a box while the mouse rests on it. **A generator is read and not fed**: that cell
+  is a picture of what the machine makes and no slot, so the cell of a boiler or of a turbine never takes an
+  item, see `MachineMenu#hasEnergySlot`. An empty tank is no error of a generator
   either: it stands still until a line of pipes fills it, see `ProgressKind#NONE`. The tiers are read off the
   block - each of them is built of the casing of its age, while the panel of every machine that makes power is
   the grey one of the age of electricity - and a player may build a turbine before the line it feeds exists,
@@ -243,7 +245,13 @@ stored on disk so that a session can be continued later.
   What a player reads at a machine of the line is the tier in front of the name of its family - `LV Macerator`,
   `HV Alloy Smelter`. Every one of them is drawn in the grey panel of the age of electricity, holds no tank,
   because the power it runs on arrives over a line and never in a bucket, and lights the front of its block
-  while it works. The eighteen blocks take the ids 731 to 748 and the items 847 to 864, both right behind the
+  while it works. **The cell of energy at the foot of its panel is a slot and no bar**: a player who has no line
+  yet puts redstone dust into it, and every frame the machine burns one piece of it in its own buffer, so a
+  workshop can be started before the line that feeds it is built - a machine that is fed by hand takes from its
+  line only what the dust did not cover, see `Reagents`. **Nothing but dust goes in**, because a machine that
+  swallowed whatever a player dropped on the cell of energy would be a machine filled with junk by accident, and
+  the box of that cell names what the buffer holds and never the name of the piece in it, see `MachineMenu`.
+  The eighteen blocks take the ids 731 to 748 and the items 847 to 864, both right behind the
   turbines, so nothing that a stored world or a stored inventory names has moved and no version is refused.
   Their art is two pictures of the pack drawn together - the casing of the tier under the overlay of the family
   - which is what `tools/verify/import_basicmachines.ps1` writes.
@@ -272,8 +280,11 @@ stored on disk so that a session can be continued later.
   the frames of a strip by `tools/verify/import_batteries.ps1`, so the icon of a stack follows what is left in
   it, see `BatteryIcon`; `gradlew :core:test` writes `core/build/reports/battery-preview.png`, the fifteen
   cells of the table full and spent and the fill of a window at every amount of charge.
-  **A machine takes no battery**: a machine of the line is fed by the power of its line and by nothing else, so
-  what a charge is put back into is a battery box, which the game does not have yet, see `MachineEnergyStorage`.
+  **A machine takes no battery.** What a machine of the line runs on is the power of its line and, by hand, a
+  piece of redstone dust: the cell of energy at the foot of its panel is a slot a player fills, and the dust is
+  burned in the buffer of the machine - eight hundred units a piece, one piece a frame and never one that would
+  not fit whole. What a charge is put back into is a battery box, which the game does not have yet, see
+  `Reagents` and `MachineEnergyStorage`.
   A cell is held and not swung, so it is listed with the materials of the creative inventory. The fifteen
   cells take the item ids 865 to 879, right behind the machines of the line, so nothing that a stored world or
   a stored inventory names has moved and no version is refused, see `Items#BATTERY_FIRST_ID`.
@@ -553,7 +564,7 @@ stored on disk so that a session can be continued later.
 | `energy` | the power of the game: one line of cables and what it carries and loses a tick (`EnergyNet`), the net of a world with the machines that hang on the sides their plugs lie on (`EnergyGrid`) and the buffer of a tier a line is measured against (`EnergyAcceptor`) |
 | `block` | block types, the six faces of a cube, the id/name lookup table (ids are stable across save games), and the shape of a block: `block.model` reads the models, `block.state` the states |
 | `blockentity` | what a block carries beyond its id and its state: the base class, the type registry, the machine behind a block and the container that keeps items |
-| `machine` | what a machine is built from: slots and tanks with a role, energy (the buffer of a tier, `MachineEnergyStorage`), the recipes it runs and the side of the block each of those is reached through (`FaceConfig`, `MachineSides`, `FaceClick`) |
+| `machine` | what a machine is built from: slots and tanks with a role, energy (the buffer of a tier, `MachineEnergyStorage`), the reagent a machine is fed with by hand (`Reagents`), the recipes it runs and the side of the block each of those is reached through (`FaceConfig`, `MachineSides`, `FaceClick`) |
 | `recipe` | the files behind `assets/recipes`: what a recipe is, the grid it is offered, the loader that reads a file, and the work field of nine cells a table of the workshop holds |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
 | `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), the cell of energy an item may carry (`Battery`, `Batteries`), and the sinks broken blocks hand items to |

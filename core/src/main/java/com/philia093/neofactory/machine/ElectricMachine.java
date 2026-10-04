@@ -1,6 +1,7 @@
 package com.philia093.neofactory.machine;
 
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.recipe.EnergyRecipe;
 import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.world.TickClock;
@@ -63,6 +64,10 @@ public class ElectricMachine extends RecipeMachine {
 
     /**
      * Creates a machine of the electric age.
+     * <p>
+     * <b>The machine adds the shelf it is fed with to the slots of its family.</b> A machine of the line takes
+     * power in over a line of cables, and the cell of energy at the foot of its panel is a slot of its own so
+     * that a player may feed it by hand instead, see {@link Reagents} and {@link MachineInventory#withRole}.
      *
      * @param screen how this machine is shown, see {@link MachineScreen}
      * @param inventory inventory whose slots carry the roles of the machine
@@ -72,7 +77,8 @@ public class ElectricMachine extends RecipeMachine {
      */
     protected ElectricMachine(MachineScreen screen, MachineInventory inventory, Voltage tier,
             int maxAmps, List<RecipeType> recipeTypes) {
-        this(screen, inventory, recipeTypes, tier, Math.max(1, maxAmps), bufferOf(tier, maxAmps));
+        this(screen, inventory.withRole(MachineInventory.Role.ENERGY), recipeTypes, tier,
+                Math.max(1, maxAmps), bufferOf(tier, maxAmps));
     }
 
     /** Creates a machine whose buffer was built before this constructor, so that the field is set once. */
@@ -120,6 +126,58 @@ public class ElectricMachine extends RecipeMachine {
     /** Energy the buffer of this machine holds, {@value #BUFFER_TICKS} ticks of the tier it was built for. */
     public int bufferCapacity() {
         return buffer.capacity();
+    }
+
+    /** Index of the shelf this machine is fed by hand with, in the inventory of the machine. */
+    public int reagentSlot() {
+        return inventory().slotOf(MachineInventory.Role.ENERGY);
+    }
+
+    /**
+     * Burns one piece of the reagent that lies in the shelf of the machine, if the whole of one fits.
+     * <p>
+     * <b>A machine of the line is fed twice and this is the second way.</b> A player who has no line yet puts
+     * redstone dust into the cell of energy at the foot of the panel, and every frame the machine takes one
+     * piece of it and fills its own buffer with what it is worth - the same door a generator fills its buffer
+     * through, and not the one a line meets, see {@link MachineEnergyStorage#make(int)}.
+     * <p>
+     * <b>Nothing is burned that would be lost.</b> A piece that does not fit into the room left in the buffer
+     * whole is left in the shelf until the machine has spent enough of what it holds, so a player never pays
+     * for five hundred units of a piece that is worth eight hundred. A shelf that holds no reagent - which is
+     * every machine that was never filled by hand - burns nothing at all.
+     */
+    private void burnReagent() {
+        int slot = reagentSlot();
+        if (slot < 0) {
+            return;
+        }
+        ItemStack reagent = inventory().get(slot);
+        int worth = Reagents.energyOf(reagent);
+        if (worth <= 0 || buffer.capacity() - buffer.amount() < worth) {
+            return;
+        }
+        buffer.make(worth);
+        if (reagent.count() <= 1) {
+            inventory().set(slot, ItemStack.EMPTY);
+        } else {
+            reagent.setCount(reagent.count() - 1);
+        }
+    }
+
+    /**
+     * Advances the machine by one frame, burning the reagent in its shelf before the frame is worked on.
+     * <p>
+     * The dust of a machine that is fed by hand is part of the frame it pays for: what it is worth lies in the
+     * buffer before the recipe of that frame is asked to pay for itself - and before the block that carries the
+     * machine reaches for the line of its plug, so a machine that is fed by hand takes from the line only what
+     * the dust did not cover, see {@code MachineBlockEntity#updateEnergy}.
+     *
+     * @param delta time since the last frame in seconds, always positive
+     */
+    @Override
+    protected void update(float delta) {
+        burnReagent();
+        super.update(delta);
     }
 
     /**

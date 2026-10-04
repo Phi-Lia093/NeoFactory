@@ -110,6 +110,45 @@ public final class ContainerMenu {
         Tank tankAt(int localX, int localY);
     }
 
+    /**
+     * What a slot of the other side of a container is good for, beyond the rule it was laid out with.
+     * <p>
+     * <b>A container of the player takes everything anywhere; a machine does not.</b> The cell of energy at the
+     * foot of a machine is a slot a player fills by hand, and what may be put into it is the reagent the
+     * machine burns and nothing else - a machine that swallowed whatever was dropped on it would be a machine
+     * that is filled with junk by accident. The same screen speaks for the box of that slot: what a player
+     * reads there is how much power the machine holds and never the name of a piece of redstone. A container
+     * without such a slot answers both questions the way every slot of an inventory does, see
+     * {@link com.philia093.neofactory.machine.MachineMenu}.
+     */
+    public interface SlotRules {
+
+        /**
+         * {@code true} when a slot may hold this stack.
+         *
+         * @param slot slot the stack would go into
+         * @param stack stack a player is about to place, never empty
+         * @return {@code true} when the slot takes it
+         */
+        default boolean accepts(Slot slot, ItemStack stack) {
+            return true;
+        }
+
+        /**
+         * {@code true} when the box of a hovered slot names the stack that lies in it.
+         *
+         * @param slot slot under the mouse
+         * @return {@code true} when the name of the item is what a player reads there
+         */
+        default boolean namesItsStack(Slot slot) {
+            return true;
+        }
+
+        /** The rules of a container whose slots say nothing of their own. */
+        SlotRules PLAIN = new SlotRules() {
+        };
+    }
+
     private ContainerLayout layout;
 
     /** Inventory the other side of the container belongs to, see {@link #touchDown}. */
@@ -123,6 +162,9 @@ public final class ContainerMenu {
 
     /** Finds the tank of a machine under a click, {@code null} for a container without tanks. */
     private TankFinder tankFinder;
+
+    /** What the slots of the other side are good for beyond the rule they were laid out with. */
+    private SlotRules slotRules = SlotRules.PLAIN;
 
     /** {@code true} when items that find no place are destroyed, see {@link #setVoidsOverflow}. */
     private boolean voidsOverflow;
@@ -416,6 +458,44 @@ public final class ContainerMenu {
     }
 
     /**
+     * Sets what the slots of the other side are good for beyond the rule they were laid out with.
+     * <p>
+     * A container of the player takes every item anywhere and names what a slot holds, which is what a
+     * container does without this call; a screen that shows a machine hands its own rules over, see
+     * {@link SlotRules}.
+     *
+     * @param slotRules rules to ask, never {@code null}
+     */
+    public void setSlotRules(SlotRules slotRules) {
+        this.slotRules = Objects.requireNonNull(slotRules, "slotRules");
+    }
+
+    /**
+     * {@code true} when a slot of this container may hold this stack.
+     * <p>
+     * A click that puts an item into a slot that does not take it moves nothing at all: the stack stays on
+     * the mouse, the slot keeps what it held, and a drag over such a slot leaves the carried stack where it
+     * was, see {@link SlotRules#accepts}.
+     *
+     * @param slot slot the stack would go into
+     * @param stack stack a player is about to place, never empty
+     * @return {@code true} when the slot takes it
+     */
+    public boolean accepts(Slot slot, ItemStack stack) {
+        return slotRules.accepts(slot, stack);
+    }
+
+    /**
+     * {@code true} when the box of a hovered slot names the stack that lies in it.
+     *
+     * @param slot slot under the mouse
+     * @return {@code true} when the name of the item is what a player reads there
+     */
+    public boolean namesItsStack(Slot slot) {
+        return slotRules.namesItsStack(slot);
+    }
+
+    /**
      * Slot under a point of the panel.
      *
      * @param localX X coordinate relative to the panel
@@ -578,7 +658,7 @@ public final class ContainerMenu {
      * @return the amount that fit, {@code 0} when the slot cannot take any
      */
     private int put(Slot slot, int amount) {
-        if (cursor.isEmpty() || amount <= 0 || slot.isOutput()) {
+        if (cursor.isEmpty() || amount <= 0 || slot.isOutput() || !accepts(slot, cursor)) {
             return 0;
         }
         ItemStack stored = slot.stack();
@@ -742,6 +822,10 @@ public final class ContainerMenu {
             }
             return;
         }
+        if (!accepts(slot, cursor)) {
+            // A slot with a job of its own takes only what that job is fed with, see SlotRules.
+            return;
+        }
         if (stored.isEmpty()) {
             slot.set(cursor);
             cursor = ItemStack.EMPTY;
@@ -782,6 +866,10 @@ public final class ContainerMenu {
             }
             // A result is always taken as a whole, splitting it makes no sense.
             moveWholeStack(slot);
+            return;
+        }
+        if (!cursor.isEmpty() && !accepts(slot, cursor)) {
+            // A slot with a job of its own takes only what that job is fed with, see SlotRules.
             return;
         }
         ItemStack stored = slot.stack();
@@ -826,9 +914,9 @@ public final class ContainerMenu {
             return;
         }
         boolean toPlayer = slot.inventory() != playerSide;
-        int leftover = moveInto(moving, candidate -> toPlayer
+        int leftover = moveInto(moving, candidate -> accepts(candidate, moving) && (toPlayer
                 ? candidate.inventory() == playerSide
-                : candidate.inventory() != playerSide && !candidate.isOutput());
+                : candidate.inventory() != playerSide && !candidate.isOutput()));
         if (leftover > 0) {
             if (voidsOverflow) {
                 // The other side owns every item anyway, see setVoidsOverflow.

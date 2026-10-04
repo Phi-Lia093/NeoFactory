@@ -6,6 +6,7 @@ import com.philia093.neofactory.gui.container.ContainerLayout;
 import com.philia093.neofactory.gui.container.ContainerMenu;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.PlayerInventory;
 
 import java.util.ArrayList;
@@ -227,6 +228,7 @@ public final class MachineMenu {
         MachineStyle style = screen.style();
         addBlock(layout, inventory, inputs, screen.inputs(), true, style);
         addBlock(layout, inventory, outputs, screen.outputs(), false, style);
+        addEnergySlot(layout, inventory, style);
         this.fluidSlots = buildFluidSlots(machine, screen);
         layout.addGrid(PLAYER_LEFT, PLAYER_STORAGE_TOP, PLAYER_COLUMNS, PLAYER_STORAGE_ROWS, player,
                 PlayerInventory.HOTBAR_SLOTS, Slot.Rule.NORMAL);
@@ -236,6 +238,63 @@ public final class MachineMenu {
         // The tanks of the machine are not slots of the container - nothing is ever put into them - so the
         // container asks back here when a click lands on one, see ContainerMenu#setTankFinder.
         container.setTankFinder(this::tankAt);
+        // The cell of energy of a machine of the line is a slot and not a picture of how full the buffer is,
+        // so the container asks back here for what may lie in it and for what its box says, see SlotRules.
+        container.setSlotRules(new ContainerMenu.SlotRules() {
+
+            @Override
+            public boolean accepts(Slot slot, ItemStack stack) {
+                return !isEnergySlot(slot) || Reagents.isReagent(stack);
+            }
+
+            @Override
+            public boolean namesItsStack(Slot slot) {
+                return !isEnergySlot(slot);
+            }
+        });
+    }
+
+    /**
+     * Places the cell of energy at the foot of the panel, the one place a machine is fed by hand.
+     * <p>
+     * <b>The cell is a slot and not a bar.</b> What it shows is not how full the buffer of the machine is but
+     * what a player put into it - a piece of the reagent the machine burns - and what the buffer holds is what
+     * its box names while the mouse rests on it, see {@link #energyTooltip(boolean)} and
+     * {@link com.philia093.neofactory.machine.ElectricMachine}. A machine that may not be fed by hand - a
+     * machine of steam, a generator - keeps the cell as a picture of its own state and this adds no slot, see
+     * {@link MachineInventory.Role#ENERGY}.
+     *
+     * @param layout layout of the panel
+     * @param inventory inventory of the machine
+     * @param style style the machine is drawn in
+     */
+    private static void addEnergySlot(ContainerLayout layout, MachineInventory inventory,
+            MachineStyle style) {
+        int slot = inventory.slotOf(MachineInventory.Role.ENERGY);
+        if (slot < 0) {
+            return;
+        }
+        layout.add(ENERGY_X, FOOT_TOP, inventory, slot, Slot.Rule.NORMAL,
+                iconColumn(SlotKind.BATTERY, style), iconRow(SlotKind.BATTERY, style));
+    }
+
+    /**
+     * Index of the cell of energy in the inventory of the machine.
+     *
+     * @return the slot a player feeds the machine through, {@code -1} for a machine that is not fed by hand
+     */
+    public int energySlot() {
+        return machine.inventory().slotOf(MachineInventory.Role.ENERGY);
+    }
+
+    /** {@code true} when the cell of energy at the foot of the panel is a slot a player fills by hand. */
+    public boolean hasEnergySlot() {
+        return energySlot() >= 0;
+    }
+
+    /** {@code true} when a slot of the layout is the cell of energy of this machine. */
+    private boolean isEnergySlot(Slot slot) {
+        return slot.inventory() == machine.inventory() && slot.index() == energySlot();
     }
 
     /**
@@ -549,18 +608,23 @@ public final class MachineMenu {
     }
 
     /**
-     * Icon the cell of energy at the foot of the panel wears.
+     * Icon the cell of energy at the foot of the panel wears, which is the cell of a battery.
      * <p>
-     * A machine that works on recipes shows a plain cell, drawn the way the slots of its screen are drawn;
-     * <b>a generator shows the cell of the electricity</b>, the icon a battery is put into in the screens of the
-     * original game, because the cell of a machine that makes power is where a player reads its power and not a
-     * cell that was left empty, see {@link ProgressKind#hasBar} and
-     * {@link com.philia093.neofactory.gui.MachineGui#drawEnergy}.
+     * <b>The place where the power of a machine is read is the very cell a battery would be put into in the
+     * screens of the original game</b> - the icon at the column and row of {@link SlotKind#BATTERY} - so a
+     * player reads it as the cell of the power of the machine and not as a slot that was left empty.
+     * <p>
+     * <b>A machine of the line is fed there.</b> Its cell is a slot and a player puts the reagent the machine
+     * burns into it, see {@link Reagents} and {@link #hasEnergySlot}; <b>a generator</b> shows the plain cell
+     * that counts what it makes, and the two of them wear the same picture because they are the same place - a
+     * machine that makes power fills the cell and a machine that works is fed through it. A machine of the age
+     * of steam that works on a recipe has neither a shelf nor a generator behind it, so its cell wears the
+     * plain picture of its own panel, which is what a slot that belongs to no recipe is drawn with.
      *
      * @return kind of the icon of that cell
      */
     public SlotKind energySlotKind() {
-        return progressKind().hasBar() ? SlotKind.GENERIC : SlotKind.BATTERY;
+        return hasEnergySlot() || !progressKind().hasBar() ? SlotKind.BATTERY : SlotKind.GENERIC;
     }
 
     /** Style the machine is drawn in, which is the panel and the slots its screen uses. */

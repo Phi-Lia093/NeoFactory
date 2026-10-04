@@ -185,7 +185,7 @@ public final class ContainerView {
                     mouseX - Constants.ITEM_ICON_SIZE * 0.5f,
                     mouseY - Constants.ITEM_ICON_SIZE * 0.5f);
         }
-        drawTooltip(batch, hovered, mouseX, mouseY);
+        drawTooltip(batch, menu, hovered, mouseX, mouseY);
     }
 
     /**
@@ -232,9 +232,14 @@ public final class ContainerView {
      * The box itself belongs to {@link ItemTooltip}, which the creative inventory draws its own
      * boxes with as well: the name of the item first and, for a material of the game, the chemical
      * formula of it below, see {@link com.philia093.neofactory.item.Item#tooltipLines()}.
+     * <p>
+     * <b>A slot may speak for itself instead.</b> The cell of energy of a machine is a slot a player fills by
+     * hand, and what a player reads there is how much power the machine holds and not the name of a piece of
+     * redstone: the screen of the machine answers that question, so the box of the container steps aside, see
+     * {@link ContainerMenu#namesItsStack}.
      */
-    private void drawTooltip(SpriteBatch batch, Slot slot, float mouseX, float mouseY) {
-        if (slot == null) {
+    private void drawTooltip(SpriteBatch batch, ContainerMenu menu, Slot slot, float mouseX, float mouseY) {
+        if (slot == null || !menu.namesItsStack(slot)) {
             return;
         }
         ItemTooltip.draw(batch, font, textures.whitePixel(), ItemTooltip.linesOf(slot.stack()),

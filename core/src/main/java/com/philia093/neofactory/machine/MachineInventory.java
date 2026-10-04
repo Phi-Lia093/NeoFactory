@@ -6,7 +6,9 @@ import com.philia093.neofactory.recipe.RecipeGrid;
 import com.philia093.neofactory.recipe.SlotGrid;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The inventory of a machine, whose slots have a job.
@@ -28,6 +30,18 @@ public final class MachineInventory extends Inventory {
 
         /** Holds what the machine made, a screen only lets a player take it out. */
         OUTPUT,
+
+        /**
+         * Holds what the machine is fed with by hand, a piece of redstone dust for a machine of the line.
+         * <p>
+         * <b>Not every machine is fed that way.</b> A machine of the electrical age is fed over a line of
+         * cables, and this is the shelf a player may fill instead of building one - the cell of energy at the
+         * foot of its panel. A machine that runs on a flame or on steam has no such shelf, so this role is
+         * declared by the machines that take it and by no other, see {@link Reagents} and
+         * {@link ElectricMachine}. What may lie in the slot is the reagent and nothing else: a machine that
+         * swallowed whatever a player dropped on it would be a machine filled with junk by accident.
+         */
+        ENERGY,
 
         /**
          * Holds a module the machine itself reads while it works.
@@ -73,6 +87,26 @@ public final class MachineInventory extends Inventory {
      */
     public Role role(int slot) {
         return roles[slot];
+    }
+
+    /**
+     * The slots of this inventory with one more role behind them, as a new inventory.
+     * <p>
+     * <b>A machine adds what its family does not declare.</b> The table of {@code MachineFamilies} writes down
+     * the slots a recipe works on, which every machine of a family has in common - while the shelf a machine
+     * of the line is fed with by hand belongs to the machines that take power in and not to the family, see
+     * {@link ElectricMachine}. The role stands behind the ones of the family, so the slot a recipe reads and
+     * the slot a screen draws keep the places they had, and the inventory of a machine that names no role of
+     * its own is the one of its family.
+     *
+     * @param role role to add
+     * @return a new inventory holding the roles of this one and the given one behind them
+     */
+    public MachineInventory withRole(Role role) {
+        Objects.requireNonNull(role, "role");
+        Role[] extended = Arrays.copyOf(roles, roles.length + 1);
+        extended[roles.length] = role;
+        return new MachineInventory(extended);
     }
 
     /**
