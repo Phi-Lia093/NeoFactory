@@ -133,8 +133,7 @@ public final class Batteries {
      * <b>A tier is four times the one below it</b>, because that is what the ladder of the voltages does:
      * a line of the middle voltage carries four times what one of the low voltage carries, so a cell that
      * feeds it has to hold four times as much to last the same time. The amounts of the table are what a
-     * player is shown in the tooltip of an item, see
-     * {@link com.philia093.neofactory.item.ItemTooltip}.
+     * player reads in the tooltip of a cell, see {@code ItemTooltip}.
      *
      * @param chemistry what is inside the cell
      * @param voltage   tier the cell was built for

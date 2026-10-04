@@ -2,6 +2,7 @@ package com.philia093.neofactory.gui.creative;
 
 import com.badlogic.gdx.Input;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.item.Batteries;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
@@ -164,6 +165,25 @@ class CreativeInventoryTest {
         assertFalse(tab("machines").matches(Items.CHEST),
                 "and no machine, because a container works on nothing");
         assertTrue(creative.matches().contains(Items.CHEST), "the chest is listed with the blocks");
+    }
+
+    @Test
+    void theCellsOfTheIndustryAreListedWithTheMaterials() {
+        CreativeInventory creative = new CreativeInventory();
+        creative.select(indexOfTab("materials"));
+
+        Item battery = ItemRegistry.byName("battery_acid_lv");
+        assertTrue(tab("materials").matches(battery), "a cell of energy is a thing a player carries");
+        assertFalse(tab("machines").matches(battery), "and no machine, because it works on nothing");
+        assertFalse(tab("tools").matches(ItemRegistry.byName("battery_lithium_hv")),
+                "a cell is held and not swung at a block");
+        assertFalse(tab("blocks").matches(ItemRegistry.byName("battery_lithium_hv")));
+
+        for (Batteries.Cell cell : Batteries.all()) {
+            Item item = ItemRegistry.byName(Batteries.itemNameOf(cell));
+            assertTrue(creative.matches().contains(item),
+                    Batteries.itemNameOf(cell) + " is listed with the materials");
+        }
     }
 
     @Test

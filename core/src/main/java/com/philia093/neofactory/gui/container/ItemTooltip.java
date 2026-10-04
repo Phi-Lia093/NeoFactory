@@ -3,6 +3,7 @@ package com.philia093.neofactory.gui.container;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.philia093.neofactory.item.Battery;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
@@ -27,12 +28,20 @@ import java.util.List;
  * <p>
  * A stack that wears out names what is left of it under the formula: a pickaxe reads its name, the
  * formula of its material and how much life is still in it, which is the same number the bar of its
- * slot shows, see {@link com.philia093.neofactory.item.Damageable}.
+ * slot shows, see {@link com.philia093.neofactory.item.Damageable}. <b>A cell of energy is read the
+ * same way and under another word</b>: what is left of a battery is its charge, and the line the bar
+ * of its slot counts up is named as what it is, see {@link com.philia093.neofactory.item.Battery}.
  */
 public final class ItemTooltip {
 
     /** Word the line about the life of a piece starts with. */
     public static final String LIFE_LABEL = "Durability: ";
+
+    /** Word the line about the charge of a cell starts with. */
+    public static final String CHARGE_LABEL = "Charge: ";
+
+    /** Unit the charge of a cell is counted in, the unit the industry moves its power in. */
+    public static final String CHARGE_UNIT = " EU";
 
     /** Distance between the mouse and the nearest corner of the box. */
     public static final int OFFSET = 12;
@@ -57,7 +66,11 @@ public final class ItemTooltip {
      * Lines the tooltip of a stack is drawn from.
      * <p>
      * A stack that wears out adds what is left of it, so a pickaxe names its material and its life
-     * while a stone names itself, see {@link com.philia093.neofactory.item.Damageable}.
+     * while a stone names itself, see {@link com.philia093.neofactory.item.Damageable}. A battery is
+     * asked as a cell rather than as a piece that wears: the same number is named, under the word of
+     * its charge and in the unit the industry counts power in, see
+     * {@link com.philia093.neofactory.item.Battery}. The item of a cell has no charge of its own, so a
+     * cell in a list of items names only itself.
      *
      * @param stack stack under the mouse, may be {@code null}
      * @return the lines, empty for a stack that holds nothing
@@ -67,7 +80,17 @@ public final class ItemTooltip {
             return List.of();
         }
         List<String> lines = linesOf(stack.item());
-        if (lines.isEmpty() || !stack.isDamageable()) {
+        if (lines.isEmpty()) {
+            return lines;
+        }
+        Battery battery = stack.item().battery();
+        if (battery != null) {
+            List<String> charged = new ArrayList<>(lines);
+            charged.add(CHARGE_LABEL + battery.chargeOf(stack) + " / " + battery.capacity()
+                    + CHARGE_UNIT);
+            return charged;
+        }
+        if (!stack.isDamageable()) {
             return lines;
         }
         List<String> withLife = new ArrayList<>(lines);
