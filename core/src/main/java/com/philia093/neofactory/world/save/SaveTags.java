@@ -215,6 +215,15 @@ public final class SaveTags {
      */
     public static final String SCORCHED = "Scorched";
 
+    /**
+     * {@code true} while a transformer of the line steps the voltage of its two ends down.
+     * <p>
+     * Which end of a transformer takes the power in is what a player sets with a mallet and not what the block
+     * is built with, so it travels with the machine and has to survive a save game, see
+     * {@code TransformerMachine}.
+     */
+    public static final String STEPPING_DOWN = "SteppingDown";
+
     /** List of the block entities of a chunk. */
     public static final String BLOCK_ENTITIES = "BlockEntities";
 

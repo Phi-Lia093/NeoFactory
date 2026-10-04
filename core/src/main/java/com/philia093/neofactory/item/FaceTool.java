@@ -27,6 +27,17 @@ public enum FaceTool {
     /** The wrench, the tool that turns a machine and opens a pipe. */
     WRENCH,
 
+    /**
+     * The mallet, the tool a machine that was built one way is turned around with.
+     * <p>
+     * A wrench sets what a side of a machine is for; a mallet does not set a side at all but <b>turns a whole
+     * block around</b>: a transformer of the line is built with one side of the high voltage and five of the
+     * low one, and a player who knocks on it with a mallet says which end of it takes the power in. A mallet
+     * is soft - it sets nothing and wakes nothing - which is why a machine that is built with a recipe of its
+     * own reads it as no tool at all.
+     */
+    MALLET,
+
     /** The wire cutter, the tool that cuts a line. */
     WIRE_CUTTER,
 

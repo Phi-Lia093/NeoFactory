@@ -134,4 +134,25 @@ public final class ItemRegistry {
     public static int count() {
         return BY_NAME.size();
     }
+
+    /**
+     * The id a new item is registered with, one behind the last one that was.
+     * <p>
+     * <b>An item that arrives after the table was filled takes the next number and moves nothing.</b> Every
+     * run of items of the game is written down in the order it was planned and registered from the id its run
+     * starts at, so the highest number in the table is the end of the last run of it: a tool that is added
+     * later - the mallet of the workshop, which arrived after the materials - is registered behind all of them
+     * here, see {@code Items#registerAll} and {@code MaterialIdSpaceTest}.
+     *
+     * @return the number, which is one greater than every id in the table
+     */
+    public static int nextId() {
+        int highest = 0;
+        for (int id = 0; id < BY_ID.size(); id++) {
+            if (BY_ID.get(id) != null) {
+                highest = id;
+            }
+        }
+        return highest + 1;
+    }
 }

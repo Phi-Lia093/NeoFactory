@@ -681,6 +681,9 @@ public final class Items {
     public static Item IRON_SWORD;
     /** The wrench, the tool that opens a side of a pipe and turns what stands built. */
     public static Item WRENCH;
+
+    /** The mallet, the soft hammer a player turns a whole block around with. */
+    public static Item MALLET;
     /** Diamond pickaxe. */
     public static Item DIAMOND_PICKAXE;
     /** Diamond axe. */
@@ -1247,6 +1250,22 @@ public final class Items {
         // here, right before the table closes, so that they append behind every item written above
         // and none of those ids moves, see Materials.
         Materials.registerAll();
+
+        // And the mallet of the workshop, which arrived after every run of items the game was planned with
+        // and therefore takes the number behind all of them: <b>nothing that a stored inventory names
+        // moved</b>, which is why a tool can join the game without a new version of the save format, see
+        // ItemRegistry#nextId. It is the second tool a player holds at a face of a block - the wrench sets
+        // what a side is for and the mallet turns a whole block around - and it is the tool a transformer of
+        // the line is built around, see FaceTool#MALLET.
+        MALLET = register(Item.builder(ItemRegistry.nextId(), "mallet")
+                .displayName("Mallet")
+                .texture(Item.ITEM_FOLDER + "mallet")
+                .maxStackSize(Item.SINGLE_ITEM_STACK)
+                .toolType(ToolType.WRENCH)
+                .toolLevel(HAND_TOOL_LEVEL)
+                .maxDamage(WRENCH_DURABILITY)
+                .faceTool(FaceTool.MALLET)
+                .build());
 
         ItemRegistry.freeze();
     }
