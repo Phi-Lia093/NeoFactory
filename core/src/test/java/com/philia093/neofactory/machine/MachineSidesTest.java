@@ -8,6 +8,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -58,6 +60,28 @@ class MachineSidesTest {
             }
             assertEquals(BlockFace.ALL.length, names.size(), "every side of a machine has a name");
         }
+    }
+
+    @Test
+    void aMachineThatLooksNowhereNamesItsSidesTheWayTheWorldDoes() {
+        // A box of cells has no front to read a word from, so its sides are the sides of the world.
+        for (BlockFace side : BlockFace.SIDES) {
+            assertEquals(side.name(), MachineSides.nameOf(null, side));
+            assertEquals(side, MachineSides.sideOf(null, MachineSides.worldNameOf(side)),
+                    "the name of a side of the world stands for that side");
+        }
+        assertEquals(MachineSides.UP, MachineSides.nameOf(null, BlockFace.TOP));
+        assertEquals(MachineSides.DOWN, MachineSides.nameOf(null, BlockFace.BOTTOM));
+        assertEquals(MachineSides.NONE, MachineSides.nameOf(null, null),
+                "a side that carries nothing is named as such");
+        assertNull(MachineSides.sideOf(null, MachineSides.FRONT),
+                "while a word about a front names no side of a machine that has none");
+        assertNull(MachineSides.sideOf(null, MachineSides.LEFT));
+
+        // A machine without a front has neither flanks nor a front to walk from.
+        assertThrows(IllegalArgumentException.class, () -> MachineSides.leftOf(null));
+        assertThrows(IllegalArgumentException.class, () -> MachineSides.rightOf(null));
+        assertThrows(IllegalArgumentException.class, () -> MachineSides.order(null));
     }
 
     @Test

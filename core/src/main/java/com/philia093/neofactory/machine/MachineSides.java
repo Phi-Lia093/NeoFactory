@@ -5,6 +5,7 @@ import com.philia093.neofactory.block.BlockFace;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * The names a player reads for the sides of a machine, and the order the wheel walks them in.
@@ -20,6 +21,13 @@ import java.util.Locale;
  * only mean something while the front is horizontal - a machine that looked at the ceiling would have no
  * left flank - so a machine that is turned keeps to the four sides of the horizon, see
  * {@code MachineBlockEntity#operateFace}.
+ * <p>
+ * <b>A machine without a front names its sides the way the world does.</b> A box of cells is the same from
+ * every side of it: it carries no mouth a player stands in front of, no side of it is the one that carries
+ * nothing, and the words {@code LEFT}, {@code RIGHT} and {@code BACK} would have nothing to be read from, see
+ * {@link #nameOf(BlockFace, BlockFace)} and {@code FaceConfig#withoutFront}. Such a machine is reached over
+ * {@code NORTH}, {@code EAST}, {@code SOUTH}, {@code WEST}, {@code UP} and {@code DOWN} instead, which is the
+ * name of a side of the world and needs no front to mean something.
  * <p>
  * <b>The order is the one a player reads.</b> {@link #order(BlockFace)} lists the six sides the way the
  * wheel of the interface walks them, which is also the order the tooltip of a tank names them in.
@@ -84,6 +92,10 @@ public final class MachineSides {
      * @throws IllegalArgumentException when the machine does not look along the horizon
      */
     public static BlockFace leftOf(BlockFace facing) {
+        if (!isHorizontal(facing)) {
+            throw new IllegalArgumentException("A machine looks along the horizon and not " + facing
+                    + ", so it has no flanks at all");
+        }
         return switch (facing) {
             case NORTH -> BlockFace.EAST;
             case EAST -> BlockFace.SOUTH;
@@ -102,6 +114,10 @@ public final class MachineSides {
      * @throws IllegalArgumentException when the machine does not look along the horizon
      */
     public static BlockFace rightOf(BlockFace facing) {
+        if (!isHorizontal(facing)) {
+            throw new IllegalArgumentException("A machine looks along the horizon and not " + facing
+                    + ", so it has no flanks at all");
+        }
         return switch (facing) {
             case NORTH -> BlockFace.WEST;
             case EAST -> BlockFace.NORTH;
@@ -117,8 +133,13 @@ public final class MachineSides {
      *
      * @param facing side the machine looks in
      * @return the sides, the front first
+     * @throws IllegalArgumentException when the machine does not look along the horizon
      */
     public static List<BlockFace> order(BlockFace facing) {
+        if (!isHorizontal(facing)) {
+            throw new IllegalArgumentException("A machine looks along the horizon and not " + facing
+                    + ", so its front comes first of nothing");
+        }
         List<BlockFace> sides = new ArrayList<>(BlockFace.ALL.length);
         sides.add(facing);
         sides.add(facing.opposite());
@@ -131,8 +152,13 @@ public final class MachineSides {
 
     /**
      * The name of one side of a machine.
+     * <p>
+     * A machine that looks somewhere names its sides from that front, see the note on this class. <b>A machine
+     * without a front - a box of cells - names the side by the side of the world it lies on</b>, because
+     * {@code LEFT} and {@code BACK} are words about a front and such a machine has none, see
+     * {@link #worldNameOf(BlockFace)}.
      *
-     * @param facing side the machine looks in
+     * @param facing side the machine looks in, {@code null} for a machine without a front
      * @param side side to name, {@code null} for a side that carries nothing
      * @return the name a player reads, {@link #NONE} for a side that carries nothing
      * @throws IllegalArgumentException when the side is no side of that machine
@@ -140,6 +166,9 @@ public final class MachineSides {
     public static String nameOf(BlockFace facing, BlockFace side) {
         if (side == null) {
             return NONE;
+        }
+        if (facing == null) {
+            return worldNameOf(side);
         }
         if (side == facing) {
             return FRONT;
@@ -163,10 +192,29 @@ public final class MachineSides {
     }
 
     /**
+     * The name of a side of the world, which is what a machine without a front names its sides by.
+     * <p>
+     * The four sides of the horizon carry their own name - {@code NORTH}, {@code EAST}, {@code SOUTH} and
+     * {@code WEST} - while the ceiling and the floor of the world are named the way every machine names them,
+     * {@code UP} and {@code DOWN}, see {@link #UP} and {@link #DOWN}.
+     *
+     * @param side side of the world to name
+     * @return the name a player reads
+     */
+    public static String worldNameOf(BlockFace side) {
+        Objects.requireNonNull(side, "side");
+        return switch (side) {
+            case TOP -> UP;
+            case BOTTOM -> DOWN;
+            default -> side.name();
+        };
+    }
+
+    /**
      * The side a name stands for.
      *
-     * @param facing side the machine looks in
-     * @param name name such as {@code LEFT}, in any case
+     * @param facing side the machine looks in, {@code null} for a machine without a front
+     * @param name name such as {@code LEFT} or {@code NORTH}, in any case
      * @return the side, or {@code null} for {@link #NONE} or a name no side of a machine carries
      */
     public static BlockFace sideOf(BlockFace facing, String name) {

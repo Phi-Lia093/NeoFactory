@@ -39,6 +39,13 @@ import java.util.function.Consumer;
  * gives an exhaust. A machine that holds no tank of a kind and no such buffer has no side of it - there is
  * nothing to configure, which is why the shape of the sides is built once in the constructor from the parts
  * of the machine and never asks a screen or a block.
+ * <p>
+ * <b>A machine may have no front at all.</b> A box of cells is the same from every side of it and a player
+ * never stands in front of one, so no side of it is the one that carries nothing and every side of it may
+ * take a job: {@link #withoutFront()} hands such a machine to the parts it holds and clears the front, which
+ * is what the last line of the rule above rests on. Such a machine names its sides the way the world does -
+ * {@code NORTH}, {@code UP} and the rest - because the words {@code LEFT}, {@code BACK} and {@code FRONT} are
+ * words about a front, see {@link MachineSides#nameOf(BlockFace, BlockFace)}.
  */
 public final class FaceConfig {
 
@@ -74,6 +81,16 @@ public final class FaceConfig {
     private static final List<String> WALK = List.of(MachineSides.NONE, MachineSides.BACK, MachineSides.UP,
             MachineSides.DOWN, MachineSides.LEFT, MachineSides.RIGHT);
 
+    /**
+     * The words a part of a machine without a front is walked through by the wheel of its screen.
+     * <p>
+     * Such a machine has no back and no flanks to read a word from, so the wheel walks the six sides of the
+     * world instead, see {@link MachineSides#worldNameOf(BlockFace)}.
+     */
+    private static final List<String> WORLD_WALK = List.of(MachineSides.NONE, BlockFace.NORTH.name(),
+            BlockFace.EAST.name(), BlockFace.SOUTH.name(), BlockFace.WEST.name(), MachineSides.UP,
+            MachineSides.DOWN);
+
     /** Role of every tank of the machine, in the order {@link Machine#tank(int)} names them. */
     private final MachineTank.Role[] tankRoles;
 
@@ -98,7 +115,7 @@ public final class FaceConfig {
     /** Side the spent steam blows out of, {@code null} for a machine that breathes not. */
     private String exhaust;
 
-    /** Side of the world the front of this machine looks in, which every word above is read from. */
+    /** Side of the world the front of this machine looks in, {@code null} for a machine without a front. */
     private BlockFace facing = MachineSides.DEFAULT_FRONT;
 
     /**
@@ -130,6 +147,44 @@ public final class FaceConfig {
             exhaust = BACK_DEFAULT;
         }
         return this;
+    }
+
+    /**
+     * Takes the front of this machine away: it is then the same from every side of it.
+     * <p>
+     * <b>A box of cells has no mouth and no back.</b> A machine of the game is built with its front to the
+     * north and that front carries no job at all, see the note on this class - while a box of cells is built
+     * for a player to put things into from wherever they stand: no side of it is the one that carries
+     * nothing, and every side of it may be given a job, which is what a machine without a front answers.
+     * <p>
+     * <b>The sides the parts already stand on are kept.</b> They are read from the front the machine was built
+     * with one last time and written down as sides of the world, so a box that nobody touched keeps the two
+     * sides its plugs were put on - power in on the back of a machine that looks north, which is the south of
+     * the box, and power out on its left flank, which is the east of it. Called while a machine is created and
+     * before anything is read from it, the way {@link #withExhaust()} is.
+     *
+     * @return this configuration, for a machine that builds it in one expression
+     */
+    public FaceConfig withoutFront() {
+        energyIn = worldWord(energyIn);
+        energyOut = worldWord(energyOut);
+        exhaust = worldWord(exhaust);
+        for (int index = 0; index < tanks.length; index++) {
+            tanks[index] = worldWord(tanks[index]);
+        }
+        facing = null;
+        return this;
+    }
+
+    /**
+     * A word of this machine read from the front it stands on, as the side of the world it means.
+     *
+     * @param name word to read, {@code null} for a part that is reached from nowhere
+     * @return the name of that side of the world, {@code null} for nothing at all
+     */
+    private String worldWord(String name) {
+        BlockFace side = sideOf(name);
+        return side == null ? null : MachineSides.worldNameOf(side);
     }
 
     /**
@@ -186,9 +241,14 @@ public final class FaceConfig {
         return blowsSteam;
     }
 
-    /** Side of the world the front of this machine looks in, which every word above is read from. */
+    /** Side of the world the front of this machine looks in, {@code null} for a machine without a front. */
     public BlockFace facing() {
         return facing;
+    }
+
+    /** {@code true} when this machine has a front, the one side of it that carries no job at all. */
+    public boolean hasFront() {
+        return facing != null;
     }
 
     /**
@@ -198,11 +258,14 @@ public final class FaceConfig {
      * assignment are read from the front, so a machine that is turned keeps every side a player gave it - the
      * tank that was reached over the right flank is reached over the right flank of the new front as well -
      * and no side of it can ever cover the face the machine shows, see {@link MachineSides}.
+     * <p>
+     * <b>A machine without a front has none to be turned towards</b>, see {@link #withoutFront()}: the sides
+     * of the world it was given are the sides it answers with, and this does nothing at all.
      *
      * @param facing side of the world the front looks in, one of the four sides of the horizon
      */
     public void facing(BlockFace facing) {
-        if (MachineSides.isHorizontal(facing)) {
+        if (hasFront() && MachineSides.isHorizontal(facing)) {
             this.facing = facing;
         }
     }
@@ -279,7 +342,7 @@ public final class FaceConfig {
      * @return {@code true} when the sides changed
      */
     public boolean setEnergyIn(BlockFace face) {
-        if (!takesPower || face == facing) {
+        if (!takesPower || (hasFront() && face == facing)) {
             return false;
         }
         return assign(face, name -> energyIn = name, energyIn);
@@ -292,7 +355,7 @@ public final class FaceConfig {
      * @return {@code true} when the sides changed
      */
     public boolean setEnergyOut(BlockFace face) {
-        if (!givesPower || face == facing) {
+        if (!givesPower || (hasFront() && face == facing)) {
             return false;
         }
         return assign(face, name -> energyOut = name, energyOut);
@@ -305,7 +368,7 @@ public final class FaceConfig {
      * @return {@code true} when the sides changed
      */
     public boolean setExhaust(BlockFace face) {
-        if (!blowsSteam || face == facing) {
+        if (!blowsSteam || (hasFront() && face == facing)) {
             return false;
         }
         return assign(face, name -> exhaust = name, exhaust);
@@ -319,7 +382,7 @@ public final class FaceConfig {
      * @return {@code true} when the sides changed
      */
     public boolean setTank(int index, BlockFace face) {
-        if (index < 0 || index >= tanks.length || face == facing) {
+        if (index < 0 || index >= tanks.length || (hasFront() && face == facing)) {
             return false;
         }
         return assign(face, name -> tanks[index] = name, tanks[index]);
@@ -346,11 +409,17 @@ public final class FaceConfig {
         return moved || taken;
     }
 
-    /** The word a side of the world stands for, {@code null} for the front of the machine. */
+    /** The word a side of the world stands for, {@code null} for the front of a machine that has one. */
     private String relative(BlockFace face) {
         String name = MachineSides.nameOf(facing, face);
-        // The front of a machine carries nothing: a side that is the front is no side a part may be set to.
-        return MachineSides.FRONT.equals(name) ? null : name;
+        // The front of a machine carries nothing: a side that is the front is no side a part may be set to. A
+        // machine without a front has no such side at all, see withoutFront.
+        return hasFront() && MachineSides.FRONT.equals(name) ? null : name;
+    }
+
+    /** The words the wheel of the screen walks this machine through, see {@link #cycleTank(int, int)}. */
+    private List<String> walk() {
+        return hasFront() ? WALK : WORLD_WALK;
     }
 
     /**
@@ -415,7 +484,7 @@ public final class FaceConfig {
      * @return the job of that side, {@link FaceRole#NONE} for a side that carries nothing
      */
     public FaceRole roleOn(BlockFace face) {
-        if (face == null || face == facing) {
+        if (face == null || (hasFront() && face == facing)) {
             return FaceRole.NONE;
         }
         String name = relative(face);
@@ -458,7 +527,7 @@ public final class FaceConfig {
             return false;
         }
         List<String> walk = new ArrayList<>();
-        for (String side : WALK) {
+        for (String side : walk()) {
             if (MachineSides.NONE.equals(side) || owners(side) == 0 || side.equals(tanks[index])) {
                 walk.add(side);
             }
@@ -530,11 +599,11 @@ public final class FaceConfig {
     }
 
     /** The side a stored word names, {@code null} for nothing and for a word that names no side of a machine. */
-    private static String stored(String word) {
+    private String stored(String word) {
         if (word == null || word.isEmpty() || MachineSides.NONE.equals(word)) {
             return null;
         }
-        for (String known : WALK) {
+        for (String known : walk()) {
             if (known.equals(word)) {
                 return known;
             }

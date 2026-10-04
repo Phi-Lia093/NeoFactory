@@ -152,6 +152,14 @@ stored on disk so that a session can be continued later.
   right flank, the back, the ceiling - and not sides of the world, so a machine that is turned shows the pipe
   a player built against it on the same flank of its new front, and the face the machine shows can never be
   covered by one of its own parts.
+  **A machine may have no front at all.** A box of cells is the same from every side of it and no player
+  stands in front of one, so no side of it is the one that carries nothing: **every one of its six sides may
+  be given a job**, the wrench never turns it, and neither the grid of faces nor one of its own parts ever
+  covers a side of it. What such a machine says about its sides is the side of the world itself - `NORTH`,
+  `UP` - because `LEFT` and `BACK` are words about a front it does not have, and it is built with the very
+  sides a machine that looks north is built with: the plug of the power in on its south, the plug out on its
+  east, see `FaceConfig#withoutFront` and `MachineSides#nameOf`. Every other side of it is free, so a player
+  moves a plug to wherever the line they build comes from.
   **The panel says the same thing**: the box of a tank names the side it is reached through while `SHIFT` is
   held and the wheel walks that side on, stepping over the front and over the sides another part of the very
   machine owns - the plug of the power is not taken away by a wheel that runs over a tank. A machine is built

@@ -304,6 +304,11 @@ public class MachineBlockEntity extends BlockEntity
      * @return {@code true} when the machine was turned
      */
     private boolean turn(World world, BlockFace face) {
+        if (!machine.faces().hasFront()) {
+            // A box of cells is the same from every side of it: there is no front to turn towards, so the
+            // wrench leaves such a machine as it is, see FaceConfig#withoutFront.
+            return false;
+        }
         if (face == facing || !MachineSides.isHorizontal(face)) {
             // A machine looks along the horizon, because the four names a player reads for the sides of its
             // front - left and right, up and down - only mean something then, see MachineSides.
@@ -328,7 +333,7 @@ public class MachineBlockEntity extends BlockEntity
      * @return {@code true} when a side of the machine changed
      */
     private boolean give(BlockFace face, boolean incoming) {
-        if (face == facing) {
+        if (machine.faces().hasFront() && face == facing) {
             // The front carries nothing, so no job is ever put on it, see FaceConfig.
             return false;
         }
@@ -347,7 +352,13 @@ public class MachineBlockEntity extends BlockEntity
         return owner == face ? null : face;
     }
 
-    /** Side the machine looks in, the one side of it that carries nothing. */
+    /**
+     * Side the machine looks in, the one side of it that carries nothing.
+     * <p>
+     * <b>A machine without a front looks nowhere</b>, see {@link FaceConfig#hasFront()}: this answers with the
+     * side such a machine is built towards - the north - and nothing of the machine is read from it, because
+     * no side of it carries nothing and none of them is ever crossed out, see {@link #faceMark}.
+     */
     public BlockFace facing() {
         return facing;
     }
@@ -438,7 +449,9 @@ public class MachineBlockEntity extends BlockEntity
      */
     @Override
     public FaceMark faceMark(World world, int x, int y, int z, BlockFace face) {
-        if (face == facing) {
+        if (machine.faces().hasFront() && face == facing) {
+            // The grid crosses out the front of a machine, see FaceConfig. A machine without a front has no
+            // side that carries nothing, so every side of it carries a mark.
             return FaceMark.CLOSED;
         }
         return switch (machine.faces().roleOn(face)) {
