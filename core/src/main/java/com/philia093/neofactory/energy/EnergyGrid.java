@@ -8,7 +8,6 @@ import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.cable.Conductor;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.machine.EnergyStorage;
-import com.philia093.neofactory.machine.FaceConfig;
 import com.philia093.neofactory.world.World;
 
 import java.util.ArrayList;
@@ -121,13 +120,10 @@ public final class EnergyGrid {
             if (!(world.blockEntity(x, y, z) instanceof MachineBlockEntity machine)) {
                 return null;
             }
-            FaceConfig faces = machine.machine().faces();
-            if (faces.energyIn() != from && faces.energyOut() != from) {
-                // The machine carries no plug on that side, so the line does not hang on it: a side may carry
-                // one job at a time and the front carries none at all, see FaceConfig.
-                return null;
-            }
-            return machine.machine().energy();
+            // The machine of the cell answers for itself which buffer of it that side reaches: a side carries
+            // one job at a time and a machine of more than one buffer - a transformer - gives the one that
+            // side belongs to, see Machine#energyOn.
+            return machine.machine().energyOn(from);
         }
 
         @Override

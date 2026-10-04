@@ -1,5 +1,6 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.energy.EnergyAcceptor;
 import com.philia093.neofactory.fluid.Fluid;
@@ -10,6 +11,7 @@ import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.recipe.RecipeType;
 import com.philia093.neofactory.util.nbt.NbtCompound;
 import com.philia093.neofactory.util.nbt.NbtList;
+import com.philia093.neofactory.world.interaction.FaceRole;
 import com.philia093.neofactory.world.save.SaveTags;
 
 import java.util.ArrayList;
@@ -218,6 +220,73 @@ public abstract class Machine {
      */
     public boolean opensPanel() {
         return true;
+    }
+
+    /**
+     * The job one side of this machine carries.
+     * <p>
+     * <b>A machine answers for its own sides.</b> What a side carries is what a player set there, which
+     * {@link FaceConfig} holds - while a machine whose sides are what the block was built for answers for
+     * itself: a diode carries a line of cables through the two flanks of the block and a transformer names
+     * the high side of it, and no player moves either of them, see {@code DiodeMachine} and
+     * {@code TransformerMachine}.
+     * <p>
+     * What is asked here is what the panel of a machine draws, what the grid of faces marks and what the
+     * side of a block is drawn with, see {@code MachineBlockEntity#pictureOn} and {@code #faceMark}.
+     *
+     * @param side side of this machine in the world
+     * @return the job of that side, {@link FaceRole#NONE} for a side that carries nothing
+     */
+    public FaceRole roleOn(BlockFace side) {
+        return faces().roleOn(side);
+    }
+
+    /**
+     * The buffer of energy this machine is reached through on one of its sides.
+     * <p>
+     * <b>A side that carries a job of the power is the way to the buffer behind it</b>, and a machine that
+     * carries two of them - the high side of a transformer and the five sides of its low one - answers with
+     * the one that side belongs to. A side that carries nothing of the power reaches nothing at all, which is
+     * what keeps a line of cables that stands at the front of a machine from feeding it.
+     *
+     * @param side side of this machine in the world
+     * @return the buffer that side reaches, {@code null} when it reaches none
+     */
+    public EnergyStorage energyOn(BlockFace side) {
+        Objects.requireNonNull(side, "side");
+        FaceConfig faces = faces();
+        return side == faces.energyIn() || side == faces.energyOut() ? energy() : null;
+    }
+
+    /**
+     * The sides of this machine that take energy in from a line, in the order they are asked.
+     * <p>
+     * <b>A machine of the line takes its power in through one side</b>, which is the plug a player gave it,
+     * and it asks that one side every tick, see {@code MachineBlockEntity#updateEnergy}. A machine whose
+     * sides are what the block was built for may take it in through more than one - the five low sides of a
+     * transformer that is stepping up are five mouths of one machine - and such a machine asks every one of
+     * them for its share of what it wants, see {@code TransformerMachine}.
+     *
+     * @return the sides, empty for a machine that takes nothing in
+     */
+    public List<BlockFace> inputSides() {
+        BlockFace plug = faces().energyIn();
+        return plug == null ? List.of() : List.of(plug);
+    }
+
+    /**
+     * Tier of the line that reaches this machine through one of its sides.
+     * <p>
+     * What a side of a machine is drawn with is the terminal of the tier of the line at it, see
+     * {@link MachineTerminals}, and a machine whose sides carry lines of different tiers - the two ends of a
+     * transformer - says so here: the high side of it wears the colour of the high voltage and its five low
+     * sides the colour of the low one.
+     *
+     * @param side side of this machine in the world
+     * @return the tier of that side, {@code null} when no tier is read at it
+     */
+    public Voltage lineTier(BlockFace side) {
+        return lineTier();
     }
 
     /** Role of every tank of this machine, in the order the tanks are held. */

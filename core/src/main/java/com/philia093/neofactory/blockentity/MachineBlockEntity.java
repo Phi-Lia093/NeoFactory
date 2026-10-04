@@ -36,6 +36,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -176,41 +177,46 @@ public class MachineBlockEntity extends BlockEntity
      * @param world world this machine lies in
      */
     private void updateEnergy(World world) {
-        EnergyStorage buffer = machine.energy();
-        if (!buffer.canReceive() || buffer.isFull()) {
-            // A machine that holds no buffer, or whose buffer is full, has no reason to reach for a line.
+        List<BlockFace> sides = machine.inputSides();
+        if (sides.isEmpty()) {
+            // A machine that holds no buffer, or that takes nothing in through any of its sides, has no
+            // reason to reach for a line.
             return;
         }
-        int wanted = Math.min(machine.requestEu(), buffer.capacity() - buffer.amount());
-        if (wanted <= 0) {
-            return;
-        }
-        BlockFace plug = machine.faces().energyIn();
-        if (plug == null) {
-            return;
-        }
-        int cellX = x() + plug.x();
-        int cellY = y() + plug.y();
-        int cellZ = z() + plug.z();
-        EnergyGrid.Cells cells = EnergyGrid.of(world);
-        EnergyGrid.Line line = EnergyGrid.line(cells, cellX, cellY, cellZ, plug.opposite());
-        if (line != null && line.reaches(buffer)) {
-            line.pull(cells, buffer, wanted);
-            return;
-        }
-        // Nothing but the two machines: the energy crosses the gap with no cable and no loss. What feeds this
-        // machine is then the machine beside it, so a machine of a later age destroys it the way a line of
-        // that age does - the energy is not handed over at all, and there is no cable of that line to be
-        // taken away with it, see EnergyNet#overvolts.
-        if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour) {
-            EnergyStorage source = neighbour.machine().energy();
-            if (EnergyNet.overvolts(source, buffer)) {
-                LOGGER.info("The {} at ({}, {}, {}) was taken by the {} beside it, which is built for a line "
-                        + "of a later age", machine.name(), x(), y(), z(), neighbour.machine().name());
-                world.setBlock(x(), y(), z(), Blocks.AIR);
-                return;
+        for (BlockFace plug : sides) {
+            EnergyStorage buffer = machine.energyOn(plug);
+            if (buffer == null || !buffer.canReceive() || buffer.isFull()) {
+                continue;
             }
-            EnergyNet.hand(source, buffer, wanted);
+            // A machine that asks through more than one side asks that many times less at every one of them,
+            // see Machine#inputSides.
+            int wanted = Math.min(machine.requestEu() / sides.size(), buffer.capacity() - buffer.amount());
+            if (wanted <= 0) {
+                continue;
+            }
+            int cellX = x() + plug.x();
+            int cellY = y() + plug.y();
+            int cellZ = z() + plug.z();
+            EnergyGrid.Cells cells = EnergyGrid.of(world);
+            EnergyGrid.Line line = EnergyGrid.line(cells, cellX, cellY, cellZ, plug.opposite());
+            if (line != null && line.reaches(buffer)) {
+                line.pull(cells, buffer, wanted);
+                continue;
+            }
+            // Nothing but the two machines: the energy crosses the gap with no cable and no loss. What feeds
+            // this machine is then the machine beside it, so a machine of a later age destroys it the way a
+            // line of that age does - the energy is not handed over at all, and there is no cable of that line
+            // to be taken away with it, see EnergyNet#overvolts.
+            if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour) {
+                EnergyStorage source = neighbour.machine().energy();
+                if (EnergyNet.overvolts(source, buffer)) {
+                    LOGGER.info("The {} at ({}, {}, {}) was taken by the {} beside it, which is built for a "
+                            + "line of a later age", machine.name(), x(), y(), z(), neighbour.machine().name());
+                    world.setBlock(x(), y(), z(), Blocks.AIR);
+                    return;
+                }
+                EnergyNet.hand(source, buffer, wanted);
+            }
         }
     }
 
@@ -452,11 +458,11 @@ public class MachineBlockEntity extends BlockEntity
      */
     @Override
     public FacePicture pictureOn(BlockFace face) {
-        FaceRole role = machine.faces().roleOn(face);
+        FaceRole role = machine.roleOn(face);
         if (role == FaceRole.NONE) {
             return null;
         }
-        return new FacePicture(machine.casing(), MachineTerminals.overlayOf(role, machine.lineTier()));
+        return new FacePicture(machine.casing(), MachineTerminals.overlayOf(role, machine.lineTier(face)));
     }
 
     /**
@@ -473,12 +479,14 @@ public class MachineBlockEntity extends BlockEntity
      */
     @Override
     public FaceMark faceMark(World world, int x, int y, int z, BlockFace face) {
-        if (machine.faces().hasFront() && face == facing) {
+        FaceRole role = machine.roleOn(face);
+        if (machine.faces().hasFront() && face == facing && role == FaceRole.NONE) {
             // The grid crosses out the front of a machine, see FaceConfig. A machine without a front has no
-            // side that carries nothing, so every side of it carries a mark.
+            // side that carries nothing, so every side of it carries a mark - and neither has a machine whose
+            // front carries the job it was built for, see Machine#roleOn.
             return FaceMark.CLOSED;
         }
-        return switch (machine.faces().roleOn(face)) {
+        return switch (role) {
             case FLUID_IN -> FaceMark.IN;
             case FLUID_OUT -> FaceMark.OUT;
             case ENERGY_IN -> FaceMark.ENERGY_IN;
