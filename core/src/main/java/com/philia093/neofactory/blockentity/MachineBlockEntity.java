@@ -163,10 +163,14 @@ public class MachineBlockEntity extends BlockEntity
      * <b>Two machines with no cable between them need no line.</b> When nothing but the neighbouring block
      * stands at the plug, the machine takes what the buffer beside it can give over the gap with no loss,
      * which is the way the first workshop of the age of electricity is built, see {@link EnergyNet#hand}.
-     * <b>A gap is a line of the tier of the machine that gives</b>, so a machine of a later age destroys the
-     * one beside it the way a line of that age does - and there is no cable of that line to be taken away with
-     * it, see {@link EnergyNet#overvolts(EnergyStorage, EnergyStorage)}. A machine that holds nothing to give
-     * - a box with no cell in it - is no line at all and destroys nothing beside it.
+     * <b>What the neighbour gives away is read off the side of it that faces this machine</b> - the five low
+     * sides of a transformer hand out the low voltage and its high side another, see {@code Machine#energyOn}
+     * - and <b>a gap is a line of the tier of the machine that gives</b>, so a machine of a later age destroys
+     * the one beside it the way a line of that age does, and there is no cable of that line to be taken away
+     * with it, see {@link EnergyNet#overvolts(EnergyStorage, EnergyStorage)}. <b>Only a neighbour that holds
+     * energy in that buffer is a line at all</b>: a box with no cell in it, and a machine of a later age that
+     * has not been fed yet, have nothing to give and destroy nothing beside them, however much their age is
+     * worth - what burns a machine is the power that is standing next to it and not the size of the block.
      * <p>
      * <b>A line that is too much for a machine takes it away.</b> A line of a higher tier than the machine
      * was built for does not feed it: the machine is taken out of the world, and a cable of that line that
@@ -210,7 +214,14 @@ public class MachineBlockEntity extends BlockEntity
             // is what a cell that the machine itself stands in answers.
             if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour
                     && neighbour != this) {
-                EnergyStorage source = neighbour.machine().energy();
+                // What the neighbour gives away is read off the side of it that faces this machine: the five
+                // low sides of a transformer hand out the low voltage and its high side another, and the two
+                // are lines of different ages, see Machine#energyOn. A side of the neighbour that reaches no
+                // buffer at all - the front of a machine, the flank of a diode - gives nothing over a gap.
+                EnergyStorage source = neighbour.machine().energyOn(plug.opposite());
+                if (source == null) {
+                    continue;
+                }
                 if (EnergyNet.overvolts(source, buffer)) {
                     LOGGER.info("The {} at ({}, {}, {}) was taken by the {} beside it, which is built for a "
                             + "line of a later age", machine.name(), x(), y(), z(), neighbour.machine().name());

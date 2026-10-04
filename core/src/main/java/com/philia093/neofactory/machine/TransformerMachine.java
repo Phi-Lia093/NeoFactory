@@ -32,9 +32,6 @@ import java.util.List;
  */
 public final class TransformerMachine extends Machine {
 
-    /** Ticks of its rating one buffer of a transformer holds. */
-    private static final int CAPACITY_TICKS = 2;
-
     private final Voltage low;
 
     private final Voltage high;
@@ -71,17 +68,39 @@ public final class TransformerMachine extends Machine {
         this.lowSide = lowSideOf(tier, size);
     }
 
-    /** The buffer of the high side of a transformer, which is the one a line of that voltage is reached at. */
+    /**
+     * The buffer of the high side of a transformer, which is the one a line of that voltage is reached at.
+     * <p>
+     * <b>A side of a transformer holds what a machine of the age it belongs to holds inside itself</b> - the
+     * invisible charge of that tier, see {@link MachineEnergyStorage#internalCapacityOf(Voltage)} - while the
+     * amperes of the size it was built for are what that side takes in and hands out a tick. The two are kept
+     * apart on purpose: the capacity is the charge a line finds standing in the side while it asks, so a
+     * transformer that holds nothing feeds nothing and burns nothing, and the rate is what makes one ampere
+     * of the high voltage worth four of the low one, see {@link #update(float)}.
+     */
     private static MachineEnergyStorage highSideOf(Voltage tier, int size) {
         Voltage high = Transformers.highOf(tier);
         int rating = ratingOf(high, Transformers.amperageOf(size));
-        return new MachineEnergyStorage(CAPACITY_TICKS * rating, rating, rating, high);
+        return new MachineEnergyStorage(capacityOf(tier, rating), rating, rating, high);
     }
 
     /** The buffer of the low side of a transformer, which is the one its five sides are reached at. */
     private static MachineEnergyStorage lowSideOf(Voltage tier, int size) {
         int rating = ratingOf(tier, Transformers.lowAmperageOf(size));
-        return new MachineEnergyStorage(CAPACITY_TICKS * rating, rating, rating, tier);
+        return new MachineEnergyStorage(capacityOf(tier, rating), rating, rating, tier);
+    }
+
+    /**
+     * Capacity of one side of a transformer: the charge of its age, and never less than one tick of it.
+     * <p>
+     * A side holds what a machine of the age the transformer belongs to holds inside itself, see
+     * {@link MachineEnergyStorage#internalCapacityOf(Voltage)}, and a size that brings more than that in one
+     * tick would be throttled by its own buffer: the capacity is therefore raised to the rating of that side,
+     * so what the side was built to carry always fits into it. A transformer whose rating is smaller than the
+     * charge of its age holds the charge of its age, which is what a player reads off it while it waits.
+     */
+    private static int capacityOf(Voltage tier, int rating) {
+        return Math.max(MachineEnergyStorage.internalCapacityOf(tier), rating);
     }
 
     /** Energy one tick of a line of a tier at an amperage carries. */

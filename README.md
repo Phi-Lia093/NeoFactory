@@ -485,6 +485,19 @@ stored on disk so that a session can be continued later.
   casing is the one of the age it is named for and the terminal at each of its sides wears the colour of the
   line at that side, so a player reads the two ends of it off the block, see `TransformerMachine` and
   `Machine#roleOn`. Like a diode it holds no panel: there is nothing in it to look at or to set.
+  **What burns a machine is the power that is standing next to it and not the size of the block.** A line is
+  fed by the machines at its ends and by the energy **those machines hold**, so a block that holds not one
+  unit of energy in it names no tier at all: an empty box of the high voltage beside a furnace of the low one
+  burns nothing, and neither does a transformer of a later age that has not been fed yet. A block of the line
+  keeps the **invisible charge of its age** inside it - 2112 units at the low voltage, 6912 at the middle one
+  and 26112 at the high one, see `MachineEnergyStorage#internalCapacityOf` - which is what a line finds
+  standing at a piece of it, and the charge of a diode is reached by nothing at all: a diode answers no side
+  of itself with a buffer, so it is a piece of a line and never a machine beside it, see `DiodeMachine`.
+  **Two machines that stand side by side need no cable, and what feeds them is the side of the one that
+  gives.** The energy crosses the gap with no loss, and what the machine beside it gives away is read off the
+  side of it that faces this machine: a transformer hands out the low voltage through its five low sides and
+  its own through the high one, so a machine of the low voltage beside a transformer that is full of the
+  middle one is fed by it instead of burnt by it, see `MachineBlockEntity#updateEnergy`.
   **A line is drawn by the machine that works and never pushed by the one that makes.** A cable carries
   nothing of its own, so the machine that wants the power is the one that moves it: every tick the block entity
   of a machine walks the line that stands at the plug it takes power in through and draws out of the buffers
@@ -767,7 +780,7 @@ tools/gen_pipe_models.ps1            models and blockstates of every pipe of the
 tools/verify/extract_3d_assets.ps1   the faces, the colormaps and the sky an art pack is asked for
 tools/verify/extract_creative.ps1    the panels, the tabs and the thumbs of the creative inventory
 tools/verify/material_forms.ps1      one grey scale picture per shape a material comes in
-tools/verify/import_basicmachines.ps1  the machines of the line: the casing of a tier under the overlay of a family
+tools/verify/import_basicmachines.ps1  the machines of the line: the casing of a tier under the overlay of a family, frame by frame
 tools/verify/import_batteries.ps1    the cells: the window of a pack of steel poured once per chemistry
 tools/verify/import_energy_terminals.ps1  the terminal of the power of the two later ages, coloured from the grey one
 tools/verify/import_mallet.ps1       the mallet of the workshop, drawn from the handle and the head of one of wood
@@ -790,6 +803,16 @@ how it is turned, and `gradlew :core:test` writes the shape every block is drawn
 there, and the audit of the art - `core/build/reports/texture-audit.txt` - fails when a block or an
 item points at a file nobody has, and lists the spare pictures: the art nothing references yet and
 that is kept for the systems to come.
+
+**A face that moves is a strip of frames.** The picture of a face is a file that holds one tile, or several
+tiles one below the other: the gear on the top of a macerator while it runs is four frames in the pack, and a
+picture that is a strip of tiles is cut into one layer a frame - sixteen by sixty four pixels are four frames
+and four layers - which the shader then walks with the tick of the world, so the gear turns while the casing
+around it stands still, see `BlockPictures#frameCountOf` and `BlockShader#ANIMATION`. A face the pack draws
+still that has to turn while the machine works - the ring on the top of the extractor and of the compressor, a
+picture that is nearly the same four times around - is written as a strip of a whole turn by the script that
+draws the machines, sixteen frames of a whole turn for every age: what the engine walks is the frames of a
+picture and never the corner of a face, see the Tools of the project.
 
 In a slot a block item does not show a tile as a flat square: the game folds it into a small cube at
 run time, see `BlockIconFactory`. The two side faces the view meets are derived from the tile itself

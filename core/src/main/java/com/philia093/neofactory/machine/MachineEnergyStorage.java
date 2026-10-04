@@ -31,6 +31,15 @@ import java.util.Objects;
  */
 public final class MachineEnergyStorage extends SimpleEnergyStorage implements EnergyAcceptor {
 
+    /** Energy a machine of the low voltage keeps inside itself, the age of the first line of the power. */
+    private static final int LOW_INTERNAL_CAPACITY = 2112;
+
+    /** Energy a machine of the middle voltage keeps inside itself. */
+    private static final int MEDIUM_INTERNAL_CAPACITY = 6912;
+
+    /** Energy a machine of the high voltage keeps inside itself. */
+    private static final int HIGH_INTERNAL_CAPACITY = 26112;
+
     private final Voltage tier;
 
     /**
@@ -54,6 +63,54 @@ public final class MachineEnergyStorage extends SimpleEnergyStorage implements E
     public MachineEnergyStorage(int capacity, int maxReceive, int maxExtract, Voltage tier) {
         super(capacity, maxReceive, maxExtract);
         this.tier = Objects.requireNonNull(tier, "tier");
+    }
+
+    /**
+     * Energy a machine of a tier keeps inside itself, which is the invisible buffer of that age.
+     * <p>
+     * <b>A block of the line holds more than what a line hands it.</b> What is written down here is the
+     * charge one block of an age keeps inside itself while it works - a machine, the machine casing a
+     * diode is built of, a transformer - and it is what the question of a line is read off: a block that
+     * holds nothing names no tier and burns nothing downstream of it, see
+     * {@link com.philia093.neofactory.energy.EnergyNet#overvolts(EnergyStorage, EnergyStorage)}. The
+     * three numbers are the three ages of the line of the power, the low, the middle and the high one.
+     * <p>
+     * The ages beyond the high voltage are carried on by the rule of four tiers - the rule the
+     * transformers of the game follow, {@code Transformers} - and the ages below the low voltage keep the
+     * number of the low one, because no machine of the game is built for them yet.
+     *
+     * @param tier tier the block was built for
+     * @return energy that block keeps inside itself
+     */
+    public static int internalCapacityOf(Voltage tier) {
+        Objects.requireNonNull(tier, "tier");
+        int steps = tier.ordinal() - Voltage.HIGH.ordinal();
+        if (steps == 0) {
+            return HIGH_INTERNAL_CAPACITY;
+        }
+        if (steps == -1) {
+            return MEDIUM_INTERNAL_CAPACITY;
+        }
+        if (steps < -1) {
+            return LOW_INTERNAL_CAPACITY;
+        }
+        long capacity = (long) HIGH_INTERNAL_CAPACITY << (2 * steps);
+        return capacity > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) capacity;
+    }
+
+    /**
+     * The buffer of the block of a tier: a machine-like buffer of the size an age keeps inside itself.
+     * <p>
+     * <b>An invisible buffer of a block is a buffer like any other</b> - it fills and empties as fast as
+     * one ampere of its tier - and what keeps it out of the world is the block that holds it: a diode
+     * answers no side with a buffer at all, so neither a line nor a machine beside it ever reaches this
+     * one, see {@code DiodeMachine}.
+     *
+     * @param tier tier the block was built for
+     * @return the buffer of that block
+     */
+    public static MachineEnergyStorage internal(Voltage tier) {
+        return new MachineEnergyStorage(internalCapacityOf(tier), Objects.requireNonNull(tier, "tier"));
     }
 
     @Override

@@ -293,9 +293,11 @@ public final class EnergyGrid {
          * for the power is not counted: what is weighed is what the line is given, not what the machine
          * asking for it holds.
          * <p>
-         * An end that gives nothing away names no tier: a machine that only works spends out of its own
-         * pocket and is never a source of the line, and a box with no cell in it holds nothing to give, see
-         * {@link EnergyStorage#canExtract()}. A line that stands along no machine that gives is fed with
+         * <b>An end that holds nothing names no tier.</b> A machine that only works spends out of its own
+         * pocket and is never a source of the line, see {@link EnergyStorage#canExtract()}, and a source that
+         * holds not one unit of energy in it - a box with no cell in it, a machine of a later age that is
+         * still waiting for its own power - has nothing to push into the line either. <b>Only the ends that
+         * hold energy are weighed</b>, so a line that stands along no machine that holds anything is fed with
          * nothing at all and burns nothing, however strong its cables are.
          *
          * @param asking machine that asks this line for power, which is not one of the machines that give it
@@ -305,7 +307,8 @@ public final class EnergyGrid {
             Objects.requireNonNull(asking, "asking");
             Voltage live = null;
             for (EnergyStorage end : ends) {
-                if (end == asking || !end.canExtract() || !(end instanceof EnergyAcceptor giving)) {
+                if (end == asking || !end.canExtract() || end.amount() <= 0
+                        || !(end instanceof EnergyAcceptor giving)) {
                     continue;
                 }
                 if (live == null || giving.accepted().isAtLeast(live)) {

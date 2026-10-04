@@ -461,6 +461,54 @@ class EnergyLineTest {
         assertTrue(bufferOf(generator).amount() < CAPACITY, "and something was paid for it");
     }
 
+    @Test
+    void aDiodeThatIsTurnedTheWrongWayLeavesTheMachineBeyondItAlone() {
+        World world = new World(SEED, 15, 0);
+        MachineBlockEntity battery = place(world, machine(Voltage.LOW), 0, Y, 0);
+        bufferOf(battery).setAmount(CAPACITY);
+        cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // The diode of the low voltage lies in the run the wrong way round for the battery that feeds it: what
+        // arrives at it from the east is refused and no line is walked through it, see aDiodeRefusesALineThat
+        // ArrivesTheOtherWay.
+        diode(world, Voltage.LOW, 4, 2, 0, BlockFace.NORTH);
+        cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // The front of a transformer is the side of its high voltage and its five other sides carry the low one,
+        // so a transformer between a diode that refuses the power and a machine that wants it stands with its
+        // front towards the diode: the power of the battery never arrives, and the transformer holds nothing.
+        transformer(world, Voltage.LOW, 1, 4, 0, BlockFace.WEST);
+        MachineBlockEntity sink = place(world, consumer(Voltage.LOW), 5, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 4);
+
+        assertEquals(0, bufferOf(sink).amount(), "no power reached the machine beyond the diode");
+        assertNotNull(world.getBlock(5, Y, 0),
+                "and the machine of the low voltage stands: the transformer beside it holds nothing, so the "
+                        + "side of the high voltage at it is no line that could burn it");
+        assertNotNull(world.getBlock(4, Y, 0), "the transformer stands as well");
+        assertEquals(CAPACITY, bufferOf(battery).amount(), "and the battery kept every unit of what it holds");
+    }
+
+    @Test
+    void aTransformerThatHoldsTheHighVoltageDoesNotBurnTheMachineOfItsLowSide() {
+        World world = new World(SEED, 16, 0);
+        // The transformer alone on the run, with the power of a later age standing in the side of its high
+        // voltage: what the machine beside it meets is one of its five low sides, which is a line of its own
+        // age, see Machine#energyOn and MachineBlockEntity#updateEnergy.
+        TransformerBlockEntity transformer = transformer(world, Voltage.LOW, 1, 2, 0, BlockFace.WEST);
+        bufferOf(transformer).setAmount(Voltage.MEDIUM.euPerTick());
+        MachineBlockEntity sink = place(world, consumer(Voltage.LOW), 3, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 2);
+
+        assertNotNull(world.getBlock(3, Y, 0),
+                "the machine of the low voltage stands: what faces it is the low side of the transformer and "
+                        + "not the side of its high voltage");
+        assertTrue(bufferOf(sink).amount() > 0, "and the power of that low side was handed over the gap");
+        assertEquals(0, bufferOf(transformer).amount(), "while the side of the high voltage was handed down");
+    }
+
     /** Places one transformer of the game, turned towards a side, and hands its block entity back. */
     private static TransformerBlockEntity transformer(World world, Voltage tier, int size, int x, int z,
             BlockFace facing) {

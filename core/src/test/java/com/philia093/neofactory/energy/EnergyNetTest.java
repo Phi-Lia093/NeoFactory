@@ -146,6 +146,9 @@ class EnergyNetTest {
     void whatFeedsTwoMachinesThatStandSideBySideIsTheTierOfTheOneThatGives() {
         MachineEnergyStorage high = new MachineEnergyStorage(1000, Voltage.HIGH);
         MachineEnergyStorage low = new MachineEnergyStorage(1000, Voltage.LOW);
+        // A machine of the high voltage that holds energy: what burns the machine beside it is the power that
+        // stands there, see the case that follows.
+        high.setAmount(1000);
 
         assertTrue(EnergyNet.overvolts(high, low),
                 "a machine beside a buffer of the high voltage is fed by a line of the high voltage");
@@ -156,11 +159,25 @@ class EnergyNetTest {
         assertFalse(EnergyNet.overvolts(high, new SimpleEnergyStorage(1000)),
                 "and neither is a machine that names none destroyed by one");
         MachineEnergyStorage working = new MachineEnergyStorage(1000, 100, 0, Voltage.HIGH);
+        working.setAmount(1000);
         assertFalse(EnergyNet.overvolts(working, low),
                 "a machine that only works gives nothing away and destroys nothing beside it");
 
         assertThrows(NullPointerException.class, () -> EnergyNet.overvolts((EnergyStorage) null, low));
         assertThrows(NullPointerException.class, () -> EnergyNet.overvolts(high, null));
+    }
+
+    @Test
+    void aMachineThatHoldsNothingBurnsNothingBesideIt() {
+        MachineEnergyStorage high = new MachineEnergyStorage(1000, Voltage.HIGH);
+        MachineEnergyStorage low = new MachineEnergyStorage(1000, Voltage.LOW);
+
+        assertFalse(EnergyNet.overvolts(high, low),
+                "a machine of a later age that has not been fed yet has no power to take anything away with");
+
+        high.setAmount(1);
+        assertTrue(EnergyNet.overvolts(high, low),
+                "and one unit of energy in it is a line of that age, whatever it is worth");
     }
 
     @Test

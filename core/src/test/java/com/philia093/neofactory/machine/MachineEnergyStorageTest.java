@@ -74,6 +74,24 @@ class MachineEnergyStorageTest {
     }
 
     @Test
+    void theInvisibleBufferOfAnAgeHoldsWhatABlockOfItKeeps() {
+        assertEquals(2112, MachineEnergyStorage.internalCapacityOf(Voltage.LOW), "the age of the first line");
+        assertEquals(6912, MachineEnergyStorage.internalCapacityOf(Voltage.MEDIUM), "the middle voltage");
+        assertEquals(26112, MachineEnergyStorage.internalCapacityOf(Voltage.HIGH), "the high voltage");
+        assertEquals(MachineEnergyStorage.internalCapacityOf(Voltage.HIGH) * 4,
+                MachineEnergyStorage.internalCapacityOf(Voltage.EXTREME),
+                "and the ages beyond it are carried on by the rule of the four tiers");
+        assertEquals(MachineEnergyStorage.internalCapacityOf(Voltage.LOW),
+                MachineEnergyStorage.internalCapacityOf(Voltage.ULTRA_LOW),
+                "while no block of the game is built for an age below the low voltage");
+
+        MachineEnergyStorage held = MachineEnergyStorage.internal(Voltage.LOW);
+        assertEquals(2112, held.capacity(), "the buffer of one block of an age is the charge of that age");
+        assertEquals(Voltage.LOW, held.accepted(), "and it is a buffer of that age like any other");
+        assertEquals(0, held.amount(), "which stands empty until something fills it");
+    }
+
+    @Test
     void aBufferThatWasFilledTravelsWithTheMachine() {
         // The limits of a buffer say how fast it is filled and not how full it may be after a save game was
         // read, so a machine that is stored full is read back full, see Machine#restoreEnergy.

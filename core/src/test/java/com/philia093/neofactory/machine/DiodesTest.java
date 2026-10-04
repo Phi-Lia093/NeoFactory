@@ -131,6 +131,19 @@ class DiodesTest {
         assertEquals(MachineSides.rightOf(BlockFace.WEST), machine.faces().energyOut());
     }
 
+    @Test
+    void aDiodeAnswersNoSideWithABufferAtAll() {
+        DiodeMachine diode = new DiodeMachine(Voltage.MEDIUM, 2);
+
+        for (BlockFace side : BlockFace.ALL) {
+            assertNull(diode.energyOn(side),
+                    "no side of a diode reaches a buffer, so neither a line nor a machine beside it is fed by it");
+        }
+        assertEquals(MachineEnergyStorage.internalCapacityOf(Voltage.MEDIUM), diode.energy().capacity(),
+                "while what it keeps inside itself is the invisible charge of its own age");
+        assertEquals(Voltage.MEDIUM, ((MachineEnergyStorage) diode.energy()).accepted());
+    }
+
     /** Places one diode of the game in a world, turned towards the north. */
     private static DiodeBlockEntity place(World world, Voltage tier, int width) {
         String name = Diodes.nameOf(tier, width);

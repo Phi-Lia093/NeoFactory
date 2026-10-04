@@ -10,10 +10,11 @@ import java.util.Objects;
 /**
  * A diode: one piece of a line of the power that carries it one way.
  * <p>
- * <b>A diode is no machine that works and no cable either: it is a piece of a line.</b> It holds no tank, no
- * slot and no energy of its own - the buffer of it is a buffer that holds nothing at all, which is what keeps
- * a diode out of the two places a machine stands in: it never asks a line for power, because a buffer of no
- * capacity is never filled, and it is never a source of one, because that buffer may not be emptied. What it
+ * <b>A diode is no machine that works and no cable either: it is a piece of a line.</b> It holds no tank and
+ * no slot, and what it carries inside itself is the invisible buffer of its tier - the size a machine of that
+ * age keeps inside itself, see {@link MachineEnergyStorage#internal(Voltage)} - which <b>no line and no
+ * machine beside it ever reaches</b>: a diode answers no side with a buffer at all, so it stands in neither of
+ * the two places a machine stands in. It never asks a line for power, and it is never a source of one. What it
  * does is what a {@link LineNode} does: a line that is walked through it is handed on the way the power of
  * the diode runs and refused the other way, and what it carries and loses rates the line it stands in, see
  * {@code Conductor} and {@code EnergyGrid#line}.
@@ -46,13 +47,15 @@ public final class DiodeMachine extends Machine implements LineNode {
         super(new MachineScreen(Diodes.titleOf(tier, width), ProgressKind.NONE, List.of(), List.of(), 0, 0,
                         false),
                 new MachineInventory(),
-                new SimpleEnergyStorage(0),
+                MachineEnergyStorage.internal(tier),
                 List.of());
         this.tier = Objects.requireNonNull(tier, "tier");
         this.amperage = Diodes.amperageOf(width);
-        // A diode carries a line through two of its sides although its buffer holds nothing: the power runs in
-        // by the left flank of the machine and out by the right one, and those two sides are what the block
-        // was built for and never what a player sets, see the note on this class.
+        // A diode carries a line through two of its sides: the power runs in by the left flank of the machine
+        // and out by the right one, and those two sides are what the block was built for and never what a
+        // player sets, see the note on this class. The buffer behind them is the invisible one of the tier -
+        // no line and no machine beside it ever reaches it, because this block answers for neither of them
+        // with a buffer at all, see #energyOn.
         faces().withPlugs();
         faces().setEnergyIn(MachineSides.leftOf(MachineSides.DEFAULT_FRONT));
         faces().setEnergyOut(MachineSides.rightOf(MachineSides.DEFAULT_FRONT));
@@ -84,6 +87,24 @@ public final class DiodeMachine extends Machine implements LineNode {
     @Override
     public int loss() {
         return 0;
+    }
+
+    /**
+     * {@code null}: a diode answers no side of itself with a buffer at all.
+     * <p>
+     * <b>A line is never fed by a diode and no machine is ever fed by the one beside it.</b> What a diode
+     * carries it carries <i>through</i>, as one piece of a line and not as a machine that holds anything:
+     * the buffer it was given is the invisible charge of its tier, so a line that stands at one of its sides
+     * finds no end there and a machine that stands beside it finds nothing to take a gap from, see
+     * {@link MachineEnergyStorage#internal(Voltage)} and {@code EnergyGrid.Cells#buffer}.
+     *
+     * @param side side of this machine in the world, which a diode reads but never answers with a buffer
+     * @return always {@code null}
+     */
+    @Override
+    public EnergyStorage energyOn(BlockFace side) {
+        Objects.requireNonNull(side, "side");
+        return null;
     }
 
     /**

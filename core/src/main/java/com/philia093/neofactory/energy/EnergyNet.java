@@ -229,10 +229,13 @@ public final class EnergyNet {
      * of the high voltage holds is destroyed by it, exactly as it would be destroyed by a line of the high
      * voltage.
      * <p>
-     * <b>A storage that names no tier, or that has nothing to give through, is no line at all.</b> What a
-     * line burns is a machine that was built for a worse line, so a buffer that is no machine of the industry
-     * - the plain buffer a test holds - destroys nothing, and neither does a box that holds no cell in it and
-     * therefore gives nothing away.
+     * <b>A storage that names no tier, or that holds nothing at all, is no line either.</b> What a line
+     * burns is a machine that was built for a worse line, so a buffer that is no machine of the industry
+     * - the plain buffer a test holds - destroys nothing, and neither does a machine that stands empty: <b>a
+     * block that holds not one unit of energy inside it has no power to take anything away with</b>, so a
+     * box of the high voltage with no cell in it leaves a furnace of the low voltage beside it alone, and so
+     * does a machine of a later age that is waiting for its own power. Only a source that holds energy is a
+     * line at all, and a line that is fed with nothing burns nothing down it.
      *
      * @param source buffer the energy would come from, the machine that gives
      * @param sink buffer that wants the energy, the machine that asks
@@ -241,7 +244,7 @@ public final class EnergyNet {
     public static boolean overvolts(EnergyStorage source, EnergyStorage sink) {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(sink, "sink");
-        if (!source.canExtract() || !(source instanceof EnergyAcceptor giving)) {
+        if (!source.canExtract() || source.amount() <= 0 || !(source instanceof EnergyAcceptor giving)) {
             return false;
         }
         return overvolts(giving.accepted(), sink);
