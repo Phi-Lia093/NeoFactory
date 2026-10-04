@@ -161,6 +161,9 @@ public class MachineBlockEntity extends BlockEntity
      * <b>Two machines with no cable between them need no line.</b> When nothing but the neighbouring block
      * stands at the plug, the machine takes what the buffer beside it can give over the gap with no loss,
      * which is the way the first workshop of the age of electricity is built, see {@link EnergyNet#hand}.
+     * <b>A gap is a line of the tier of the machine that gives</b>, so a machine of a later age destroys the
+     * one beside it the way a line of that age does - and there is no cable of that line to be taken away with
+     * it, see {@link EnergyNet#overvolts(EnergyStorage, EnergyStorage)}.
      * <p>
      * <b>A line that is too much for a machine takes it away.</b> A line of a higher tier than the machine
      * was built for does not feed it: the machine and every cable of the line are taken out of the world, see
@@ -192,9 +195,19 @@ public class MachineBlockEntity extends BlockEntity
             line.pull(cells, buffer, wanted);
             return;
         }
-        // Nothing but the two machines: the energy crosses the gap with no cable and no loss.
+        // Nothing but the two machines: the energy crosses the gap with no cable and no loss. What feeds this
+        // machine is then the machine beside it, so a machine of a later age destroys it the way a line of
+        // that age does - the energy is not handed over at all, and there is no cable of that line to be
+        // taken away with it, see EnergyNet#overvolts.
         if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour) {
-            EnergyNet.hand(neighbour.machine().energy(), buffer, wanted);
+            EnergyStorage source = neighbour.machine().energy();
+            if (EnergyNet.overvolts(source, buffer)) {
+                LOGGER.info("The {} at ({}, {}, {}) was taken by the {} beside it, which is built for a line "
+                        + "of a later age", machine.name(), x(), y(), z(), neighbour.machine().name());
+                world.setBlock(x(), y(), z(), Blocks.AIR);
+                return;
+            }
+            EnergyNet.hand(source, buffer, wanted);
         }
     }
 

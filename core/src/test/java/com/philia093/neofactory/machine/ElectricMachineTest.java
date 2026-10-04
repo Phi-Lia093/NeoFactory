@@ -9,6 +9,9 @@ import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.item.Batteries;
+import com.philia093.neofactory.item.BatteryChemistry;
+import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.recipe.EnergyRecipe;
@@ -229,6 +232,80 @@ class ElectricMachineTest {
     }
 
     @Test
+    void aBoxOfALaterAgeBesideAMachineDestroysIt() {
+        World world = new World(916, 0, 0);
+        // A box of the high voltage stands west of a furnace of the low voltage with nothing but the air
+        // between them: what the furnace is fed by is the machine beside it, which is a line of the high
+        // voltage, so it is destroyed the way a line of that tier destroys it - and there is no cable of that
+        // line to be taken away with it, see EnergyNet#overvolts.
+        BatteryBoxMachine box = new BatteryBoxMachine(Voltage.HIGH, 1);
+        box.inventory().set(0, cell(BatteryChemistry.LITHIUM, Voltage.HIGH));
+        place(world, 0, box);
+
+        TestMachine furnace = machine(Voltage.LOW, ElectricMachine.STANDARD_AMPS);
+        furnace.faces().setEnergyIn(BlockFace.WEST);
+        place(world, 1, furnace);
+        int held = box.bank().amount();
+
+        world.tick(TickClock.TICK_SECONDS);
+
+        assertEquals(Blocks.AIR, world.getBlock(1, Y, 0), "the furnace of the low voltage is gone");
+        assertEquals(0, furnace.buffer().amount(), "and not one unit of the power was handed over");
+        assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "while the box that would have fed it survives");
+        assertEquals(held, box.bank().amount(), "with every unit its cell holds");
+    }
+
+    @Test
+    void aBoxOfAnEarlierAgeBesideAMachineFeedsIt() {
+        World world = new World(918, 0, 0);
+        // The other way round: a box of the low voltage feeds a machine of the high voltage, because a better
+        // machine takes a worse line and only the machine that asks for more than it was built for is
+        // destroyed, see EnergyAcceptor#accepts.
+        BatteryBoxMachine box = new BatteryBoxMachine(Voltage.LOW, 1);
+        box.inventory().set(0, cell(BatteryChemistry.LITHIUM, Voltage.LOW));
+        place(world, 0, box);
+
+        TestMachine machine = machine(Voltage.HIGH, ElectricMachine.STANDARD_AMPS);
+        machine.faces().setEnergyIn(BlockFace.WEST);
+        place(world, 1, machine);
+        int held = box.bank().amount();
+
+        world.tick(TickClock.TICK_SECONDS);
+
+        assertEquals(Voltage.LOW.euPerTick(), held - box.bank().amount(),
+                "the box gave the one ampere its cell gives in a tick");
+        assertEquals(Voltage.LOW.euPerTick(), machine.buffer().amount(),
+                "which the machine of the high voltage took in");
+        assertEquals(Blocks.FURNACE, world.getBlock(1, Y, 0), "and it stands where it was");
+    }
+
+    @Test
+    void aBoxOfALaterAgeACableAwayDestroysAMachineOfAnEarlierOne() {
+        World world = new World(917, 0, 0);
+        // The same two machines with a copper cable between them, which is a line of the middle voltage: the
+        // machine of the low voltage reaches for the power through that cable and is destroyed by it, and the
+        // cable it reached through goes with it. The box that gave the line its power stays where it is and
+        // keeps what its cell holds, see EnergyGrid#burn.
+        BatteryBoxMachine box = new BatteryBoxMachine(Voltage.HIGH, 1);
+        box.inventory().set(0, cell(BatteryChemistry.LITHIUM, Voltage.HIGH));
+        place(world, 0, box);
+        cable(world, 1, Y, 0);
+
+        TestMachine furnace = machine(Voltage.LOW, ElectricMachine.STANDARD_AMPS);
+        furnace.faces().setEnergyIn(BlockFace.WEST);
+        place(world, 2, furnace);
+        int held = box.bank().amount();
+
+        world.tick(TickClock.TICK_SECONDS);
+
+        assertEquals(Blocks.AIR, world.getBlock(2, Y, 0), "the furnace of the low voltage is gone");
+        assertEquals(Blocks.AIR, world.getBlock(1, Y, 0),
+                "and so is every cable of the line that was too much for it");
+        assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "while the box that gave the power survives");
+        assertEquals(held, box.bank().amount(), "with every unit its cell holds");
+    }
+
+    @Test
     void everyFamilyAndTierOfTheLineIsAMachineOfItsOwn() {
         assertEquals(18, MachineFamilies.all().size() * MachineFamilies.TIERS.size(),
                 "six families of three tiers make the machines of the line");
@@ -348,6 +425,20 @@ class ElectricMachineTest {
     private static void cable(World world, int x, int y, int z) {
         world.setBlock(x, y, z, Cables.of(CableMaterials.COPPER, CableSize.SINGLE, CableKind.CABLE).block());
         world.setState(x, y, z, Cables.stateOf(Cables.mask(BlockFace.WEST, BlockFace.EAST)));
+    }
+
+    /** Puts a machine into a world at one cell of the row these tests run along, and hands its entity back. */
+    private static MachineBlockEntity place(World world, int x, Machine machine) {
+        MachineBlockEntity entity = new MachineBlockEntity(BlockEntityTypes.FURNACE, machine);
+        entity.setPosition(x, Y, 0);
+        world.setBlock(x, Y, 0, Blocks.FURNACE);
+        world.addBlockEntity(entity);
+        return entity;
+    }
+
+    /** A stack of one cell of a chemistry and a tier, fresh and full. */
+    private static ItemStack cell(BatteryChemistry chemistry, Voltage tier) {
+        return ItemStack.of(ItemRegistry.byName(Batteries.itemNameOf(Batteries.of(chemistry, tier))), 1);
     }
 
     /**

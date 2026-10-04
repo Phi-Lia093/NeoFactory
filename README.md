@@ -423,6 +423,16 @@ stored on disk so that a session can be continued later.
   finds when a line of a later age is run into a workshop of an earlier one, see `EnergyNet` and
   `EnergyAcceptor`. A machine that asks for nothing never meets the line, so an idle workshop is safe, and the
   tier of a line is settled by the machine that works and never by the one that only makes power.
+  **Two machines that stand next to each other need no cable, and what feeds them is then a line of the tier of
+  the machine that gives**: a furnace of the low voltage that reaches for what a box of the high voltage holds
+  is destroyed by it, exactly as it would be destroyed by a line of the high voltage, while a machine of the
+  high voltage takes the ampere a box of the low voltage gives it, because a better machine takes a worse line.
+  There are no cables between the two to be taken away with the machine that was too small for them, so the
+  machine alone goes and the machine beside it keeps what it holds, see `EnergyNet#overvolts`. **The tier of a
+  cable run is what its cables are and not what is at the end of it**: a line of tin is a line of the low
+  voltage whatever is feeding it, because the line is what carries the power - a box of the high voltage behind
+  a tin cable is a box that fills a line of the low voltage, and a furnace of the low voltage standing at the
+  other end of that cable is fed by it and not destroyed.
   **A machine of the power network holds a buffer of a tier.** What one call may add is **one ampere of that
   tier** and no more however wide the line at it is. A machine that makes power may be emptied by the line,
   because that is what it fills its buffer for, while **a machine that works may only be filled**: it spends

@@ -5,6 +5,7 @@ import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.machine.MachineEnergyStorage;
 import com.philia093.neofactory.machine.SimpleEnergyStorage;
 import com.philia093.neofactory.support.TestRegistries;
 import org.junit.jupiter.api.BeforeAll;
@@ -138,6 +139,24 @@ class EnergyNetTest {
                 "no cable carries as much as the two machines allow");
         assertEquals(500, source.amount());
         assertEquals(500, sink.amount());
+    }
+
+    @Test
+    void whatFeedsTwoMachinesThatStandSideBySideIsTheTierOfTheOneThatGives() {
+        MachineEnergyStorage high = new MachineEnergyStorage(1000, Voltage.HIGH);
+        MachineEnergyStorage low = new MachineEnergyStorage(1000, Voltage.LOW);
+
+        assertTrue(EnergyNet.overvolts(high, low),
+                "a machine beside a buffer of the high voltage is fed by a line of the high voltage");
+        assertFalse(EnergyNet.overvolts(low, low), "the tier of its own line feeds it");
+        assertFalse(EnergyNet.overvolts(low, high), "and a better machine takes a worse line");
+        assertFalse(EnergyNet.overvolts(new SimpleEnergyStorage(1000), low),
+                "a buffer that names no tier is no line at all");
+        assertFalse(EnergyNet.overvolts(high, new SimpleEnergyStorage(1000)),
+                "and neither is a machine that names none destroyed by one");
+
+        assertThrows(NullPointerException.class, () -> EnergyNet.overvolts(null, low));
+        assertThrows(NullPointerException.class, () -> EnergyNet.overvolts(high, null));
     }
 
     @Test

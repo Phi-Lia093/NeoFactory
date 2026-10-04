@@ -204,6 +204,33 @@ public final class EnergyNet {
     }
 
     /**
+     * {@code true} when the energy of one buffer destroys the machine that asks it for power over a gap.
+     * <p>
+     * <b>Two machines that stand next to each other need no cable, and what feeds them is then a line of the
+     * tier of the machine that gives.</b> A machine of the game is built for one tier of the power, and a line
+     * of a higher tier does not feed it - it destroys it, see {@link EnergyAcceptor} and
+     * {@link #overvolts(EnergyAcceptor)}. Where there is no cable between the two, the tier of that line is
+     * the one the storage that gives names: a furnace of the low voltage that reaches for what a box of the
+     * high voltage holds is destroyed by it, exactly as it would be destroyed by a line of the high voltage.
+     * <p>
+     * <b>A storage that names no tier is no line at all.</b> What a line burns is a machine that was built for
+     * a worse line, and a buffer that is no machine of the industry - the plain buffer a test holds - names no
+     * tier and destroys nothing.
+     *
+     * @param source buffer the energy would come from, the machine that gives
+     * @param sink buffer that wants the energy, the machine that asks
+     * @return {@code true} when asking that machine for power destroys the one that asks
+     */
+    public static boolean overvolts(EnergyStorage source, EnergyStorage sink) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(sink, "sink");
+        if (!(source instanceof EnergyAcceptor giving) || !(sink instanceof EnergyAcceptor taking)) {
+            return false;
+        }
+        return !taking.accepts(giving.accepted());
+    }
+
+    /**
      * Moves energy between two storages that stand next to each other.
      * <p>
      * The case of two machines with no cable between them: the energy crosses the gap with no loss and with
