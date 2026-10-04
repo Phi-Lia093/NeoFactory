@@ -9,6 +9,7 @@ import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.support.TestRegistries;
+import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.FaceClick;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,6 +23,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -75,25 +77,43 @@ class DiodesTest {
     }
 
     @Test
-    void aDiodeCarriesALineThroughItsTwoFlanks() {
+    void aDiodeHandsThePowerFromOneOfItsFlanksToTheOther() {
         DiodeMachine diode = new DiodeMachine(Voltage.MEDIUM, 2);
 
-        assertEquals(Voltage.MEDIUM, diode.voltage(), "the tier of a diode is what it may carry");
-        assertEquals(2, diode.amperage(), "and its width is the current it passes");
-        assertEquals(0, diode.loss(), "a diode of the industry is a superconductor with a door in it");
+        assertEquals(Voltage.MEDIUM, diode.tier(), "the tier of a diode is what it may take in");
+        assertEquals(2, diode.amperage(), "and its width is the current it carries across");
         assertEquals(Voltage.MEDIUM, diode.lineTier(), "and it wears the terminal of its own age");
         assertEquals(MachineCasing.pictureOf(Voltage.MEDIUM), diode.casing());
         assertFalse(diode.opensPanel(), "a diode has nothing a panel could show");
 
-        // The two sides a diode carries a line through are the flanks of a machine that looks north: the power
-        // runs in by the left one and out by the right one, and a line is walked against the power.
+        // The two sides a diode hands the power between are the flanks of a machine that looks north: the power
+        // runs in by the left one and out by the right one, and neither of them is a side a player sets.
         BlockFace in = MachineSides.leftOf(MachineSides.DEFAULT_FRONT);
         BlockFace out = MachineSides.rightOf(MachineSides.DEFAULT_FRONT);
         assertEquals(in, diode.faces().energyIn());
         assertEquals(out, diode.faces().energyOut());
-        assertEquals(in, diode.through(out), "a line that arrives the way the power leaves is handed on");
-        assertNull(diode.through(in), "and one that arrives at the other flank is refused");
-        assertNull(diode.through(BlockFace.NORTH), "the front of a diode carries nothing at all");
+        assertEquals(List.of(in), diode.inputSides(), "the line at the left flank is the one that feeds it");
+        assertSame(diode.inputSide(), diode.energyOn(in), "and behind it stands the buffer power arrives in");
+        assertSame(diode.outputSide(), diode.energyOn(out), "while the right one is the buffer it leaves by");
+        assertNull(diode.energyOn(BlockFace.NORTH), "the front of a diode reaches nothing at all");
+        assertNull(diode.energyOn(BlockFace.SOUTH), "and so does its back");
+        assertEquals(Voltage.MEDIUM.euPerTick() * 2, diode.requestEu(),
+                "what it wants a tick is the whole width it was built with");
+    }
+
+    @Test
+    void aDiodeCarriesWhatItTookInOverToTheSideItHandsOutWithoutLosingAny() {
+        DiodeMachine diode = new DiodeMachine(Voltage.MEDIUM, 2);
+        diode.inputSide().setAmount(Voltage.MEDIUM.euPerTick() * 2);
+
+        diode.tick(TickClock.TICK_SECONDS);
+
+        assertEquals(0, diode.inputSide().amount(), "what arrived was carried over");
+        assertEquals(Voltage.MEDIUM.euPerTick() * 2, diode.outputSide().amount(),
+                "and stands in the side the lines behind the diode are fed from, whole");
+        assertEquals(Diodes.capacityOf(Voltage.MEDIUM), diode.outputSide().capacity(),
+                "a side of a diode holds the charge of its own age");
+        assertEquals(Diodes.capacityOf(Voltage.MEDIUM), diode.inputSide().capacity());
     }
 
     @Test
@@ -104,7 +124,9 @@ class DiodesTest {
         assertEquals(MachineSides.leftOf(BlockFace.EAST), diode.faces().energyIn(),
                 "the flanks of the diode are the flanks of the machine it is turned to");
         assertEquals(MachineSides.rightOf(BlockFace.EAST), diode.faces().energyOut());
-        assertEquals(diode.faces().energyIn(), diode.through(diode.faces().energyOut()));
+        assertSame(diode.inputSide(), diode.energyOn(diode.faces().energyIn()),
+                "and the two buffers behind them turned with it");
+        assertSame(diode.outputSide(), diode.energyOn(diode.faces().energyOut()));
     }
 
     @Test
@@ -132,16 +154,14 @@ class DiodesTest {
     }
 
     @Test
-    void aDiodeAnswersNoSideWithABufferAtAll() {
-        DiodeMachine diode = new DiodeMachine(Voltage.MEDIUM, 2);
-
-        for (BlockFace side : BlockFace.ALL) {
-            assertNull(diode.energyOn(side),
-                    "no side of a diode reaches a buffer, so neither a line nor a machine beside it is fed by it");
-        }
-        assertEquals(MachineEnergyStorage.internalCapacityOf(Voltage.MEDIUM), diode.energy().capacity(),
-                "while what it keeps inside itself is the invisible charge of its own age");
-        assertEquals(Voltage.MEDIUM, ((MachineEnergyStorage) diode.energy()).accepted());
+    void aDiodeHoldsTheChargeOfItsOwnAgeAndOfNoAgeAboveIt() {
+        assertEquals(2112, Diodes.capacityOf(Voltage.LOW), "the age of the first line of the power");
+        assertEquals(6912, Diodes.capacityOf(Voltage.MEDIUM), "the middle voltage");
+        assertEquals(26112, Diodes.capacityOf(Voltage.HIGH), "the high voltage");
+        assertThrows(IllegalArgumentException.class, () -> Diodes.capacityOf(Voltage.EXTREME),
+                "no diode of the game is built above the high voltage, and no rule carries the table on");
+        assertThrows(IllegalArgumentException.class, () -> Diodes.capacityOf(Voltage.ULTRA_LOW),
+                "nor below the low one");
     }
 
     /** Places one diode of the game in a world, turned towards the north. */

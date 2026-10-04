@@ -455,28 +455,34 @@ stored on disk so that a session can be continued later.
   pictures and not a tint of the drawing - `tools/verify/import_energy_terminals.ps1` colours the grey one and
   keeps its shading - and the stub of a pipe is the same picture in every age, because what a colour says is
   the tier of a **line**.
-  **A line runs through its cables and through every piece that carries it on.** A diode is the second kind of
-  piece a line is built of: a **conductor** that takes the tier and the current of the cable at it, loses
-  nothing, and answers for itself which way a line may run through it. A line is walked by the machine that
-  asks for the power, towards whoever gives it, so a diode hands that walk on when it arrives the way its
-  power runs and refuses it when it arrives the other way - which is what makes a diode one-way and the line
-  it stands in one-way with it, see `LineNode` and `EnergyGrid#line`. What a line carries is the worst of
-  **every** piece of it, so a diode of one ampere in a run of a wide cable is a line of one ampere, and a
-  diode of an earlier age melts where it stands in a line of a later one, exactly like a cable.
+  **A diode is a machine of one direction: a transformer whose two ends are of the same age.** What a line does
+  at a diode is what it does at any machine - it **ends** there - and what crosses the block is what its two
+  sides hand between them: the side of its **left flank** takes the power in and the side of its **right** one
+  hands it out, with a buffer between the two that holds the charge of the age the diode was built for, see
+  `DiodeMachine`. Nothing of what crosses a diode is lost - it is a superconductor with a door in it - so the
+  line that ends at its left flank and the line that starts at its right one carry the same energy between them,
+  a tick apart. The one direction of a diode is what its two sides are and not something the walk of a line
+  decides: the side that hands the power out is no side a line may hand power to it by, so nothing reaches it
+  there, and a diode of an earlier age is taken out of the world where it stands in a line of a later one the
+  way a machine of that age is.
   **A diode is built in five widths and three ages**: one, two, four, eight or sixteen amperes of the low, the
   middle or the high voltage, and the narrowest one of an age is named for the casing it is built of - the
   `LV Machine Casing` is the diode of one ampere of that age, and every wider one is a `Cable Diode` of its
-  width up to `16x`. A diode carries a line through its **two flanks** - what enters it by the left one leaves
-  it by the right one - and a player **aims it by turning the whole block with the wrench**, which is the one
-  thing the wrench does at a diode: the two sides it runs a line through are what the block was built for, and
-  no player moves one of them. A diode has no panel at all: there is nothing in it to look at and nothing to
+  width up to `16x`. What a width is worth is how much crosses a diode a tick: one of one ampere hands on what
+  one machine of the line hands over, one of sixteen what sixteen machines would. A player **aims a diode by
+  turning the whole block with the wrench**, which is the one thing the wrench does at it: the two sides it
+  hands the power between are what the block was built for, and no player moves one of them. A diode has no
+  panel at all: there is nothing in it to look at and nothing to
   **A transformer joins two ages of the line.** One side of it carries the **high** voltage and the five others
   the **low** one, and what it does is hand the energy of one over to the other: **one ampere of the high
   voltage leaves as four amperes of the low one**, because every tier of the line is four times the one below
   it - the energy is the energy and the current is what changes. A transformer of the low voltage joins the low
   and the middle one, one of the middle voltage joins the middle and the high one, and there is none of the
   high voltage yet; each of them is built in three sizes: one, four or sixteen amperes of its high side, which
-  are four, sixteen and sixty four of its low one.
+  are four, sixteen and sixty four of its low one. **Each side of a transformer holds what a machine of its own
+  age holds inside itself**, sixty four ticks of the voltage of that tier, see `MachineEnergyStorage#capacityOf`:
+  that charge is what a line finds standing in the side while it asks, which is why a transformer that holds
+  none of it feeds nothing and burns nothing.
   **Which end of a transformer takes the power in is what a player decides**: a knock with a **mallet** turns
   the machine around - the one thing a mallet does, where a wrench sets a side - so a transformer that steps
   down takes the power in on the side of the high voltage and one that steps up takes it in on all five of its
@@ -488,11 +494,11 @@ stored on disk so that a session can be continued later.
   **What burns a machine is the power that is standing next to it and not the size of the block.** A line is
   fed by the machines at its ends and by the energy **those machines hold**, so a block that holds not one
   unit of energy in it names no tier at all: an empty box of the high voltage beside a furnace of the low one
-  burns nothing, and neither does a transformer of a later age that has not been fed yet. A block of the line
-  keeps the **invisible charge of its age** inside it - 2112 units at the low voltage, 6912 at the middle one
-  and 26112 at the high one, see `MachineEnergyStorage#internalCapacityOf` - which is what a line finds
-  standing at a piece of it, and the charge of a diode is reached by nothing at all: a diode answers no side
-  of itself with a buffer, so it is a piece of a line and never a machine beside it, see `DiodeMachine`.
+  burns nothing, and neither does a transformer of a later age that has not been fed yet. A machine of the line
+  keeps sixty four ticks of its own voltage inside itself and a diode keeps the charge of its own age - 2112
+  units at the low voltage, 6912 at the middle one and 26112 at the high one, see
+  `MachineEnergyStorage#capacityOf` and `Diodes#capacityOf` - and that charge standing in a block is what a line
+  finds when it asks it.
   **Two machines that stand side by side need no cable, and what feeds them is the side of the one that
   gives.** The energy crosses the gap with no loss, and what the machine beside it gives away is read off the
   side of it that faces this machine: a transformer hands out the low voltage through its five low sides and

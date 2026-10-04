@@ -9,13 +9,16 @@ import java.util.Objects;
 /**
  * The diodes of the industry: the five widths every tier of the line of the power is built in.
  * <p>
- * <b>A diode is one piece of a line that carries it one way.</b> It is a block a line runs through - what
- * enters it by one side leaves it by the other, and nothing runs back - and it rates the line it stands in
- * the way a cable does: its <b>tier</b> is the highest voltage that may run through it and its <b>width</b>
- * is the current it carries, so a diode of one ampere in a run of a wide cable is a line of one ampere, see
- * {@code Conductor} and {@code energy.LineNode}. It loses nothing at all: it is a superconductor with a door
- * in it, which is why a diode of an earlier age melts where it stands in a line of a later one, exactly like
- * a cable of that age.
+ * <b>A diode is a machine of one direction.</b> It is not a piece a line runs through but a machine the power
+ * crosses: the side of its <b>left flank</b> takes it in and the side of its <b>right</b> one hands it out, and
+ * what stands between the two of them is a buffer the size of the age of its casing - what a diode is, then, is
+ * a transformer whose two ends are of the same age, a transformer of one to one, and no power runs back through
+ * it, see {@code DiodeMachine} and {@code TransformerMachine}. Its <b>tier</b> is the highest voltage it may
+ * take in and its <b>width</b> is the current it carries: a diode of one ampere in a run of wide cables hands
+ * on one ampere of what arrives, and a diode of an earlier age is taken out of the world where it stands in a
+ * line of a later one, exactly like the machine at the end of such a line. Nothing of what crosses a diode is
+ * lost - it is a superconductor with a door in it - so a line that ends at one and a line that starts at the
+ * other carry the same energy between them.
  * <p>
  * <b>The narrowest diode of a tier is the machine casing of that tier.</b> One ampere is what a machine of
  * the line carries over the side a player gave to the power of it, so the diode of one ampere is the block a
@@ -54,6 +57,35 @@ public final class Diodes {
     /** Tiers a diode is built in, in the order they are registered. */
     public static List<Voltage> tiers() {
         return MachineFamilies.TIERS;
+    }
+
+    /**
+     * Energy one side of a diode holds, which is the charge of the age it was built for.
+     * <p>
+     * <b>A diode is a machine of two sides and not a piece of a line, and what it holds on either of them is
+     * the charge of its own age:</b> 2112 units at the low voltage, 6912 at the middle one and 26112 at the
+     * high one. It is what stands in the side of a diode while a line asks it - the side that takes the power
+     * in and the side that hands it out both hold it - so a diode that holds nothing feeds nothing and burns
+     * nothing downstream of it, see {@code DiodeMachine} and
+     * {@link com.philia093.neofactory.energy.EnergyNet#overvolts(EnergyStorage, EnergyStorage)}.
+     * <p>
+     * <b>The ages above the high voltage are not written down.</b> The industry has been drawn in three ages
+     * so far, which is what the diodes of the game are built in, see {@link #tiers()}: a diode of a later
+     * voltage is a question for the day such an age is drawn and not a number carried on by a rule.
+     *
+     * @param tier tier the diode was built for
+     * @return energy one side of that diode holds
+     * @throws IllegalArgumentException when no diode of the game is built for that tier
+     */
+    public static int capacityOf(Voltage tier) {
+        Objects.requireNonNull(tier, "tier");
+        return switch (tier) {
+            case LOW -> 2112;
+            case MEDIUM -> 6912;
+            case HIGH -> 26112;
+            default -> throw new IllegalArgumentException("No diode is built for the " + tier.displayName()
+                    + ": the industry has been drawn in three ages so far, see MachineFamilies#TIERS");
+        };
     }
 
     /**

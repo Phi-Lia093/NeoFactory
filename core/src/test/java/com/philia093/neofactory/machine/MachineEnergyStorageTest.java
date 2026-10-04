@@ -74,21 +74,21 @@ class MachineEnergyStorageTest {
     }
 
     @Test
-    void theInvisibleBufferOfAnAgeHoldsWhatABlockOfItKeeps() {
-        assertEquals(2112, MachineEnergyStorage.internalCapacityOf(Voltage.LOW), "the age of the first line");
-        assertEquals(6912, MachineEnergyStorage.internalCapacityOf(Voltage.MEDIUM), "the middle voltage");
-        assertEquals(26112, MachineEnergyStorage.internalCapacityOf(Voltage.HIGH), "the high voltage");
-        assertEquals(MachineEnergyStorage.internalCapacityOf(Voltage.HIGH) * 4,
-                MachineEnergyStorage.internalCapacityOf(Voltage.EXTREME),
-                "and the ages beyond it are carried on by the rule of the four tiers");
-        assertEquals(MachineEnergyStorage.internalCapacityOf(Voltage.LOW),
-                MachineEnergyStorage.internalCapacityOf(Voltage.ULTRA_LOW),
-                "while no block of the game is built for an age below the low voltage");
+    void aBufferOfAnAgeHoldsSixtyFourTicksOfWork() {
+        assertEquals(ElectricMachine.BUFFER_TICKS * Voltage.LOW.euPerTick(),
+                MachineEnergyStorage.capacityOf(Voltage.LOW), "the age of the first line of the power");
+        assertEquals(64 * 32, MachineEnergyStorage.capacityOf(Voltage.LOW),
+                "which is the two thousand and forty eight units a machine of that age is built with");
+        assertEquals(ElectricMachine.BUFFER_TICKS * Voltage.MEDIUM.euPerTick(),
+                MachineEnergyStorage.capacityOf(Voltage.MEDIUM));
+        assertEquals(ElectricMachine.BUFFER_TICKS * Voltage.HIGH.euPerTick(),
+                MachineEnergyStorage.capacityOf(Voltage.HIGH));
 
-        MachineEnergyStorage held = MachineEnergyStorage.internal(Voltage.LOW);
-        assertEquals(2112, held.capacity(), "the buffer of one block of an age is the charge of that age");
-        assertEquals(Voltage.LOW, held.accepted(), "and it is a buffer of that age like any other");
-        assertEquals(0, held.amount(), "which stands empty until something fills it");
+        MachineEnergyStorage machine = new MachineEnergyStorage(MachineEnergyStorage.capacityOf(Voltage.LOW),
+                Voltage.LOW);
+        assertEquals(MachineEnergyStorage.capacityOf(Voltage.LOW), machine.capacity(),
+                "a machine of an age is built with the buffer of that age");
+        assertEquals(Voltage.LOW, machine.accepted());
     }
 
     @Test

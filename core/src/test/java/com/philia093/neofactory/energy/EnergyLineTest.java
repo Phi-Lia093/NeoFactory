@@ -283,52 +283,55 @@ class EnergyLineTest {
     }
 
     @Test
-    void aDiodeCarriesALineTheWayItsPowerRuns() {
+    void aDiodeHandsThePowerOfTheLineItTakesInOverToTheLineBehindIt() {
         World world = new World(SEED, 9, 0);
         MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
         bufferOf(generator).setAmount(CAPACITY);
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
-        // The diode lies in the run with its input towards the machine that gives and its output towards the
-        // machine that works, which a player builds by turning the block: a machine that looks south has its
-        // left flank towards the west, so the power of the diode runs in from there and out towards the east,
-        // see DiodeMachine.
-        diode(world, Voltage.MEDIUM, 4, 2, 0, BlockFace.SOUTH);
+        // The power of a diode runs in by its left flank and out by its right one, which a player builds by
+        // turning the whole block: a machine that looks south has its left flank towards the west, so a diode
+        // between the machine that gives and the machine that works takes the power in from the west and hands
+        // it out towards the east, see DiodeMachine.
+        DiodeBlockEntity diode = diode(world, Voltage.MEDIUM, 4, 2, 0, BlockFace.SOUTH);
         cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, consumer(Voltage.MEDIUM), 4, Y, 0);
         sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
-        settle(world, 1);
+        // The facing of a diode is read off its cell while it ticks, so its two sides are known from the first
+        // tick of the world on, see MachineBlockEntity#settleFacing.
+        settle(world, 3);
 
-        // The facing of a diode is read off its cell while it ticks, so the line is walked after the first
-        // tick of the world, see MachineBlockEntity#settleFacing.
-        EnergyGrid.Line line = lineOf(world, 3, Y, 0);
-        int perTick = line.net().capacity() - line.net().totalLoss();
-        assertEquals(3, line.length(), "the two cables and the diode between them");
-        assertEquals(1, line.net().amperage(), "the narrowest piece of the run carries one ampere");
-        assertEquals(perTick, bufferOf(sink).amount(), "and what the machine asked for arrived");
-        assertEquals(CAPACITY - line.net().capacity(), bufferOf(generator).amount(),
-                "while the machine that gives paid a tick of the line");
-        assertEquals(Diodes.nameOf(Voltage.MEDIUM, 4),
-                world.getBlock(2, Y, 0).name(), "and the diode stands where it was built");
+        DiodeMachine diodeMachine = (DiodeMachine) diode.machine();
+        EnergyGrid.Line fed = lineOf(world, 1, Y, 0);
+        assertEquals(1, fed.length(), "the line the power arrives over is its one cable");
+        assertTrue(fed.ends().contains(diodeMachine.inputSide()),
+                "which ends at the flank the diode takes the power in by");
+        assertTrue(bufferOf(sink).amount() > 0,
+                "the machine of the middle voltage was fed through the two sides of the diode");
+        assertTrue(bufferOf(generator).amount() < CAPACITY, "and the machine that gives paid for it");
+        assertEquals(Diodes.nameOf(Voltage.MEDIUM, 4), world.getBlock(2, Y, 0).name(),
+                "while the diode stands where it was built");
     }
 
     @Test
-    void aDiodeRefusesALineThatArrivesTheOtherWay() {
+    void aDiodeTakesItsPowerInFromOneSideAndNeverOutOfTheOther() {
         World world = new World(SEED, 11, 0);
         MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
         bufferOf(generator).setAmount(CAPACITY);
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
-        // The same run with the diode turned the other way: its power now runs in from the east and out
-        // towards the west, so the machine that works reaches it the way its power does not run and no line
-        // is walked at all, see LineNode#through.
+        // The same run with the diode turned the other way: its left flank looks towards the east now, so the
+        // power it takes in arrives through the side the machine that works stands at - which hands it nothing -
+        // while the side of the machine that gives is the one it hands power out by, which nothing asks it for,
+        // see Machine#inputSides and DiodeMachine#energyOn.
         diode(world, Voltage.MEDIUM, 4, 2, 0, BlockFace.NORTH);
         cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
         MachineBlockEntity sink = place(world, consumer(Voltage.MEDIUM), 4, Y, 0);
         sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
-        settle(world, 1);
+        settle(world, 3);
 
-        assertEquals(0, bufferOf(sink).amount(), "the walk of the machine was refused, so nothing arrived");
+        assertEquals(0, bufferOf(sink).amount(),
+                "no power crossed the diode: the side it takes power in by faces away from the machine that gives");
         assertEquals(CAPACITY, bufferOf(generator).amount(), "and the machine that gives kept what it holds");
         assertEquals(Diodes.nameOf(Voltage.MEDIUM, 4), world.getBlock(2, Y, 0).name(),
                 "while the diode stands where it was built");

@@ -105,7 +105,8 @@ public class ElectricMachine extends RecipeMachine {
     private static MachineEnergyStorage bufferOf(Voltage tier, int maxAmps) {
         Objects.requireNonNull(tier, "tier");
         int amperes = Math.max(1, maxAmps);
-        return new MachineEnergyStorage(BUFFER_TICKS * tier.euPerTick(), amperes * tier.euPerTick(), 0, tier);
+        return new MachineEnergyStorage(MachineEnergyStorage.capacityOf(tier), amperes * tier.euPerTick(), 0,
+                tier);
     }
 
     /** Tier this machine was built for, which is the best line that may feed it. */

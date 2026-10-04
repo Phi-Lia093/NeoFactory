@@ -1,8 +1,6 @@
 package com.philia093.neofactory.blockentity;
 
 import com.philia093.neofactory.block.BlockFace;
-import com.philia093.neofactory.cable.Voltage;
-import com.philia093.neofactory.energy.LineNode;
 import com.philia093.neofactory.entity.Player;
 import com.philia093.neofactory.item.FaceTool;
 import com.philia093.neofactory.item.ItemStack;
@@ -11,20 +9,21 @@ import com.philia093.neofactory.world.World;
 import com.philia093.neofactory.world.interaction.FaceClick;
 
 /**
- * The block entity of a diode: the block a line of the power runs through, one way.
+ * The block entity of a diode: the machine of one direction a line ends at and another line starts at.
  * <p>
- * The entity is what the world asks: a line of cables that reaches this cell asks it whether it carries the
- * line through and which side it leaves by, see {@link LineNode} and {@code EnergyGrid.Cells#node}. Every
- * answer is the answer of the machine behind the block, which is a {@link DiodeMachine} and knows its tier
- * and its width - the entity itself adds the one thing a block of the game has to say and a machine cannot:
- * which clicks it takes, see {@link #operateFace}.
+ * <b>This class adds nothing to what the machine behind the block already answers.</b> A diode is a machine of
+ * two sides like a transformer is - the side of its left flank takes the power in and the side of its right one
+ * hands it out - so a line of cables that reaches this cell finds what it finds at any machine: an end of that
+ * line, see {@code MachineBlockEntity#updateEnergy} and {@code EnergyGrid.Cells#buffer}. What the entity of a
+ * diode is for is the one thing a block of the game has to say and a machine cannot: which clicks it takes,
+ * see {@link #operateFace}.
  * <p>
- * <b>A player aims a diode and never sets one of its sides.</b> The two sides it carries a line through are
+ * <b>A player aims a diode and never sets one of its sides.</b> The two sides it hands the power between are
  * what the block was built for, so the wrench turns the whole block and the clicks that would move a plug of
  * the power are refused here - the one place where a machine of the line and a diode part ways, see
  * {@code FaceConfig} and {@code MachineBlockEntity#operateFace}.
  */
-public final class DiodeBlockEntity extends MachineBlockEntity implements LineNode {
+public final class DiodeBlockEntity extends MachineBlockEntity {
 
     /**
      * Creates the entity of a diode.
@@ -34,31 +33,6 @@ public final class DiodeBlockEntity extends MachineBlockEntity implements LineNo
      */
     public DiodeBlockEntity(BlockEntityType type, DiodeMachine machine) {
         super(type, machine);
-    }
-
-    /** The diode behind this block. */
-    private DiodeMachine diode() {
-        return (DiodeMachine) machine();
-    }
-
-    @Override
-    public BlockFace through(BlockFace from) {
-        return diode().through(from);
-    }
-
-    @Override
-    public Voltage voltage() {
-        return diode().voltage();
-    }
-
-    @Override
-    public int amperage() {
-        return diode().amperage();
-    }
-
-    @Override
-    public int loss() {
-        return diode().loss();
     }
 
     /**
@@ -79,7 +53,7 @@ public final class DiodeBlockEntity extends MachineBlockEntity implements LineNo
     public boolean operateFace(World world, int x, int y, int z, BlockFace face, FaceTool tool, Player player,
             ItemStack held, FaceClick click) {
         if (click != FaceClick.RIGHT) {
-            // The two sides a diode carries a line through are what it was built for: a player aims the whole
+            // The two sides a diode hands the power between are what it was built for: a player aims the whole
             // block with the wrench and never moves one of its plugs, see the note on this class.
             return false;
         }

@@ -146,6 +146,16 @@ public final class SaveTags {
     /** Amount of energy a machine holds. */
     public static final String ENERGY = "Energy";
 
+    /**
+     * Amount of energy the other side of a machine holds.
+     * <p>
+     * <b>A machine that holds energy on two sides but one buffer to a side</b> - a transformer, a diode - stores
+     * the side a line fills it through with {@link #ENERGY} and the side it hands the power out of with this
+     * one, so what a player built keeps its charge across a save game, see {@code TransformerMachine} and
+     * {@code DiodeMachine}.
+     */
+    public static final String ENERGY_HELD = "EnergyHeld";
+
     /** List of the tanks of a machine. */
     public static final String TANKS = "Tanks";
 
