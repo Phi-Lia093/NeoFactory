@@ -128,6 +128,21 @@ public final class Batteries {
     }
 
     /**
+     * The battery a stack holds, which is the cell of the item of that stack.
+     * <p>
+     * <b>A stack of a battery is a cell and a stack of anything else is no cell at all</b>, which is the
+     * question every machine that keeps energy asks of what a player hands it: a box of cells takes the cells
+     * of its own tier and refuses everything else, see {@link Battery} and
+     * {@code com.philia093.neofactory.machine.BatteryBoxMachine}.
+     *
+     * @param stack stack to read, may be {@code null} or empty
+     * @return the battery of the stack, or {@code null} for a stack that holds no cell
+     */
+    public static Battery of(ItemStack stack) {
+        return stack == null || stack.isEmpty() ? null : of(stack.item());
+    }
+
+    /**
      * Energy a cell of a chemistry and a tier holds.
      * <p>
      * <b>A tier is four times the one below it</b>, because that is what the ladder of the voltages does:

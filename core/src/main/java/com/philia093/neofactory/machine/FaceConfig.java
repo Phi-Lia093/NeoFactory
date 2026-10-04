@@ -95,10 +95,10 @@ public final class FaceConfig {
     private final MachineTank.Role[] tankRoles;
 
     /** {@code true} when the power of a line may enter this machine, which gives it a plug. */
-    private final boolean takesPower;
+    private boolean takesPower;
 
     /** {@code true} when the power this machine makes leaves it through a plug. */
-    private final boolean givesPower;
+    private boolean givesPower;
 
     /** {@code true} when this machine blows its spent steam out of a side. */
     private boolean blowsSteam;
@@ -145,6 +145,30 @@ public final class FaceConfig {
         blowsSteam = true;
         if (exhaust == null) {
             exhaust = BACK_DEFAULT;
+        }
+        return this;
+    }
+
+    /**
+     * Gives this machine the two plugs of the power although its buffer may hold nothing at all.
+     * <p>
+     * <b>A box of cells is fed through one side and gives through another whether or not a cell stands in
+     * it.</b> A machine of the usual kind is given the plugs its buffer asks for - a buffer that may be filled
+     * gives one and a buffer that may be emptied gives the other - so a box whose cells were all taken out
+     * would have no side a player could set at all, see {@link #FaceConfig(MachineTank.Role[], EnergyStorage)}.
+     * The two plugs of a box are what a player built it for and not what lies in it, so the machine says so
+     * while it is created, the way a machine of steam says that it breathes, see {@link #withExhaust()}.
+     *
+     * @return this configuration, for a machine that builds it in one expression
+     */
+    public FaceConfig withPlugs() {
+        takesPower = true;
+        givesPower = true;
+        if (energyIn == null) {
+            energyIn = BACK_DEFAULT;
+        }
+        if (energyOut == null) {
+            energyOut = OUT_DEFAULT;
         }
         return this;
     }
