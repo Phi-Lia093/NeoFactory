@@ -470,7 +470,21 @@ stored on disk so that a session can be continued later.
   it by the right one - and a player **aims it by turning the whole block with the wrench**, which is the one
   thing the wrench does at a diode: the two sides it runs a line through are what the block was built for, and
   no player moves one of them. A diode has no panel at all: there is nothing in it to look at and nothing to
-  set, so a click at one opens nothing.
+  **A transformer joins two ages of the line.** One side of it carries the **high** voltage and the five others
+  the **low** one, and what it does is hand the energy of one over to the other: **one ampere of the high
+  voltage leaves as four amperes of the low one**, because every tier of the line is four times the one below
+  it - the energy is the energy and the current is what changes. A transformer of the low voltage joins the low
+  and the middle one, one of the middle voltage joins the middle and the high one, and there is none of the
+  high voltage yet; each of them is built in three sizes: one, four or sixteen amperes of its high side, which
+  are four, sixteen and sixty four of its low one.
+  **Which end of a transformer takes the power in is what a player decides**: a knock with a **mallet** turns
+  the machine around - the one thing a mallet does, where a wrench sets a side - so a transformer that steps
+  down takes the power in on the side of the high voltage and one that steps up takes it in on all five of its
+  low sides. Which side is the high one never changes: it is the front of the block and the wrench turns the
+  whole block to aim it, so every click that would move one of the ends of a transformer is refused. Its
+  casing is the one of the age it is named for and the terminal at each of its sides wears the colour of the
+  line at that side, so a player reads the two ends of it off the block, see `TransformerMachine` and
+  `Machine#roleOn`. Like a diode it holds no panel: there is nothing in it to look at or to set.
   **A line is drawn by the machine that works and never pushed by the one that makes.** A cable carries
   nothing of its own, so the machine that wants the power is the one that moves it: every tick the block entity
   of a machine walks the line that stands at the plug it takes power in through and draws out of the buffers
@@ -756,6 +770,7 @@ tools/verify/material_forms.ps1      one grey scale picture per shape a material
 tools/verify/import_basicmachines.ps1  the machines of the line: the casing of a tier under the overlay of a family
 tools/verify/import_batteries.ps1    the cells: the window of a pack of steel poured once per chemistry
 tools/verify/import_energy_terminals.ps1  the terminal of the power of the two later ages, coloured from the grey one
+tools/verify/import_mallet.ps1       the mallet of the workshop, drawn from the handle and the head of one of wood
 tools/verify/import_gregtech_assets.ps1  the casing, the fronts and the tops of the machines
 tools/verify/restore_assets.ps1      fetches back whatever an editor emptied out of assets/
 tools/verify/grayscale_fluid.ps1     turns a picture of the pack into a fluid window

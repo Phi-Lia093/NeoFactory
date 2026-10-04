@@ -206,8 +206,10 @@ public class MachineBlockEntity extends BlockEntity
             // Nothing but the two machines: the energy crosses the gap with no cable and no loss. What feeds
             // this machine is then the machine beside it, so a machine of a later age destroys it the way a
             // line of that age does - the energy is not handed over at all, and there is no cable of that line
-            // to be taken away with it, see EnergyNet#overvolts.
-            if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour) {
+            // to be taken away with it, see EnergyNet#overvolts. A machine never hands energy to itself, which
+            // is what a cell that the machine itself stands in answers.
+            if (world.blockEntity(cellX, cellY, cellZ) instanceof MachineBlockEntity neighbour
+                    && neighbour != this) {
                 EnergyStorage source = neighbour.machine().energy();
                 if (EnergyNet.overvolts(source, buffer)) {
                     LOGGER.info("The {} at ({}, {}, {}) was taken by the {} beside it, which is built for a "

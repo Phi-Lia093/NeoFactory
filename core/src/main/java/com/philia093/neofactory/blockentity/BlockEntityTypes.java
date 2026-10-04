@@ -22,6 +22,8 @@ import com.philia093.neofactory.machine.SmeltingMachine;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
 import com.philia093.neofactory.machine.SteamFurnaceMachine;
 import com.philia093.neofactory.machine.SteamTurbineMachine;
+import com.philia093.neofactory.machine.TransformerMachine;
+import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.machine.TurbineTier;
 
 /**
@@ -202,6 +204,15 @@ public final class BlockEntityTypes {
             for (int width : Diodes.WIDTHS) {
                 BlockEntityRegistry.register(new BlockEntityType(Diodes.nameOf(tier, width),
                         type -> new DiodeBlockEntity(type, new DiodeMachine(tier, width))));
+            }
+        }
+
+        // And the six transformers, one type per size and tier of the low side, the same way: a transformer is
+        // a machine of the usual kind that holds two buffers of energy instead of one, see Transformers.
+        for (Voltage tier : Transformers.TIERS) {
+            for (int size : Transformers.SIZES) {
+                BlockEntityRegistry.register(new BlockEntityType(Transformers.nameOf(tier, size),
+                        type -> new TransformerBlockEntity(type, new TransformerMachine(tier, size))));
             }
         }
         registered = true;

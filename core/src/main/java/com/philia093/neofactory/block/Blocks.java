@@ -8,6 +8,7 @@ import com.philia093.neofactory.machine.BatteryBoxes;
 import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineCasing;
 import com.philia093.neofactory.machine.MachineFamilies;
+import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.pipe.Pipes;
 
 /**
@@ -191,8 +192,19 @@ public final class Blocks {
      */
     public static final int DIODE_FIRST_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
 
+    /**
+     * Id of the first transformer, the first of the six.
+     * <p>
+     * The transformers take the numbers right behind the fifteen diodes, so no block of the game moved and the
+     * save game needs no new version, see {@link #NEXT_FREE_ID}. <b>The ids are handed out by the table of the
+     * transformers:</b> the three sizes of a tier in the order {@link Transformers#SIZES} writes them down and
+     * the two tiers of the low side behind each other, so the transformer of the low voltage takes the first
+     * number and the sixteen ampere one of the middle voltage the last.
+     */
+    public static final int TRANSFORMER_FIRST_ID = DIODE_FIRST_ID + Diodes.COUNT;
+
     /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = DIODE_FIRST_ID + Diodes.COUNT;
+    public static final int NEXT_FREE_ID = TRANSFORMER_FIRST_ID + Transformers.COUNT;
 
     /**
      * Light the torch gives away, the first source of light of the game.
@@ -792,6 +804,20 @@ public final class Blocks {
             }
         }
 
+        // ------------------------------------------------------------------
+        // The six transformers of the industry, three sizes of each of the two ages that are joined by one.
+        // They are the machines a line is stepped from one age into another with: a cube of the casing of the
+        // low side of them that is turned with the wrench, whose one side of the high voltage and five of the
+        // low one are drawn by the block entity of the machine, exactly the way a side of a machine of the line
+        // is drawn, see Transformers.
+        // ------------------------------------------------------------------
+        int transformerId = TRANSFORMER_FIRST_ID;
+        for (Voltage tier : Transformers.TIERS) {
+            for (int size : Transformers.SIZES) {
+                transformerBlock(transformerId++, Transformers.nameOf(tier, size), tier);
+            }
+        }
+
         BlockRegistry.freeze();
     }
 
@@ -876,6 +902,34 @@ public final class Blocks {
                 .toolType(ToolType.WRENCH)
                 .blockEntity(name)
                 .carriesFluid()
+                .build();
+        BlockRegistry.register(block);
+        return block;
+    }
+
+    /**
+     * Builds one of the transformers of the industry.
+     * <p>
+     * A transformer is a machine like every other one - a whole cube that is taken apart with the wrench and
+     * that names the block entity behind it - and the casing it is built of is the one of the age it is named
+     * for, which is the low side of it, see {@link MachineCasing}. <b>It carries a front and is turned like
+     * every machine</b>, because the front of a transformer is the one side of it that carries the high
+     * voltage and turning the block is how a player aims that side, see {@code TransformerMachine}. It holds
+     * no tank and no slot, so no pipe is built towards it and nothing is put into it.
+     *
+     * @param id block id of the transformer, taken from {@link #TRANSFORMER_FIRST_ID}
+     * @param name name of the transformer, which is the name of the block entity behind it
+     * @param tier tier of the low side of the transformer, which is the casing it stands in
+     * @return the registered block
+     */
+    private static Block transformerBlock(int id, String name, Voltage tier) {
+        Block block = Block.builder(id, name)
+                .texture(MachineCasing.pictureOf(tier))
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
+                .blockEntity(name)
                 .build();
         BlockRegistry.register(block);
         return block;

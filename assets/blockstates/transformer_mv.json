@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "facing": ["north", "east", "south", "west"]
+  },
+  "variants": {
+    "facing=north": { "model": "transformer_mv", "y": 0 },
+    "facing=east": { "model": "transformer_mv", "y": 270 },
+    "facing=south": { "model": "transformer_mv", "y": 180 },
+    "facing=west": { "model": "transformer_mv", "y": 90 }
+  }
+}

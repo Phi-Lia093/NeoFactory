@@ -1,14 +1,23 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
+import com.philia093.neofactory.block.BlockRegistry;
+import com.philia093.neofactory.blockentity.BlockEntityRegistry;
+import com.philia093.neofactory.blockentity.TransformerBlockEntity;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.item.FaceTool;
+import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.TickClock;
+import com.philia093.neofactory.world.World;
+import com.philia093.neofactory.world.interaction.FaceClick;
 import com.philia093.neofactory.world.interaction.FaceRole;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,6 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * with one is checked where the block is registered, see {@code TransformerLineTest}.
  */
 class TransformersTest {
+
+    /** Height the transformers of these tests stand at. */
+    private static final int Y = 64;
 
     @BeforeAll
     static void registerGameData() {
@@ -139,5 +151,55 @@ class TransformersTest {
         assertEquals(Voltage.HIGH.euPerTick() * 16, out.amount(),
                 "so what sixteen amperes of the low side are worth arrives on the high one");
         assertEquals(Voltage.HIGH, out.accepted());
+    }
+
+    @Test
+    void aPlayerTurnsATransformerWithAMalletAndNoSideOfItWithAWrench() {
+        World world = new World(11, 0, 0);
+        TransformerBlockEntity entity = place(world, Voltage.LOW, 16);
+        TransformerMachine transformer = entity.transformer();
+        BlockFace high = transformer.highSide();
+
+        assertFalse(click(world, entity, BlockFace.EAST, FaceTool.WRENCH, FaceClick.SHIFT_LEFT),
+                "no click of a wrench sets a side of a transformer");
+        assertFalse(click(world, entity, BlockFace.EAST, FaceTool.WRENCH, FaceClick.SHIFT_RIGHT));
+        assertFalse(click(world, entity, BlockFace.EAST, FaceTool.WRENCH, FaceClick.LEFT),
+                "and no left click does anything at it either");
+        assertTrue(transformer.isSteppingDown(), "so a transformer stays the way it was built");
+
+        assertTrue(click(world, entity, BlockFace.SOUTH, FaceTool.MALLET, FaceClick.RIGHT),
+                "while a knock of a mallet turns it around");
+        assertFalse(transformer.isSteppingDown(), "now its five low sides take the power in");
+        assertEquals(FaceRole.ENERGY_IN, transformer.roleOn(transformer.lowSides().get(0)));
+        assertEquals(FaceRole.ENERGY_OUT, transformer.roleOn(high), "and its high side hands it out");
+
+        assertFalse(click(world, entity, high, FaceTool.WRENCH, FaceClick.RIGHT),
+                "a click of a wrench on the front of a machine does not turn it");
+        assertEquals(BlockFace.NORTH, entity.facing(), "so the block still looks where it did");
+        assertTrue(click(world, entity, BlockFace.WEST, FaceTool.WRENCH, FaceClick.RIGHT),
+                "while a click on another side turns the whole block");
+        assertEquals(BlockFace.WEST, entity.facing(), "which the machine now looks towards");
+        assertEquals(BlockFace.WEST, transformer.highSide(),
+                "and the one side of the high voltage turned with it");
+    }
+
+    /** Places one transformer of the game in a world, turned towards the north. */
+    private static TransformerBlockEntity place(World world, Voltage tier, int size) {
+        String name = Transformers.nameOf(tier, size);
+        Block block = BlockRegistry.byName(name);
+        world.setBlock(0, Y, 0, block);
+        world.setState(0, Y, 0, block.states().stateOf(Map.of("facing", "north")));
+        TransformerBlockEntity entity = new TransformerBlockEntity(BlockEntityRegistry.byName(name),
+                new TransformerMachine(tier, size));
+        entity.setPosition(0, Y, 0);
+        world.addBlockEntity(entity);
+        return entity;
+    }
+
+    /** One click of a tool at a transformer. */
+    private static boolean click(World world, TransformerBlockEntity transformer, BlockFace face, FaceTool tool,
+            FaceClick click) {
+        return transformer.operateFace(world, transformer.x(), transformer.y(), transformer.z(), face, tool, null,
+                ItemStack.EMPTY, click);
     }
 }

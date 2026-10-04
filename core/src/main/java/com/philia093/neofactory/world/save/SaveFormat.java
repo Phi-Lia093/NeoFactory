@@ -124,8 +124,16 @@ public final class SaveFormat {
      * again the only thing this version moved: the blocks of the diodes went behind the twelve boxes of cells,
      * so no block of the game moved at all, see {@code Items#DIODE_FIRST_ID} and {@code Blocks#DIODE_FIRST_ID}.
      * A world of version 18 is therefore refused for the stored items of its materials and not for its blocks.
+     * <p>
+     * <b>What version 20 changed.</b> The transformers of the line arrived: the six transformers of
+     * {@code Transformers} took the numbers the items of the materials of the game started at in version 19, so
+     * <b>every item of every material stands six numbers higher than it did</b>. That is the very reason
+     * version 19 refuses a world of version 18, word for word, and it is again the only thing this version
+     * moved: the blocks of the transformers went behind the fifteen diodes, so no block of the game moved at
+     * all, see {@code Items#TRANSFORMER_FIRST_ID} and {@code Blocks#TRANSFORMER_FIRST_ID}. A world of version
+     * 19 is therefore refused for the stored items of its materials and not for its blocks.
      */
-    public static final int DATA_VERSION = 19;
+    public static final int DATA_VERSION = 20;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

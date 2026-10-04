@@ -8,6 +8,7 @@ import com.philia093.neofactory.blockentity.BlockEntityRegistry;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.blockentity.DiodeBlockEntity;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
+import com.philia093.neofactory.blockentity.TransformerBlockEntity;
 import com.philia093.neofactory.cable.CableKind;
 import com.philia093.neofactory.cable.CableMaterial;
 import com.philia093.neofactory.cable.CableMaterials;
@@ -23,6 +24,8 @@ import com.philia093.neofactory.machine.MachineScreen;
 import com.philia093.neofactory.machine.ProgressKind;
 import com.philia093.neofactory.machine.SlotKind;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
+import com.philia093.neofactory.machine.TransformerMachine;
+import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.support.TestRegistries;
 import com.philia093.neofactory.world.TickClock;
 import com.philia093.neofactory.world.World;
@@ -404,6 +407,69 @@ class EnergyLineTest {
         world.setState(x, Y, z, block.states().stateOf(Map.of("facing", facing.toString())));
         DiodeBlockEntity entity = new DiodeBlockEntity(BlockEntityRegistry.byName(name),
                 new DiodeMachine(tier, width));
+        entity.setPosition(x, Y, z);
+        world.addBlockEntity(entity);
+        return entity;
+    }
+
+    @Test
+    void aTransformerStepsALineDownForAMachineOfAnEarlierAge() {
+        World world = new World(SEED, 13, 0);
+        MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
+        bufferOf(generator).setAmount(CAPACITY);
+        cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // The front of a transformer is the one side of it that carries the high voltage, so the block is
+        // turned towards the machine that gives it the power: the middle voltage arrives on its front and the
+        // low voltage leaves it through the five other sides, see TransformerMachine.
+        transformer(world, Voltage.LOW, 1, 2, 0, BlockFace.WEST);
+        cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        MachineBlockEntity sink = place(world, consumer(Voltage.LOW), 4, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 4);
+
+        // One ampere of the middle voltage arrives on the high side every tick and leaves the low one as four
+        // amperes of the low voltage, of which the machine takes the one it asks for.
+        int arrived = bufferOf(sink).amount();
+        assertTrue(arrived >= 2 * Voltage.LOW.euPerTick(),
+                "the machine of the low voltage was fed by the transformer, tick after tick");
+        assertEquals(0, arrived % Voltage.LOW.euPerTick(), "in whole amperes of its own age");
+        assertTrue(bufferOf(generator).amount() < CAPACITY, "and the machine that gives paid for it");
+    }
+
+    @Test
+    void aTransformerThatWasTurnedStepsALineUpForAMachineOfALaterAge() {
+        World world = new World(SEED, 14, 0);
+        MachineBlockEntity generator = place(world, machine(Voltage.LOW), 0, Y, 0);
+        bufferOf(generator).setAmount(CAPACITY);
+        cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        TransformerBlockEntity transformer = transformer(world, Voltage.LOW, 1, 2, 0, BlockFace.EAST);
+        cable(world, 3, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        // The same transformer, turned around by a knock of a mallet: the five sides of the low voltage take
+        // the power in and the one of the high voltage hands it out, see TransformerMachine#toggle.
+        transformer.transformer().toggle();
+        MachineBlockEntity sink = place(world, consumer(Voltage.MEDIUM), 4, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 4);
+
+        // The low side brings an ampere of the low voltage a tick, which is a quarter of an ampere of the
+        // middle one: what the machine takes in is that energy and no more, and it arrives a tick at a time.
+        int arrived = bufferOf(sink).amount();
+        assertTrue(arrived >= Voltage.LOW.euPerTick(),
+                "the machine of the middle voltage was fed through the side of the high voltage");
+        assertTrue(bufferOf(generator).amount() < CAPACITY, "and something was paid for it");
+    }
+
+    /** Places one transformer of the game, turned towards a side, and hands its block entity back. */
+    private static TransformerBlockEntity transformer(World world, Voltage tier, int size, int x, int z,
+            BlockFace facing) {
+        String name = Transformers.nameOf(tier, size);
+        Block block = BlockRegistry.byName(name);
+        world.setBlock(x, Y, z, block);
+        world.setState(x, Y, z, block.states().stateOf(Map.of("facing", facing.toString())));
+        TransformerBlockEntity entity = new TransformerBlockEntity(BlockEntityRegistry.byName(name),
+                new TransformerMachine(tier, size));
         entity.setPosition(x, Y, z);
         world.addBlockEntity(entity);
         return entity;

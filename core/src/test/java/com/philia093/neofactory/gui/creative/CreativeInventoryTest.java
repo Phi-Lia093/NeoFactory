@@ -10,6 +10,7 @@ import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.machine.BatteryBoxes;
 import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineFamilies;
+import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.pipe.PipeMaterials;
 import com.philia093.neofactory.pipe.PipeSize;
 import com.philia093.neofactory.pipe.Pipes;
@@ -162,7 +163,18 @@ class CreativeInventoryTest {
                         Diodes.titleOf(tier, width) + " is listed with the machines");
             }
         }
-        assertEquals(36 + BatteryBoxes.COUNT + Diodes.COUNT, listed.size(), "the list holds the machines of the game");
+        // And the six transformers behind those, three sizes of each of the two ages one joins: they are the
+        // machines that step a line from one age into another and are listed here for the same reason, see
+        // Transformers.
+        for (Voltage tier : Transformers.TIERS) {
+            for (int size : Transformers.SIZES) {
+                String name = Transformers.nameOf(tier, size);
+                assertEquals(ItemRegistry.byName(name), listed.get(at++),
+                        Transformers.titleOf(tier, size) + " is listed with the machines");
+            }
+        }
+        assertEquals(36 + BatteryBoxes.COUNT + Diodes.COUNT + Transformers.COUNT, listed.size(),
+                "the list holds the machines of the game");
         assertEquals(listed.size(), at, "and every one of them was walked");
         assertEquals(ItemRegistry.byName(MachineFamilies.all().get(0).nameOf(Voltage.LOW)),
                 listed.get(18), "the machines of the line come first");

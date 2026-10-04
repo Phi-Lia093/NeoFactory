@@ -7,6 +7,7 @@ import com.philia093.neofactory.machine.BatteryBoxes;
 import com.philia093.neofactory.machine.Diodes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.TurbineTier;
+import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.fluid.Fluids;
@@ -514,15 +515,26 @@ public final class Items {
     public static final int DIODE_FIRST_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
 
     /**
+     * Id of the first transformer, the first of the six.
+     * <p>
+     * The transformers take the numbers right behind the fifteen diodes, which is where the items of the
+     * materials of the game used to start: <b>every item of every material therefore stands six numbers higher
+     * than it did</b> - the six transformers - so a stored inventory of an older version names the wrong items
+     * for every material and that version is refused, see
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
+     */
+    public static final int TRANSFORMER_FIRST_ID = DIODE_FIRST_ID + Diodes.COUNT;
+
+    /**
      * Next unused item id, used to verify that a new item got a fresh id.
      * <p>
      * The three turbines moved this number, because they stand in front of the items of the materials, and the
      * eighteen machines of the line moved it again; the fifteen batteries of {@link Batteries}, the twelve
-     * boxes of {@link BatteryBoxes} and the fifteen diodes of {@link Diodes} stand behind those, so the
-     * materials begin at the number written here, see {@link com.philia093.neofactory.cable.Cables} for the run
-     * of the cables that stands in front of them.
+     * boxes of {@link BatteryBoxes}, the fifteen diodes of {@link Diodes} and the six transformers of
+     * {@link Transformers} stand behind those, so the materials begin at the number written here, see
+     * {@link com.philia093.neofactory.cable.Cables} for the run of the cables that stands in front of them.
      */
-    public static final int NEXT_FREE_ID = DIODE_FIRST_ID + Diodes.COUNT;
+    public static final int NEXT_FREE_ID = TRANSFORMER_FIRST_ID + Transformers.COUNT;
 
     /**
      * Amount an empty container stacks to.
@@ -1242,6 +1254,21 @@ public final class Items {
                 String name = Diodes.nameOf(tier, width);
                 register(Item.builder(diodeId++, name)
                         .displayName(Diodes.titleOf(tier, width))
+                        .buildBlock(BlockRegistry.byName(name)));
+            }
+        }
+
+        // The six transformers of the industry, three sizes of each of the two ages that are joined by one.
+        // They are block items like every machine of the line: each borrows the picture of its block - the
+        // casing of the age it is named for - and the block names the entity behind it, see Transformers. They
+        // take the numbers right behind the diodes, which is where the items of the materials used to start,
+        // see TRANSFORMER_FIRST_ID.
+        int transformerId = TRANSFORMER_FIRST_ID;
+        for (Voltage tier : Transformers.TIERS) {
+            for (int size : Transformers.SIZES) {
+                String name = Transformers.nameOf(tier, size);
+                register(Item.builder(transformerId++, name)
+                        .displayName(Transformers.titleOf(tier, size))
                         .buildBlock(BlockRegistry.byName(name)));
             }
         }
