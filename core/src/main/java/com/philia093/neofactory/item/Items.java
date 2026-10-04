@@ -480,14 +480,24 @@ public final class Items {
     public static final int LINE_FIRST_ID = 847;
 
     /**
+     * Id of the first battery, the first of the fifteen.
+     * <p>
+     * The batteries take the numbers right behind the eighteen machines of the line, so no item that a
+     * stored inventory names moved and a world of an older version is read as it was, see
+     * {@link Batteries} for the run of the fifteen and {@link #NEXT_FREE_ID} for what stands behind them.
+     */
+    public static final int BATTERY_FIRST_ID = LINE_FIRST_ID + MachineFamilies.all().size()
+            * MachineFamilies.TIERS.size();
+
+    /**
      * Next unused item id, used to verify that a new item got a fresh id.
      * <p>
      * The three turbines moved this number, because they stand in front of the items of the materials, and the
-     * eighteen machines of the line moved it again: the materials begin at the number written here, see
+     * eighteen machines of the line moved it again; the fifteen batteries of {@link Batteries} stand behind
+     * those, so the materials begin at the number written here, see
      * {@link com.philia093.neofactory.cable.Cables} for the run of the cables that stands in front of them.
      */
-    public static final int NEXT_FREE_ID = LINE_FIRST_ID + MachineFamilies.all().size()
-            * MachineFamilies.TIERS.size();
+    public static final int NEXT_FREE_ID = BATTERY_FIRST_ID + Batteries.all().size();
 
     /**
      * Amount an empty container stacks to.
@@ -1162,6 +1172,22 @@ public final class Items {
                         .displayName(family.titleOf(tier))
                         .buildBlock(BlockRegistry.byName(family.nameOf(tier))));
             }
+        }
+
+        // The fifteen batteries of the industry, one per chemistry and tier of Batteries. They are ordinary
+        // items and no machines: the life of one is the capacity of the cell it carries, which is what its
+        // charge is read from - a fresh stack holds everything it was built for and a spent one holds
+        // nothing - so a battery needs no entity and no block, see Battery. They take the numbers right
+        // behind the machines, so no item that a stored inventory names moved.
+        int batteryId = BATTERY_FIRST_ID;
+        for (Batteries.Cell cell : Batteries.all()) {
+            register(Item.builder(batteryId++, Batteries.itemNameOf(cell))
+                    .displayName(Batteries.displayNameOf(cell))
+                    .texture(Batteries.pictureOf(cell))
+                    .maxStackSize(Item.SINGLE_ITEM_STACK)
+                    .maxDamage(cell.capacity())
+                    .battery(cell)
+                    .build());
         }
 
         // The materials bring their own items, one per shape they come in. They are registered

@@ -57,6 +57,7 @@ public class Item {
     private final String chemicalFormula;
     private final String overlayTexture;
     private final FaceTool faceTool;
+    private final Battery battery;
 
     /**
      * Creates an item that is not linked to a block.
@@ -79,6 +80,7 @@ public class Item {
         this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
         this.faceTool = builder.faceTool != null ? builder.faceTool : FaceTool.NONE;
+        this.battery = builder.battery;
     }
 
     /**
@@ -108,6 +110,7 @@ public class Item {
         this.chemicalFormula = builder.chemicalFormula != null ? builder.chemicalFormula : "";
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
         this.faceTool = builder.faceTool != null ? builder.faceTool : FaceTool.NONE;
+        this.battery = builder.battery;
     }
 
     /** Unique numeric id of this item type. */
@@ -304,6 +307,25 @@ public class Item {
     }
 
     /**
+     * The battery this item is.
+     * <p>
+     * <b>A battery is a part of an item the way a container is</b>, see {@link #container()}: the empty
+     * cell and the cell that is charged are one item, because what is left in a cell belongs to the stack
+     * that holds it and not to the kind of item it is, see {@link Battery}. Everything that reads a stack
+     * as a cell therefore asks the item whether it is one before it hands the stack to a battery.
+     *
+     * @return the battery, or {@code null} for an item that stores no energy
+     */
+    public Battery battery() {
+        return battery;
+    }
+
+    /** {@code true} when this item is a cell of energy, see {@link #battery()}. */
+    public boolean isBattery() {
+        return battery != null;
+    }
+
+    /**
      * The lines the tooltip of this item is drawn from.
      * <p>
      * The first line is always the name, a formula follows when the item has one: a plate of iron
@@ -390,6 +412,7 @@ public class Item {
         private String chemicalFormula;
         private String overlayTexture;
         private FaceTool faceTool;
+        private Battery battery;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -547,6 +570,24 @@ public class Item {
          */
         public Builder faceTool(FaceTool faceTool) {
             this.faceTool = Objects.requireNonNull(faceTool, "faceTool");
+            return this;
+        }
+
+        /**
+         * Makes this item a cell of energy, a battery.
+         * <p>
+         * <b>The charge of a battery is the wear of its stack</b>, so a definition that names a battery has
+         * to give the item a life as well: the life is the capacity of the cell, which is what a fresh
+         * stack holds and what a stack that was drained to the last unit has spent, see {@link Battery} and
+         * {@link #maxDamage(int)}. It is a single piece for the same reason - a stack of batteries would
+         * have to carry a charge per piece - so a definition reads
+         * {@code maxStackSize(Item.SINGLE_ITEM_STACK).maxDamage(cell.capacity()).battery(cell)}.
+         *
+         * @param battery the cell this item is, never {@code null}
+         * @return this builder
+         */
+        public Builder battery(Battery battery) {
+            this.battery = Objects.requireNonNull(battery, "battery");
             return this;
         }
 
