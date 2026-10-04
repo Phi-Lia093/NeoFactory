@@ -247,6 +247,36 @@ stored on disk so that a session can be continued later.
   turbines, so nothing that a stored world or a stored inventory names has moved and no version is refused.
   Their art is two pictures of the pack drawn together - the casing of the tier under the overlay of the family
   - which is what `tools/verify/import_basicmachines.ps1` writes.
+- **The cells of the industry** - the batteries a workshop keeps its power in: fifteen of them, one for every
+  chemistry and every tier of the line, from the lead acid cell of a first workshop to the lithium cell a line
+  of the high voltage is kept fed with, see `Batteries`. **A battery is an interface and not a kind of item**:
+  what a machine or a battery box hands its power to one day is a stack that is also a cell, and the cell is
+  asked what it holds, what may be put into it and how much of it is left, see `Battery`.
+  **The charge of a battery is the wear of its stack.** A cell is an ordinary item whose life is its capacity,
+  so a fresh battery holds everything it was built for, a cell that was drained to the last unit is one whose
+  life is spent, the bar under its icon reads as what is left in it and the tooltip of the stack names it as
+  `Charge: 250000 / 400000 EU`. **A cell that is spent is not destroyed**: a battery is never swung at a
+  block, see `MiningController`, so it stands in its slot until a player fills it again or takes it out.
+  **What is inside a cell is what a player reads at it.** The chemistry decides the colour its window is
+  poured in, whether the charge may be put back into it at all and how long one ampère of it lasts, see
+  `BatteryChemistry`: an acid and a mercury cell are spent for good, a sodium, a cadmium and a lithium one
+  take a charge again, and the three tiers of a chemistry carry a charge for the same length of time - twenty
+  eight seconds for an acid cell, fifty for a mercury one, seventy eight for a sodium one, a hundred and
+  seventeen for a cadmium one and a hundred and fifty six for a lithium one. **A bigger cell of a chemistry is
+  a cell that holds more and not one that gives more**, and **a tier is four times the one below it**: the
+  cells of the low voltage hold eighteen thousand units as an acid cell, thirty two thousand as a mercury one,
+  fifty thousand as a sodium one, seventy five thousand as a cadmium one and a hundred thousand as a lithium
+  one, and the same five hold four and sixteen times that at the middle and the high voltage.
+  **A cell is drawn from its charge.** The picture of a battery is a strip of frames, the first a full cell and
+  the last a spent one, and the window of a pack of plain steel is poured once per chemistry and stacked into
+  the frames of a strip by `tools/verify/import_batteries.ps1`, so the icon of a stack follows what is left in
+  it, see `BatteryIcon`; `gradlew :core:test` writes `core/build/reports/battery-preview.png`, the fifteen
+  cells of the table full and spent and the fill of a window at every amount of charge.
+  **A machine takes no battery**: a machine of the line is fed by the power of its line and by nothing else, so
+  what a charge is put back into is a battery box, which the game does not have yet, see `MachineEnergyStorage`.
+  A cell is held and not swung, so it is listed with the materials of the creative inventory. The fifteen
+  cells take the item ids 865 to 879, right behind the machines of the line, so nothing that a stored world or
+  a stored inventory names has moved and no version is refused, see `Items#BATTERY_FIRST_ID`.
 - **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
   comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
   medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
@@ -526,7 +556,7 @@ stored on disk so that a session can be continued later.
 | `machine` | what a machine is built from: slots and tanks with a role, energy (the buffer of a tier, `MachineEnergyStorage`), the recipes it runs and the side of the block each of those is reached through (`FaceConfig`, `MachineSides`, `FaceClick`) |
 | `recipe` | the files behind `assets/recipes`: what a recipe is, the grid it is offered, the loader that reads a file, and the work field of nine cells a table of the workshop holds |
 | `material` | what a material is: the shapes it comes in, the colour and the formula it carries, and the items one line per material turns into |
-| `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), and the sinks broken blocks hand items to |
+| `item` | item types, stacks, the inventory, the hotbar selection, the tool an item is for a face of a block (`FaceTool`), the cell of energy an item may carry (`Battery`, `Batteries`), and the sinks broken blocks hand items to |
 | `loot` | what a broken block leaves behind: the tables, the files below `assets/loot_tables` and the rule that a block without a table drops itself |
 | `world` | chunks, the world, the game mode, the clock of the day (`DayCycle`), the chunk store interface and the generator |
 | `world.light` | the light of the world: the sky that fills every column, the light sources that spread and fade, and what is taken away when a source is removed (`LightEngine`) |
@@ -641,6 +671,7 @@ tools/verify/extract_3d_assets.ps1   the faces, the colormaps and the sky an art
 tools/verify/extract_creative.ps1    the panels, the tabs and the thumbs of the creative inventory
 tools/verify/material_forms.ps1      one grey scale picture per shape a material comes in
 tools/verify/import_basicmachines.ps1  the machines of the line: the casing of a tier under the overlay of a family
+tools/verify/import_batteries.ps1    the cells: the window of a pack of steel poured once per chemistry
 tools/verify/import_gregtech_assets.ps1  the casing, the fronts and the tops of the machines
 tools/verify/restore_assets.ps1      fetches back whatever an editor emptied out of assets/
 tools/verify/grayscale_fluid.ps1     turns a picture of the pack into a fluid window
