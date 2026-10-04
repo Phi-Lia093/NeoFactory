@@ -5,6 +5,7 @@ import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.Cables;
+import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.machine.EnergyStorage;
 import com.philia093.neofactory.machine.FaceConfig;
 import com.philia093.neofactory.world.World;
@@ -66,11 +67,11 @@ public final class EnergyGrid {
         EnergyStorage buffer(int x, int y, int z, BlockFace from);
 
         /**
-         * Empties a cell, which is what an over-voltage leaves behind.
+         * Empties a cell, which is what a line that burns leaves behind.
          * <p>
-         * A line of a higher tier than a machine was built for takes the machine and every cable of the line
-         * with it, see {@link EnergyNet#overvolts(EnergyAcceptor)}, so the net has to be able to take a block
-         * away.
+         * A machine that was built for a worse line than the one it reaches for, and a piece of a run that
+         * cannot take what its line is fed with, are taken out of the world, see
+         * {@link EnergyNet#overvolts(Voltage, EnergyStorage)}, so the net has to be able to take a block away.
          *
          * @param x x of the cell
          * @param y y of the cell
@@ -199,12 +200,15 @@ public final class EnergyGrid {
          * paid by the source, a line that nobody feeds leaves the machine waiting, and the rest of a division
          * nobody wanted stays where it was.
          * <p>
-         * <b>A line that is too much for the machine that asks destroys it and itself.</b> The tier is
-         * settled before anything is carried: a machine whose own tier stands below the tier of the line, see
-         * {@link EnergyNet#overvolts(EnergyAcceptor)}, is not fed at all - it and every cable of the line are
-         * taken out of the world, which is what a player finds when a line of a later age is run into a
-         * workshop of an earlier one. A machine that asks for nothing never meets the line, so nothing burns
-         * while it is idle.
+         * <b>What the line is fed with decides what it burns, and the two halves of that are weighed
+         * apart.</b> The tier of a line is the one the machines that give it their power are built for,
+         * {@link #liveVoltage(EnergyStorage)}: a machine that asks a line of a higher tier than its own is
+         * not fed at all and is taken out of the world, which is what a player finds when a line of a later
+         * age is run into a workshop of an earlier one, while a piece of the run that cannot take that much
+         * melts where the power enters the line, see {@link #melt(Cells, EnergyStorage)}. A machine of the right
+         * tier therefore outlives a run that was too weak for it, and a machine that was too small for its
+         * line does not take the cables of that line away with it. A machine that asks for nothing never
+         * meets the line, so nothing burns while it is idle.
          *
          * @param cells cells of the world, so that a line that burns can be taken away
          * @param sink buffer that wants the energy
@@ -218,12 +222,22 @@ public final class EnergyGrid {
                 // A machine that is no end of this line is not fed by it, however it was asked to.
                 return 0;
             }
-            if (overvolts(sink)) {
-                burn(cells, List.of(sink));
-                return 0;
-            }
             if (wanted <= 0 || !sink.canReceive()) {
                 return 0;
+            }
+            // What the machines that give this line their power are built for is settled before anything is
+            // carried, and it is what the machine that asks and the run itself have to take, see the note on
+            // this method.
+            Voltage live = liveVoltage(sink);
+            if (live != null) {
+                boolean mine = EnergyNet.overvolts(live, sink);
+                int melted = melt(cells, sink);
+                if (mine) {
+                    burn(cells, List.of(sink));
+                }
+                if (mine || melted > 0) {
+                    return 0;
+                }
             }
             List<EnergyStorage> sources = new ArrayList<>();
             for (EnergyStorage end : ends) {
@@ -242,13 +256,98 @@ public final class EnergyGrid {
             return moved;
         }
 
+        /**
+         * The tier the machines that give this line their power are built for, the <b>highest</b> of them.
+         * <p>
+         * <b>A line is fed by the machines at its ends and not by its cables.</b> What stands on a run is
+         * what the machines that push into it are built for - a box of the high voltage feeds a line of the
+         * high voltage whatever the material of that line is - and a run of two of them is a run of the
+         * higher of the two, because that is the power everything on it has to take. The machine that asks
+         * for the power is not counted: what is weighed is what the line is given, not what the machine
+         * asking for it holds.
+         * <p>
+         * An end that gives nothing away names no tier: a machine that only works spends out of its own
+         * pocket and is never a source of the line, and a box with no cell in it holds nothing to give, see
+         * {@link EnergyStorage#canExtract()}. A line that stands along no machine that gives is fed with
+         * nothing at all and burns nothing, however strong its cables are.
+         *
+         * @param asking machine that asks this line for power, which is not one of the machines that give it
+         * @return the tier, or {@code null} when no machine feeds this line
+         */
+        public Voltage liveVoltage(EnergyStorage asking) {
+            Objects.requireNonNull(asking, "asking");
+            Voltage live = null;
+            for (EnergyStorage end : ends) {
+                if (end == asking || !end.canExtract() || !(end instanceof EnergyAcceptor giving)) {
+                    continue;
+                }
+                if (live == null || giving.accepted().isAtLeast(live)) {
+                    live = giving.accepted();
+                }
+            }
+            return live;
+        }
+
         /** {@code true} when this line is too much for the machine of one of its ends. */
         public boolean overvolts(EnergyStorage end) {
-            return end instanceof EnergyAcceptor && net.overvolts((EnergyAcceptor) end);
+            Voltage live = liveVoltage(end);
+            return live != null && EnergyNet.overvolts(live, end);
         }
 
         /**
-         * Takes the machine and every cable of the line out of the world.
+         * Melts one piece of this line: the piece that stands nearest the machines that give it its power.
+         * <p>
+         * <b>A run of a cable that cannot take what its line is fed with melts where the power enters
+         * it.</b> Every cable of the run is weighed against the tier of the machines that give the line their
+         * power, see {@link #liveVoltage(EnergyStorage)}, and the first piece that cannot take that much and
+         * stands right at one of those machines goes - <b>one piece</b> of the run, which is what a player
+         * finds when the line of a workshop of a later age is run through the cable of an earlier one. A line
+         * of one material melts at the end it is fed from, and a run that stands on no machine that gives
+         * melts nothing at all.
+         *
+         * @param cells cells of the world
+         * @param asking machine that asks this line for power, which is not one of the machines that give it
+         * @return amount of cells that were emptied, one or none
+         */
+        public int melt(Cells cells, EnergyStorage asking) {
+            Objects.requireNonNull(cells, "cells");
+            Voltage live = liveVoltage(Objects.requireNonNull(asking, "asking"));
+            if (live == null) {
+                return 0;
+            }
+            for (int end = 0; end < ends.size(); end++) {
+                if (ends.get(end) == asking || !ends.get(end).canExtract()) {
+                    continue;
+                }
+                int[] at = positions.get(end);
+                for (int index = 0; index < cablesAt.size(); index++) {
+                    int[] cell = cablesAt.get(index);
+                    if (touches(at, cell) && !cables.get(index).voltage().isAtLeast(live)) {
+                        return emptyOut(cells, cell);
+                    }
+                }
+            }
+            for (int index = 0; index < cablesAt.size(); index++) {
+                if (!cables.get(index).voltage().isAtLeast(live)) {
+                    return emptyOut(cells, cablesAt.get(index));
+                }
+            }
+            return 0;
+        }
+
+        /** Empties one cell of the run, which is one piece of the line gone. */
+        private static int emptyOut(Cells cells, int[] cell) {
+            cells.remove(cell[0], cell[1], cell[2]);
+            return 1;
+        }
+
+        /** {@code true} when two cells of the world stand next to each other. */
+        private static boolean touches(int[] one, int[] other) {
+            return Math.abs(one[0] - other[0]) + Math.abs(one[1] - other[1]) + Math.abs(one[2] - other[2]) == 1;
+        }
+
+        /**
+         * Takes the machines of a line out of the world.
          *
          * @param cells cells of the world
          * @param burned machines of this line the tier destroyed
@@ -257,12 +356,7 @@ public final class EnergyGrid {
         public int burn(Cells cells, List<EnergyStorage> burned) {
             Objects.requireNonNull(cells, "cells");
             Set<Long> taken = new HashSet<>();
-            for (int[] cell : cablesAt) {
-                if (taken.add(key(cell[0], cell[1], cell[2]))) {
-                    cells.remove(cell[0], cell[1], cell[2]);
-                }
-            }
-            int count = cablesAt.size();
+            int count = 0;
             for (int index = 0; index < ends.size(); index++) {
                 if (!burned.contains(ends.get(index))) {
                     continue;

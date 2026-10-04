@@ -119,14 +119,23 @@ public final class BatteryBank extends SimpleEnergyStorage implements EnergyAcce
         return standing;
     }
 
+    /**
+     * {@code true} when this box has a mouth to be filled through, a cell in a slot.
+     * <p>
+     * <b>What a box names is what it was built with, not what its cells hold at the moment.</b> A box with a
+     * cell in it may be filled and emptied whatever the charge of that cell is, so the block of a box whose
+     * cells are full is stopped by {@link #isFull()} and not by this question, exactly the way a buffer of a
+     * machine is, see {@link SimpleEnergyStorage#canReceive()}.
+     */
     @Override
     public boolean canReceive() {
-        return maxReceive() > 0 && amount() < capacity();
+        return maxReceive() > 0;
     }
 
+    /** {@code true} when this box has a mouth to be emptied through, see {@link #canReceive()}. */
     @Override
     public boolean canExtract() {
-        return maxExtract() > 0 && amount() > 0;
+        return maxExtract() > 0;
     }
 
     @Override

@@ -418,21 +418,26 @@ stored on disk so that a session can be continued later.
   twenty eight units a tick and the sixteen fold bundle four times that - and a line is not slower when it is
   long, it simply costs more: every block of the run takes its loss away from what travels through it, and the
   machine that hands the energy over pays what the machine at the far end receives **plus** that loss.
-  **A line that is too strong destroys the machine that reaches for it**: a machine that asks a line of a
-  higher tier for power is not fed at all - the machine and every cable of that line go, which is what a player
-  finds when a line of a later age is run into a workshop of an earlier one, see `EnergyNet` and
-  `EnergyAcceptor`. A machine that asks for nothing never meets the line, so an idle workshop is safe, and the
-  tier of a line is settled by the machine that works and never by the one that only makes power.
+  **A line is fed by the machines at its ends, and what feeds it destroys what cannot take it**: the tier of a
+  line is the tier of the machines that give it their power, and a machine that asks a line of a higher tier
+  than its own is not fed at all - it is taken out of the world, which is what a player finds when a line of a
+  later age is run into a workshop of an earlier one, see `EnergyNet` and `EnergyAcceptor`. A machine that asks
+  for nothing never meets the line, so an idle workshop is safe, and the tier is settled by the machine that
+  works and never by one that only makes power: a machine that only works spends out of its own buffer, is never
+  a source of the line it stands on and therefore names no tier at all.
+  **The cables of a run are weighed apart from the machine.** A piece of a run that cannot take what the line is
+  fed with - a tin cable behind a machine of the high voltage - melts where the power enters the line, and only
+  that **one piece** of the run goes, which is what a player finds when the line of a later age is run through
+  the cable of an earlier one. So a machine of the right tier outlives a run that was too weak for it, while a
+  machine that was too small for its line is taken away without the cables following it, and a run of a cable
+  that takes its tier under a machine that takes it simply stands.
   **Two machines that stand next to each other need no cable, and what feeds them is then a line of the tier of
   the machine that gives**: a furnace of the low voltage that reaches for what a box of the high voltage holds
   is destroyed by it, exactly as it would be destroyed by a line of the high voltage, while a machine of the
   high voltage takes the ampere a box of the low voltage gives it, because a better machine takes a worse line.
-  There are no cables between the two to be taken away with the machine that was too small for them, so the
-  machine alone goes and the machine beside it keeps what it holds, see `EnergyNet#overvolts`. **The tier of a
-  cable run is what its cables are and not what is at the end of it**: a line of tin is a line of the low
-  voltage whatever is feeding it, because the line is what carries the power - a box of the high voltage behind
-  a tin cable is a box that fills a line of the low voltage, and a furnace of the low voltage standing at the
-  other end of that cable is fed by it and not destroyed.
+  There are no cables between the two for a tier to melt, so the machine alone goes and the machine beside it
+  keeps what it holds, see `EnergyNet#overvolts`. A box with no cell in it holds nothing to give, so it feeds
+  nothing and destroys nothing beside it either.
   **A machine of the power network holds a buffer of a tier.** What one call may add is **one ampere of that
   tier** and no more however wide the line at it is. A machine that makes power may be emptied by the line,
   because that is what it fills its buffer for, while **a machine that works may only be filled**: it spends

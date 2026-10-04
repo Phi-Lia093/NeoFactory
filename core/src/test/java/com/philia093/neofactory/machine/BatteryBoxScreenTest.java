@@ -101,8 +101,8 @@ class BatteryBoxScreenTest {
     @Test
     void aCellThatIsSpentStaysInItsBox() {
         // A box keeps a cell that has nothing left in it: a cell is not a tool and is never thrown away, see
-        // Battery#isDrained. What stands in the box is a cell a player fills again, and a box whose cells are
-        // all spent holds nothing, gives nothing and asks a line for nothing.
+        // Battery#isDrained. What stands in the box is a cell a player fills again - a spent cell is a mouth of
+        // the box like any other and asks a line to fill it, while it holds nothing to give.
         BatteryBoxMachine box = new BatteryBoxMachine(Voltage.LOW, 1);
         ItemStack spent = cell(BatteryChemistry.LITHIUM, Voltage.LOW);
         spent.setDamage(spent.item().maxDamage());
@@ -112,7 +112,8 @@ class BatteryBoxScreenTest {
 
         assertSame(spent, box.inventory().get(0), "the cell is where the player put it");
         assertEquals(0, box.bank().amount());
-        assertFalse(box.bank().canExtract(), "and there is nothing in it to take out");
+        assertEquals(0, box.bank().extract(Voltage.LOW.euPerTick() * 10, false),
+                "and there is nothing in it to take out, however many mouths the box has");
         assertEquals(1, box.bank().cells(), "while the cell is still one of the cells of the box");
     }
 

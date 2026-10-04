@@ -135,7 +135,9 @@ class BatteryBoxMachineTest {
         assertEquals(1, box.bank().receive(Voltage.LOW.euPerTick() * 10, false),
                 "a box takes the last unit its cell has room for");
         assertTrue(box.bank().isFull(), "and then it is full");
-        assertFalse(box.bank().canReceive(), "so its block never asks a line again");
+        // A box with a cell in it keeps its mouth, however full that cell is: what stops the block of a box
+        // from asking a line again is the full buffer and not the shape of the box, see BatteryBank#canReceive.
+        assertTrue(box.bank().canReceive());
         assertEquals(0, box.bank().receive(Voltage.LOW.euPerTick(), false), "and nothing else goes in");
     }
 

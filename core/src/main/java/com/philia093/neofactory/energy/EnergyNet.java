@@ -35,6 +35,13 @@ import java.util.Objects;
  * hands the sink what is left after every block of the run took its share. A line of a superconductor loses
  * nothing at all, whatever it is wrapped in.
  * <p>
+ * <b>What a line burns is weighed on two scales.</b> The tier of a line is the one the machines that give it
+ * their power are built for, see {@link #overvolts(Voltage, EnergyStorage)}: a machine at the end of a line
+ * that was built for a worse one is not fed at all and is destroyed by it, while a piece of the run that
+ * cannot take that much - a cable of an earlier age on a line of a later one - melts where the power enters
+ * the line. The two are weighed apart, so a run of a cheap cable outlives the machine it could never feed,
+ * and a machine of the right tier outlives the run that was too weak for it.
+ * <p>
  * <b>How a line is found.</b> The net of the world collects the cables that are joined to one another - the
  * mask of a cable says which sides it joins, see {@link Cables} - and hands the ones between two machines to
  * this class. Building that net out of a world is the step after this one; what stands here is the
@@ -155,21 +162,6 @@ public final class EnergyNet {
     }
 
     /**
-     * {@code true} when this line is too much for a machine and destroys it.
-     * <p>
-     * A line of a higher tier than the one a machine was built for is no line that machine survives: the
-     * energy is not handed over at all, and both the line and the machine are lost, see
-     * {@link EnergyAcceptor#accepts(Voltage)}.
-     *
-     * @param machine machine the line would feed
-     * @return {@code true} when the line burns the machine and itself
-     */
-    public boolean overvolts(EnergyAcceptor machine) {
-        Objects.requireNonNull(machine, "machine");
-        return !machine.accepts(voltage);
-    }
-
-    /**
      * Moves energy from one storage to another through this line.
      * <p>
      * What is carried is asked of the source and offered to the sink, and the line keeps what it loses on
@@ -204,18 +196,41 @@ public final class EnergyNet {
     }
 
     /**
+     * {@code true} when a line of a tier destroys the machine that reaches for it.
+     * <p>
+     * A line of a higher tier than the one a machine was built for is no line that machine survives: the
+     * energy is not handed over at all and the machine is taken out of the world, see
+     * {@link EnergyAcceptor#accepts(Voltage)}. What the tier of a line is and what becomes of the cables of
+     * it is the business of the line and not of this question, see {@link EnergyGrid.Line#pull}.
+     * <p>
+     * A buffer that names no tier is no machine of the industry - the plain buffer a test holds - and a line
+     * of any tier leaves it alone.
+     *
+     * @param line tier the machine is reached by
+     * @param sink buffer that wants the energy
+     * @return {@code true} when that buffer was built for a worse line than this
+     */
+    public static boolean overvolts(Voltage line, EnergyStorage sink) {
+        Objects.requireNonNull(line, "line");
+        Objects.requireNonNull(sink, "sink");
+        return sink instanceof EnergyAcceptor taking && !taking.accepts(line);
+    }
+
+    /**
      * {@code true} when the energy of one buffer destroys the machine that asks it for power over a gap.
      * <p>
      * <b>Two machines that stand next to each other need no cable, and what feeds them is then a line of the
      * tier of the machine that gives.</b> A machine of the game is built for one tier of the power, and a line
      * of a higher tier does not feed it - it destroys it, see {@link EnergyAcceptor} and
-     * {@link #overvolts(EnergyAcceptor)}. Where there is no cable between the two, the tier of that line is
-     * the one the storage that gives names: a furnace of the low voltage that reaches for what a box of the
-     * high voltage holds is destroyed by it, exactly as it would be destroyed by a line of the high voltage.
+     * {@link #overvolts(Voltage, EnergyStorage)}. Where there is no cable between the two, the tier of that
+     * line is the one the storage that gives names: a furnace of the low voltage that reaches for what a box
+     * of the high voltage holds is destroyed by it, exactly as it would be destroyed by a line of the high
+     * voltage.
      * <p>
-     * <b>A storage that names no tier is no line at all.</b> What a line burns is a machine that was built for
-     * a worse line, and a buffer that is no machine of the industry - the plain buffer a test holds - names no
-     * tier and destroys nothing.
+     * <b>A storage that names no tier, or that has nothing to give through, is no line at all.</b> What a
+     * line burns is a machine that was built for a worse line, so a buffer that is no machine of the industry
+     * - the plain buffer a test holds - destroys nothing, and neither does a box that holds no cell in it and
+     * therefore gives nothing away.
      *
      * @param source buffer the energy would come from, the machine that gives
      * @param sink buffer that wants the energy, the machine that asks
@@ -224,10 +239,10 @@ public final class EnergyNet {
     public static boolean overvolts(EnergyStorage source, EnergyStorage sink) {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(sink, "sink");
-        if (!(source instanceof EnergyAcceptor giving) || !(sink instanceof EnergyAcceptor taking)) {
+        if (!source.canExtract() || !(source instanceof EnergyAcceptor giving)) {
             return false;
         }
-        return !taking.accepts(giving.accepted());
+        return overvolts(giving.accepted(), sink);
     }
 
     /**

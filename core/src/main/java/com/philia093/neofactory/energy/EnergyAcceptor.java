@@ -24,9 +24,10 @@ public interface EnergyAcceptor extends EnergyStorage {
     /**
      * {@code true} when a line of a tier feeds this machine without destroying it.
      * <p>
-     * A machine takes its own tier and every one below it. Nothing above it is ever handed over: the line
-     * and the machine are both lost instead, which is what makes a player check the tier of a line before it
-     * is connected to anything.
+     * A machine takes its own tier and every one below it. Nothing above it is ever handed over: the machine
+     * is taken out of the world instead, which is what makes a player check the tier of a line before it is
+     * connected to anything - and only the cables of that line that cannot take what it is fed with melt with
+     * it, see {@code EnergyGrid.Line#pull}.
      *
      * @param line tier of the line
      * @return {@code true} when the machine survives the line

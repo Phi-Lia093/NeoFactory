@@ -163,12 +163,14 @@ public class MachineBlockEntity extends BlockEntity
      * which is the way the first workshop of the age of electricity is built, see {@link EnergyNet#hand}.
      * <b>A gap is a line of the tier of the machine that gives</b>, so a machine of a later age destroys the
      * one beside it the way a line of that age does - and there is no cable of that line to be taken away with
-     * it, see {@link EnergyNet#overvolts(EnergyStorage, EnergyStorage)}.
+     * it, see {@link EnergyNet#overvolts(EnergyStorage, EnergyStorage)}. A machine that holds nothing to give
+     * - a box with no cell in it - is no line at all and destroys nothing beside it.
      * <p>
      * <b>A line that is too much for a machine takes it away.</b> A line of a higher tier than the machine
-     * was built for does not feed it: the machine and every cable of the line are taken out of the world, see
-     * {@code EnergyAcceptor}. The tier is settled by the machine that asks and never by a machine that only
-     * makes power, so a wrong tier costs what the machine cost.
+     * was built for does not feed it: the machine is taken out of the world, and a cable of that line that
+     * cannot take what the line is fed with melts where the power enters it, see {@code EnergyAcceptor} and
+     * {@link EnergyGrid.Line#pull}. The tier is settled by the machine that asks and never by a machine that
+     * only makes power, so a wrong tier costs what the machine cost.
      *
      * @param world world this machine lies in
      */

@@ -5,6 +5,7 @@ import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.machine.EnergyStorage;
 import com.philia093.neofactory.machine.MachineEnergyStorage;
 import com.philia093.neofactory.machine.SimpleEnergyStorage;
 import com.philia093.neofactory.support.TestRegistries;
@@ -154,9 +155,27 @@ class EnergyNetTest {
                 "a buffer that names no tier is no line at all");
         assertFalse(EnergyNet.overvolts(high, new SimpleEnergyStorage(1000)),
                 "and neither is a machine that names none destroyed by one");
+        MachineEnergyStorage working = new MachineEnergyStorage(1000, 100, 0, Voltage.HIGH);
+        assertFalse(EnergyNet.overvolts(working, low),
+                "a machine that only works gives nothing away and destroys nothing beside it");
 
-        assertThrows(NullPointerException.class, () -> EnergyNet.overvolts(null, low));
+        assertThrows(NullPointerException.class, () -> EnergyNet.overvolts((EnergyStorage) null, low));
         assertThrows(NullPointerException.class, () -> EnergyNet.overvolts(high, null));
+    }
+
+    @Test
+    void aLineOfATierTakesTheMachineThatWasBuiltForAWorseOne() {
+        MachineEnergyStorage high = new MachineEnergyStorage(1000, Voltage.HIGH);
+        MachineEnergyStorage low = new MachineEnergyStorage(1000, Voltage.LOW);
+
+        assertTrue(EnergyNet.overvolts(Voltage.HIGH, low), "a line of the high voltage takes a machine of low");
+        assertFalse(EnergyNet.overvolts(Voltage.LOW, low), "a line of its own tier feeds it");
+        assertFalse(EnergyNet.overvolts(Voltage.LOW, high), "and a better machine takes a worse line");
+        assertFalse(EnergyNet.overvolts(Voltage.HIGH, new SimpleEnergyStorage(1000)),
+                "a buffer that names no tier is no machine of the industry");
+
+        assertThrows(NullPointerException.class, () -> EnergyNet.overvolts((Voltage) null, low));
+        assertThrows(NullPointerException.class, () -> EnergyNet.overvolts(Voltage.HIGH, null));
     }
 
     @Test

@@ -1,10 +1,12 @@
 package com.philia093.neofactory.energy;
 
+import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.CableKind;
+import com.philia093.neofactory.cable.CableMaterial;
 import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
@@ -89,9 +91,27 @@ class EnergyLineTest {
      * @param joined sides of the cable that carry the join
      */
     private static void cable(World world, int x, int y, int z, BlockFace... joined) {
-        world.setBlock(x, y, z, Cables.of(CableMaterials.COPPER, CableSize.SINGLE, CableKind.CABLE)
-                .block());
+        cable(world, CableMaterials.COPPER, x, y, z, joined);
+    }
+
+    /**
+     * Places one cable of a material, joined to the sides that were named.
+     *
+     * @param world world the cable is placed in
+     * @param material metal the cable is drawn from, which is the tier of the line it is part of
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     * @param joined sides of the cable that carry the join
+     */
+    private static void cable(World world, CableMaterial material, int x, int y, int z, BlockFace... joined) {
+        world.setBlock(x, y, z, cableBlock(material));
         world.setState(x, y, z, Cables.stateOf(Cables.mask(joined)));
+    }
+
+    /** The block one cable of a material stands as. */
+    private static Block cableBlock(CableMaterial material) {
+        return Cables.of(material, CableSize.SINGLE, CableKind.CABLE).block();
     }
 
     /** Lets the world tick a while, which is what moves the energy of a line. */
@@ -113,9 +133,22 @@ class EnergyLineTest {
         return line;
     }
 
-    /** A machine of the power network of a tier, with a buffer of the standard size of these tests. */
+    /** A machine of the power network of a tier that fills its buffer and hands it to the line. */
     private static TestMachine machine(Voltage tier) {
-        return new TestMachine(CAPACITY, tier);
+        return new TestMachine(CAPACITY, tier, tier.euPerTick());
+    }
+
+    /**
+     * A machine of the power network of a tier that only works: it takes power in and gives none over.
+     * <p>
+     * A machine that works spends out of its own buffer and is never a source of the line it stands on, which
+     * is what keeps a line of machines that work from feeding one another, see {@link MachineEnergyStorage}.
+     *
+     * @param tier tier the machine was built for
+     * @return the machine
+     */
+    private static TestMachine consumer(Voltage tier) {
+        return new TestMachine(CAPACITY, tier, 0);
     }
 
     @Test
@@ -197,22 +230,47 @@ class EnergyLineTest {
     }
 
     @Test
-    void aLineThatIsTooStrongForAMachineBurnsIt() {
+    void aLineThatIsTooStrongForAMachineTakesTheMachineAway() {
         World world = new World(SEED, 3, 0);
         MachineBlockEntity generator = place(world, machine(Voltage.MEDIUM), 0, Y, 0);
         bufferOf(generator).setAmount(CAPACITY);
-        // A copper cable is a line of the middle voltage and the machine at its other end was built for the
-        // low one: the machine and every cable of the line go, see EnergyAcceptor.
+        // The copper cable of the run is a line of the very tier the machine that gives it its power is built
+        // for, while the machine at its far end was built for the low one: the machine goes and the cable of
+        // the line stays, see EnergyGrid.Line#pull.
         cable(world, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
-        MachineBlockEntity sink = place(world, machine(Voltage.LOW), 2, Y, 0);
+        MachineBlockEntity sink = place(world, consumer(Voltage.LOW), 2, Y, 0);
         sink.machine().faces().setEnergyIn(BlockFace.WEST);
 
         settle(world, 1);
 
-        assertEquals(Blocks.AIR, world.getBlock(1, Y, 0), "the cable of the line is gone");
-        assertEquals(Blocks.AIR, world.getBlock(2, Y, 0), "and the machine the line was too strong for");
+        assertEquals(Blocks.AIR, world.getBlock(2, Y, 0), "the machine the line was too much for is gone");
+        assertEquals(cableBlock(CableMaterials.COPPER), world.getBlock(1, Y, 0),
+                "while the copper cable of the line takes the middle voltage that feeds it and stands");
         assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "the machine that made the power survives");
         assertEquals(CAPACITY, bufferOf(generator).amount(), "and it handed nothing over");
+    }
+
+    @Test
+    void aRunOfACableThatCannotTakeItsFeedMeltsWhereThePowerEntersIt() {
+        World world = new World(SEED, 8, 0);
+        MachineBlockEntity generator = place(world, machine(Voltage.HIGH), 0, Y, 0);
+        bufferOf(generator).setAmount(CAPACITY);
+        // A run of tin, which is a line of the low voltage, fed by a machine of the high voltage: the piece at
+        // the machine that gives melts while the rest of the run stands, see EnergyGrid.Line#melt.
+        cable(world, CableMaterials.TIN, 1, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        cable(world, CableMaterials.TIN, 2, Y, 0, BlockFace.WEST, BlockFace.EAST);
+        MachineBlockEntity sink = place(world, consumer(Voltage.HIGH), 3, Y, 0);
+        sink.machine().faces().setEnergyIn(BlockFace.WEST);
+
+        settle(world, 1);
+
+        assertEquals(Blocks.AIR, world.getBlock(1, Y, 0),
+                "the piece of the run at the machine that gives it its power");
+        assertEquals(cableBlock(CableMaterials.TIN), world.getBlock(2, Y, 0), "while the rest of the run stands");
+        assertEquals(Blocks.FURNACE, world.getBlock(3, Y, 0),
+                "and the machine that was built for that tier survives, as its run melted before it");
+        assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "the machine that gives survives as well");
+        assertEquals(CAPACITY, bufferOf(generator).amount(), "and nothing was handed over while the run melted");
     }
 
     @Test
@@ -262,11 +320,18 @@ class EnergyLineTest {
 
         private final Voltage tier;
 
-        private TestMachine(int capacity, Voltage tier) {
+        /**
+         * Creates a machine of the network of the tests.
+         *
+         * @param capacity capacity of its buffer
+         * @param tier tier it was built for
+         * @param maxExtract what it may hand a line a tick, {@code 0} for a machine that only works
+         */
+        private TestMachine(int capacity, Voltage tier, int maxExtract) {
             super(new MachineScreen("Test", ProgressKind.GENERIC, List.of(SlotKind.SMELTING), List.of(), 0, 0,
                             false),
                     new MachineInventory(MachineInventory.Role.INPUT),
-                    new MachineEnergyStorage(capacity, tier), List.of());
+                    new MachineEnergyStorage(capacity, tier.euPerTick(), maxExtract, tier), List.of());
             this.tier = tier;
         }
 

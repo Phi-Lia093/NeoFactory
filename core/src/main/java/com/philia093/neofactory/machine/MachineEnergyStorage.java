@@ -11,8 +11,8 @@ import java.util.Objects;
  * <p>
  * A machine of the electrical age is filled and emptied by the line of cables it stands on, and the tier of
  * that line is the one question the buffer has to answer beyond the amounts: a line of a tier a machine was
- * not made for is not slower, it is fatal - the energy is not handed over at all and the line takes the
- * machine and every cable of it away, see {@link EnergyAcceptor} and {@code EnergyGrid.Line#pull}.
+ * not made for is not slower, it is fatal - the energy is not handed over at all and the machine is taken out
+ * of the world, see {@link EnergyAcceptor} and {@code EnergyGrid.Line#pull}.
  * <p>
  * <b>A machine takes one ampere of its own tier.</b> The two limits of the buffer are the amount one tick of
  * a line of that tier carries, so a machine of the low voltage takes thirty two units a tick and no more

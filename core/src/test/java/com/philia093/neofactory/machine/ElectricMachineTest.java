@@ -5,6 +5,7 @@ import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.BlockEntityTypes;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.CableKind;
+import com.philia093.neofactory.cable.CableMaterial;
 import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
@@ -208,8 +209,9 @@ class ElectricMachineTest {
     @Test
     void aLineOfAHigherTierTakesTheMachineAway() {
         World world = new World(SEED, 0, 0);
-        // A machine of the low voltage stands at the end of a copper cable, which is a line of the middle
-        // voltage: it burns when it reaches for the power, and the machine that only makes power survives.
+        // A machine of the low voltage stands at the end of a copper cable, which is fed by a machine of the
+        // middle voltage: it burns when it reaches for the power, while the cable of that line takes the tier
+        // it is fed with and stands, and the machine that only makes power survives.
         world.setBlock(0, Y, 0, Blocks.FURNACE);
         MachineBlockEntity source = new MachineBlockEntity(BlockEntityTypes.FURNACE,
                 new SourceMachine(Voltage.MEDIUM));
@@ -226,7 +228,8 @@ class ElectricMachineTest {
         world.tick(TickClock.TICK_SECONDS);
 
         assertEquals(Blocks.AIR, world.getBlock(2, Y, 0), "the machine the line was too much for is gone");
-        assertEquals(Blocks.AIR, world.getBlock(1, Y, 0), "and so is every cable of that line");
+        assertEquals(Cables.of(CableMaterials.COPPER, CableSize.SINGLE, CableKind.CABLE).block(),
+                world.getBlock(1, Y, 0), "while the copper cable of the line takes what feeds it and stands");
         assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "the machine that only makes power survives");
         assertEquals(2048, source.machine().energy().amount(), "with what it held");
     }
@@ -282,10 +285,11 @@ class ElectricMachineTest {
     @Test
     void aBoxOfALaterAgeACableAwayDestroysAMachineOfAnEarlierOne() {
         World world = new World(917, 0, 0);
-        // The same two machines with a copper cable between them, which is a line of the middle voltage: the
-        // machine of the low voltage reaches for the power through that cable and is destroyed by it, and the
-        // cable it reached through goes with it. The box that gave the line its power stays where it is and
-        // keeps what its cell holds, see EnergyGrid#burn.
+        // The same two machines with a copper cable between them: the machine of the low voltage reaches for
+        // the power of the box over a line the box feeds with the high voltage, so it is destroyed by it, and
+        // the copper cable, which is a line of the middle voltage, cannot take that much either and melts
+        // where the power enters the run. The box that gave the line its power stays where it is and keeps
+        // what its cell holds, see EnergyGrid.Line#pull.
         BatteryBoxMachine box = new BatteryBoxMachine(Voltage.HIGH, 1);
         box.inventory().set(0, cell(BatteryChemistry.LITHIUM, Voltage.HIGH));
         place(world, 0, box);
@@ -300,8 +304,35 @@ class ElectricMachineTest {
 
         assertEquals(Blocks.AIR, world.getBlock(2, Y, 0), "the furnace of the low voltage is gone");
         assertEquals(Blocks.AIR, world.getBlock(1, Y, 0),
-                "and so is every cable of the line that was too much for it");
+                "and the copper cable, which cannot take what the box feeds the line with");
         assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "while the box that gave the power survives");
+        assertEquals(held, box.bank().amount(), "with every unit its cell holds");
+    }
+
+    @Test
+    void aCableOfAnEarlierAgeBehindABoxOfALaterOneMeltsAndTheMachineStands() {
+        World world = new World(919, 0, 0);
+        // A box of the high voltage behind a tin cable, which is a line of the low voltage: the machine at the
+        // far end was built for the high voltage and survives, while the cable that cannot take what the box
+        // feeds the run with melts where the power enters it - a machine of the right tier outlives the run
+        // that was too weak for it, see EnergyGrid.Line#melt.
+        BatteryBoxMachine box = new BatteryBoxMachine(Voltage.HIGH, 1);
+        box.inventory().set(0, cell(BatteryChemistry.LITHIUM, Voltage.HIGH));
+        place(world, 0, box);
+        cable(world, CableMaterials.TIN, 1, Y, 0);
+
+        TestMachine machine = machine(Voltage.HIGH, ElectricMachine.STANDARD_AMPS);
+        machine.faces().setEnergyIn(BlockFace.WEST);
+        place(world, 2, machine);
+        int held = box.bank().amount();
+
+        world.tick(TickClock.TICK_SECONDS);
+
+        assertEquals(Blocks.AIR, world.getBlock(1, Y, 0),
+                "the tin cable, which cannot take the high voltage of the box, melted where the power enters it");
+        assertEquals(Blocks.FURNACE, world.getBlock(2, Y, 0), "while the machine of the high voltage survives");
+        assertEquals(0, machine.buffer().amount(), "with nothing handed over while the run melted");
+        assertEquals(Blocks.FURNACE, world.getBlock(0, Y, 0), "and the box that fed the run survives");
         assertEquals(held, box.bank().amount(), "with every unit its cell holds");
     }
 
@@ -423,7 +454,20 @@ class ElectricMachineTest {
 
     /** Places one copper cable, joined to the two sides a line of these tests runs along. */
     private static void cable(World world, int x, int y, int z) {
-        world.setBlock(x, y, z, Cables.of(CableMaterials.COPPER, CableSize.SINGLE, CableKind.CABLE).block());
+        cable(world, CableMaterials.COPPER, x, y, z);
+    }
+
+    /**
+     * Places one cable of a material, joined to the two sides a line of these tests runs along.
+     *
+     * @param world world the cable is placed in
+     * @param material metal the cable is drawn from, which is the tier of the line it is part of
+     * @param x block X coordinate
+     * @param y block Y coordinate, the height
+     * @param z block Z coordinate
+     */
+    private static void cable(World world, CableMaterial material, int x, int y, int z) {
+        world.setBlock(x, y, z, Cables.of(material, CableSize.SINGLE, CableKind.CABLE).block());
         world.setState(x, y, z, Cables.stateOf(Cables.mask(BlockFace.WEST, BlockFace.EAST)));
     }
 

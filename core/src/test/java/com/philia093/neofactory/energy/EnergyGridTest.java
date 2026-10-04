@@ -4,6 +4,7 @@ import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.cable.CableKind;
+import com.philia093.neofactory.cable.CableMaterial;
 import com.philia093.neofactory.cable.CableMaterials;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
@@ -96,8 +97,12 @@ class EnergyGridTest {
         private final List<String> removed = new ArrayList<>();
 
         private void cable(int x, int y, int z, int mask) {
-            blocks.put(at(x, y, z), Cables.of(CableMaterials.COPPER, CableSize.SINGLE, CableKind.CABLE)
-                    .block());
+            cable(x, y, z, CableMaterials.COPPER, mask);
+        }
+
+        /** Places one cable of a material, joined to the sides its mask names. */
+        private void cable(int x, int y, int z, CableMaterial material, int mask) {
+            blocks.put(at(x, y, z), Cables.of(material, CableSize.SINGLE, CableKind.CABLE).block());
             states.put(at(x, y, z), mask);
         }
 
@@ -182,7 +187,7 @@ class EnergyGridTest {
         assertEquals(machine, line.ends().get(0));
         assertTrue(line.reaches(machine));
         assertEquals(2, line.endPositions().get(0)[0], "at the cell it stands in");
-        assertFalse(line.overvolts(machine), "a machine of high voltage takes a line of the middle one");
+        assertFalse(line.overvolts(machine), "the machine that gives it is built for the very tier it feeds");
         assertEquals(Voltage.MEDIUM, line.net().voltage());
     }
 
@@ -215,20 +220,66 @@ class EnergyGridTest {
         cells.machine(-1, 64, 0, big, BlockFace.EAST);
 
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
-        assertTrue(line.overvolts(small), "a line of the middle voltage is too much for a machine of low");
-        assertFalse(line.overvolts(big));
-        // The machine that asks is the one the tier is settled on: it and the cable go, the machine that only
-        // makes power survives, see EnergyGrid.Line#pull.
+        assertEquals(Voltage.HIGH, line.liveVoltage(small),
+                "what feeds the line is the machine that gives, and that one is of the high voltage");
+        assertTrue(line.overvolts(small), "which is too much for a machine of low");
+        assertFalse(line.overvolts(big), "while the machine that gives it takes its own tier");
+        // The machine that asks and the run of cables are weighed apart: the machine was built for a worse
+        // line than the one it reached for, and the copper cable of the run cannot take the high voltage of
+        // the machine that gives either, so the two of them go, see EnergyGrid.Line#pull.
         assertEquals(0, line.pull(cells, small, 100), "nothing is handed over");
-        assertTrue(cells.removed.contains("0,64,0"), "the cable of the line is gone");
+        assertTrue(cells.removed.contains("0,64,0"), "the cable, which cannot take what the line is fed with");
         assertTrue(cells.removed.contains("1,64,0"), "and the machine that asked, which was too small for it");
         assertFalse(cells.removed.contains("-1,64,0"), "the machine that could take it survives");
     }
 
     @Test
+    void aMachineTooSmallForItsLineDoesNotTakeTheCablesWithIt() {
+        Cells cells = new Cells();
+        Machine small = new Machine(Voltage.LOW, 100);
+        Machine giving = new Machine(Voltage.MEDIUM, 100);
+        cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
+        cells.machine(1, 64, 0, small, BlockFace.WEST);
+        cells.machine(-1, 64, 0, giving, BlockFace.EAST);
+
+        EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
+
+        assertEquals(0, line.pull(cells, small, 100), "nothing is handed over");
+        assertTrue(cells.removed.contains("1,64,0"), "the machine the line was too much for is gone");
+        assertFalse(cells.removed.contains("0,64,0"),
+                "while the copper cable takes the middle voltage that feeds it and stays");
+        assertFalse(cells.removed.contains("-1,64,0"), "and so does the machine that gave it the power");
+    }
+
+    @Test
+    void aCableThatCannotTakeWhatItsLineIsFedWithMeltsWhereThePowerEntersIt() {
+        Cells cells = new Cells();
+        Machine machine = new Machine(Voltage.MEDIUM, 100);
+        Machine giving = new Machine(Voltage.MEDIUM, 100);
+        // A run of a tin cable at the machine that gives and a copper one at the far end: the tin cable is a
+        // line of the low voltage and cannot take what a machine of the middle one feeds it, so the piece at
+        // that machine goes while the rest of the run stands, see EnergyGrid.Line#melt.
+        cells.cable(0, 64, 0, CableMaterials.TIN, Cables.mask(BlockFace.EAST, BlockFace.WEST));
+        cells.cable(1, 64, 0, Cables.mask(BlockFace.WEST, BlockFace.EAST));
+        cells.machine(2, 64, 0, machine, BlockFace.WEST);
+        cells.machine(-1, 64, 0, giving, BlockFace.EAST);
+
+        EnergyGrid.Line line = EnergyGrid.line(cells, 1, 64, 0);
+        assertEquals(2, line.length(), "a copper cable between the machine that gives and a tin one");
+        assertEquals(Voltage.MEDIUM, line.liveVoltage(machine), "the run is fed with the middle voltage");
+        assertFalse(line.overvolts(machine), "which the machine at its far end was built for");
+
+        assertEquals(0, line.pull(cells, machine, 100), "nothing is handed over while the run melts");
+        assertTrue(cells.removed.contains("0,64,0"),
+                "the tin cable, which cannot take the middle voltage, melted where the power enters the line");
+        assertFalse(cells.removed.contains("1,64,0"), "the copper cable of the run can take it and stays");
+        assertFalse(cells.removed.contains("2,64,0"), "and so does the machine that was built for it");
+    }
+
+    @Test
     void aLineThatFitsHandsTheEnergyOver() {
         Cells cells = new Cells();
-        Machine source = new Machine(Voltage.HIGH, 1000);
+        Machine source = new Machine(Voltage.MEDIUM, 1000);
         Machine sink = new Machine(Voltage.HIGH, 100);
         source.fill(1000);
         cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
@@ -250,13 +301,34 @@ class EnergyGridTest {
         cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
         cells.machine(1, 64, 0, sink, BlockFace.WEST);
         // The machine at the other end may give, but it holds nothing: a line nobody feeds leaves the machine
-        // that asks waiting instead of handing it energy from nowhere.
-        cells.machine(-1, 64, 0, new Machine(Voltage.HIGH, 100), BlockFace.EAST);
+        // that asks waiting instead of handing it energy from nowhere. It is built for the middle voltage, so
+        // the copper cable of the run takes what it would feed and nothing of the line is destroyed.
+        cells.machine(-1, 64, 0, new Machine(Voltage.MEDIUM, 100), BlockFace.EAST);
 
         EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
 
         assertEquals(0, line.pull(cells, sink, 100), "an empty source gives nothing");
         assertEquals(0, sink.amount());
         assertTrue(cells.removed.isEmpty(), "and nothing burns");
+    }
+
+    @Test
+    void aLineIsFedByWhatItsMachinesWereBuiltForAndNotByWhatTheyHold() {
+        Cells cells = new Cells();
+        Machine sink = new Machine(Voltage.LOW, 100);
+        cells.cable(0, 64, 0, Cables.mask(BlockFace.EAST, BlockFace.WEST));
+        cells.machine(1, 64, 0, sink, BlockFace.WEST);
+        // The machine that gives holds nothing at all and is still built for the high voltage: a line is a
+        // thing a player built and not a thing the charge of a buffer decides, so what the machine of low
+        // voltage reached for is a line of the high voltage, see EnergyGrid.Line#liveVoltage.
+        cells.machine(-1, 64, 0, new Machine(Voltage.HIGH, 100), BlockFace.EAST);
+
+        EnergyGrid.Line line = EnergyGrid.line(cells, 0, 64, 0);
+
+        assertEquals(Voltage.HIGH, line.liveVoltage(sink), "the line is fed with the tier of its machine");
+        assertEquals(0, line.pull(cells, sink, 100), "nothing is handed over while that machine holds nothing");
+        assertTrue(cells.removed.contains("1,64,0"), "the machine of low voltage was built for a worse line");
+        assertTrue(cells.removed.contains("0,64,0"), "and the copper cable cannot take the high voltage");
+        assertFalse(cells.removed.contains("-1,64,0"), "while the machine that gives survives");
     }
 }
