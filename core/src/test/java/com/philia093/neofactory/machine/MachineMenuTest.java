@@ -284,6 +284,82 @@ class MachineMenuTest {
     }
 
     @Test
+    void theGridOfABoxStandsWhereThePanelsOfTheGamePutIt() {
+        // The four panels a box of cells is drawn in, see MachineMenu#gridLeft and MachineMenu#gridTop.
+        assertEquals(79, MachineMenu.gridLeft(1));
+        assertEquals(34, MachineMenu.gridTop(1));
+        assertEquals(70, MachineMenu.gridLeft(4));
+        assertEquals(26, MachineMenu.gridTop(4));
+        assertEquals(61, MachineMenu.gridLeft(9));
+        assertEquals(16, MachineMenu.gridTop(9));
+        assertEquals(52, MachineMenu.gridLeft(16));
+        assertEquals(8, MachineMenu.gridTop(16));
+        assertThrows(IllegalArgumentException.class, () -> MachineMenu.gridTop(2));
+    }
+
+    @Test
+    void aPanelOfAGridHoldsTheCellsOfItsMachineAndThePlayer() {
+        for (int cells : MachineScreen.GRID_SHAPES) {
+            MachineMenu menu = boxOfCells(cells, new SimpleEnergyStorage(1000));
+            List<Slot> slots = menu.container().layout().slots();
+            int columns = MachineScreen.gridColumns(cells);
+
+            assertTrue(menu.hasGrid(), "the panel of a box of cells is a grid");
+            assertEquals(cells, menu.gridSlots());
+            assertEquals(cells + PlayerInventory.SLOT_COUNT, slots.size(),
+                    "the cells of the box and the inventory of the player and nothing else");
+            assertEquals(List.of("LV Battery Box", MachineMenu.ENERGY,
+                            "0 / 1000 " + MachineMenu.ENERGY_UNIT), menu.infoTooltip(),
+                    "the mark of the upper left corner names the machine and what it holds, because a panel "
+                            + "that is a grid has no cell of energy to name it");
+
+            for (int index = 0; index < cells; index++) {
+                Slot slot = slots.get(index);
+                assertEquals(MachineMenu.gridLeft(cells) + (index % columns) * ContainerLayout.SLOT_PITCH,
+                        slot.x(), "the cell " + index + " of the grid");
+                assertEquals(MachineMenu.gridTop(cells) + (index / columns) * ContainerLayout.SLOT_PITCH,
+                        slot.y());
+                assertEquals(Slot.DEFAULT_ICON, slot.iconColumn(), "and every cell is a plain slot");
+                assertEquals(Slot.DEFAULT_ICON, slot.iconRow());
+                assertEquals(index, slot.index(), "showing the slots of the machine in their own order");
+                assertFalse(slot.isOutput(), "which a player fills and empties");
+            }
+
+            // The grid stands above the inventory of the player and never on one of its rows.
+            Slot player = slots.get(cells);
+            assertEquals(MachineMenu.PLAYER_LEFT, player.x());
+            assertEquals(MachineMenu.PLAYER_STORAGE_TOP, player.y());
+            assertTrue(MachineMenu.gridTop(cells) + MachineScreen.gridRows(cells) * ContainerLayout.SLOT_PITCH
+                            <= MachineMenu.PLAYER_STORAGE_TOP,
+                    "a grid of " + cells + " cells stops above the inventory of the player");
+        }
+    }
+
+    @Test
+    void aPanelOfAGridThatTheInventoryDoesNotFillIsRefused() {
+        // A screen that promises four cells and a machine that holds two is a mistake of the machine, not
+        // something a player should ever see.
+        MachineScreen screen = new MachineScreen("Box", 4);
+        TestMachine machine = new TestMachine(screen,
+                new MachineInventory(MachineInventory.Role.BATTERY, MachineInventory.Role.BATTERY),
+                new SimpleEnergyStorage(0));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new MachineMenu(machine, new PlayerInventory()));
+    }
+
+    /** The menu of a box of cells: a panel that is a grid of that many cells and a buffer of its own. */
+    private static MachineMenu boxOfCells(int cells, SimpleEnergyStorage buffer) {
+        List<MachineInventory.Role> roles = new ArrayList<>();
+        for (int slot = 0; slot < cells; slot++) {
+            roles.add(MachineInventory.Role.BATTERY);
+        }
+        TestMachine machine = new TestMachine(new MachineScreen("LV Battery Box", cells),
+                new MachineInventory(roles.toArray(new MachineInventory.Role[0])), buffer);
+        return new MachineMenu(machine, new PlayerInventory());
+    }
+
+    @Test
     void aMachineWithoutAnOutputSlotShowsItsTanksAndThePlayer() {
         // The shape of a boiler: one slot it takes something in, no product and a tank on every side.
         MachineMenu menu = menu(1, 0, 1, 1, false);
@@ -345,7 +421,12 @@ class MachineMenuTest {
     private static final class TestMachine extends Machine {
 
         private TestMachine(MachineScreen screen, MachineInventory inventory, MachineTank... tanks) {
-            super(screen, inventory, new SimpleEnergyStorage(0), List.of(), tanks);
+            this(screen, inventory, new SimpleEnergyStorage(0), tanks);
+        }
+
+        private TestMachine(MachineScreen screen, MachineInventory inventory, SimpleEnergyStorage energy,
+                MachineTank... tanks) {
+            super(screen, inventory, energy, List.of(), tanks);
         }
 
         @Override

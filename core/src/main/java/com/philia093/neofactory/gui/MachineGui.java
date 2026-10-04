@@ -476,8 +476,17 @@ public final class MachineGui {
                 && localY >= MachineMenu.INFO_TOP && localY < MachineMenu.INFO_TOP + MachineMenu.INFO_SIZE;
     }
 
-    /** {@code true} while a point of the panel lies on the cell of energy at its foot. */
-    private static boolean isOnEnergy(int localX, int localY) {
+    /**
+     * {@code true} while a point of the panel lies on the cell of energy at its foot.
+     * <p>
+     * A machine whose panel is a grid of plain slots has no such cell - the grid takes the place it would have
+     * stood in - so the box of the buffer is never drawn over the cells of a box, see
+     * {@link MachineMenu#hasGrid()} and {@link #drawEnergy}.
+     */
+    private boolean isOnEnergy(int localX, int localY) {
+        if (menu.hasGrid()) {
+            return false;
+        }
         return localX >= MachineMenu.ENERGY_X && localX < MachineMenu.ENERGY_X + ContainerLayout.SLOT_SIZE
                 && localY >= MachineMenu.FOOT_TOP
                 && localY < MachineMenu.FOOT_TOP + ContainerLayout.SLOT_SIZE;
@@ -574,7 +583,10 @@ public final class MachineGui {
      * all, so its cell stays empty.
      */
     private void drawEnergy(SpriteBatch batch, float panelX, float panelY, int panelHeight) {
-        if (menu.hasEnergySlot()) {
+        if (menu.hasEnergySlot() || menu.hasGrid()) {
+            // A panel that is a grid of plain slots carries no cell of energy at all: the cells of the machine
+            // stand in the place the cell would be drawn in, and what the buffer holds is read at the mark of
+            // the upper left corner, see MachineMenu#infoTooltip.
             return;
         }
         float x = panelX + MachineMenu.ENERGY_X;

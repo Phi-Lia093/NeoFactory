@@ -947,6 +947,15 @@ panel is placed by rule, so a machine that holds everything the layout can carry
 in, six out, four upgrades, two tanks each way and the configure slot - has no two cells on
 top of each other, which a test checks cell by cell and the second preview picture shows.
 
+**A machine whose panel is nothing but a grid of plain slots** is the second shape a screen has: one, four,
+nine or sixteen cells of the size of a slot, drawn in the middle of the upper half of the panel and above the
+inventory of the player, and **nothing else** - no bar, no tank and no cell of energy, because the grid takes
+the place the three of them would stand in. The four grids stand where the art of the panels puts them - `79,
+34` for the one cell, `70, 26` for the four, `61, 16` for the nine and `52, 8` for the sixteen, every one of
+them centred across the panel - and what the machine holds is read at the mark of the upper left corner
+instead of at a cell of energy, see `MachineMenu#gridLeft`, `MachineMenu#gridTop` and
+`MachineScreen#GRID_SHAPES`.
+
 A machine draws no fire: what is left of its fuel is written in the upper right corner as a
 number, see `FuelMachine`, and a machine that waits for energy shows the error icon of the
 sheet beside it, see `MachineError`. Everything else - the bevel of a slot, the items, the

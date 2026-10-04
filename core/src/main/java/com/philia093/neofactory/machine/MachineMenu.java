@@ -31,6 +31,10 @@ import java.util.Objects;
  *         left, the ones a machine fills on the right - with the cell of energy between the
  *         two pairs of them. The panel of a machine of this workshop has no column for
  *         upgrades and no corner to configure;</li>
+ *     <li><b>a machine whose panel is a grid of plain slots carries nothing else</b> - one, four, nine or
+ *         sixteen cells of a box of energy, drawn in the middle of the upper half of the panel and above the
+ *         inventory of the player. Such a machine works no recipe at all: what it shows is what it holds, see
+ *         {@link MachineScreen#gridSlots()};</li>
  *     <li>the sides of the machine are read from its front and are set from here as well as with the wrench:
  *         the tooltip of a tank names the side the tank is reached through while the modifier key is held,
  *         and the wheel walks that side on, see {@link #cycleTank(int, int, int)};</li>
@@ -209,12 +213,14 @@ public final class MachineMenu {
         List<Integer> outputs = inventory.slotsOf(MachineInventory.Role.OUTPUT);
         List<Integer> upgrades = inventory.slotsOf(MachineInventory.Role.UPGRADE);
         List<Integer> configure = inventory.slotsOf(MachineInventory.Role.CONFIGURE);
+        List<Integer> cells = inventory.slotsOf(MachineInventory.Role.BATTERY);
         require(machine, "input slots", screen.inputSlots(), inputs.size());
         require(machine, "output slots", screen.outputSlots(), outputs.size());
         require(machine, "input tanks", screen.fluidInputs(),
                 machine.tanksOf(MachineTank.Role.INPUT).size());
         require(machine, "output tanks", screen.fluidOutputs(),
                 machine.tanksOf(MachineTank.Role.OUTPUT).size());
+        require(machine, "cells of the box", screen.gridSlots(), cells.size());
         if (!upgrades.isEmpty() || !configure.isEmpty() || screen.configureSlot()) {
             // The panel of every machine of the workshop holds two blocks of slots, the tanks at its foot and
             // the cell of energy between them - and no column for upgrades and no corner to configure. A
@@ -229,6 +235,7 @@ public final class MachineMenu {
         addBlock(layout, inventory, inputs, screen.inputs(), true, style);
         addBlock(layout, inventory, outputs, screen.outputs(), false, style);
         addEnergySlot(layout, inventory, style);
+        addCellGrid(layout, inventory, cells, screen);
         this.fluidSlots = buildFluidSlots(machine, screen);
         layout.addGrid(PLAYER_LEFT, PLAYER_STORAGE_TOP, PLAYER_COLUMNS, PLAYER_STORAGE_ROWS, player,
                 PlayerInventory.HOTBAR_SLOTS, Slot.Rule.NORMAL);
@@ -240,11 +247,15 @@ public final class MachineMenu {
         container.setTankFinder(this::tankAt);
         // The cell of energy of a machine of the line is a slot and not a picture of how full the buffer is,
         // so the container asks back here for what may lie in it and for what its box says, see SlotRules.
+        // The slots of the machine carry what the machine itself takes and not what a player feels like: the
+        // cell of energy takes the reagent the machine burns, the cells of a box take the cells of its tier,
+        // so the container asks the machine through SlotRules, see Machine#acceptsItem.
         container.setSlotRules(new ContainerMenu.SlotRules() {
 
             @Override
             public boolean accepts(Slot slot, ItemStack stack) {
-                return !isEnergySlot(slot) || Reagents.isReagent(stack);
+                return slot.inventory() != machine.inventory()
+                        || machine.acceptsItem(slot.index(), stack);
             }
 
             @Override
@@ -252,6 +263,71 @@ public final class MachineMenu {
                 return !isEnergySlot(slot);
             }
         });
+    }
+
+    /**
+     * Places the grid of plain slots a box of cells is drawn in.
+     * <p>
+     * <b>A panel that is nothing but a grid is the panel of a box of cells.</b> Every slot of it shows one
+     * cell of the machine, all of them are drawn with the plain slot of the panel, and the grid stands in the
+     * middle of the upper half of the panel, above the inventory of the player, see {@link #gridLeft(int)} and
+     * {@link #gridTop(int)}. A machine whose panel is of the usual kind has no such slot, and the grid of its
+     * screen is none, see {@link MachineScreen#gridSlots()}.
+     *
+     * @param layout layout of the panel
+     * @param inventory inventory of the machine
+     * @param cells slots of the machine that hold a cell, in the order they are drawn
+     * @param screen screen of the machine
+     */
+    private static void addCellGrid(ContainerLayout layout, MachineInventory inventory, List<Integer> cells,
+            MachineScreen screen) {
+        if (!screen.isGrid()) {
+            return;
+        }
+        int columns = screen.gridColumns();
+        int left = gridLeft(screen.gridSlots());
+        int top = gridTop(screen.gridSlots());
+        for (int index = 0; index < Math.min(columns * columns, cells.size()); index++) {
+            layout.add(left + (index % columns) * ContainerLayout.SLOT_PITCH,
+                    top + (index / columns) * ContainerLayout.SLOT_PITCH, inventory, cells.get(index),
+                    Slot.Rule.NORMAL);
+        }
+    }
+
+    /**
+     * X of the first column of a grid, which is centred across the panel.
+     * <p>
+     * The grid is a square of cells of the very size of a slot, so the leftmost one stands half of what the
+     * grid takes away from the middle of the panel: a grid of one cell begins one cell-width left of the
+     * middle, a grid of four two of them, and so on.
+     *
+     * @param slots amount of plain slots the grid holds, see {@link MachineScreen#GRID_SHAPES}
+     * @return the coordinate of the left edge of the first column
+     */
+    public static int gridLeft(int slots) {
+        return (WIDTH - ContainerLayout.SLOT_PITCH * MachineScreen.gridColumns(slots)) / 2;
+    }
+
+    /**
+     * Y of the first row of a grid.
+     * <p>
+     * <b>The numbers are the ones the panels of the game were drawn for.</b> The grid stands in the upper half
+     * of the panel - the half a machine usually stands its own slots, its bar and its tanks in - and what the
+     * four of them take there is one row of the panel, four of them, nine, or the sixteen a box of the largest
+     * kind holds, which fills that half down to the inventory of the player.
+     *
+     * @param slots amount of plain slots the grid holds, see {@link MachineScreen#GRID_SHAPES}
+     * @return the coordinate of the upper edge of the first row
+     * @throws IllegalArgumentException when that many slots form no grid
+     */
+    public static int gridTop(int slots) {
+        return switch (slots) {
+            case 1 -> 34;
+            case 4 -> 26;
+            case 9 -> 16;
+            case 16 -> 8;
+            default -> throw new IllegalArgumentException("No grid of " + slots + " slots");
+        };
     }
 
     /**
@@ -290,6 +366,21 @@ public final class MachineMenu {
     /** {@code true} when the cell of energy at the foot of the panel is a slot a player fills by hand. */
     public boolean hasEnergySlot() {
         return energySlot() >= 0;
+    }
+
+    /**
+     * {@code true} when the panel of this machine is a grid of plain slots and nothing else.
+     * <p>
+     * A panel that is a grid has no bar, no tank and no cell of energy: what it shows is the cells the machine
+     * holds, see {@link MachineScreen#gridSlots()} and {@code MachineGui#drawEnergy}.
+     */
+    public boolean hasGrid() {
+        return machine.screen().isGrid();
+    }
+
+    /** Amount of plain slots the grid of this panel holds, {@code 0} for a panel of the usual kind. */
+    public int gridSlots() {
+        return machine.screen().gridSlots();
     }
 
     /** {@code true} when a slot of the layout is the cell of energy of this machine. */
@@ -759,9 +850,23 @@ public final class MachineMenu {
         return status.isEmpty() ? List.of() : List.of(status);
     }
 
-    /** Lines the info mark of the upper left corner is named with, which is the name of the machine. */
+    /**
+     * Lines the info mark of the upper left corner is named with, which is the name of the machine.
+     * <p>
+     * <b>The buffer of a machine whose panel is a grid of slots is read here.</b> Such a panel has no cell of
+     * energy at its foot - the grid takes the place the cell would stand in - so what the machine holds is
+     * said by the mark of the upper left corner instead, which is where a player asks what the machine is
+     * anyway, see {@link #energyTooltip(boolean)} and {@link #hasGrid()}. Every other machine says its name
+     * and nothing else here, because its cell of energy answers for its buffer.
+     */
     public List<String> infoTooltip() {
-        return List.of(title());
+        if (!hasGrid()) {
+            return List.of(title());
+        }
+        List<String> lines = new ArrayList<>();
+        lines.add(title());
+        lines.addAll(energyTooltip(false));
+        return List.copyOf(lines);
     }
 
     /**

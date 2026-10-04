@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Checks what a machine may ask its screen to show.
@@ -70,5 +72,44 @@ class MachineScreenTest {
         assertThrows(IllegalArgumentException.class, () -> new MachineScreen("Three Tanks",
                 ProgressKind.GENERIC, List.of(SlotKind.GENERIC), List.of(SlotKind.GENERIC),
                 3, 0, false));
+    }
+
+    @Test
+    void aPanelMayBeNothingButAGridOfPlainSlots() {
+        for (int slots : MachineScreen.GRID_SHAPES) {
+            MachineScreen screen = new MachineScreen("Box", slots);
+
+            assertTrue(screen.isGrid(), "a panel of " + slots + " slots is a grid");
+            assertEquals(slots, screen.gridSlots());
+            assertEquals(MachineScreen.gridColumns(slots), screen.gridColumns());
+            assertEquals(screen.gridColumns(), screen.gridRows(), "a grid is a square");
+            assertFalse(screen.progress().hasBar(), "a grid carries no bar");
+            assertTrue(screen.inputs().isEmpty() && screen.outputs().isEmpty());
+        }
+
+        assertEquals(1, MachineScreen.gridColumns(1));
+        assertEquals(2, MachineScreen.gridColumns(4));
+        assertEquals(3, MachineScreen.gridColumns(9));
+        assertEquals(4, MachineScreen.gridColumns(16));
+
+        MachineScreen usual = new MachineScreen("Furnace", ProgressKind.GENERIC,
+                List.of(SlotKind.SMELTING), List.of(SlotKind.GENERIC), 0, 0, false);
+        assertFalse(usual.isGrid(), "a machine of the usual kind is no grid");
+        assertEquals(0, usual.gridSlots());
+    }
+
+    @Test
+    void aGridOfAShapeThePanelHasNoRoomForIsRefused() {
+        assertThrows(IllegalArgumentException.class, () -> new MachineScreen("Two Cells", 2));
+        assertThrows(IllegalArgumentException.class, () -> new MachineScreen("Sixteen And One", 17));
+        assertThrows(IllegalArgumentException.class, () -> MachineScreen.gridColumns(6));
+
+        // A panel that is a grid carries nothing but its slots: no bar, no tank and no other slot.
+        assertThrows(IllegalArgumentException.class, () -> new MachineScreen("Box", MachineStyle.NORMAL,
+                ProgressKind.GENERIC, List.of(), List.of(), 0, 0, false, 4));
+        assertThrows(IllegalArgumentException.class, () -> new MachineScreen("Box", MachineStyle.NORMAL,
+                ProgressKind.NONE, List.of(SlotKind.GENERIC), List.of(), 0, 0, false, 4));
+        assertThrows(IllegalArgumentException.class, () -> new MachineScreen("Box", MachineStyle.NORMAL,
+                ProgressKind.NONE, List.of(), List.of(), 1, 0, false, 4));
     }
 }

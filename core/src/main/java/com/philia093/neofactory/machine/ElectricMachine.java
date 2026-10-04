@@ -150,6 +150,23 @@ public class ElectricMachine extends RecipeMachine {
     }
 
     /**
+     * A machine of the line keeps everything but the reagent it burns out of the shelf it is fed with.
+     * <p>
+     * <b>Nothing but dust goes into the cell of energy.</b> A machine that swallowed whatever a player dropped
+     * on it would be a machine filled with junk by accident, and the one thing a player puts there is the
+     * piece of redstone the machine burns a frame at a time, see {@link Reagents}. Every other slot of the
+     * machine - the slots its family declares - takes what it always took.
+     *
+     * @param slot index of the slot inside {@link #inventory()}
+     * @param stack stack that would go into it, never empty
+     * @return {@code true} when the machine takes it
+     */
+    @Override
+    public boolean acceptsItem(int slot, ItemStack stack) {
+        return slot != reagentSlot() || Reagents.isReagent(stack);
+    }
+
+    /**
      * Burns one piece of the reagent that lies in the shelf of the machine, if the whole of one fits.
      * <p>
      * <b>A machine of the line is fed twice and this is the second way.</b> A player who has no line yet puts

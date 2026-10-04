@@ -44,6 +44,18 @@ public final class MachineInventory extends Inventory {
         ENERGY,
 
         /**
+         * Holds a cell of energy a machine keeps for a line of cables, a battery for a box of them.
+         * <p>
+         * <b>A box of cells holds nothing else.</b> The slots of such a machine are not an input and not an
+         * output, because no recipe of the game works on them: they are the buffer of the machine itself,
+         * which is why they are the only slots a box of cells declares, see {@code BatteryBoxMachine}. The
+         * screen of such a machine is a grid of plain slots and no panel of the usual kind, see
+         * {@link MachineScreen#gridSlots()}, and what may lie in one of them is a cell of the tier the box was
+         * built for.
+         */
+        BATTERY,
+
+        /**
          * Holds a module the machine itself reads while it works.
          * <p>
          * An upgrade slot is filled and emptied like an input slot, it is simply not

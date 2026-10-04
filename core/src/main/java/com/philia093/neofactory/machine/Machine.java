@@ -134,6 +134,26 @@ public abstract class Machine {
     }
 
     /**
+     * {@code true} when this machine takes that stack into that slot of its own inventory.
+     * <p>
+     * <b>A machine owns what may lie in its slots</b> the same way it owns how many of them it has. A machine
+     * of the line is fed by hand with the reagent it burns and with nothing else, and a box of cells takes the
+     * cells of its own tier, so the rule is written once here and asked from every place a stack may arrive
+     * from - a click of a player, a stack moved with the key of the inventory - see
+     * {@link com.philia093.neofactory.gui.container.ContainerMenu.SlotRules#accepts}.
+     * <p>
+     * A machine that says nothing about a slot takes anything, which is what every machine of the game but
+     * the two kinds above does.
+     *
+     * @param slot index of the slot inside {@link #inventory()}
+     * @param stack stack that would go into it, never empty
+     * @return {@code true} when the machine takes it
+     */
+    public boolean acceptsItem(int slot, ItemStack stack) {
+        return true;
+    }
+
+    /**
      * What a player made of the sides of this machine.
      * <p>
      * Every part of a machine - its tanks, the plugs of the power and the vent of its steam - is reached
