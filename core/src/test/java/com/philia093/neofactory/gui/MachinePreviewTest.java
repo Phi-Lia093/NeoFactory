@@ -7,10 +7,14 @@ import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.gui.container.Slot;
 import com.philia093.neofactory.gui.panel.MachineTextures;
 import com.philia093.neofactory.gui.panel.PanelTextures;
+import com.philia093.neofactory.item.Batteries;
+import com.philia093.neofactory.item.BatteryChemistry;
 import com.philia093.neofactory.item.Item;
+import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.item.PlayerInventory;
+import com.philia093.neofactory.machine.BatteryBoxMachine;
 import com.philia093.neofactory.machine.ElectricMaceratorMachine;
 import com.philia093.neofactory.machine.Machine;
 import com.philia093.neofactory.machine.MachineError;
@@ -44,6 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -83,6 +88,10 @@ class MachinePreviewTest {
     /** Picture of the panel of a machine of the line of the power, which has a bar and an alarm. */
     private static final Path LINE_PREVIEW =
             Path.of("build", "reports", "machine-line-preview.png");
+
+    /** Picture of the four panels of the boxes of cells, one per size. */
+    private static final Path BOX_PREVIEW =
+            Path.of("build", "reports", "machine-box-preview.png");
 
     /** Colour the fill of the cell of energy is painted in, the red of the screen of a machine. */
     private static final int ENERGY_FILL = 0xFFB81F1F;
@@ -283,6 +292,74 @@ class MachinePreviewTest {
 
         ImageIO.write(picture, "png", LINE_PREVIEW.toFile());
         assertTrue(LINE_PREVIEW.toFile().isFile(), "the preview was not written");
+    }
+
+    /**
+     * Paints the four panels of the boxes of cells, the machines of the industry that hold energy and nothing
+     * else.
+     * <p>
+     * A box works no recipe, so its panel carries no bar, no tank and no cell of energy: what is left is a grid
+     * of plain slots - one, four, nine or sixteen of them, the same square a box is built for - and the mark of
+     * the upper left corner, which names the machine and what it holds. The four panels stand side by side in
+     * {@code core/build/reports/machine-box-preview.png}, each with a charged cell in its first slot, and the
+     * test pins down what the screen of a box says: the grid is as large as the box, the cell of energy is gone
+     * and the buffer is named by the mark, see {@link MachineMenu#gridTop(int)} and
+     * {@link MachineMenu#infoTooltip()}.
+     */
+    @Test
+    void thePanelsOfTheBoxesOfCellsArePaintedAsTheGameDrawsThem() throws IOException {
+        BufferedImage sheet = read(MACHINE_SHEET);
+        List<BufferedImage> panels = new ArrayList<>();
+        for (int cells : MachineScreen.GRID_SHAPES) {
+            panels.add(paintBoxPanel(sheet, cells));
+        }
+
+        int width = panels.size() * (MachineTextures.WIDTH + 2 * MARGIN);
+        BufferedImage picture = new BufferedImage(width, MachineTextures.HEIGHT + 2 * MARGIN,
+                BufferedImage.TYPE_INT_ARGB);
+        fill(picture, BACKDROP);
+        for (int index = 0; index < panels.size(); index++) {
+            BufferedImage panel = panels.get(index);
+            copy(panel, picture, 0, 0, panel.getWidth(), panel.getHeight(),
+                    index * (MachineTextures.WIDTH + 2 * MARGIN), 0);
+        }
+
+        ImageIO.write(picture, "png", BOX_PREVIEW.toFile());
+        assertTrue(BOX_PREVIEW.toFile().isFile(), "the preview was not written");
+    }
+
+    /** Paints one panel of a box of that many cells, the way a screen of the game draws it. */
+    private static BufferedImage paintBoxPanel(BufferedImage machine, int cells) {
+        BatteryBoxMachine box = new BatteryBoxMachine(Voltage.LOW, cells);
+        ItemStack cell = ItemStack.of(
+                ItemRegistry.byName(Batteries.itemNameOf(Batteries.of(BatteryChemistry.LITHIUM, Voltage.LOW))),
+                1);
+        box.inventory().set(0, cell);
+        MachineMenu menu = new MachineMenu(box, new PlayerInventory());
+        ContainerLayout layout = menu.container().layout();
+
+        assertTrue(menu.hasGrid(), "the panel of a box is a grid of its cells");
+        assertEquals(cells, menu.gridSlots());
+        assertFalse(menu.hasEnergySlot(), "a box is fed by the cells a player puts in and not by dust");
+        assertEquals(List.of(box.name(), MachineMenu.ENERGY,
+                        box.bank().amount() + " / " + box.bank().capacity() + " " + MachineMenu.ENERGY_UNIT),
+                menu.infoTooltip(), "and the mark of the upper left corner names what it holds");
+
+        BufferedImage picture = new BufferedImage(MachineTextures.WIDTH + 2 * MARGIN,
+                MachineTextures.HEIGHT + 2 * MARGIN, BufferedImage.TYPE_INT_ARGB);
+        fill(picture, BACKDROP);
+        copy(machine, picture, 0, 0, MachineTextures.WIDTH, MachineTextures.HEIGHT, MARGIN, MARGIN);
+        drawSlots(picture, machine, layout);
+        for (int index = 0; index < cells; index++) {
+            // The cells of the picture are charged, so that a box of every size reads as what it holds: the
+            // first one full, the second half spent and the rest spent to the last unit, see Battery.
+            ItemStack shown = ItemStack.of(cell.item(), 1);
+            int spent = index == 0 ? 0 : index == 1 ? cell.item().maxDamage() / 2 : cell.item().maxDamage();
+            shown.setDamage(spent);
+            drawStack(picture, layout, index, shown);
+        }
+        drawInfo(picture);
+        return picture;
     }
 
     /**

@@ -311,7 +311,9 @@ stored on disk so that a session can be continued later.
   would destroy or one that would burn the line, see `Battery#voltage`.
   **A box has no front and no bar.** Its panel is a grid of plain slots and nothing else - there is no recipe
   to fill a bar with and no cell of energy to put anything into - so what a box holds is read at the mark of
-  the upper left corner of its panel. Its block is a cube of the casing of its tier with no state at all: a
+  the upper left corner of its panel, and `gradlew :core:test` writes
+  `core/build/reports/machine-box-preview.png`: the four panels of the four sizes of a box, each with a charged
+  cell in its first slot. Its block is a cube of the casing of its tier with no state at all: a
   player gives the two sides of it the power in and out with the wrench from wherever they stand, and the
   casing those two sides are drawn on is the one of the tier, see `MachineCasing`.
   The twelve blocks take the block ids 749 to 760, right behind the eighteen machines of the line, so no block
@@ -473,7 +475,9 @@ stored on disk so that a session can be continued later.
   where a pipe only reads the right button: the right button turns the machine onto the side that was clicked,
   `SHIFT` with the left button gives a side the job of taking something in, `SHIFT` with the right button the
   job of giving something out, and the left button without the key is the click that mines, which is why it
-  never reaches the machine at all, see `FaceClick`. The wire cutter, the
+  never reaches the machine at all, see `FaceClick`. **A box of cells reads none of the four but the two that set
+  a job**: it has no front to turn towards, so the right button of the wrench leaves it where it stands and its
+  two plugs may be put on whichever of its six sides a player wants them. The wire cutter, the
   crowbar and the screwdriver are items the art of the machine mod brings and will follow.
 - **Shapes and states** - a block is not one picture but a shape, and the skin of its faces lives in
   `assets/models/block`: a model names the picture of every face of every box, a template is written
