@@ -28,19 +28,19 @@ import com.philia093.neofactory.cable.Voltage;
  * millibucket is no steam a tank could be asked of. The three numbers that come out of it are pinned by a
  * test, see {@code SteamTurbineTest}: a change of a price here has to be a change of the test as well.
  * <p>
- * The tier also names the casing the machine is built of and the panel its screen is drawn in, so a player
- * reads the age of a turbine off its block and not off its name, see {@link #casing()}.
+ * The tier also names the panel its screen is drawn in and the casing the machine is built of, so a player
+ * reads the age of a turbine off its block and not off its name, see {@link MachineCasing}.
  */
 public enum TurbineTier {
 
     /** The first turbine, the machine that feeds the first machines of the electrical age. */
-    LV(Voltage.LOW, 0.85f, 3072, "machine_lv/machine_lv"),
+    LV(Voltage.LOW, 0.85f, 3072),
 
     /** The turbine of the middle voltage, built of steel with the blades of a faster machine. */
-    MV(Voltage.MEDIUM, 0.75f, 10752, "machine_mv/machine_mv"),
+    MV(Voltage.MEDIUM, 0.75f, 10752),
 
     /** The turbine of the high voltage, the machine a workshop of some size is built around. */
-    HV(Voltage.HIGH, 0.66f, 41472, "machine_hv/machine_hv");
+    HV(Voltage.HIGH, 0.66f, 41472);
 
     /** Steam one unit of energy is worth, in millibuckets, before the efficiency of a machine is counted. */
     public static final float STEAM_PER_EU = 2.0f;
@@ -48,13 +48,11 @@ public enum TurbineTier {
     private final Voltage voltage;
     private final float efficiency;
     private final int capacity;
-    private final String casing;
 
-    TurbineTier(Voltage voltage, float efficiency, int capacity, String casing) {
+    TurbineTier(Voltage voltage, float efficiency, int capacity) {
         this.voltage = voltage;
         this.efficiency = efficiency;
         this.capacity = capacity;
-        this.casing = casing;
     }
 
     /** Tier of the line this machine feeds, which is also the ampère it hands over a tick. */
@@ -88,7 +86,7 @@ public enum TurbineTier {
 
     /** Casing this machine is built of, the picture a side that carries a job is drawn with. */
     public String casing() {
-        return casing;
+        return MachineCasing.pictureOf(voltage);
     }
 
     /** Name of this tier, which is the name its block and its item carry. */

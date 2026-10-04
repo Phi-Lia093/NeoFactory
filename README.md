@@ -245,7 +245,10 @@ stored on disk so that a session can be continued later.
   What a player reads at a machine of the line is the tier in front of the name of its family - `LV Macerator`,
   `HV Alloy Smelter`. Every one of them is drawn in the grey panel of the age of electricity, holds no tank,
   because the power it runs on arrives over a line and never in a bucket, and lights the front of its block
-  while it works. **The cell of energy at the foot of its panel is a slot and no bar**: a player who has no line
+  while it works. **The side a player gave the plug of the power to is drawn as the casing of the tier of the
+  machine with the plug over it** - and never as the bronze of the age of steam - so a machine of the high
+  voltage reads as a machine of the high voltage from every side of it, see `MachineCasing`. **The cell of
+  energy at the foot of its panel is a slot and no bar**: a player who has no line
   yet puts redstone dust into it, and every frame the machine burns one piece of it in its own buffer, so a
   workshop can be started before the line that feeds it is built - a machine that is fed by hand takes from its
   line only what the dust did not cover, see `Reagents`. **Nothing but dust goes in**, because a machine that
@@ -744,6 +747,11 @@ hundred and forty-four pictures of `assets/blocks/basicmachines`, the thirty-six
 blockstates beside them. A face the pack draws nothing for - the top of a furnace that has nothing on it, the
 floor of every one of them - is left as the bare casing, so every face of a machine is a picture like any
 other and its model is a plain cube whose faces are the front, the top, the bottom and the two flanks.
+**A side a player gives a job to is drawn by the block entity of the machine and not by its model**, so it
+shows the casing of the tier once more - the plug of the line of cables over `machine_lv/machine_lv` on a
+machine of the low voltage - and never the bronze of the age of steam: the casing of the plug is the one of
+the tier of the machine, which is the casing the generator of that tier is built of as well, see
+`MachineCasing` and `MachineBlockEntity#pictureOn`.
 
 **The models of the pipes are written by a script and checked by a test.** A pipe is drawn from the state
 of its cell - the mask of the six sides it joins, see `pipe` - and sixty four masks in seven sizes are more

@@ -134,6 +134,22 @@ public class ElectricMachine extends RecipeMachine {
     }
 
     /**
+     * A side of a machine of the line that carries a job stands on the casing of its own tier.
+     * <p>
+     * The model of a machine of the line draws the art of its family on five of its six sides, see
+     * {@link MachineFamilies.Family#pictureOf(Voltage, String)}; the side a player gave a job to - the plug
+     * the line of cables stands at - is drawn by the block entity of the machine, which writes the casing of
+     * the machine under the overlay of that job. <b>That casing is the one of the tier and never the bronze
+     * of the age of steam</b> a machine that says nothing falls back to, see {@link Machine.CASING} and
+     * {@link MachineCasing}: a machine of the high voltage is a machine of the grey casing of the high
+     * voltage, whatever side of it a player works.
+     */
+    @Override
+    public String casing() {
+        return MachineCasing.pictureOf(tier);
+    }
+
+    /**
      * Burns one piece of the reagent that lies in the shelf of the machine, if the whole of one fits.
      * <p>
      * <b>A machine of the line is fed twice and this is the second way.</b> A player who has no line yet puts

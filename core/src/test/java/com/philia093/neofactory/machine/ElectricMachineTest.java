@@ -30,9 +30,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -79,6 +81,29 @@ class ElectricMachineTest {
         assertEquals(0, low.power(), "a machine that is idle draws nothing");
         assertEquals(0, low.overclockSteps());
         assertEquals(MachineError.NONE, low.error());
+    }
+
+    @Test
+    void theCasingOfAMachineOfTheLineIsTheCasingOfItsOwnTier() {
+        // A side a player gives a job to is drawn by the block entity of the machine, which writes the casing
+        // of the machine under the overlay of that job - the plug of the line of cables. A machine of the line
+        // stands in the casing of its own age and never in the bronze of the age of steam, which is what a
+        // machine that says nothing falls back to, see MachineBlockEntity#pictureOn.
+        for (Voltage tier : MachineFamilies.TIERS) {
+            TestMachine machine = machine(tier, ElectricMachine.STANDARD_AMPS);
+
+            assertEquals(MachineCasing.pictureOf(tier), machine.casing(),
+                    "a machine of the " + tier.displayName() + " is built of the casing of its own age");
+            assertNotEquals(Machine.CASING, machine.casing(),
+                    "and never of the bronze the age of steam is built of");
+            assertTrue(machine.casing().contains(tier.fileName()),
+                    "so a player reads the age of the machine off the name of the picture");
+        }
+
+        assertEquals("machine_lv/machine_lv", MachineCasing.pictureOf(Voltage.LOW),
+                "the casing of a tier is the name of the tier spelled out");
+        assertThrows(IllegalArgumentException.class, () -> MachineCasing.pictureOf(Voltage.EXTREME),
+                "a tier no machine of the line was drawn for has no casing at all");
     }
 
     @Test
