@@ -19,6 +19,7 @@ import com.philia093.neofactory.machine.ExhaustMachine;
 import com.philia093.neofactory.machine.FaceConfig;
 import com.philia093.neofactory.machine.MachineSides;
 import com.philia093.neofactory.machine.MachineTank;
+import com.philia093.neofactory.machine.MachineTerminals;
 import com.philia093.neofactory.machine.SteamMachine;
 import com.philia093.neofactory.pipe.PipeTransport;
 import com.philia093.neofactory.pipe.Pipes;
@@ -440,6 +441,11 @@ public class MachineBlockEntity extends BlockEntity
      * A side a player gave a job to shows the casing of the machine with the overlay of that job over it -
      * the stub of a pipe for a fluid, the plug of the power for the line of the cables - and every other
      * side, the front included, keeps the picture the model of its state carries there.
+     * <p>
+     * <b>The plug of the power wears the colour of the age of the machine</b>, so a player reads the tier of
+     * a line off the blocks at the end of it: a machine of the low voltage shows the terminal as the pack
+     * draws it, one of the middle voltage shows it in yellow and one of the high voltage in orange, see
+     * {@link MachineTerminals} and {@link Machine#lineTier()}.
      *
      * @param face side of the block, as the world has it
      * @return the two pictures of that side, {@code null} when the model of the machine stands
@@ -447,7 +453,10 @@ public class MachineBlockEntity extends BlockEntity
     @Override
     public FacePicture pictureOn(BlockFace face) {
         FaceRole role = machine.faces().roleOn(face);
-        return role == FaceRole.NONE ? null : FacePicture.of(machine.casing(), role);
+        if (role == FaceRole.NONE) {
+            return null;
+        }
+        return new FacePicture(machine.casing(), MachineTerminals.overlayOf(role, machine.lineTier()));
     }
 
     /**

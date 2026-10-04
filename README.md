@@ -448,6 +448,13 @@ stored on disk so that a session can be continued later.
   machine or at the side of its tank carries nothing of it. A machine that holds no buffer has no plug at all,
   which is why the boiler and the machines of the age of steam stand along the cables of a workshop and do
   nothing with them.
+  **The plug of the power wears the colour of the age of the machine.** A side a player gave to the power is
+  drawn with the casing of the machine and the terminal of that tier over it: the grey the pack drew for the
+  low voltage, yellow for the middle one and orange for the high one, so a player reads the tier of a line off
+  the blocks at the end of it and not off a screen, see `MachineTerminals`. The three terminals are three
+  pictures and not a tint of the drawing - `tools/verify/import_energy_terminals.ps1` colours the grey one and
+  keeps its shading - and the stub of a pipe is the same picture in every age, because what a colour says is
+  the tier of a **line**.
   **A line is drawn by the machine that works and never pushed by the one that makes.** A cable carries
   nothing of its own, so the machine that wants the power is the one that moves it: every tick the block entity
   of a machine walks the line that stands at the plug it takes power in through and draws out of the buffers
@@ -732,6 +739,7 @@ tools/verify/extract_creative.ps1    the panels, the tabs and the thumbs of the 
 tools/verify/material_forms.ps1      one grey scale picture per shape a material comes in
 tools/verify/import_basicmachines.ps1  the machines of the line: the casing of a tier under the overlay of a family
 tools/verify/import_batteries.ps1    the cells: the window of a pack of steel poured once per chemistry
+tools/verify/import_energy_terminals.ps1  the terminal of the power of the two later ages, coloured from the grey one
 tools/verify/import_gregtech_assets.ps1  the casing, the fronts and the tops of the machines
 tools/verify/restore_assets.ps1      fetches back whatever an editor emptied out of assets/
 tools/verify/grayscale_fluid.ps1     turns a picture of the pack into a fluid window

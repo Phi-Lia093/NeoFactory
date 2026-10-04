@@ -1,7 +1,5 @@
 package com.philia093.neofactory.world.interaction;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -111,26 +109,6 @@ public enum FaceRole {
     /** {@code true} when this side carries the belt of the items. */
     public boolean isItem() {
         return this == ITEM_IN || this == ITEM_OUT;
-    }
-
-    /**
-     * Every overlay a role of the game is drawn with, each of them once.
-     * <p>
-     * A side that is owned by a block entity is drawn with the picture of its role over the casing of the
-     * block, and no model file names it: the mesher finds the layer of that picture in the array of
-     * pictures, which is built from the models of the blocks and from the list this method answers, see
-     * {@code BlockPictures#pictureNames}.
-     *
-     * @return the pictures of the roles, in the order the roles are declared in
-     */
-    public static List<String> overlays() {
-        List<String> pictures = new ArrayList<>();
-        for (FaceRole role : values()) {
-            if (role.hasOverlay() && !pictures.contains(role.overlay)) {
-                pictures.add(role.overlay);
-            }
-        }
-        return List.copyOf(pictures);
     }
 
     @Override

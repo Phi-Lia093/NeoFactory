@@ -1,5 +1,7 @@
 package com.philia093.neofactory.machine;
 
+import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.energy.EnergyAcceptor;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
 import com.philia093.neofactory.fluid.Fluids;
@@ -183,6 +185,25 @@ public abstract class Machine {
 
     /** Casing of a machine of the age of steam, which is what a machine that says nothing is built of. */
     public static final String CASING = "bronze_casing/bronze_casing_side";
+
+    /**
+     * Tier of the line this machine was built for, {@code null} for a machine that hangs on no line.
+     * <p>
+     * <b>The buffer of a machine of the line names the tier it takes</b>, see {@link EnergyAcceptor}, and
+     * that is the whole of what the sides of a machine have to know about its age: the casing of that tier
+     * is the picture the machine stands in and the terminal of its plug wears the colour of that age, see
+     * {@code MachineBlockEntity#pictureOn} and {@link MachineTerminals}. A machine that only works answers
+     * the same tier as the generator of that age - they stand on the same line - while a machine of the age
+     * of steam answers {@code null}, which is what keeps the bronze of a boiler out of the art of the line.
+     * <p>
+     * The name says <b>line</b> because a machine of steam has a tier of its own, the pressure it works at,
+     * and the two are told apart here: a turbine of the low voltage is a machine of the low pressure.
+     *
+     * @return the tier, or {@code null} when this machine is no machine of the line of the power
+     */
+    public Voltage lineTier() {
+        return energy() instanceof EnergyAcceptor acceptor ? acceptor.accepted() : null;
+    }
 
     /** Role of every tank of this machine, in the order the tanks are held. */
     private MachineTank.Role[] rolesOfTanks() {
