@@ -294,11 +294,30 @@ stored on disk so that a session can be continued later.
   **A machine takes no battery.** What a machine of the line runs on is the power of its line and, by hand, a
   piece of redstone dust: the cell of energy at the foot of its panel is a slot a player fills, and the dust is
   burned in the buffer of the machine - eight hundred units a piece, one piece a frame and never one that would
-  not fit whole. What a charge is put back into is a battery box, which the game does not have yet, see
-  `Reagents` and `MachineEnergyStorage`.
+  not fit whole. What a charge is put back into is a **battery box**, see below and `Reagents`.
   A cell is held and not swung, so it is listed with the materials of the creative inventory. The fifteen
   cells take the item ids 865 to 879, right behind the machines of the line, so nothing that a stored world or
   a stored inventory names has moved and no version is refused, see `Items#BATTERY_FIRST_ID`.
+- **The boxes of cells** - the battery boxes, twelve of them: four sizes of each of the three tiers of the line,
+  one, four, nine or sixteen cells at a time, see `BatteryBoxes`. **A box keeps the power of a line for later**,
+  and it keeps it in the cells themselves: what a line hands over is spread over the cells standing in the box
+  and what the machines around it take comes out of them, so a player who takes a cell out of a box keeps
+  exactly the charge it carried, see `BatteryBank`. **Every cell of a box is a mouth of its own**: one cell adds
+  **two amperes of the tier** to what the box may take in a tick and **one ampere** to what it gives out, so a
+  box of four cells of the low voltage takes two hundred and fifty six units a tick and gives a hundred and
+  twenty eight - and a box without a cell in it holds nothing, gives nothing and asks a line for nothing. A box
+  that is fed harder than it is drained charges its cells and one that is drained harder empties them.
+  **A box only takes the cells of its own tier**, whatever is inside them: a cell of another tier is one a line
+  would destroy or one that would burn the line, see `Battery#voltage`.
+  **A box has no front and no bar.** Its panel is a grid of plain slots and nothing else - there is no recipe
+  to fill a bar with and no cell of energy to put anything into - so what a box holds is read at the mark of
+  the upper left corner of its panel. Its block is a cube of the casing of its tier with no state at all: a
+  player gives the two sides of it the power in and out with the wrench from wherever they stand, and the
+  casing those two sides are drawn on is the one of the tier, see `MachineCasing`.
+  The twelve blocks take the block ids 749 to 760, right behind the eighteen machines of the line, so no block
+  of the game moved; their items take the ids 880 to 891 and push **every item of every material forty two
+  numbers up** - the fifteen cells and the twelve boxes - which is what version 18 of the save format is, see
+  `SaveFormat`, `Blocks#BATTERY_BOX_FIRST_ID` and `Items#BATTERY_BOX_FIRST_ID`.
 - **Pipes** - the fluid system of the industry, four materials: wood, copper, bronze and steel. A material
   comes in the sizes the table of the industry gives it - copper, bronze and steel as a tiny, small,
   medium, large and huge tube and as a quadruple and a nonuple bundle of tubes, **wood as a small, a
@@ -760,6 +779,10 @@ shows the casing of the tier once more - the plug of the line of cables over `ma
 machine of the low voltage - and never the bronze of the age of steam: the casing of the plug is the one of
 the tier of the machine, which is the casing the generator of that tier is built of as well, see
 `MachineCasing` and `MachineBlockEntity#pictureOn`.
+**A box of cells is drawn the same way and has no front at all**: each of the twelve is one model of six faces
+of the casing of its tier - `assets/models/block/battery_box_lv_4.json` and the eleven beside it - and the two
+sides a player gives the power to are drawn over that casing by the block entity of the machine, so a box is
+the casing of its age on all six sides with one plug of the line and one mouth of it on two of them.
 
 **The models of the pipes are written by a script and checked by a test.** A pipe is drawn from the state
 of its cell - the mask of the six sides it joins, see `pipe` - and sixty four masks in seven sizes are more

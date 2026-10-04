@@ -7,6 +7,7 @@ import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
 import com.philia093.neofactory.item.Items;
+import com.philia093.neofactory.machine.BatteryBoxes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.pipe.PipeMaterials;
 import com.philia093.neofactory.pipe.PipeSize;
@@ -138,8 +139,34 @@ class CreativeInventoryTest {
                         family.titleOf(tier) + " is listed with the machines");
             }
         }
-        assertTrue(creative.stackAt(slot).isEmpty(), "and nothing behind them so far");
-        assertEquals(36, creative.matches().size(), "the list holds the machines of the game");
+
+        // And the twelve boxes of cells behind them, four sizes of each of the three tiers of the line: the
+        // machines of the batteries are machines like every other one, see BatteryBoxes. The grid of the screen
+        // shows the front of that list, so the whole of it is read from the list itself.
+        List<Item> listed = creative.matches();
+        assertEquals(36 + BatteryBoxes.COUNT, listed.size(), "the list holds the machines of the game");
+        int at = 36;
+        for (Voltage tier : BatteryBoxes.tiers()) {
+            for (int cells : BatteryBoxes.CELLS) {
+                String name = BatteryBoxes.nameOf(tier, cells);
+                assertEquals(ItemRegistry.byName(name), listed.get(at++),
+                        BatteryBoxes.titleOf(tier, cells) + " is listed with the machines");
+            }
+        }
+        assertEquals(ItemRegistry.byName(MachineFamilies.all().get(0).nameOf(Voltage.LOW)),
+                listed.get(18), "the machines of the line come first");
+        assertFalse(creative.stackAt(36).isEmpty(), "and the front of the boxes is shown in the grid");
+        assertEquals(ItemRegistry.byName(BatteryBoxes.nameOf(Voltage.LOW, 1)), creative.stackAt(36).item());
+    }
+
+    @Test
+    void theBoxesOfCellsAreListedWithTheMachinesAndNotWithTheCells() {
+        CreativeInventory creative = new CreativeInventory();
+        String name = BatteryBoxes.nameOf(Voltage.LOW, 4);
+        Item box = ItemRegistry.byName(name);
+
+        assertTrue(tab("machines").matches(box), "a box is a machine a player builds");
+        assertFalse(tab("materials").matches(box), "and no cell a player carries around");
     }
 
     @Test

@@ -111,8 +111,8 @@ class BatteryTest {
             assertEquals(Batteries.pictureOf(cell), item.texture());
             assertEquals(Batteries.displayNameOf(cell), item.displayName());
         }
-        assertEquals(Items.NEXT_FREE_ID, expected,
-                "the cells stand behind the machines of the line and in front of the materials");
+        assertEquals(Items.BATTERY_BOX_FIRST_ID, expected,
+                "the cells stand behind the machines of the line and in front of the boxes");
 
         assertFalse(Items.STONE.isBattery(), "a block of stone holds no charge");
         assertNull(Batteries.of(Items.STONE), "and it is no cell either");

@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "machine_hv/machine_hv", "cullface": "down" },
+        "up": { "texture": "machine_hv/machine_hv", "cullface": "up" },
+        "north": { "texture": "machine_hv/machine_hv", "cullface": "north" },
+        "south": { "texture": "machine_hv/machine_hv", "cullface": "south" },
+        "west": { "texture": "machine_hv/machine_hv", "cullface": "west" },
+        "east": { "texture": "machine_hv/machine_hv", "cullface": "east" }
+      }
+    }
+  ]
+}

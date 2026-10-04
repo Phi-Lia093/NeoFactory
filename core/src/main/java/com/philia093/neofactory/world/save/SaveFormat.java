@@ -107,8 +107,17 @@ public final class SaveFormat {
      * {@code FaceConfig#save(NbtCompound)}. Nothing else of the format moved: the words stand under the very
      * keys they always did, and a world of version 16 is refused for the one reason that its words name sides
      * of the world, which no machine of this game reads.
+     * <p>
+     * <b>What version 18 changed.</b> The age of the battery arrived: the fifteen cells of {@code Batteries} and
+     * the twelve boxes of {@code BatteryBoxes} took the numbers the items of the materials of the game used to
+     * start at, so <b>every item of every material stands forty two numbers higher than it did</b>. That is the
+     * same reason version 16 refuses a world of version 15 - what version 8 said about a stored inventory holds
+     * here word for word - and it is the only thing this version moved: the blocks of the boxes went behind the
+     * eighteen machines of the line, so no block of the game moved at all, see {@code Items#BATTERY_BOX_FIRST_ID}
+     * and {@code Blocks#BATTERY_BOX_FIRST_ID}. A world of version 17 is therefore refused for the stored items
+     * of its materials and not for its blocks.
      */
-    public static final int DATA_VERSION = 17;
+    public static final int DATA_VERSION = 18;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";

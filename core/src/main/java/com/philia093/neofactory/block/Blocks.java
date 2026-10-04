@@ -4,6 +4,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.item.ToolType;
 import com.philia093.neofactory.cable.Cables;
+import com.philia093.neofactory.machine.BatteryBoxes;
+import com.philia093.neofactory.machine.MachineCasing;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.pipe.Pipes;
 
@@ -164,9 +166,21 @@ public final class Blocks {
      */
     public static final int LINE_FIRST_ID = 731;
 
-    /** Next unused block id, used to verify that a new block got a fresh id. */
-    public static final int NEXT_FREE_ID = LINE_FIRST_ID + MachineFamilies.all().size()
+    /**
+     * Id of the first box of cells, the first of the twelve.
+     * <p>
+     * The boxes take the numbers right behind the eighteen machines of the line, so no block of the game moved
+     * and the save game needs no new version, see {@link #NEXT_FREE_ID}. <b>The ids are handed out by the table
+     * of the boxes:</b> the four sizes of a tier in the order {@link BatteryBoxes#CELLS} writes them down and
+     * the three tiers of the line behind each other, so the box of one cell of the low voltage takes the first
+     * number and the one of sixteen cells of the high voltage the last. A size that is added goes behind the
+     * four of every tier, which is what keeps the number of a box that a world already holds.
+     */
+    public static final int BATTERY_BOX_FIRST_ID = LINE_FIRST_ID + MachineFamilies.all().size()
             * MachineFamilies.TIERS.size();
+
+    /** Next unused block id, used to verify that a new block got a fresh id. */
+    public static final int NEXT_FREE_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
 
     /**
      * Light the torch gives away, the first source of light of the game.
@@ -740,7 +754,47 @@ public final class Blocks {
             }
         }
 
+        // ------------------------------------------------------------------
+        // The twelve boxes of cells of the industry, four sizes of each of the three tiers of the line. They
+        // are the machines of the batteries: a cube of the casing of its tier whose two sides a player gave
+        // the power to are drawn by the block entity of the machine, exactly the way every machine of the line
+        // is drawn, and no side of a box is the one a machine shows, see BatteryBoxes.
+        // ------------------------------------------------------------------
+        int boxId = BATTERY_BOX_FIRST_ID;
+        for (Voltage tier : BatteryBoxes.tiers()) {
+            for (int cells : BatteryBoxes.CELLS) {
+                batteryBoxBlock(boxId++, BatteryBoxes.nameOf(tier, cells), tier);
+            }
+        }
+
         BlockRegistry.freeze();
+    }
+
+    /**
+     * Builds one of the boxes of cells.
+     * <p>
+     * A box is a machine like every other one: a whole cube that is taken apart with the wrench and hands what
+     * it holds over, and the casing it is built of is the one of its tier, see {@link MachineCasing}. <b>It has
+     * no front and no state at all</b> - a box works no recipe and is turned towards nothing, so its block
+     * carries no facing and is drawn from one model of six faces of the casing - and it holds no tank either,
+     * so no pipe is built towards it, see {@code BatteryBoxMachine}.
+     *
+     * @param id block id of the box, taken from {@link #BATTERY_BOX_FIRST_ID}
+     * @param name name of the box, which is the name of the block entity behind it
+     * @param tier tier the box was built for, which is the casing it stands in
+     * @return the registered block
+     */
+    private static Block batteryBoxBlock(int id, String name, Voltage tier) {
+        Block block = Block.builder(id, name)
+                .texture(MachineCasing.pictureOf(tier))
+                .solid(true)
+                .hardness(3.5f)
+                .harvestLevel(0)
+                .toolType(ToolType.WRENCH)
+                .blockEntity(name)
+                .build();
+        BlockRegistry.register(block);
+        return block;
     }
 
     /**

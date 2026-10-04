@@ -3,6 +3,7 @@ package com.philia093.neofactory.item;
 import com.philia093.neofactory.block.BlockRegistry;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.machine.BatteryBoxes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.TurbineTier;
 import com.philia093.neofactory.fluid.Fluid;
@@ -490,14 +491,25 @@ public final class Items {
             * MachineFamilies.TIERS.size();
 
     /**
+     * Id of the first box of cells, the first of the twelve.
+     * <p>
+     * The boxes take the numbers right behind the fifteen batteries, which is where the items of the materials
+     * of the game used to start: <b>every item of every material therefore stands forty two numbers higher than
+     * it did</b> - fifteen cells and twelve boxes of the age of the battery - so a stored inventory of an older
+     * version names the wrong items for every material and that version is refused, see
+     * {@link com.philia093.neofactory.world.save.SaveFormat#DATA_VERSION}.
+     */
+    public static final int BATTERY_BOX_FIRST_ID = BATTERY_FIRST_ID + Batteries.all().size();
+
+    /**
      * Next unused item id, used to verify that a new item got a fresh id.
      * <p>
      * The three turbines moved this number, because they stand in front of the items of the materials, and the
-     * eighteen machines of the line moved it again; the fifteen batteries of {@link Batteries} stand behind
-     * those, so the materials begin at the number written here, see
+     * eighteen machines of the line moved it again; the fifteen batteries of {@link Batteries} and the twelve
+     * boxes of {@link BatteryBoxes} stand behind those, so the materials begin at the number written here, see
      * {@link com.philia093.neofactory.cable.Cables} for the run of the cables that stands in front of them.
      */
-    public static final int NEXT_FREE_ID = BATTERY_FIRST_ID + Batteries.all().size();
+    public static final int NEXT_FREE_ID = BATTERY_BOX_FIRST_ID + BatteryBoxes.COUNT;
 
     /**
      * Amount an empty container stacks to.
@@ -1188,6 +1200,20 @@ public final class Items {
                     .maxDamage(cell.capacity())
                     .battery(cell)
                     .build());
+        }
+
+        // The twelve boxes of cells of the industry, four sizes of each of the three tiers. They are block
+        // items like every machine of the line: each borrows the picture of its block - the casing of its tier
+        // - and the block names the entity behind it, see BatteryBoxes. They take the numbers right behind the
+        // cells, which is where the items of the materials of the game used to start, see BATTERY_BOX_FIRST_ID.
+        int boxId = BATTERY_BOX_FIRST_ID;
+        for (Voltage tier : BatteryBoxes.tiers()) {
+            for (int cells : BatteryBoxes.CELLS) {
+                String name = BatteryBoxes.nameOf(tier, cells);
+                register(Item.builder(boxId++, name)
+                        .displayName(BatteryBoxes.titleOf(tier, cells))
+                        .buildBlock(BlockRegistry.byName(name)));
+            }
         }
 
         // The materials bring their own items, one per shape they come in. They are registered

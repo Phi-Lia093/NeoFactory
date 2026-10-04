@@ -13,6 +13,8 @@ import com.philia093.neofactory.machine.HighPressureExtractorMachine;
 import com.philia093.neofactory.machine.HighPressureForgeHammerMachine;
 import com.philia093.neofactory.machine.HighPressureGrinderMachine;
 import com.philia093.neofactory.machine.HighPressureSteamFurnaceMachine;
+import com.philia093.neofactory.machine.BatteryBoxMachine;
+import com.philia093.neofactory.machine.BatteryBoxes;
 import com.philia093.neofactory.machine.MachineFamilies;
 import com.philia093.neofactory.machine.SmeltingMachine;
 import com.philia093.neofactory.machine.SteamBoilerMachine;
@@ -179,6 +181,15 @@ public final class BlockEntityTypes {
             for (Voltage tier : MachineFamilies.TIERS) {
                 BlockEntityRegistry.register(new BlockEntityType(family.nameOf(tier),
                         type -> new MachineBlockEntity(type, family.machine(tier))));
+            }
+        }
+
+        // The twelve boxes of cells, one type per size and tier, the same way: the table of the boxes names
+        // every one of them and the machine behind a block is a box of that size, see BatteryBoxes.
+        for (Voltage tier : BatteryBoxes.tiers()) {
+            for (int cells : BatteryBoxes.CELLS) {
+                BlockEntityRegistry.register(new BlockEntityType(BatteryBoxes.nameOf(tier, cells),
+                        type -> new MachineBlockEntity(type, new BatteryBoxMachine(tier, cells))));
             }
         }
         registered = true;
