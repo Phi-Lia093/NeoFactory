@@ -5,6 +5,7 @@ import com.philia093.neofactory.block.BlockFace;
 import com.philia093.neofactory.block.Blocks;
 import com.philia093.neofactory.blockentity.MachineBlockEntity;
 import com.philia093.neofactory.cable.Cables;
+import com.philia093.neofactory.cable.Conductor;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.machine.EnergyStorage;
 import com.philia093.neofactory.machine.FaceConfig;
@@ -67,6 +68,22 @@ public final class EnergyGrid {
         EnergyStorage buffer(int x, int y, int z, BlockFace from);
 
         /**
+         * The block a line runs through in a cell, the way it runs through a cable.
+         * <p>
+         * <b>A line is not made of cables alone.</b> A block that is a {@link LineNode} is a piece of a line
+         * the way a cable is: the walk of a line steps through it, what it carries and loses rates the line
+         * it stands in, and it answers for itself which way a line may run through it - which is how a diode
+         * lets the power of a line run one way and no other, see {@link EnergyGrid#line}. A cell that holds
+         * no such block answers {@code null}, which is what every cell of a world but a diode says.
+         *
+         * @param x x of the cell
+         * @param y y of the cell
+         * @param z z of the cell
+         * @return the node, or {@code null} when no block carries a line through that cell
+         */
+        LineNode node(int x, int y, int z);
+
+        /**
          * Empties a cell, which is what a line that burns leaves behind.
          * <p>
          * A machine that was built for a worse line than the one it reaches for, and a piece of a run that
@@ -119,6 +136,13 @@ public final class EnergyGrid {
         }
 
         @Override
+        public LineNode node(int x, int y, int z) {
+            // The block entity of the cell answers for itself, the way it answers for the buffer and the
+            // sides of a machine: a block that carries a line through is one that says so, see LineNode.
+            return world.blockEntity(x, y, z) instanceof LineNode node ? node : null;
+        }
+
+        @Override
         public String toString() {
             return "WorldCells";
         }
@@ -135,28 +159,35 @@ public final class EnergyGrid {
     }
 
     /**
-     * One line of the power as a world holds it: its cables, the machines at its ends and what it carries.
+     * One line of the power as a world holds it: what it is built of, the machines at its ends and what it
+     * carries.
      */
     public static final class Line {
 
-        private final List<Cables.Cable> cables;
-        private final List<int[]> cablesAt;
+        private final List<Conductor> conductors;
+        private final List<int[]> conductorsAt;
         private final List<EnergyStorage> ends;
         private final List<int[]> positions;
         private final EnergyNet net;
 
-        private Line(List<Cables.Cable> cables, List<int[]> cablesAt, List<EnergyStorage> ends,
+        private Line(List<Conductor> conductors, List<int[]> conductorsAt, List<EnergyStorage> ends,
                 List<int[]> positions) {
-            this.cables = List.copyOf(cables);
-            this.cablesAt = List.copyOf(cablesAt);
+            this.conductors = List.copyOf(conductors);
+            this.conductorsAt = List.copyOf(conductorsAt);
             this.ends = List.copyOf(ends);
             this.positions = List.copyOf(positions);
-            this.net = EnergyNet.of(cables);
+            this.net = EnergyNet.of(conductors);
         }
 
-        /** The cables of this line, the cell the walk started at first. */
-        public List<Cables.Cable> cables() {
-            return cables;
+        /**
+         * The pieces this line is built of, the cell the walk started at first.
+         * <p>
+         * A line is built of the cables of the run and of every block that carries it on, see
+         * {@link EnergyGrid.Cells#node}: a diode of the run stands in this list where a cable stands, because
+         * it is a piece of the line and rates it the way a cable does.
+         */
+        public List<Conductor> conductors() {
+            return conductors;
         }
 
         /** The buffers of the machines next to the cables of this line. */
@@ -174,9 +205,9 @@ public final class EnergyGrid {
             return net;
         }
 
-        /** Amount of cable blocks of this line. */
+        /** Amount of pieces of a line, the cables of the run and the blocks it runs through. */
         public int length() {
-            return cables.size();
+            return conductors.size();
         }
 
         /** {@code true} when a buffer is one of the ends of this line. */
@@ -320,16 +351,16 @@ public final class EnergyGrid {
                     continue;
                 }
                 int[] at = positions.get(end);
-                for (int index = 0; index < cablesAt.size(); index++) {
-                    int[] cell = cablesAt.get(index);
-                    if (touches(at, cell) && !cables.get(index).voltage().isAtLeast(live)) {
+                for (int index = 0; index < conductorsAt.size(); index++) {
+                    int[] cell = conductorsAt.get(index);
+                    if (touches(at, cell) && !conductors.get(index).voltage().isAtLeast(live)) {
                         return emptyOut(cells, cell);
                     }
                 }
             }
-            for (int index = 0; index < cablesAt.size(); index++) {
-                if (!cables.get(index).voltage().isAtLeast(live)) {
-                    return emptyOut(cells, cablesAt.get(index));
+            for (int index = 0; index < conductorsAt.size(); index++) {
+                if (!conductors.get(index).voltage().isAtLeast(live)) {
+                    return emptyOut(cells, conductorsAt.get(index));
                 }
             }
             return 0;
@@ -372,7 +403,7 @@ public final class EnergyGrid {
 
         @Override
         public String toString() {
-            return "Line(" + cables.size() + " cables, " + ends.size() + " ends, " + net + ")";
+            return "Line(" + conductors.size() + " conductors, " + ends.size() + " ends, " + net + ")";
         }
     }
 
@@ -385,58 +416,133 @@ public final class EnergyGrid {
     }
 
     /**
-     * Walks the line the cable of a cell belongs to.
+     * Walks the line the conductor of a cell belongs to.
      * <p>
-     * The walk starts at that cell and follows every side the cable joins into another cable, so the whole
-     * line is collected once. Every other neighbour that carries a buffer of energy is an end of the line,
-     * and a machine that stands next to two cables of the same line is written down once.
+     * The walk starts at that cell and follows every side a cable joins into another cable, so the whole run
+     * is collected once. Every other neighbour that carries a buffer of energy is an end of the line, and a
+     * machine that stands next to two pieces of the same line is written down once.
+     * <p>
+     * <b>A line runs through its cables and through the blocks that carry it on, and only one way.</b> A
+     * cable is joined to the sides its state names, while a block that is a {@link LineNode} answers for
+     * itself: the diode of the industry is one piece of a line that hands the walk on towards the machine
+     * that gives it the power and refuses to hand it back the other way, see {@link Cells#node}. What a line
+     * is built of is therefore read while it is walked, and its numbers are the worst of every piece of it,
+     * so a run of a wide cable with a diode of one ampere in it is a line of one ampere.
      *
      * @param cells cells of the world
-     * @param x x of the cable the walk starts at
-     * @param y y of the cable the walk starts at
-     * @param z z of the cable the walk starts at
-     * @return the line, or {@code null} when no cable stands in that cell
+     * @param x x of the cell the walk starts at
+     * @param y y of the cell the walk starts at
+     * @param z z of the cell the walk starts at
+     * @return the line, or {@code null} when no conductor carries a line through that cell
      */
     public static Line line(Cells cells, int x, int y, int z) {
+        return line(cells, x, y, z, null);
+    }
+
+    /**
+     * Walks the line a conductor is part of, from the machine that reaches for it.
+     * <p>
+     * The walk of a machine starts at the cell of the plug it takes its power in through, and that machine
+     * stands behind that cell: <b>the side it reaches the cell through is what a block that carries a line
+     * through has to know</b>, because a line is only walked the way its power runs, see
+     * {@link LineNode#through(BlockFace)}.
+     *
+     * @param cells cells of the world
+     * @param x x of the cell the walk starts at
+     * @param y y of the cell the walk starts at
+     * @param z z of the cell the walk starts at
+     * @param from side of that cell the machine behind it reaches it through, {@code null} when no machine
+     *        stands there and the walk starts at the line itself
+     * @return the line, or {@code null} when nothing carries a line through that cell
+     */
+    public static Line line(Cells cells, int x, int y, int z, BlockFace from) {
         Objects.requireNonNull(cells, "cells");
-        if (Cables.of(cells.block(x, y, z)) == null) {
+        if (!carries(cells, x, y, z, from)) {
             return null;
         }
-        List<Cables.Cable> cables = new ArrayList<>();
-        List<int[]> cablesAt = new ArrayList<>();
+        List<Conductor> conductors = new ArrayList<>();
+        List<int[]> conductorsAt = new ArrayList<>();
         List<EnergyStorage> ends = new ArrayList<>();
         List<int[]> positions = new ArrayList<>();
-        Set<Long> seenCables = new HashSet<>();
-        Set<Long> seenEnds = new HashSet<>();
-        List<int[]> open = new ArrayList<>();
-        open.add(new int[] {x, y, z});
-        seenCables.add(key(x, y, z));
+        Set<Long> seen = new HashSet<>();
+        List<Step> open = new ArrayList<>();
+        open.add(new Step(x, y, z, from));
+        seen.add(key(x, y, z));
         while (!open.isEmpty()) {
-            int[] cell = open.remove(open.size() - 1);
-            cables.add(Cables.of(cells.block(cell[0], cell[1], cell[2])));
-            cablesAt.add(new int[] {cell[0], cell[1], cell[2]});
-            int state = cells.state(cell[0], cell[1], cell[2]);
-            for (BlockFace face : Cables.DIRECTIONS) {
-                if (!Cables.isConnected(state, face)) {
+            Step step = open.remove(open.size() - 1);
+            int state = cells.state(step.x(), step.y(), step.z());
+            Cables.Cable cable = Cables.of(cells.block(step.x(), step.y(), step.z()));
+            List<BlockFace> on = new ArrayList<>();
+            if (cable != null) {
+                // A cable is joined to the sides its own state names and to no other, see Cables.
+                conductors.add(cable);
+                for (BlockFace face : Cables.DIRECTIONS) {
+                    if (Cables.isConnected(state, face)) {
+                        on.add(face);
+                    }
+                }
+            } else {
+                // A block that carries a line through says for itself which way the line may run through it,
+                // which is where a diode answers that its power runs one way only, see LineNode.
+                LineNode node = cells.node(step.x(), step.y(), step.z());
+                BlockFace through = node == null ? null : node.through(step.from());
+                if (through == null) {
                     continue;
                 }
-                int nx = cell[0] + step(face, 0);
-                int ny = cell[1] + step(face, 1);
-                int nz = cell[2] + step(face, 2);
-                if (Cables.of(cells.block(nx, ny, nz)) != null) {
-                    if (seenCables.add(key(nx, ny, nz))) {
-                        open.add(new int[] {nx, ny, nz});
+                conductors.add(node);
+                on.add(through);
+                if (step.from() != null) {
+                    // The line came in through that side and the machine that walks it stands behind it: it
+                    // is an end of this line, the way the machine behind the first cable of a walk is.
+                    on.add(step.from());
+                }
+            }
+            conductorsAt.add(new int[] {step.x(), step.y(), step.z()});
+            for (BlockFace face : on) {
+                int nx = step.x() + step(face, 0);
+                int ny = step.y() + step(face, 1);
+                int nz = step.z() + step(face, 2);
+                if (carries(cells, nx, ny, nz, face.opposite())) {
+                    if (seen.add(key(nx, ny, nz))) {
+                        open.add(new Step(nx, ny, nz, face.opposite()));
                     }
                     continue;
                 }
                 EnergyStorage buffer = cells.buffer(nx, ny, nz, face.opposite());
-                if (buffer != null && seenEnds.add(key(nx, ny, nz))) {
+                if (buffer != null && seen.add(key(nx, ny, nz))) {
                     ends.add(buffer);
                     positions.add(new int[] {nx, ny, nz});
                 }
             }
         }
-        return new Line(cables, cablesAt, ends, positions);
+        return new Line(conductors, conductorsAt, ends, positions);
+    }
+
+    /**
+     * {@code true} when a line may run through a cell that was entered from one of its sides.
+     * <p>
+     * A cable carries a line through itself from every side it may be reached from, while a block that is a
+     * {@link LineNode} answers the one question that makes a diode one-way: a line that arrives the way the
+     * power of that block runs is handed on, and a line that arrives against it is refused. A cell that
+     * holds neither carries nothing at all.
+     *
+     * @param cells cells of the world
+     * @param x x of the cell
+     * @param y y of the cell
+     * @param z z of the cell
+     * @param from side of that cell the line entered it from, {@code null} for a walk that starts there
+     * @return {@code true} when a line runs through that cell
+     */
+    private static boolean carries(Cells cells, int x, int y, int z, BlockFace from) {
+        if (Cables.of(cells.block(x, y, z)) != null) {
+            return true;
+        }
+        LineNode node = cells.node(x, y, z);
+        return node != null && node.through(from) != null;
+    }
+
+    /** One cell the walk of a line stepped through, with the side the line entered it from. */
+    private record Step(int x, int y, int z, BlockFace from) {
     }
 
     /** Key of a cell, so that a set of visited cells holds no position twice. */

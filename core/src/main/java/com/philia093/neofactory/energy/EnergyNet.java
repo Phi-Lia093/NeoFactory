@@ -4,6 +4,7 @@ import com.philia093.neofactory.cable.CableKind;
 import com.philia093.neofactory.cable.CableMaterial;
 import com.philia093.neofactory.cable.CableSize;
 import com.philia093.neofactory.cable.Cables;
+import com.philia093.neofactory.cable.Conductor;
 import com.philia093.neofactory.cable.Voltage;
 import com.philia093.neofactory.machine.EnergyStorage;
 
@@ -69,32 +70,33 @@ public final class EnergyNet {
     }
 
     /**
-     * The line the given cables come to.
+     * The line the given conductors come to.
      * <p>
-     * What one cable of a material and a width carries and loses is asked of the table of the cables, see
-     * {@link Cables.Cable}, and the line takes the worst of every one of them.
+     * What one piece of a line carries and loses is asked of the piece itself - the table of the cables for a
+     * cable, the block of the diode for a diode - and the line takes the worst of every one of them: the
+     * <b>lowest</b> voltage, the <b>lowest</b> amperage and the <b>highest</b> loss, see {@link Conductor}.
      *
-     * @param cables cables the run is built of, at least one
+     * @param conductors pieces the run is built of, at least one
      * @return the line
-     * @throws IllegalArgumentException when no cable was given
+     * @throws IllegalArgumentException when no conductor was given
      */
-    public static EnergyNet of(List<Cables.Cable> cables) {
-        Objects.requireNonNull(cables, "cables");
-        if (cables.isEmpty()) {
-            throw new IllegalArgumentException("A line is built of at least one cable");
+    public static EnergyNet of(List<? extends Conductor> conductors) {
+        Objects.requireNonNull(conductors, "conductors");
+        if (conductors.isEmpty()) {
+            throw new IllegalArgumentException("A line is built of at least one conductor");
         }
         Voltage voltage = null;
         int amperage = Integer.MAX_VALUE;
         int loss = 0;
-        for (Cables.Cable cable : cables) {
-            Objects.requireNonNull(cable, "cable");
-            if (voltage == null || voltage.euPerTick() > cable.voltage().euPerTick()) {
-                voltage = cable.voltage();
+        for (Conductor conductor : conductors) {
+            Objects.requireNonNull(conductor, "conductor");
+            if (voltage == null || voltage.euPerTick() > conductor.voltage().euPerTick()) {
+                voltage = conductor.voltage();
             }
-            amperage = Math.min(amperage, cable.amperage());
-            loss = Math.max(loss, cable.loss());
+            amperage = Math.min(amperage, conductor.amperage());
+            loss = Math.max(loss, conductor.loss());
         }
-        return new EnergyNet(voltage, amperage, loss, cables.size());
+        return new EnergyNet(voltage, amperage, loss, conductors.size());
     }
 
     /**

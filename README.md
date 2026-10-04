@@ -455,6 +455,14 @@ stored on disk so that a session can be continued later.
   pictures and not a tint of the drawing - `tools/verify/import_energy_terminals.ps1` colours the grey one and
   keeps its shading - and the stub of a pipe is the same picture in every age, because what a colour says is
   the tier of a **line**.
+  **A line runs through its cables and through every piece that carries it on.** A diode is the second kind of
+  piece a line is built of: a **conductor** that takes the tier and the current of the cable at it, loses
+  nothing, and answers for itself which way a line may run through it. A line is walked by the machine that
+  asks for the power, towards whoever gives it, so a diode hands that walk on when it arrives the way its
+  power runs and refuses it when it arrives the other way - which is what makes a diode one-way and the line
+  it stands in one-way with it, see `LineNode` and `EnergyGrid#line`. What a line carries is the worst of
+  **every** piece of it, so a diode of one ampere in a run of a wide cable is a line of one ampere, and a
+  diode of an earlier age melts where it stands in a line of a later one, exactly like a cable.
   **A line is drawn by the machine that works and never pushed by the one that makes.** A cable carries
   nothing of its own, so the machine that wants the power is the one that moves it: every tick the block entity
   of a machine walks the line that stands at the plug it takes power in through and draws out of the buffers

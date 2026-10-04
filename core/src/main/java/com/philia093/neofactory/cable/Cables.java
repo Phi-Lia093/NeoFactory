@@ -261,7 +261,7 @@ public final class Cables {
     /**
      * One cable of the game: a material and a size, with the block and the item that carry it.
      */
-    public static final class Cable {
+    public static final class Cable implements Conductor {
 
         private final CableMaterial material;
         private final CableSize size;

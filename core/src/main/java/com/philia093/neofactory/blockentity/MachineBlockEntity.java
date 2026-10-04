@@ -193,7 +193,7 @@ public class MachineBlockEntity extends BlockEntity
         int cellY = y() + plug.y();
         int cellZ = z() + plug.z();
         EnergyGrid.Cells cells = EnergyGrid.of(world);
-        EnergyGrid.Line line = EnergyGrid.line(cells, cellX, cellY, cellZ);
+        EnergyGrid.Line line = EnergyGrid.line(cells, cellX, cellY, cellZ, plug.opposite());
         if (line != null && line.reaches(buffer)) {
             line.pull(cells, buffer, wanted);
             return;
