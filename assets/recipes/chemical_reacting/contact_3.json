@@ -1,0 +1,8 @@
+{
+  "inputs": { "sulfur trioxide": 100, "water": 100 },
+  "outputs": { "sulfuric acid": 100 },
+  "primary": "sulfuric acid",
+  "time": 8.0,
+  "power": 20,
+  "voltage": 32
+}

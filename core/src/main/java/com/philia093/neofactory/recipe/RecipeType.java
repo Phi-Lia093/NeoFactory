@@ -42,6 +42,12 @@ public final class RecipeType {
     /** A recipe the forge hammer beats an ingot into shape with. */
     public static final RecipeType FORGING = new RecipeType("forging");
 
+    /** A route the chemical reactor runs, written down by hand in {@code assets/recipes/chemical_reacting}. */
+    public static final RecipeType CHEMICAL_REACTING = new RecipeType("chemical_reacting");
+
+    /** A route a current drives, written down by hand in {@code assets/recipes/electrolysis}. */
+    public static final RecipeType ELECTROLYSIS = new RecipeType("electrolysis");
+
     private static final Map<String, RecipeType> BY_NAME = new LinkedHashMap<>();
 
     /**
@@ -59,6 +65,12 @@ public final class RecipeType {
             BY_NAME.put(type.name, type);
         }
         PROCESSING = processing;
+        // The routes of the chemistry are no group of the machines of the processing: a furnace of any age
+        // reads the same file of its group, while a route of the industry is read by the reactor and the
+        // electrolyzer alone and names substances in millibuckets rather than items in places, see
+        // com.philia093.neofactory.recipe.ChemicalRecipe.
+        BY_NAME.put(CHEMICAL_REACTING.name, CHEMICAL_REACTING);
+        BY_NAME.put(ELECTROLYSIS.name, ELECTROLYSIS);
     }
 
     private final String name;

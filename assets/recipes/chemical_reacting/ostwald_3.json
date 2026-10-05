@@ -1,0 +1,8 @@
+{
+  "inputs": { "nitrogen dioxide": 300, "water": 100 },
+  "outputs": { "nitric acid": 200, "nitrogen monoxide": 100 },
+  "primary": "nitric acid",
+  "time": 10.0,
+  "power": 25,
+  "voltage": 32
+}

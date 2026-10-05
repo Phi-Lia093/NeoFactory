@@ -1,0 +1,8 @@
+{
+  "inputs": { "water": 200 },
+  "outputs": { "hydrogen": 200, "oxygen": 100 },
+  "primary": "hydrogen",
+  "time": 10.0,
+  "power": 30,
+  "voltage": 32
+}

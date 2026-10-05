@@ -169,48 +169,4 @@ class InorganicRecipeBookTest {
         assertNotNull(book.find(pot, Conditions.builder().catalyst(of("iron")).build()));
     }
 
-    @Test
-    void theIndustryBookHoldsTheMainRoutesAndEveryOneOfThemBalances() {
-        // Building the book asks every route to keep the rule of a pot, so this is also the check that
-        // the hand written routes were written right.
-        InorganicRecipeBook book = InorganicRecipeBook.industry(CATALOG);
-
-        assertEquals(15, book.count(), "the routes the industry grows out of are written down");
-    }
-
-    @Test
-    void waterSplitsIntoItsGasesOnlyUnderACurrent() {
-        InorganicRecipeBook book = InorganicRecipeBook.industry(CATALOG);
-        Blend pot = Blend.of(of("water"), 200);
-
-        assertNull(book.find(pot, Conditions.NONE), "no flame splits water into its gases");
-        Outcome outcome = book.find(pot, Conditions.builder().current(true).build());
-        assertNotNull(outcome, "a current does");
-        assertEquals("water_electrolysis", outcome.source());
-        assertEquals(Fraction.of(200), outcome.produced().amountOf(of("hydrogen")));
-        assertEquals(Fraction.of(100), outcome.produced().amountOf(of("oxygen")));
-    }
-
-    @Test
-    void aPotOfSulfurAndAirIsBurnt() {
-        Blend pot = Blend.of(of("sulfur"), 100).plus(Blend.of(of("oxygen"), 100));
-
-        Outcome outcome = InorganicRecipeBook.industry(CATALOG).find(pot, Conditions.NONE);
-
-        assertEquals("contact_1", outcome.source());
-        assertEquals(Fraction.of(100), outcome.produced().amountOf(of("sulfur dioxide")));
-    }
-
-    @Test
-    void theBrineGivesChlorineAndLye() {
-        Blend pot = Blend.of(of("sodium ion"), 200).plus(Blend.of(of("chloride"), 200))
-                .plus(Blend.of(of("water"), 200));
-
-        Outcome outcome = InorganicRecipeBook.industry(CATALOG)
-                .find(pot, Conditions.builder().current(true).build());
-
-        assertEquals("chlor_alkali", outcome.source());
-        assertEquals(Fraction.of(100), outcome.produced().amountOf(of("chlorine")));
-        assertEquals(Fraction.of(200), outcome.produced().amountOf(of("hydroxide")));
-    }
 }

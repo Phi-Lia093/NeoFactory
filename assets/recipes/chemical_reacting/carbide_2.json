@@ -1,0 +1,8 @@
+{
+  "inputs": { "calcium ion": 100, "carbide ion": 100, "water": 200 },
+  "outputs": { "calcium ion": 100, "hydroxide": 200, "acetylene": 100 },
+  "primary": "acetylene",
+  "time": 10.0,
+  "power": 25,
+  "voltage": 32
+}

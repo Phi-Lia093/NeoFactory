@@ -1,0 +1,11 @@
+{
+  "inputs": { "carbon monoxide": 100, "hydrogen": 200 },
+  "outputs": { "methanol": 100 },
+  "primary": "methanol",
+  "temperature": [450, 550],
+  "pressure": [50, null],
+  "catalysts": ["copper"],
+  "time": 12.0,
+  "power": 30,
+  "voltage": 32
+}

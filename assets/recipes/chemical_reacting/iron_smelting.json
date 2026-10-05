@@ -1,0 +1,9 @@
+{
+  "inputs": { "iron(III) ion": 200, "oxide ion": 300, "carbon monoxide": 300 },
+  "outputs": { "iron": 200, "carbon dioxide": 300 },
+  "primary": "iron",
+  "temperature": [1200, 1800],
+  "time": 15.0,
+  "power": 40,
+  "voltage": 32
+}

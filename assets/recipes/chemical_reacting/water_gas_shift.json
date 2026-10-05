@@ -1,0 +1,8 @@
+{
+  "inputs": { "carbon monoxide": 100, "water": 100 },
+  "outputs": { "carbon dioxide": 100, "hydrogen": 100 },
+  "primary": "hydrogen",
+  "time": 8.0,
+  "power": 20,
+  "voltage": 32
+}

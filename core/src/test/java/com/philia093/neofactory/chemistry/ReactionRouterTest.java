@@ -1,8 +1,19 @@
 package com.philia093.neofactory.chemistry;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.philia093.neofactory.recipe.ChemicalRecipe;
+import com.philia093.neofactory.recipe.RecipeLoader;
+import com.philia093.neofactory.recipe.RecipeType;
+import com.philia093.neofactory.support.TestRegistries;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -19,6 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ReactionRouterTest {
 
     private static final Substances INDUSTRY = Substances.starter();
+
+    @BeforeAll
+    static void registerGameData() {
+        TestRegistries.ensure();
+    }
 
     private static Chemical of(Substances catalog, String name) {
         return catalog.byName(name).chemical();
@@ -41,9 +57,32 @@ class ReactionRouterTest {
         return Blend.of(of(catalog, "ethene"), 100).plus(Blend.of(of(catalog, "hydrogen"), 100));
     }
 
+    /**
+     * A router over the routes the game ships, read from {@code assets/recipes} the way the game reads
+     * them: a route of the industry is a file and nothing else.
+     */
+    private static ReactionRouter shipped() {
+        InorganicRecipeBook book = new InorganicRecipeBook();
+        for (RecipeType type : List.of(RecipeType.CHEMICAL_REACTING, RecipeType.ELECTROLYSIS)) {
+            Path folder = Path.of("..", "assets", "recipes", type.name());
+            try (Stream<Path> files = Files.list(folder)) {
+                for (Path file : files.toList()) {
+                    String name = file.getFileName().toString()
+                            .replace(RecipeLoader.EXTENSION, "");
+                    ChemicalRecipe recipe = (ChemicalRecipe) RecipeLoader.parse(type, name,
+                            Files.readString(file, StandardCharsets.UTF_8));
+                    book.add(recipe.route());
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException("the routes of the game cannot be read", e);
+            }
+        }
+        return new ReactionRouter(book, new TemplateEngine(List.of()));
+    }
+
     @Test
     void aWrittenRouteIsRunAndSaysWhereItCameFrom() {
-        ReactionRouter router = ReactionRouter.industry(INDUSTRY, List.of());
+        ReactionRouter router = shipped();
         Blend pot = Blend.of(of(INDUSTRY, "carbon"), 100).plus(Blend.of(of(INDUSTRY, "water"), 100));
 
         Outcome outcome = router.route(pot);
@@ -55,7 +94,7 @@ class ReactionRouterTest {
 
     @Test
     void aPotNoRouteCoversIsLeftAlone() {
-        ReactionRouter router = ReactionRouter.industry(INDUSTRY, List.of());
+        ReactionRouter router = shipped();
 
         assertNull(router.route(Blend.of(of(INDUSTRY, "gold"), 100)),
                 "nothing is extrapolated out of what happens to stand in the pot");
@@ -63,7 +102,7 @@ class ReactionRouterTest {
 
     @Test
     void halfOfARouteDoingNothingIsStillNothing() {
-        ReactionRouter router = ReactionRouter.industry(INDUSTRY, List.of());
+        ReactionRouter router = shipped();
 
         assertNull(router.route(Blend.of(of(INDUSTRY, "carbon"), 1000)),
                 "carbon without the steam it is written with is not a reaction");

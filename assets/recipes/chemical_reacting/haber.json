@@ -1,0 +1,11 @@
+{
+  "inputs": { "nitrogen": 100, "hydrogen": 300 },
+  "outputs": { "ammonia": 200 },
+  "primary": "ammonia",
+  "temperature": [650, 850],
+  "pressure": [100, null],
+  "catalysts": ["iron"],
+  "time": 15.0,
+  "power": 40,
+  "voltage": 32
+}

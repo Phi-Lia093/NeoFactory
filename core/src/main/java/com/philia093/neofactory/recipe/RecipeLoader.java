@@ -5,6 +5,14 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.philia093.neofactory.cable.Voltage;
+import com.philia093.neofactory.chemistry.Blend;
+import com.philia093.neofactory.chemistry.Chemical;
+import com.philia093.neofactory.chemistry.Conditions;
+import com.philia093.neofactory.chemistry.Fraction;
+import com.philia093.neofactory.chemistry.InorganicRecipe;
+import com.philia093.neofactory.chemistry.Substance;
+import com.philia093.neofactory.chemistry.Substances;
+import com.philia093.neofactory.item.ChemicalItems;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.ItemStack;
@@ -138,6 +146,12 @@ public final class RecipeLoader {
      */
     public static Recipe parse(RecipeType type, String name, String json) {
         JsonValue root = new JsonReader().parse(json);
+        if (type == RecipeType.CHEMICAL_REACTING || type == RecipeType.ELECTROLYSIS) {
+            // A route of the industry: substances and millibuckets instead of items and places, and a
+            // vessel it asks for, see ChemicalRecipe. A route names no single result, so it is read before
+            // the shape every other file of the game has.
+            return readChemicalRecipe(type, name, root);
+        }
         ItemStack result = readResult(name, root);
         if (type == RecipeType.CRAFTING_SHAPED) {
             return new ShapedRecipe(name, readPattern(name, root), result);
@@ -154,6 +168,120 @@ public final class RecipeLoader {
                     root.getInt("voltage", Voltage.ULTRA_LOW.euPerTick()));
         }
         throw new IllegalArgumentException("No loader for the recipe type '" + type.name() + "'");
+    }
+
+    /**
+     * Reads a route of the industry.
+     * <p>
+     * The file names substances by the name a player reads in the catalog and amounts in millibuckets, so
+     * {@code "inputs": { "carbon": 100, "water": 100 }} is a hundred millibuckets of carbon and a hundred
+     * of water. The vessel the route asks for is read with it - a range of temperature, a range of
+     * pressure, the catalysts that have to stand there and the substances of the medium that may move
+     * whole - and a route of the electrolysis kind asks for a current without saying so, because the
+     * folder it lies in already has.
+     * <p>
+     * <b>A route that does not balance is refused while it is read.</b> Every file is handed to the very
+     * rule of the pot the rest of the industry is held to, so a file that leaves an atom behind, or that
+     * hands over an amount that is no whole piece of the item a substance travels as, is logged and
+     * skipped instead of quietly making something out of nothing.
+     */
+    private static ChemicalRecipe readChemicalRecipe(RecipeType type, String name, JsonValue root) {
+        Substances catalog = Substances.starter();
+        InorganicRecipe.Builder route = InorganicRecipe.builder(name)
+                .inputs(readPile(name, catalog, root.get("inputs")))
+                .outputs(readPile(name, catalog, root.get("outputs")))
+                .conditions(readConditions(type, name, catalog, root));
+        JsonValue primary = root.get("primary");
+        if (primary != null && !primary.isNull()) {
+            route.primary(substance(name, catalog, primary.asString()).chemical());
+        }
+        for (JsonValue medium : elementsOf(root.get("medium"))) {
+            route.medium(substance(name, catalog, medium.asString()).chemical());
+        }
+        return new ChemicalRecipe(name, type, route.build(), List.of(),
+                readMainProduct(name, catalog, root),
+                root.getFloat("time", ChemicalRecipe.DEFAULT_SECONDS), root.getInt("power", 0),
+                root.getInt("voltage", Voltage.ULTRA_LOW.euPerTick()));
+    }
+
+    /** Reads a pile of substances written as a name and an amount in millibuckets. */
+    private static Blend readPile(String name, Substances catalog, JsonValue node) {
+        if (node == null || !node.isObject() || node.size == 0) {
+            throw new IllegalArgumentException("The route '" + name + "' names no substances");
+        }
+        Blend pile = Blend.empty();
+        for (JsonValue entry = node.child; entry != null; entry = entry.next) {
+            pile = pile.plus(Blend.of(substance(name, catalog, entry.name).chemical(),
+                    Fraction.of(entry.asLong())));
+        }
+        return pile;
+    }
+
+    /** Looks a substance up by the name a file uses. */
+    private static Substance substance(String name, Substances catalog, String substanceName) {
+        Substance substance = catalog.byName(substanceName);
+        if (substance == null) {
+            throw new IllegalArgumentException("The route '" + name
+                    + "' names the unknown substance '" + substanceName + "'");
+        }
+        return substance;
+    }
+
+    /** Reads the product a route is run for, which is one piece of what the file names. */
+    private static ItemStack readMainProduct(String name, Substances catalog, JsonValue root) {
+        JsonValue primary = root.get("primary");
+        if (primary == null || primary.isNull()) {
+            return ItemStack.EMPTY;
+        }
+        Item item = ChemicalItems.item(substance(name, catalog, primary.asString()));
+        if (item == null) {
+            throw new IllegalArgumentException("The route '" + name + "' is run for '"
+                    + primary.asString() + "', which no item of the game carries");
+        }
+        return ItemStack.of(item, 1);
+    }
+
+    /** Reads the vessel a route asks for. */
+    private static Conditions readConditions(RecipeType type, String name, Substances catalog,
+            JsonValue root) {
+        Conditions.Builder conditions = Conditions.builder();
+        JsonValue temperature = root.get("temperature");
+        if (temperature != null && !temperature.isNull()) {
+            conditions.temperature(readBound(temperature, 0), readBound(temperature, 1));
+        }
+        JsonValue pressure = root.get("pressure");
+        if (pressure != null && !pressure.isNull()) {
+            conditions.pressure(readBound(pressure, 0), readBound(pressure, 1));
+        }
+        for (JsonValue catalyst : elementsOf(root.get("catalysts"))) {
+            conditions.catalyst(substance(name, catalog, catalyst.asString()).chemical());
+        }
+        if (type == RecipeType.ELECTROLYSIS) {
+            // A file below the folder of the electrolysis is one a current drives: water does not split
+            // into its two gases over a flame, however hot the flame is.
+            conditions.current(true);
+        }
+        return conditions.build();
+    }
+
+    /** One end of a range of conditions, {@code null} when the file does not name it. */
+    private static Fraction readBound(JsonValue range, int index) {
+        if (!range.isArray() || index >= range.size) {
+            throw new IllegalArgumentException("A range of conditions needs two ends");
+        }
+        JsonValue value = range.get(index);
+        return value == null || value.isNull() ? null : Fraction.of(value.asLong());
+    }
+
+    /** The elements of a list a file may name, empty for a list it does not. */
+    private static List<JsonValue> elementsOf(JsonValue array) {
+        List<JsonValue> elements = new ArrayList<>();
+        if (array != null && array.isArray()) {
+            for (JsonValue element : array) {
+                elements.add(element);
+            }
+        }
+        return elements;
     }
 
     /** Reads the stack a recipe makes. */

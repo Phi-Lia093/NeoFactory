@@ -1,5 +1,11 @@
 package com.philia093.neofactory.chemistry;
 
+import com.philia093.neofactory.recipe.ChemicalRecipe;
+import com.philia093.neofactory.recipe.Recipe;
+import com.philia093.neofactory.recipe.RecipeRegistry;
+import com.philia093.neofactory.recipe.RecipeType;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,15 +52,32 @@ public final class ReactionRouter {
     }
 
     /**
-     * Creates a router over the industry of the game and the templates that came with it.
+     * Creates a router over the routes the game ships and the templates that came with it.
+     * <p>
+     * The routes are the files below {@code assets/recipes/chemical_reacting} and
+     * {@code assets/recipes/electrolysis}, which are read and refused for a balance before a world is ever
+     * opened: a route of the industry is a fact somebody wrote down and checked, and the file is where it
+     * stands, see {@link ChemicalRecipe}.
      *
-     * @param catalog the substances of the world
      * @param templates the templates of the organic side
      * @return the router
      */
-    public static ReactionRouter industry(Substances catalog, List<ReactionTemplate> templates) {
-        return new ReactionRouter(InorganicRecipeBook.industry(catalog),
+    public static ReactionRouter industry(List<ReactionTemplate> templates) {
+        return new ReactionRouter(InorganicRecipeBook.of(writtenRoutes()),
                 new TemplateEngine(templates));
+    }
+
+    /** Every route written down in the assets of the game, in the order they were read. */
+    private static InorganicRecipe[] writtenRoutes() {
+        List<InorganicRecipe> routes = new ArrayList<>();
+        for (RecipeType type : List.of(RecipeType.CHEMICAL_REACTING, RecipeType.ELECTROLYSIS)) {
+            for (Recipe recipe : RecipeRegistry.recipes(type)) {
+                if (recipe instanceof ChemicalRecipe chemical) {
+                    routes.add(chemical.route());
+                }
+            }
+        }
+        return routes.toArray(new InorganicRecipe[0]);
     }
 
     /**

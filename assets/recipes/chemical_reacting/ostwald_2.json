@@ -1,0 +1,8 @@
+{
+  "inputs": { "nitrogen monoxide": 200, "oxygen": 100 },
+  "outputs": { "nitrogen dioxide": 200 },
+  "primary": "nitrogen dioxide",
+  "time": 8.0,
+  "power": 20,
+  "voltage": 32
+}

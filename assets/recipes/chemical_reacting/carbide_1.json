@@ -1,0 +1,9 @@
+{
+  "inputs": { "calcium ion": 100, "oxide ion": 100, "carbon": 300 },
+  "outputs": { "calcium ion": 100, "carbide ion": 100, "carbon monoxide": 100 },
+  "primary": "carbide ion",
+  "temperature": [2300, 2500],
+  "time": 20.0,
+  "power": 60,
+  "voltage": 32
+}

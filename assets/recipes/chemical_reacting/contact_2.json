@@ -1,0 +1,10 @@
+{
+  "inputs": { "sulfur dioxide": 200, "oxygen": 100 },
+  "outputs": { "sulfur trioxide": 200 },
+  "primary": "sulfur trioxide",
+  "temperature": [650, 750],
+  "catalysts": ["platinum"],
+  "time": 12.0,
+  "power": 30,
+  "voltage": 32
+}

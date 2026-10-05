@@ -1,0 +1,10 @@
+{
+  "inputs": { "ammonia": 400, "oxygen": 500 },
+  "outputs": { "nitrogen monoxide": 400, "water": 600 },
+  "primary": "nitrogen monoxide",
+  "temperature": [1000, 1200],
+  "catalysts": ["platinum"],
+  "time": 12.0,
+  "power": 30,
+  "voltage": 32
+}

@@ -1,0 +1,8 @@
+{
+  "inputs": { "sulfur": 100, "oxygen": 100 },
+  "outputs": { "sulfur dioxide": 100 },
+  "primary": "sulfur dioxide",
+  "time": 8.0,
+  "power": 20,
+  "voltage": 32
+}
