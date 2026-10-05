@@ -253,6 +253,23 @@ public final class Atom {
                 chirality, radicals);
     }
 
+    /**
+     * Creates an atom that is the very same atom as another one, hydrogens and all.
+     * <p>
+     * A pot is read as one molecule and the substances of it are therefore laid out side by side, see
+     * {@link Assemblies}. What is laid out has to be what stood there and not a molecule worked out again: a
+     * carbene written {@code [CH2]} holds two hydrogens because its string said so, and an atom copied with
+     * its hydrogens left to be filled in would come back as a methane. The copy therefore keeps the count,
+     * the mark and the order its neighbours were written in, and the bonds around it decide nothing.
+     *
+     * @param atom atom to copy
+     * @return the copy, the same atom in every way that is written down
+     */
+    static Atom copied(Atom atom) {
+        return new Atom(atom.element, atom.charge, atom.isotope, atom.aromatic, atom.bracketed,
+                atom.hydrogens, atom.mapClass, atom.chirality, atom.radicals);
+    }
+
     /** Symbol of the element of this atom. */
     public String element() {
         return element;

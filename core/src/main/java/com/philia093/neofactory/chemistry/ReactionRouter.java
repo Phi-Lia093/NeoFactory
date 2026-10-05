@@ -38,7 +38,7 @@ import java.util.Objects;
 public final class ReactionRouter {
 
     private final InorganicRecipeBook book;
-    private final TemplateEngine organic;
+    private final ReactionEngine organic;
 
     /**
      * Creates a router over the two ways a pot may be answered.
@@ -46,9 +46,22 @@ public final class ReactionRouter {
      * @param book the routes written by hand
      * @param organic the engine that rewrites organic molecules
      */
-    public ReactionRouter(InorganicRecipeBook book, TemplateEngine organic) {
+    public ReactionRouter(InorganicRecipeBook book, ReactionEngine organic) {
         this.book = Objects.requireNonNull(book, "book");
         this.organic = Objects.requireNonNull(organic, "organic");
+    }
+
+    /**
+     * Creates a router over the reactions the organic side of the game ships with.
+     * <p>
+     * The rules of the polar families are a table of groups and steps, see {@link PolarReactions}; a route of
+     * the industry is a file somebody wrote down and is asked first.
+     *
+     * @return the router
+     */
+    public static ReactionRouter industry() {
+        return new ReactionRouter(InorganicRecipeBook.of(writtenRoutes()),
+                new PolarEngine(PolarReactions.all()));
     }
 
     /**

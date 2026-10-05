@@ -25,6 +25,10 @@ public final class ElementaryStep {
     private final Face face;
     private final StereoOutcome outcome;
 
+    private ElementaryStep(String name, List<Arrow> arrows) {
+        this(name, arrows, -1, -1, null, StereoOutcome.NONE);
+    }
+
     private ElementaryStep(String name, List<Arrow> arrows, int centre, int incoming, Face face,
             StereoOutcome outcome) {
         this.name = Objects.requireNonNull(name, "name");
@@ -80,6 +84,78 @@ public final class ElementaryStep {
                 Arrow.fromLonePair(nucleophile, nucleophile, centre),
                 Arrow.toLonePair(centre, acceptor)),
                 centre, nucleophile, Objects.requireNonNull(face, "face"), StereoOutcome.NONE);
+    }
+
+    /**
+     * A step of raw arrows, with nothing said about a configuration.
+     *
+     * @param name the name of the step
+     * @param arrows the arrows, in the order they are drawn
+     * @return the step
+     */
+    public static ElementaryStep of(String name, Arrow... arrows) {
+        return new ElementaryStep(name, List.of(arrows));
+    }
+
+    /**
+     * A step of raw arrows that builds a centre, the hand of it decided by the face a ligand came in from.
+     *
+     * @param name the name of the step
+     * @param arrows the arrows, in the order they are drawn
+     * @param centre the flat atom that is attacked
+     * @param incoming the atom that came in
+     * @param face the face it came in from
+     * @return the step
+     */
+    public static ElementaryStep of(String name, List<Arrow> arrows, int centre, int incoming, Face face) {
+        return new ElementaryStep(name, arrows, centre, incoming, Objects.requireNonNull(face, "face"),
+                StereoOutcome.NONE);
+    }
+
+    /**
+     * Two ligands added across a double bond, one pair coming from the bond that breaks and the other from
+     * the double bond itself.
+     * <p>
+     * One shape covers four reactions of the industry: hydrogen across a double bond, a halogen across one,
+     * the hydrogen and the halogen of an acid, and the hydrogen and the hydroxyl of water. In every one of
+     * them the pair of the bond that breaks makes the bond to the first carbon and the pair of the double
+     * bond makes the bond to the second, and the atoms decide which of the two is which.
+     *
+     * @param name the name of the step
+     * @param first the carbon that takes the ligand the broken bond held
+     * @param second the carbon that takes the other ligand
+     * @param from the ligand that keeps the first carbon
+     * @param to the ligand that keeps the second
+     * @return the step
+     */
+    public static ElementaryStep across(String name, int first, int second, int from, int to) {
+        return new ElementaryStep(name, List.of(
+                Arrow.betweenBonds(from, to, from, first),
+                Arrow.betweenBonds(first, second, second, to)));
+    }
+
+    /**
+     * A leaving group and the hydrogen of the carbon beside it going at once, which is what leaves a double
+     * bond behind and never a single one.
+     * <p>
+     * Three arrows are drawn for the one moment: the bond to the leaving group breaks and the group keeps the
+     * pair, the pair of the hydrogen on the carbon beside it makes the double bond, and the hydrogen goes to
+     * the group that just left - so that an alcohol loses water and not a hydroxide, which is the whole of
+     * what stands on either side of the arrow.
+     *
+     * @param name the name of the step
+     * @param alpha the carbon the leaving group hangs on
+     * @param leaving the atom that leaves
+     * @param beta the carbon beside the first one
+     * @param hydrogen the hydrogen that leaves with it
+     * @return the step
+     */
+    public static ElementaryStep elimination(String name, int alpha, int leaving, int beta,
+            int hydrogen) {
+        return new ElementaryStep(name, List.of(
+                Arrow.toLonePair(alpha, leaving),
+                Arrow.betweenBonds(beta, hydrogen, alpha, beta),
+                Arrow.fromLonePair(leaving, leaving, hydrogen)));
     }
 
     /** The name of this step. */

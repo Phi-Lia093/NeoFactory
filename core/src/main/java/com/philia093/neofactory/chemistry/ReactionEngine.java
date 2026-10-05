@@ -30,4 +30,15 @@ public interface ReactionEngine {
      * @return the reactions, the best first, empty when none could happen
      */
     List<Reaction> infer(System system);
+
+    /**
+     * The one reaction an engine would run in a system.
+     *
+     * @param system what stands in the vessel
+     * @return the best reaction, or {@code null} when none could happen
+     */
+    default Reaction best(System system) {
+        List<Reaction> found = infer(system);
+        return found.isEmpty() ? null : found.get(0);
+    }
 }
