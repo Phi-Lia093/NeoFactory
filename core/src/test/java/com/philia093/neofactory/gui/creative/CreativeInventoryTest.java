@@ -146,7 +146,8 @@ class CreativeInventoryTest {
         // machines of the batteries are machines like every other one, see BatteryBoxes. The grid of the screen
         // shows the front of that list, so the whole of it is read from the list itself.
         List<Item> listed = creative.matches();
-        int at = 36;
+        int line = 18 + MachineFamilies.all().size() * MachineFamilies.TIERS.size();
+        int at = line;
         for (Voltage tier : BatteryBoxes.tiers()) {
             for (int cells : BatteryBoxes.CELLS) {
                 String name = BatteryBoxes.nameOf(tier, cells);
@@ -173,13 +174,13 @@ class CreativeInventoryTest {
                         Transformers.titleOf(tier, size) + " is listed with the machines");
             }
         }
-        assertEquals(36 + BatteryBoxes.COUNT + Diodes.COUNT + Transformers.COUNT, listed.size(),
+        assertEquals(line + BatteryBoxes.COUNT + Diodes.COUNT + Transformers.COUNT, listed.size(),
                 "the list holds the machines of the game");
         assertEquals(listed.size(), at, "and every one of them was walked");
         assertEquals(ItemRegistry.byName(MachineFamilies.all().get(0).nameOf(Voltage.LOW)),
                 listed.get(18), "the machines of the line come first");
-        assertFalse(creative.stackAt(36).isEmpty(), "and the front of the boxes is shown in the grid");
-        assertEquals(ItemRegistry.byName(BatteryBoxes.nameOf(Voltage.LOW, 1)), creative.stackAt(36).item());
+        assertFalse(creative.stackAt(line).isEmpty(), "and the front of the boxes is shown in the grid");
+        assertEquals(ItemRegistry.byName(BatteryBoxes.nameOf(Voltage.LOW, 1)), creative.stackAt(line).item());
     }
 
     @Test
