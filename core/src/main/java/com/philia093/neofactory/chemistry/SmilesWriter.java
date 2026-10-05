@@ -232,6 +232,12 @@ public final class SmilesWriter {
 
         /** Writes the mark of a bond, nothing at all for a plain bond of the walk. */
         private void writeBond(StringBuilder out, Bond bond) {
+            if (bond.stereo() != Bond.NO_STEREO) {
+                // The mark of a stereo double bond stands on the plain bonds beside it, and the mark is the
+                // whole of what the bond is written as: a slash already means a single bond, drawn a way.
+                out.append(bond.stereo());
+                return;
+            }
             if (bond.isAromatic()) {
                 return;
             }

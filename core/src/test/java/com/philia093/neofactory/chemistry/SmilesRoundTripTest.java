@@ -52,6 +52,19 @@ class SmilesRoundTripTest {
     }
 
     @Test
+    void theMarksOfADoubleBondAreWrittenAndReadBack() {
+        for (String smiles : new String[] {"C/C=C/C", "C/C=C\\C", "F/C=C/F", "F/C=C\\F"}) {
+            Molecule once = SmilesParser.parse(smiles);
+            String written = SmilesWriter.write(once);
+            Molecule twice = SmilesParser.parse(written);
+
+            assertTrue(written.contains("/") || written.contains("\\"),
+                    smiles + " kept its marks in " + written);
+            assertEquals(StereoKey.of(once), StereoKey.of(twice), smiles + " came back as " + written);
+        }
+    }
+
+    @Test
     void theTwoMirrorsOfAlanineAreWrittenApart() {
         String left = SmilesWriter.write(SmilesParser.parse("N[C@@H](C)C(=O)O"));
         String right = SmilesWriter.write(SmilesParser.parse("N[C@H](C)C(=O)O"));
