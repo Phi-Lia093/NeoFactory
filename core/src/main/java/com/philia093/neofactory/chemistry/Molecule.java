@@ -90,7 +90,7 @@ public final class Molecule {
                 continue;
             }
             atom.resolveHydrogens(DefaultValence.implicitHydrogens(atom.element(), atom.charge(),
-                    atom.isAromatic(), bondOrderSum(index)));
+                    atom.isAromatic(), bondOrderSum(index), atom.radicals()));
         }
     }
 

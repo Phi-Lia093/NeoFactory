@@ -58,4 +58,18 @@ class DefaultValenceTest {
         assertEquals(0, DefaultValence.implicitHydrogens("Fe", 2, false, 0));
         assertEquals(0, DefaultValence.implicitHydrogens("O", 0, false, 5));
     }
+
+    @Test
+    void anUnpairedElectronTakesABondAwayFromTheHydrogens() {
+        // A methyl radical holds three hydrogens, not the four of a methane carbon.
+        assertEquals(3, DefaultValence.implicitHydrogens("C", 0, false, 0, 1));
+        // A carbon that already carries three bonds holds none once it is left a radical.
+        assertEquals(0, DefaultValence.implicitHydrogens("C", 0, false, 3, 1));
+        // An alkoxy radical: an oxygen with one bond and one unpaired electron holds no hydrogen at all.
+        assertEquals(0, DefaultValence.implicitHydrogens("O", 0, false, 1, 1));
+        // Two unpaired electrons are two bonds the atom never gets to form.
+        assertEquals(2, DefaultValence.implicitHydrogens("C", 0, false, 0, 2));
+        // A closed shell is the same rule with nothing taken off.
+        assertEquals(4, DefaultValence.implicitHydrogens("C", 0, false, 0, 0));
+    }
 }

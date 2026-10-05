@@ -97,13 +97,33 @@ public final class DefaultValence {
      */
     public static int implicitHydrogens(String element, int charge, boolean aromatic,
             int bondOrderSum) {
+        return implicitHydrogens(element, charge, aromatic, bondOrderSum, 0);
+    }
+
+    /**
+     * Hydrogens an atom carries once its bonds and its unpaired electrons are known.
+     * <p>
+     * <b>An unpaired electron is a bond the atom never gets to form.</b> The methyl radical of a bromination
+     * holds three bonds to hydrogen and one unpaired electron, not the four bonds of a methane carbon, so
+     * every radical the atom bears is taken off the valence before the hydrogens are counted. A closed
+     * shell - the overwhelming case - is the same rule with nothing taken off.
+     *
+     * @param element symbol of the element
+     * @param charge formal charge of the atom
+     * @param aromatic {@code true} when the atom lies in an aromatic ring
+     * @param bondOrderSum shared pairs of every bond that ends at the atom
+     * @param radicals unpaired electrons of the atom, {@code 0} for a closed shell
+     * @return the number of hydrogens, never negative
+     */
+    public static int implicitHydrogens(String element, int charge, boolean aromatic,
+            int bondOrderSum, int radicals) {
         if (aromatic) {
             // A ring carbon holds three bonds, a ring nitrogen of pyridine reaches for none.
-            return element.equals("C") ? Math.max(0, 3 - bondOrderSum) : 0;
+            return element.equals("C") ? Math.max(0, 3 - bondOrderSum - radicals) : 0;
         }
         if (!Elements.isOrganicSubset(element)) {
             return 0;
         }
-        return Math.max(0, targetValence(element, charge) - bondOrderSum);
+        return Math.max(0, targetValence(element, charge) - bondOrderSum - radicals);
     }
 }
