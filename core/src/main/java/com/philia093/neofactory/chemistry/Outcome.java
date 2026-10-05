@@ -1,5 +1,6 @@
 package com.philia093.neofactory.chemistry;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -20,17 +21,34 @@ import java.util.Objects;
  * @param consumed what the pot loses
  * @param produced what the pot gains
  * @param electrons electrons the reaction takes in, negative when it gives them out
+ * @param medium substances that may move whole and unnumbered around the reaction, so that the answer can
+ *        be checked against the rule of a pot a second time before it is handed over
  */
-public record Outcome(String source, Blend consumed, Blend produced, int electrons) {
+public record Outcome(String source, Blend consumed, Blend produced, int electrons,
+        List<Chemical> medium) {
 
     /** Checks the fields, so an answer that names nothing fails where it is built. */
     public Outcome {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(consumed, "consumed");
         Objects.requireNonNull(produced, "produced");
+        medium = List.copyOf(Objects.requireNonNull(medium, "medium"));
         if (consumed.isEmpty() && produced.isEmpty()) {
             throw new IllegalArgumentException("An outcome that changes nothing is no reaction: " + source);
         }
+    }
+
+    /**
+     * An answer without a medium, the shape a rewriting of an organic molecule comes in.
+     *
+     * @param source where the answer came from
+     * @param consumed what the pot loses
+     * @param produced what the pot gains
+     * @param electrons electrons the reaction takes in, negative when it gives them out
+     * @return the answer
+     */
+    public static Outcome of(String source, Blend consumed, Blend produced, int electrons) {
+        return new Outcome(source, consumed, produced, electrons, List.of());
     }
 
     /** {@code true} when this answer takes nothing out of the pot but puts something in. */

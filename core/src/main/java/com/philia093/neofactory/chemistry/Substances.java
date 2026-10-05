@@ -186,15 +186,23 @@ public final class Substances {
         catalog.register("copper(II) ion", "[Cu+2]", Phase.AQUEOUS);
         catalog.register("iron(II) ion", "[Fe+2]", Phase.AQUEOUS);
         catalog.register("iron(III) ion", "[Fe+3]", Phase.AQUEOUS);
+        catalog.register("calcium ion", "[Ca+2]", Phase.AQUEOUS);
+        catalog.register("oxide ion", "[O-2]", Phase.AQUEOUS);
+        catalog.register("carbide ion", "[C-]#[C-]", Phase.AQUEOUS);
         catalog.register("sulfate", "[O-]S(=O)(=O)[O-]", Phase.AQUEOUS);
         // The compounds the first reactions are written with.
         catalog.register("water", "O", Phase.LIQUID);
         catalog.register("carbon monoxide", "[C-]#[O+]", Phase.GAS);
         catalog.register("carbon dioxide", "O=C=O", Phase.GAS);
         catalog.register("methane", "C", Phase.GAS);
+        catalog.register("acetylene", "C#C", Phase.GAS);
         catalog.register("ammonia", "N", Phase.GAS);
+        catalog.register("nitrogen monoxide", "[N]=O", Phase.GAS);
+        catalog.register("nitrogen dioxide", "[N](=O)=O", Phase.GAS);
+        catalog.register("nitric acid", "O[N+](=O)[O-]", Phase.LIQUID);
         catalog.register("hydrogen sulfide", "S", Phase.GAS);
         catalog.register("sulfur dioxide", "O=S=O", Phase.GAS);
+        catalog.register("sulfur trioxide", "O=S(=O)=O", Phase.GAS);
         catalog.register("hydrogen chloride", "Cl", Phase.GAS);
         catalog.register("methanol", "CO", Phase.LIQUID);
         catalog.register("dimethyl ether", "COC", Phase.GAS);

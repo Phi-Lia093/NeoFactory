@@ -26,7 +26,7 @@ import java.util.Set;
 public final class Conditions {
 
     /** The conditions that name nothing: a recipe that asks for nothing, a machine that measures nothing. */
-    public static final Conditions NONE = new Conditions(null, null, null, null, Set.of(), null);
+    public static final Conditions NONE = new Conditions(null, null, null, null, Set.of(), null, false);
 
     private final Fraction minTemperature;
     private final Fraction maxTemperature;
@@ -34,15 +34,17 @@ public final class Conditions {
     private final Fraction maxPressure;
     private final Set<Chemical> catalysts;
     private final Phase phase;
+    private final boolean current;
 
     private Conditions(Fraction minTemperature, Fraction maxTemperature, Fraction minPressure,
-            Fraction maxPressure, Set<Chemical> catalysts, Phase phase) {
+            Fraction maxPressure, Set<Chemical> catalysts, Phase phase, boolean current) {
         this.minTemperature = minTemperature;
         this.maxTemperature = maxTemperature;
         this.minPressure = minPressure;
         this.maxPressure = maxPressure;
         this.catalysts = Collections.unmodifiableSet(new LinkedHashSet<>(catalysts));
         this.phase = phase;
+        this.current = current;
     }
 
     /** The conditions that name nothing. */
@@ -62,6 +64,21 @@ public final class Conditions {
         return builder().temperature(temperature).pressure(pressure).phase(phase).build();
     }
 
+    /**
+     * Conditions of a vessel a current is driving or not.
+     *
+     * @param temperature the temperature in kelvin, {@code null} for one not measured
+     * @param pressure the pressure, {@code null} for one not measured
+     * @param phase the state of the vessel, {@code null} for one not seen
+     * @param current {@code true} when a current drives the vessel
+     * @return the conditions
+     */
+    public static Conditions of(Fraction temperature, Fraction pressure, Phase phase,
+            boolean current) {
+        return builder().temperature(temperature).pressure(pressure).phase(phase).current(current)
+                .build();
+    }
+
     /** A builder of conditions. */
     public static Builder builder() {
         return new Builder();
@@ -79,6 +96,9 @@ public final class Conditions {
      */
     public boolean within(Conditions offered) {
         Objects.requireNonNull(offered, "offered");
+        if (current && !offered.current) {
+            return false;
+        }
         if (!inside(minTemperature, maxTemperature, offered.minTemperature, offered.maxTemperature)) {
             return false;
         }
@@ -131,11 +151,26 @@ public final class Conditions {
         return phase;
     }
 
+    /**
+     * {@code true} when a current drives this vessel, or when a route of this kind is one a current drives.
+     * <p>
+     * <b>A current is the one condition that is asked and not merely wondered at.</b> A route that needs a
+     * current is not run by a pot that has none - water does not split into its gases over a flame however
+     * hot the flame - so a route of that kind demands a current of what it is offered, and a route that
+     * names none never looks at this at all. A machine that drives a pot says so; a pot that is only heated
+     * says nothing and is never matched against a route a current is needed for.
+     *
+     * @return {@code true} when a current is needed or is driving
+     */
+    public boolean current() {
+        return current;
+    }
+
     @Override
     public String toString() {
         return "Conditions(temperature " + minTemperature + ".." + maxTemperature + ", pressure "
                 + minPressure + ".." + maxPressure + ", catalysts " + catalysts.size() + ", phase "
-                + phase + ")";
+                + phase + (current ? ", a current" : "") + ")";
     }
 
     /** Builds a set of conditions a range at a time. */
@@ -147,6 +182,7 @@ public final class Conditions {
         private Fraction maxPressure;
         private final Set<Chemical> catalysts = new LinkedHashSet<>();
         private Phase phase;
+        private boolean current;
 
         private Builder() {
             // A builder holds nothing until it is told.
@@ -220,10 +256,21 @@ public final class Conditions {
             return this;
         }
 
+        /**
+         * Says that a current drives this vessel, or that a route of this kind needs one.
+         *
+         * @param current {@code true} when a current is driving or is needed
+         * @return this builder
+         */
+        public Builder current(boolean current) {
+            this.current = current;
+            return this;
+        }
+
         /** Builds the conditions. */
         public Conditions build() {
             return new Conditions(minTemperature, maxTemperature, minPressure, maxPressure, catalysts,
-                    phase);
+                    phase, current);
         }
     }
 }

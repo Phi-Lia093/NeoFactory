@@ -154,7 +154,7 @@ public final class InorganicRecipe {
             return null;
         }
         return new Outcome(id, inputs.times(runs), outputs.times(runs),
-                (int) Math.min(Integer.MAX_VALUE, (long) electrons * runs));
+                (int) Math.min(Integer.MAX_VALUE, (long) electrons * runs), medium);
     }
 
     /**
@@ -175,6 +175,9 @@ public final class InorganicRecipe {
             named++;
         }
         if (conditions.phase() != null) {
+            named++;
+        }
+        if (conditions.current()) {
             named++;
         }
         return inputs.components().size() + outputs.components().size() + named;

@@ -16,7 +16,7 @@ import java.util.Objects;
  * electrons a reaction takes from a circuit or hands to one cannot sit in a pile beside the substances; a
  * positive number says the reaction takes that many electrons in - it is a reduction - and a negative one
  * says it gives them out, which is what makes an electrolysis write its two half reactions against one
- * shared count, see {@code Electrolysis}.
+ * shared count, see {@code InorganicRecipeBook}.
  * <p>
  * <b>The background is what stands around freely.</b> A reaction in water may spend a molecule of it or
  * make one, and a reaction in an acid may take a proton or give one back, without the water or the proton
