@@ -1,0 +1,195 @@
+package com.philia093.neofactory.chemistry;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The catalog of substances the module knows, the closed world every reaction is written inside.
+ * <p>
+ * A reaction is never allowed to invent a substance. The catalog is the list of what exists, and a solver
+ * looks for its products among the entries and nowhere else: an unfamiliar combination of elements produces
+ * no reaction rather than a fabricated compound, which is the line that keeps a balance from being
+ * arithmetically right and chemically nonsense. A substance the game wants and the catalog lacks is a line
+ * that has to be added, which is a moment of thought and not a moment of guessing, see {@link #register}.
+ * <p>
+ * <b>A substance is looked up by its molecule and its phase and never by its name.</b> Two writings of
+ * benzene - the aromatic one and the Kekulé one - have to find one entry and not two, and water and water
+ * vapour have to be two entries and not one; neither question can be answered by a name, which is a label a
+ * screen prints and nothing more. The lookup key is therefore the canonical labeling of the molecule
+ * together with the phase, and the name is kept only so that the matching entry can be read back out for a
+ * player, see {@link Substance}.
+ * <p>
+ * The catalog is an object and not a table of the whole program, so a test builds the handful of substances
+ * it asks about and a game builds the ones it plays with; nothing here reaches for a global that a second
+ * copy of the catalog would collide with.
+ */
+public final class Substances {
+
+    private final Map<Key, Substance> byKey = new LinkedHashMap<>();
+    private final Map<String, Substance> byName = new LinkedHashMap<>();
+
+    /** Creates an empty catalog. */
+    public Substances() {
+        // An empty catalog is a valid one: a solver inside it finds no reaction at all.
+    }
+
+    /**
+     * Adds a substance to the catalog.
+     *
+     * @param substance substance to add
+     * @return this catalog, for chaining
+     * @throws IllegalArgumentException when another substance of the same molecule and phase is there
+     *         already under a different name
+     */
+    public Substances register(Substance substance) {
+        Key key = new Key(substance.canonicalKey(), substance.phase());
+        Substance existing = byKey.get(key);
+        if (existing != null && !existing.name().equals(substance.name())) {
+            throw new IllegalArgumentException("The catalog already holds " + existing
+                    + " for the molecule and phase of " + substance);
+        }
+        byKey.put(key, substance);
+        byName.put(substance.name(), substance);
+        return this;
+    }
+
+    /**
+     * Reads a substance from a SMILES string and adds it to the catalog.
+     *
+     * @param name the name a screen prints
+     * @param smiles the molecule
+     * @param phase the state it stands in
+     * @return this catalog, for chaining
+     * @throws SmilesException when the string cannot be read
+     */
+    public Substances register(String name, String smiles, Phase phase) {
+        return register(new Substance(name, Chemical.parse(smiles), phase));
+    }
+
+    /**
+     * Looks a substance up by its name.
+     *
+     * @param name the name a screen prints
+     * @return the substance, or {@code null} when no entry uses that name
+     */
+    public Substance byName(String name) {
+        return name == null ? null : byName.get(name);
+    }
+
+    /**
+     * Looks a substance up by the key of its molecule and its phase.
+     *
+     * @param canonicalKey the canonical key of the molecule
+     * @param phase the state it stands in
+     * @return the substance, or {@code null} when the catalog holds none
+     */
+    public Substance byKey(String canonicalKey, Phase phase) {
+        return canonicalKey == null || phase == null ? null : byKey.get(new Key(canonicalKey, phase));
+    }
+
+    /**
+     * Looks a substance up by a molecule and a phase, whichever way the molecule was written.
+     *
+     * @param chemical the molecule, in any of its writings
+     * @param phase the state it stands in
+     * @return the substance, or {@code null} when the catalog holds none
+     */
+    public Substance byChemical(Chemical chemical, Phase phase) {
+        return chemical == null ? null : byKey.get(new Key(chemical.structure().canonicalKey(), phase));
+    }
+
+    /**
+     * {@code true} when the catalog holds a molecule in a phase.
+     *
+     * @param chemical the molecule, in any of its writings
+     * @param phase the state it stands in
+     * @return {@code true} when an entry matches
+     */
+    public boolean contains(Chemical chemical, Phase phase) {
+        return byChemical(chemical, phase) != null;
+    }
+
+    /** Every substance of the catalog, in the order it was added. */
+    public List<Substance> all() {
+        return List.copyOf(byKey.values());
+    }
+
+    /** Amount of substances the catalog holds. */
+    public int count() {
+        return byKey.size();
+    }
+
+    /**
+     * A catalog of the substances the reactions of the industry are built from.
+     * <p>
+     * The list is short on purpose and is meant to be widened by the content stage that names every element
+     * the game holds. What it pins is the shape of the catalog and not its size: the elements in the state
+     * each is met in, the ions a solution is written between, and the common compounds a first reaction is
+     * made of. A substance that is missing is a reaction that cannot be written, which is the closed world
+     * working as it should, see the class comment.
+     *
+     * @return the catalog
+     */
+    public static Substances starter() {
+        Substances catalog = new Substances();
+        // The elements, each in the state it is met in.
+        catalog.register("hydrogen", "[H][H]", Phase.GAS);
+        catalog.register("oxygen", "O=O", Phase.GAS);
+        catalog.register("nitrogen", "N#N", Phase.GAS);
+        catalog.register("fluorine", "FF", Phase.GAS);
+        catalog.register("chlorine", "ClCl", Phase.GAS);
+        catalog.register("bromine", "BrBr", Phase.LIQUID);
+        catalog.register("carbon", "[C]", Phase.SOLID);
+        catalog.register("silicon", "[Si]", Phase.SOLID);
+        catalog.register("sulfur", "[S]", Phase.SOLID);
+        catalog.register("phosphorus", "[P]", Phase.SOLID);
+        catalog.register("iron", "[Fe]", Phase.SOLID);
+        catalog.register("copper", "[Cu]", Phase.SOLID);
+        catalog.register("tin", "[Sn]", Phase.SOLID);
+        catalog.register("lead", "[Pb]", Phase.SOLID);
+        catalog.register("silver", "[Ag]", Phase.SOLID);
+        catalog.register("gold", "[Au]", Phase.SOLID);
+        catalog.register("nickel", "[Ni]", Phase.SOLID);
+        catalog.register("aluminium", "[Al]", Phase.SOLID);
+        catalog.register("platinum", "[Pt]", Phase.SOLID);
+        catalog.register("tungsten", "[W]", Phase.SOLID);
+        catalog.register("zinc", "[Zn]", Phase.SOLID);
+        catalog.register("cobalt", "[Co]", Phase.SOLID);
+        catalog.register("titanium", "[Ti]", Phase.SOLID);
+        catalog.register("chromium", "[Cr]", Phase.SOLID);
+        catalog.register("manganese", "[Mn]", Phase.SOLID);
+        catalog.register("magnesium", "[Mg]", Phase.SOLID);
+        catalog.register("sodium", "[Na]", Phase.SOLID);
+        catalog.register("potassium", "[K]", Phase.SOLID);
+        catalog.register("calcium", "[Ca]", Phase.SOLID);
+        // The ions a solution is written between.
+        catalog.register("proton", "[H+]", Phase.AQUEOUS);
+        catalog.register("hydroxide", "[OH-]", Phase.AQUEOUS);
+        catalog.register("sodium ion", "[Na+]", Phase.AQUEOUS);
+        catalog.register("chloride", "[Cl-]", Phase.AQUEOUS);
+        catalog.register("copper(II) ion", "[Cu+2]", Phase.AQUEOUS);
+        catalog.register("iron(II) ion", "[Fe+2]", Phase.AQUEOUS);
+        catalog.register("iron(III) ion", "[Fe+3]", Phase.AQUEOUS);
+        catalog.register("sulfate", "[O-]S(=O)(=O)[O-]", Phase.AQUEOUS);
+        // The compounds the first reactions are written with.
+        catalog.register("water", "O", Phase.LIQUID);
+        catalog.register("carbon monoxide", "[C-]#[O+]", Phase.GAS);
+        catalog.register("carbon dioxide", "O=C=O", Phase.GAS);
+        catalog.register("methane", "C", Phase.GAS);
+        catalog.register("ammonia", "N", Phase.GAS);
+        catalog.register("hydrogen sulfide", "S", Phase.GAS);
+        catalog.register("sulfur dioxide", "O=S=O", Phase.GAS);
+        catalog.register("hydrogen chloride", "Cl", Phase.GAS);
+        catalog.register("methanol", "CO", Phase.LIQUID);
+        catalog.register("ethanol", "CCO", Phase.LIQUID);
+        catalog.register("acetic acid", "CC(=O)O", Phase.LIQUID);
+        catalog.register("benzene", "c1ccccc1", Phase.LIQUID);
+        catalog.register("sulfuric acid", "OS(=O)(=O)O", Phase.LIQUID);
+        return catalog;
+    }
+
+    /** The molecule and the phase a substance is looked up by. */
+    private record Key(String canonicalKey, Phase phase) {
+    }
+}
