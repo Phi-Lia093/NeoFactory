@@ -1,6 +1,9 @@
 package com.philia093.neofactory.fluid;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.chemistry.Phase;
+import com.philia093.neofactory.chemistry.Substance;
+import com.philia093.neofactory.chemistry.Substances;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -87,22 +90,103 @@ public final class Fluids {
         if (!BY_NAME.isEmpty()) {
             return;
         }
-        WATER = register("water", WATER_COLOR, WATER_TEMPERATURE);
-        LAVA = register("lava", LAVA_COLOR, LAVA_TEMPERATURE);
-        STEAM = register("steam", STEAM_COLOR, STEAM_TEMPERATURE);
+        Substances catalog = Substances.starter();
+        Substance water = catalog.byName("water");
+        WATER = register(new Fluid("water", WATER_COLOR, WATER_TEMPERATURE,
+                water.formula(), Phase.LIQUID, java.util.List.of(water)));
+        // Steam is the very same water with more heat in it: the two fluids answer with one substance
+        // and only their state tells them apart, which is what keeps a boiler from making something
+        // out of nothing.
+        STEAM = register(new Fluid("steam", STEAM_COLOR, STEAM_TEMPERATURE,
+                water.formula(), Phase.GAS, java.util.List.of(water)));
+        // Lava is a mixture of a mountain and no substance: it carries no formula and the chemistry of
+        // the industry can make nothing out of it.
+        LAVA = register(new Fluid("lava", LAVA_COLOR, LAVA_TEMPERATURE));
+        for (Substance substance : catalog.all()) {
+            if (substance.phase() == Phase.SOLID || BY_NAME.containsKey(substance.name())) {
+                continue;
+            }
+            // Every liquid, gas and solution of the catalog is a fluid of its own, so it can be poured
+            // into a tank, carried in a cell and painted in the colour of what it is made of.
+            register(new Fluid(substance.name(), colorOf(substance), substance.formula(),
+                    substance.phase(), substance));
+        }
+    }
+
+    /**
+     * The colour a substance is painted in, which is the colour of its fluid and of its cell.
+     * <p>
+     * The colour of an element stands in the table below; a substance of several elements takes the
+     * colour of the one it holds most of, and one the table does not know is drawn pale, so a substance
+     * is always a picture and never a blank window. <b>Nothing here is a fact of the chemistry</b> - a
+     * colour is a thing a player reads - and no reaction ever asks for it.
+     *
+     * @param substance substance to paint
+     * @return the colour of it
+     */
+    public static Color colorOf(Substance substance) {
+        if (substance == null) {
+            return PALE;
+        }
+        String heaviest = null;
+        int most = 0;
+        for (Map.Entry<String, Integer> entry : substance.chemical().composition().byElement()
+                .entrySet()) {
+            if (entry.getValue() > most || (entry.getValue() == most && heaviest != null
+                    && entry.getKey().compareTo(heaviest) < 0)) {
+                most = entry.getValue();
+                heaviest = entry.getKey();
+            }
+        }
+        return heaviest == null ? PALE : COLORS.getOrDefault(heaviest, PALE);
+    }
+
+    /** Colour a substance of an element the table does not know is drawn in. */
+    private static final Color PALE = new Color(0.72f, 0.72f, 0.76f, 1f);
+
+    /** The colours of the elements the industry of the game is written with. */
+    private static final Map<String, Color> COLORS = new LinkedHashMap<>();
+
+    static {
+        put("H", 0.86f, 0.90f, 0.96f);
+        put("C", 0.22f, 0.22f, 0.24f);
+        put("N", 0.45f, 0.55f, 0.85f);
+        put("O", 0.85f, 0.35f, 0.35f);
+        put("Na", 0.90f, 0.85f, 0.60f);
+        put("Mg", 0.76f, 0.78f, 0.80f);
+        put("Al", 0.86f, 0.88f, 0.92f);
+        put("Si", 0.55f, 0.55f, 0.60f);
+        put("S", 0.90f, 0.80f, 0.25f);
+        put("Cl", 0.55f, 0.85f, 0.35f);
+        put("K", 0.80f, 0.70f, 0.85f);
+        put("Ca", 0.90f, 0.90f, 0.85f);
+        put("Ti", 0.70f, 0.72f, 0.75f);
+        put("Cr", 0.60f, 0.65f, 0.70f);
+        put("Mn", 0.72f, 0.62f, 0.55f);
+        put("Fe", 0.78f, 0.76f, 0.74f);
+        put("Ni", 0.70f, 0.75f, 0.70f);
+        put("Cu", 0.85f, 0.55f, 0.35f);
+        put("Zn", 0.75f, 0.78f, 0.82f);
+        put("Sn", 0.82f, 0.84f, 0.86f);
+        put("Pb", 0.55f, 0.58f, 0.65f);
+        put("Ag", 0.90f, 0.92f, 0.95f);
+        put("Au", 0.95f, 0.82f, 0.30f);
+        put("W", 0.45f, 0.50f, 0.55f);
+    }
+
+    /** Names the colour of one element. */
+    private static void put(String symbol, float red, float green, float blue) {
+        COLORS.put(symbol, new Color(red, green, blue, 1f));
     }
 
     /**
      * Keeps a fluid by name.
      *
-     * @param name name of the fluid, the name a save file stores
-     * @param color colour the fluid is painted in
-     * @param temperature how hot the fluid is, in kelvin
+     * @param fluid the fluid, whose name is the name a save file stores
      * @return the fluid, ready to be used by an item or a machine
      */
-    private static Fluid register(String name, Color color, float temperature) {
-        Fluid fluid = new Fluid(name, color, temperature);
-        BY_NAME.put(name, fluid);
+    private static Fluid register(Fluid fluid) {
+        BY_NAME.put(fluid.name(), fluid);
         return fluid;
     }
 

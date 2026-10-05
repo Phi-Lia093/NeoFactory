@@ -179,17 +179,15 @@ public final class Substances {
         catalog.register("potassium", "[K]", Phase.SOLID);
         catalog.register("calcium", "[Ca]", Phase.SOLID);
         // The ions a solution is written between.
-        catalog.register("proton", "[H+]", Phase.AQUEOUS);
-        catalog.register("hydroxide", "[OH-]", Phase.AQUEOUS);
-        catalog.register("sodium ion", "[Na+]", Phase.AQUEOUS);
-        catalog.register("chloride", "[Cl-]", Phase.AQUEOUS);
-        catalog.register("copper(II) ion", "[Cu+2]", Phase.AQUEOUS);
-        catalog.register("iron(II) ion", "[Fe+2]", Phase.AQUEOUS);
-        catalog.register("iron(III) ion", "[Fe+3]", Phase.AQUEOUS);
-        catalog.register("calcium ion", "[Ca+2]", Phase.AQUEOUS);
-        catalog.register("oxide ion", "[O-2]", Phase.AQUEOUS);
-        catalog.register("carbide ion", "[C-]#[C-]", Phase.AQUEOUS);
-        catalog.register("sulfate", "[O-]S(=O)(=O)[O-]", Phase.AQUEOUS);
+        // The salts and the oxides the routes of the industry are written with. Each one is read as a
+        // molecule and never as two ions: a route of the game is a hard recipe with measured amounts, so
+        // nothing here has to balance a charge, and what a tank holds is a substance a machine can weigh.
+        catalog.register("sodium chloride", "[Na]Cl", Phase.SOLID);
+        catalog.register("sodium hydroxide", "[Na]O", Phase.SOLID);
+        catalog.register("calcium oxide", "[Ca]=O", Phase.SOLID);
+        catalog.register("calcium carbide", "[Ca][C]#[C]", Phase.SOLID);
+        catalog.register("calcium hydroxide", "[Ca](O)O", Phase.SOLID);
+        catalog.register("iron(II) oxide", "O=[Fe]", Phase.SOLID);
         // The compounds the first reactions are written with.
         catalog.register("water", "O", Phase.LIQUID);
         catalog.register("carbon monoxide", "[C-]#[O+]", Phase.GAS);

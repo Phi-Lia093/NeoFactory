@@ -38,14 +38,17 @@ public final class FluidCells {
      * @return the item that carries it, or {@code null} when the game has no cell for it yet
      */
     public static Item filled(Fluid fluid) {
-        if (fluid == Fluids.WATER) {
-            return Items.WATER_CELL;
+        if (fluid == null) {
+            return null;
         }
-        if (fluid == Fluids.LAVA) {
-            return Items.LAVA_CELL;
-        }
-        if (fluid == Fluids.STEAM) {
-            return Items.STEAM_CELL;
+        // The cell of a fluid is the item that holds it, wherever it was made: the two fluids of the
+        // world were written down by hand and every substance that flows is a fluid of its own, so the
+        // table is asked instead of being spelled out twice.
+        for (Item item : ItemRegistry.all()) {
+            FluidContainer container = item.container();
+            if (container != null && container.holds(fluid)) {
+                return item;
+            }
         }
         return null;
     }

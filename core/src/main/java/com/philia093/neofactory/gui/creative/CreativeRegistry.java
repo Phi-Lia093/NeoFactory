@@ -45,7 +45,6 @@ public final class CreativeRegistry {
                 CableKind.WIRE).item(), CreativeRegistry::isCable),
             CreativeTab.items("pipes", "Pipes", Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM).item(),
                     CreativeRegistry::isPipe),
-            CreativeTab.items("fluids", "Fluids", Items.WATER_CELL, CreativeRegistry::isFluid),
             CreativeTab.items("chemical", "Chemical", Items.WATER_CELL, CreativeRegistry::isChemical),
             CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
             CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
@@ -121,7 +120,7 @@ public final class CreativeRegistry {
     /** {@code true} when an item is a raw material the game has no other group for. */
     private static boolean isMaterial(Item item) {
         return item != Items.AIR && !item.isBlockItem() && !isTool(item) && !isFood(item)
-                && !isFluid(item) && !isChemical(item);
+                && !isChemical(item);
     }
 
     /**
@@ -148,6 +147,16 @@ public final class CreativeRegistry {
      * materials: a cell of water is the water of a lake the player carries around, and the cell is
      * the shape every fluid of the industry travels in. The game has one container and no bucket, see
      * {@link com.philia093.neofactory.item.FluidCells}.
+     */
+    /**
+     * {@code true} when an item carries a fluid, which is a cell.
+     * <p>
+     * The containers belong to the chemistry: a cell of water is the water the chemistry of the industry
+     * works with and it stands in the tab of the substances with every other one of them, so no tab is
+     * needed for the fluids alone, see {@link #isChemical(Item)}.
+     *
+     * @param item item to test
+     * @return {@code true} when the item is a cell that is not the cell of a substance
      */
     private static boolean isFluid(Item item) {
         return item.isFluidContainer() && !isChemical(item);

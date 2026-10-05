@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.block.Block;
 import com.philia093.neofactory.chemistry.Blend;
 import com.philia093.neofactory.chemistry.ChemicalHolder;
+import com.philia093.neofactory.chemistry.Substance;
 
 import java.util.List;
 import java.util.Objects;
@@ -331,6 +332,32 @@ public class Item implements ChemicalHolder {
     @Override
     public Blend chemicals() {
         return chemicals;
+    }
+
+    /**
+     * The substances this item is, which is one or more of them.
+     * <p>
+     * A dust of copper is one substance, a dust of bronze is two of them side by side, a cell of water is
+     * the water it holds and a stick is none at all, see {@link #chemicals()} for the amounts. The list is
+     * what a screen and a recipe read when the amount does not matter, and it is the same list a fluid
+     * answers with, so a substance looks the same whether it is held in an item or poured in a tank, see
+     * {@link com.philia093.neofactory.fluid.Fluid#substances()}.
+     *
+     * @return the substances, empty for an item that carries none
+     */
+    public List<Substance> substances() {
+        List<Substance> found = new java.util.ArrayList<>();
+        for (Substance substance : com.philia093.neofactory.chemistry.Substances.starter().all()) {
+            if (chemicals.components().containsKey(substance.chemical())) {
+                found.add(substance);
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    /** {@code true} when this item carries at least one substance. */
+    public boolean hasSubstances() {
+        return !chemicals.isEmpty();
     }
 
     /**

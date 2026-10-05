@@ -9,6 +9,8 @@ import com.philia093.neofactory.chemistry.Fraction;
 import com.philia093.neofactory.chemistry.Phase;
 import com.philia093.neofactory.chemistry.Substance;
 import com.philia093.neofactory.chemistry.Substances;
+import com.philia093.neofactory.fluid.Fluid;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.material.MaterialForm;
 
 import java.util.ArrayList;
@@ -155,6 +157,14 @@ public final class ChemicalItems {
      */
     private static Item borrowed(Substance substance) {
         boolean solid = substance.phase() == Phase.SOLID;
+        if (!solid) {
+            // A cell of the fluid the substance is: the very container the industry has always carried a
+            // fluid in, which is what makes a substance painted like a fluid and not like a plain item.
+            Item cell = FluidCells.filled(Fluids.byName(substance.name()));
+            if (cell != null && !BY_ITEM.containsKey(cell)) {
+                return cell;
+            }
+        }
         String wanted = slug(substance.name()) + (solid ? "_dust" : "_cell");
         // The name first: a cell of water is the cell of the fluid and carries its fluid and not a pile,
         // so it is found by the name the industry has always written it with.
@@ -187,11 +197,21 @@ public final class ChemicalItems {
         String name = slug(substance.name()) + (solid ? "_dust" : "_cell");
         Item.Builder builder = Item.builder(ItemRegistry.nextId(), name)
                 .displayName(title(substance.name()) + (solid ? " Dust" : " Cell"))
-                .texture(solid ? MaterialForm.DUST.texture() : Item.ITEM_FOLDER + "fluid_cell")
                 .maxStackSize(Item.DEFAULT_MAX_STACK)
-                .tint(colorOf(substance))
-                .formula(substance.formula())
-                .chemicals(Blend.of(substance.chemical(), piece(substance)));
+                .formula(substance.formula());
+        if (solid) {
+            builder.texture(MaterialForm.DUST.texture())
+                    .tint(Fluids.colorOf(substance))
+                    .chemicals(Blend.of(substance.chemical(), piece(substance)));
+        } else {
+            // Everything that flows is a cell of the fluid the substance is: a body of steel with a window
+            // the colour of it, the very container water has always travelled in, so the picture of a
+            // substance is drawn by the same rule as the picture of a fluid.
+            builder.texture(Item.ITEM_FOLDER + "fluid_cell")
+                    .maxStackSize(Item.SINGLE_ITEM_STACK)
+                    .container(FluidContainer.cell(Fluids.byName(substance.name())))
+                    .chemicals(Blend.of(substance.chemical(), piece(substance)));
+        }
         return Items.registerChemical(builder.build());
     }
 

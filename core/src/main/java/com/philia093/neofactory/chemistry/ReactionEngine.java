@@ -7,7 +7,7 @@ import java.util.List;
  * <p>
  * The module has more than one kind of reaction and they are found in more than one way. The reactions of a
  * solution are found by balancing what is in it against the catalog, and a later stage finds the reactions
- * of an organic molecule by matching a structure, see {@link BalanceEngine} and the template engine of the
+ * of an organic molecule by matching a structure, see {@link com.philia093.neofactory.recipe.ChemicalRecipe} and the template engine of the
  * age that follows. What the two have in common is the whole of this interface: they are handed what stands
  * in the vessel and answer with the reactions that could be written there, each of them already forced
  * through {@link Conservation}.

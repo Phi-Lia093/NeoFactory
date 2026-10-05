@@ -118,6 +118,6 @@ class MachineStorageTest {
         assertEquals(Fluids.STEAM, Fluids.byName("steam"));
         assertEquals(null, Fluids.byName("oil"));
         assertEquals(null, Fluids.byName(null));
-        assertEquals(3, Fluids.all().size());
+        assertEquals(27, Fluids.all().size(), "a fluid of every liquid and gas of the catalog, and lava");
     }
 }

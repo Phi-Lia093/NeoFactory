@@ -63,7 +63,10 @@ class ItemTooltipTest {
     void anItemWithoutAFormulaDrawsASingleLine() {
         assertEquals(List.of("Stone"), ItemTooltip.linesOf(Items.STONE));
         assertEquals(List.of("Diamond"), ItemTooltip.linesOf(Items.DIAMOND));
-        assertEquals(List.of("Water Cell"), ItemTooltip.linesOf(Items.WATER_CELL));
+        assertEquals(List.of("Water Cell", "H2O"), ItemTooltip.linesOf(Items.WATER_CELL),
+                "a cell of a substance reads its formula the way a dust does");
+        assertEquals(List.of("Fluid Cell"), ItemTooltip.linesOf(Items.FLUID_CELL),
+                "and an empty cell stands for no substance at all");
     }
 
     @Test

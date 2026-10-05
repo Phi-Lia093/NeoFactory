@@ -1,7 +1,10 @@
 package com.philia093.neofactory.fluid;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.chemistry.Phase;
+import com.philia093.neofactory.chemistry.Substance;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -34,7 +37,8 @@ import java.util.Objects;
  * @param color colour the fluid is painted in, the tint of its tank and of its cell
  * @param temperature how hot the fluid is, in kelvin, always above zero
  */
-public record Fluid(String name, Color color, float temperature) {
+public record Fluid(String name, Color color, float temperature, String formula, Phase state,
+        List<Substance> substances) {
 
     /**
      * Temperature of a fluid that is written without one, the temperature of a room.
@@ -45,19 +49,45 @@ public record Fluid(String name, Color color, float temperature) {
     public static final float ROOM_TEMPERATURE = 300.0f;
 
     /**
-     * Creates a fluid of room temperature.
+     * Creates a fluid of room temperature that carries nothing.
      *
      * @param name name used by files and by the log, never blank
      * @param color colour the fluid is painted in
      */
     public Fluid(String name, Color color) {
-        this(name, color, ROOM_TEMPERATURE);
+        this(name, color, ROOM_TEMPERATURE, "", null, List.of());
+    }
+
+    /**
+     * Creates a fluid that carries nothing.
+     *
+     * @param name name used by files and by the log, never blank
+     * @param color colour the fluid is painted in
+     * @param temperature how hot the fluid is, in kelvin
+     */
+    public Fluid(String name, Color color, float temperature) {
+        this(name, color, temperature, "", null, List.of());
+    }
+
+    /**
+     * Creates a fluid that stands for one substance.
+     *
+     * @param name name used by files and by the log, never blank
+     * @param color colour the fluid is painted in
+     * @param formula the chemical formula a player reads, empty for a fluid that has none
+     * @param state whether the substance is a gas or a liquid
+     * @param substance the substance the fluid is
+     */
+    public Fluid(String name, Color color, String formula, Phase state, Substance substance) {
+        this(name, color, ROOM_TEMPERATURE, formula, state, List.of(substance));
     }
 
     /** Checks the fields, so a broken fluid fails while it is registered. */
     public Fluid {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(color, "color");
+        formula = formula == null ? "" : formula;
+        substances = List.copyOf(substances == null ? List.of() : substances);
         if (name.isBlank()) {
             throw new IllegalArgumentException("The name of a fluid must not be blank");
         }
@@ -78,6 +108,39 @@ public record Fluid(String name, Color color, float temperature) {
      */
     public boolean hotterThan(float kelvin) {
         return temperature > kelvin;
+    }
+
+    /**
+     * The chemical formula of this fluid, the way it is printed under the name of its cell.
+     *
+     * @return the formula, empty when the fluid has none - lava is a mixture and not a substance
+     */
+    public String formula() {
+        return formula;
+    }
+
+    /** {@code true} when this fluid names a formula a player reads. */
+    public boolean hasFormula() {
+        return !formula.isEmpty();
+    }
+
+    /**
+     * The substances this fluid is, in millibuckets of a full cell each.
+     * <p>
+     * A fluid is a substance and not a name of its own: water is H2O and steam is the very same water
+     * with more heat in it, so the two of them answer with the same substance and only their state
+     * differs. A fluid of the world that is no substance - the lava of a mountain - carries none, which
+     * is what tells the chemistry of the industry that nothing can be made out of it.
+     *
+     * @return the substances, empty for a fluid that is a mixture and not a substance
+     */
+    public List<Substance> substances() {
+        return substances;
+    }
+
+    /** {@code true} when this fluid is a substance the chemistry of the industry can work with. */
+    public boolean isSubstance() {
+        return !substances.isEmpty();
     }
 
     @Override

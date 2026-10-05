@@ -121,15 +121,14 @@ class ChemicalRecipeTest {
 
     @Test
     void theBrineGivesChlorineAndLye() {
-        Blend pot = Blend.of(of("sodium ion"), 200).plus(Blend.of(of("chloride"), 200))
-                .plus(Blend.of(of("water"), 200));
+        Blend pot = Blend.of(of("sodium chloride"), 200).plus(Blend.of(of("water"), 200));
 
         Outcome outcome = book().find(pot, Conditions.builder().current(true).build());
 
         assertNotNull(outcome);
         assertEquals("chlor_alkali", outcome.source());
         assertEquals(Fraction.of(100), outcome.produced().amountOf(of("chlorine")));
-        assertEquals(Fraction.of(200), outcome.produced().amountOf(of("hydroxide")));
+        assertEquals(Fraction.of(200), outcome.produced().amountOf(of("sodium hydroxide")));
     }
 
     @Test

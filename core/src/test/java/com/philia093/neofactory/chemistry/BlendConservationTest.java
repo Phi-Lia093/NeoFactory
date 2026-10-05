@@ -49,8 +49,8 @@ class BlendConservationTest {
 
     @Test
     void anAcidAndABaseMakeASaltAndWater() {
-        Blend reactants = Blend.of(of("hydrogen chloride"), 100).plus(Blend.of(of("hydroxide"), 100));
-        Blend products = Blend.of(of("chloride"), 100).plus(Blend.of(of("water"), 100));
+        Blend reactants = Blend.of(of("hydrogen chloride"), 100).plus(Blend.of(Chemical.parse("[OH-]"), 100));
+        Blend products = Blend.of(Chemical.parse("[Cl-]"), 100).plus(Blend.of(of("water"), 100));
 
         assertTrue(BlendConservation.balanced(reactants, products, 0, List.of()),
                 "the two of them need no medium at all");
@@ -58,7 +58,7 @@ class BlendConservationTest {
 
     @Test
     void aCurrentPlatesCopper() {
-        Blend ions = Blend.of(of("copper(II) ion"), 100);
+        Blend ions = Blend.of(Chemical.parse("[Cu+2]"), 100);
         Blend metal = Blend.of(of("copper"), 100);
 
         assertTrue(BlendConservation.balanced(ions, metal, 200, List.of()),

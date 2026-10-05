@@ -45,8 +45,8 @@ class SubstancesTest {
 
         assertNotNull(catalog.byName("water"));
         assertNotNull(catalog.byName("iron"));
-        assertEquals(Phase.AQUEOUS, catalog.byName("sulfate").phase());
-        assertEquals(-2, catalog.byName("sulfate").charge(), "a sulfate carries two negative charges");
+        assertEquals(Phase.SOLID, catalog.byName("sodium chloride").phase());
+        assertEquals(0, catalog.byName("sodium chloride").charge(), "a salt is read as one molecule and carries no charge");
         assertEquals("H2O4S", catalog.byName("sulfuric acid").formula(), "the Hill formula H2SO4 written out");
         assertTrue(catalog.count() > 40, "the starter catalog is a real handful of substances");
         assertFalse(catalog.contains(Chemical.parse("[Xe]"), Phase.GAS), "a rare gas is not named yet");

@@ -10,6 +10,9 @@ import com.philia093.neofactory.machine.TurbineTier;
 import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.cable.Cables;
+import com.philia093.neofactory.chemistry.Amounts;
+import com.philia093.neofactory.chemistry.Blend;
+import com.philia093.neofactory.chemistry.Substance;
 import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.pipe.Pipes;
@@ -1325,7 +1328,28 @@ public final class Items {
                 .texture(Item.ITEM_FOLDER + "fluid_cell")
                 .maxStackSize(FULL_CONTAINER_STACK)
                 .container(FluidContainer.cell(fluid))
+                .formula(fluid.formula())
+                .chemicals(pileOf(fluid))
                 .build();
+    }
+
+    /**
+     * The pile of substances a full cell of a fluid is, in millibuckets.
+     * <p>
+     * A cell is the amount of the industry, so what it carries is written into the item itself: a cell of
+     * water is a thousand millibuckets of water, whatever the water is called and wherever it is poured.
+     * A fluid that is no substance - the lava of a mountain - gives the empty pile, which is what tells a
+     * machine that nothing can be made out of it.
+     *
+     * @param fluid fluid the cell carries
+     * @return the pile, empty for a fluid that is a mixture and not a substance
+     */
+    private static Blend pileOf(Fluid fluid) {
+        Blend pile = Blend.empty();
+        for (Substance substance : fluid.substances()) {
+            pile = pile.plus(Blend.of(substance.chemical(), Amounts.FLUID_CELL));
+        }
+        return pile;
     }
 
     /**

@@ -10,7 +10,7 @@ import java.util.Objects;
  * rule every reaction of the module has to keep, see {@link Conservation}. Nothing in a reaction says how
  * fast it runs or whether it happens at all: a reaction that balances is one that could be written down,
  * and which of the balanced writings really happens is a question of heat and of a catalyst that a later
- * stage answers by ordering the candidates, see {@code BalanceEngine}.
+ * stage answers by ordering the candidates, see {@code InorganicRecipeBook}.
  * <p>
  * <b>Electrons are counted as a number and not as a substance.</b> A current is not made of atoms, so the
  * electrons a reaction takes from a circuit or hands to one cannot sit in a pile beside the substances; a

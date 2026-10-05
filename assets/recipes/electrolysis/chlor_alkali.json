@@ -1,6 +1,6 @@
 {
-  "inputs": { "sodium ion": 200, "chloride": 200, "water": 200 },
-  "outputs": { "sodium ion": 200, "hydroxide": 200, "chlorine": 100, "hydrogen": 100 },
+  "inputs": { "sodium chloride": 200, "water": 200 },
+  "outputs": { "sodium hydroxide": 200, "chlorine": 100, "hydrogen": 100 },
   "primary": "chlorine",
   "time": 15.0,
   "power": 40,
