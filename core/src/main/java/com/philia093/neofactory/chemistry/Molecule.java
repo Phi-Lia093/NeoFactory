@@ -217,14 +217,14 @@ public final class Molecule {
     /**
      * A key under which two strings that name the same molecule meet.
      * <p>
-     * The key is a graph invariant, so it never depends on the order an atom was written in. It is
-     * provisional - see {@link ProvisionalCanonicalizer} - and is replaced by the full canonical labeling
-     * of the next stage, which the catalog matches on.
+     * The key is the canonical labeling of the graph, so it never depends on the order an atom was written
+     * in and never folds two molecules that are not the same into one, see {@link Canonicalizer}. The
+     * catalog of substances matches on it.
      *
      * @return the key, never {@code null}
      */
     public String canonicalKey() {
-        return ProvisionalCanonicalizer.key(this);
+        return Canonicalizer.key(this);
     }
 
     @Override
