@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and above all the formula of the product, which is where a wrong rewriting shows itself. A hydrogenation
  * that forgot the hydrogens would come back with a formula two hydrogen short, and no count of bonds would
  * catch that - the formula does. The engine is also checked for what it must refuse: a molecule without the
- * pattern of the template, and a rewriting that makes a substance the catalog never heard of.
+ * pattern of the template. Being the organic side, it is asked for no catalog at all.
  */
 class TemplateEngineTest {
 
@@ -46,7 +46,7 @@ class TemplateEngineTest {
     @Test
     void aHydrogenationIsOneLineAndTheHydrogensFollow() {
         Substances catalog = organicCatalog();
-        TemplateEngine engine = new TemplateEngine(catalog, List.of(hydrogenation()));
+        TemplateEngine engine = new TemplateEngine(List.of(hydrogenation()));
         Mixture pot = Mixture.of(catalog.byName("ethene").chemical(), 1)
                 .plus(Mixture.of(catalog.byName("hydrogen").chemical(), 1));
 
@@ -63,7 +63,7 @@ class TemplateEngineTest {
     @Test
     void anAdditionFollowsTheSameShape() {
         Substances catalog = organicCatalog();
-        TemplateEngine engine = new TemplateEngine(catalog,
+        TemplateEngine engine = new TemplateEngine(
                 List.of(ReactionTemplate.parse("hydrochlorination",
                         "[C:1]=[C:2].[Cl:3]>>[C:1][C:2][Cl:3]")));
         Mixture pot = Mixture.of(catalog.byName("ethene").chemical(), 1)
@@ -79,7 +79,7 @@ class TemplateEngineTest {
     @Test
     void aMoleculeWithoutThePatternIsLeftAlone() {
         Substances catalog = organicCatalog();
-        TemplateEngine engine = new TemplateEngine(catalog, List.of(hydrogenation()));
+        TemplateEngine engine = new TemplateEngine(List.of(hydrogenation()));
         System pot = System.of(Mixture.of(catalog.byName("ethane").chemical(), 1), Phase.GAS);
 
         assertTrue(engine.infer(pot).isEmpty(), "ethane holds no double bond to hydrogenate");
@@ -87,16 +87,19 @@ class TemplateEngineTest {
     }
 
     @Test
-    void aProductTheCatalogDoesNotHoldIsNoProduct() {
+    void aProductTheCatalogNeverHeardOfIsStillAProduct() {
+        // The organic side is left free on purpose: a rewriting the rules allow is a reaction of the game.
         Substances catalog = new Substances()
                 .register("ethene", "C=C", Phase.GAS)
                 .register("hydrogen", "[H][H]", Phase.GAS);
-        TemplateEngine engine = new TemplateEngine(catalog, List.of(hydrogenation()));
+        TemplateEngine engine = new TemplateEngine(List.of(hydrogenation()));
         Mixture pot = Mixture.of(catalog.byName("ethene").chemical(), 1)
                 .plus(Mixture.of(catalog.byName("hydrogen").chemical(), 1));
 
-        assertTrue(engine.infer(System.of(pot, Phase.GAS)).isEmpty(),
-                "ethane is not a substance of this catalog");
+        Reaction reaction = engine.best(System.of(pot, Phase.GAS));
+
+        assertNotNull(reaction, "the engine writes what it writes and asks no catalog");
+        assertEquals("C2H6", reaction.products().composition().formula(), "and what it wrote is ethane");
     }
 
     @Test

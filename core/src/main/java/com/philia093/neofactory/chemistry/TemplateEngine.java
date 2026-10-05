@@ -35,24 +35,23 @@ import java.util.Set;
  * a single one takes on two hydrogens of its own accord and no template has to say so. That is what makes a
  * hydrogenation of any alkene one short line and still a right formula, see {@link Molecule}.
  * <p>
- * <b>A product the catalog does not hold is no product.</b> The engine writes new molecules freely, because
- * a template is a writing and not a table, but it hands a reaction over only when everything it made is a
- * substance the catalog knows: the closed world of {@link Substances} is what tells a real reaction from a
- * rewriting that happened to be arithmetically possible.
+ * <b>What a template makes is what it makes, and the catalog is not asked.</b> An organic molecule comes in
+ * so many shapes that a catalog of them would be a list nobody could finish and a route nobody could find
+ * in it; a rewriting that the rules allow is a reaction the game lets happen, whether or not anybody has
+ * heard of the molecule before. A route of the industry is written down by hand and checked, see
+ * {@link InorganicRecipe}, while the organic side is left free on purpose - a little of the rigour of a
+ * catalog traded for the room to play.
  */
 public final class TemplateEngine implements ReactionEngine {
 
-    private final Substances catalog;
     private final List<ReactionTemplate> templates;
 
     /**
-     * Creates an engine over a catalog and a handful of writings.
+     * Creates an engine over a handful of writings.
      *
-     * @param catalog the substances a reaction may hand over
      * @param templates the reactions this engine knows how to write
      */
-    public TemplateEngine(Substances catalog, List<ReactionTemplate> templates) {
-        this.catalog = Objects.requireNonNull(catalog, "catalog");
+    public TemplateEngine(List<ReactionTemplate> templates) {
         this.templates = List.copyOf(Objects.requireNonNull(templates, "templates"));
     }
 
@@ -284,7 +283,7 @@ public final class TemplateEngine implements ReactionEngine {
      * @param substrate the laid out pot
      * @param mapping where each pattern atom was tied
      * @param system the vessel the reaction runs in
-     * @return the reaction, or {@code null} when it hands over a substance the catalog does not hold
+     * @return the reaction, or {@code null} when the template cannot be carried through
      */
     private Reaction rewrite(ReactionTemplate template, Molecule pattern, Substrate substrate,
             int[] mapping, System system) {
@@ -349,11 +348,6 @@ public final class TemplateEngine implements ReactionEngine {
                     : Bond.of(first, second, value.order()));
         }
         List<Chemical> products = split(new Molecule(atoms, bonds));
-        for (Chemical chemical : products) {
-            if (!catalog.holds(chemical)) {
-                return null;
-            }
-        }
         Mixture result = Mixture.empty();
         for (Chemical chemical : products) {
             result = result.plus(Mixture.of(chemical, 1));
