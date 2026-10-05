@@ -2,6 +2,8 @@ package com.philia093.neofactory.item;
 
 import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.block.Block;
+import com.philia093.neofactory.chemistry.Blend;
+import com.philia093.neofactory.chemistry.ChemicalHolder;
 
 import java.util.List;
 import java.util.Objects;
@@ -24,8 +26,15 @@ import java.util.Objects;
  * Ids are stable: an item keeps the same id forever so that a stored inventory
  * stays readable. New items must be appended at the end of {@link Items} and the
  * value of {@link Items#NEXT_FREE_ID} has to be bumped accordingly.
+ * <p>
+ * <b>An item is a pile of substances.</b> What a machine is fed and what a reaction spends is measured in
+ * millibuckets of substances, and an item answers with the pile it is, see {@link #chemicals()}: an ingot
+ * of iron is a hundred millibuckets of iron, an ingot of bronze is copper and tin in one pile, and an item
+ * that holds no chemistry at all - a tool, a torch - answers with the empty pile. The pile of a plain item
+ * is written down once and for all here; a pile that only a stack can name, such as which acid is in a
+ * cell, travels with the stack instead, see {@link ItemStack#chemicals()}.
  */
-public class Item {
+public class Item implements ChemicalHolder {
 
     /** Folder holding every item icon, relative to the asset root. */
     public static final String ITEM_FOLDER = "items/";
@@ -58,6 +67,7 @@ public class Item {
     private final String overlayTexture;
     private final FaceTool faceTool;
     private final Battery battery;
+    private final Blend chemicals;
 
     /**
      * Creates an item that is not linked to a block.
@@ -81,6 +91,7 @@ public class Item {
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
         this.faceTool = builder.faceTool != null ? builder.faceTool : FaceTool.NONE;
         this.battery = builder.battery;
+        this.chemicals = builder.chemicals != null ? builder.chemicals : Blend.empty();
     }
 
     /**
@@ -111,6 +122,7 @@ public class Item {
         this.overlayTexture = builder.overlayTexture != null ? builder.overlayTexture : NO_TEXTURE;
         this.faceTool = builder.faceTool != null ? builder.faceTool : FaceTool.NONE;
         this.battery = builder.battery;
+        this.chemicals = builder.chemicals != null ? builder.chemicals : Blend.empty();
     }
 
     /** Unique numeric id of this item type. */
@@ -307,6 +319,21 @@ public class Item {
     }
 
     /**
+     * The pile of substances this item is, in millibuckets.
+     * <p>
+     * A plain item answers with what it was built with: an ingot of a metal is a hundred millibuckets of
+     * that metal, a dust is a hundred and a nugget ten, and an alloy is its metals side by side and not one
+     * compound, see {@code Blend}. An item that names a pile only in its stack - a plain dust, a cell -
+     * answers with the empty pile here and lets the stack say what it holds, see {@link ItemStack#chemicals()}.
+     *
+     * @return the pile, never {@code null} - the empty pile for an item that holds no chemistry
+     */
+    @Override
+    public Blend chemicals() {
+        return chemicals;
+    }
+
+    /**
      * The battery this item is.
      * <p>
      * <b>A battery is a part of an item the way a container is</b>, see {@link #container()}: the empty
@@ -413,6 +440,7 @@ public class Item {
         private String overlayTexture;
         private FaceTool faceTool;
         private Battery battery;
+        private Blend chemicals;
 
         private Builder(int id, String name) {
             this.id = id;
@@ -548,6 +576,22 @@ public class Item {
          */
         public Builder formula(String chemicalFormula) {
             this.chemicalFormula = Objects.requireNonNull(chemicalFormula, "chemicalFormula");
+            return this;
+        }
+
+        /**
+         * Sets the pile of substances this item is.
+         * <p>
+         * This is what a machine reads when it is fed the item: the substances it is made of and how much
+         * of each, in millibuckets, see {@code Blend}. A material writes it from what the material is and
+         * the shape the item comes in - a hundred millibuckets of a metal for an ingot, ten for a nugget,
+         * a hundred for a dust - and an item whose pile only its stack can name leaves it out.
+         *
+         * @param chemicals the pile, never {@code null}
+         * @return this builder
+         */
+        public Builder chemicals(Blend chemicals) {
+            this.chemicals = Objects.requireNonNull(chemicals, "chemicals");
             return this;
         }
 

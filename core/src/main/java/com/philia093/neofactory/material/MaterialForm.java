@@ -1,5 +1,7 @@
 package com.philia093.neofactory.material;
 
+import com.philia093.neofactory.chemistry.Amounts;
+import com.philia093.neofactory.chemistry.Fraction;
 import com.philia093.neofactory.item.Item;
 
 import java.util.Objects;
@@ -144,6 +146,32 @@ public enum MaterialForm {
     /** Amount of this form that fits into a single inventory slot. */
     public int maxStackSize() {
         return maxStackSize;
+    }
+
+    /**
+     * Millibuckets of a substance one piece of this form carries.
+     * <p>
+     * A shape of the industry is a measured amount of the material it is made of: a dust is a hundred
+     * millibuckets of it, an ingot a hundred, a nugget ten, a cell a thousand of whatever it was filled
+     * with, see {@code Amounts}. A shape that carries no measured amount - a plate, a gear, a spring - is
+     * the same material worked into another shape and is not a quantity a machine is fed yet, so it answers
+     * with nothing and no reaction reaches for it.
+     *
+     * @return the amount one piece of this form carries, nothing for a shape that names none
+     */
+    public Fraction millibuckets() {
+        switch (this) {
+            case DUST:
+                return Amounts.DUST;
+            case INGOT:
+                return Amounts.INGOT;
+            case NUGGET:
+                return Amounts.NUGGET;
+            case FLUID_CELL:
+                return Amounts.FLUID_CELL;
+            default:
+                return Fraction.ZERO;
+        }
     }
 
     /**

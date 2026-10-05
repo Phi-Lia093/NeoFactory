@@ -1,6 +1,10 @@
 package com.philia093.neofactory.material;
 
 import com.badlogic.gdx.graphics.Color;
+import com.philia093.neofactory.chemistry.Blend;
+import com.philia093.neofactory.chemistry.Chemical;
+import com.philia093.neofactory.chemistry.Composition;
+import com.philia093.neofactory.chemistry.Fraction;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemRegistry;
 import com.philia093.neofactory.item.Items;
@@ -678,10 +682,60 @@ public final class Materials {
                 .texture(form.texture())
                 .tint(material.color())
                 .maxStackSize(form.maxStackSize())
-                .formula(material.chemicalFormula());
+                .formula(material.chemicalFormula())
+                .chemicals(blendOf(material, form));
         if (form.hasOverlay()) {
             builder.overlayTexture(form.overlayTexture());
         }
         return builder.build();
+    }
+
+    /**
+     * The pile of substances one piece of a shape of a material is, in millibuckets.
+     * <p>
+     * The amount of the piece is the amount its shape carries - a hundred millibuckets of a metal for an
+     * ingot, a hundred for a dust, ten for a nugget - and it is split over the elements of the material in
+     * the ratio its formula names: an ingot of iron is a hundred millibuckets of iron, an ingot of bronze is
+     * seventy five of copper and twenty five of tin, and both are exact and not rounded, see {@link Blend}.
+     * <b>An alloy is its elements side by side</b>, which is what an alloy is and what keeps bronze from
+     * being read as one compound, see {@code Mixture}.
+     * <p>
+     * A material that names no formula, a shape that carries no measured amount and a formula the plain
+     * reading cannot follow all answer with the empty pile: an item a reaction cannot use is one such an
+     * item, and the pile of it is empty rather than wrong.
+     *
+     * @param material the material the shape is made of
+     * @param form the shape
+     * @return the pile one piece of it is
+     */
+    private static Blend blendOf(Material material, MaterialForm form) {
+        Fraction amount = form.millibuckets();
+        if (amount.isZero() || !material.hasChemicalFormula()) {
+            return Blend.empty();
+        }
+        Composition composition;
+        try {
+            composition = Composition.parse(material.chemicalFormula());
+        } catch (IllegalArgumentException notAPlainFormula) {
+            return Blend.empty();
+        }
+        int atoms = 0;
+        for (int count : composition.byElement().values()) {
+            atoms += count;
+        }
+        if (atoms == 0) {
+            return Blend.empty();
+        }
+        return Blend.of(elementPile(composition, amount, Fraction.of(atoms)));
+    }
+
+    /** One element of a material as a substance of its own, in the share its count is worth. */
+    private static java.util.Map<Chemical, Fraction> elementPile(Composition composition,
+            Fraction amount, Fraction atoms) {
+        java.util.Map<Chemical, Fraction> components = new java.util.LinkedHashMap<>();
+        composition.byElement().forEach((element, count) -> components.put(
+                Chemical.parse("[" + element + "]"),
+                amount.times(Fraction.of(count)).dividedBy(atoms)));
+        return components;
     }
 }

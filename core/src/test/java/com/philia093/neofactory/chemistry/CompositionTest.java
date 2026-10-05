@@ -70,6 +70,19 @@ class CompositionTest {
     }
 
     @Test
+    void aFormulaIsReadIntoTheElementsItNames() {
+        assertEquals(Composition.of(Map.of("Cu", 3, "Sn", 1)), Composition.parse("Cu3Sn"));
+        assertEquals(Composition.of(Map.of("Fe", 1)), Composition.parse("Fe"));
+        assertEquals(Composition.of(Map.of("C", 2, "H", 4)), Composition.parse("C2H4"));
+        assertEquals(Composition.of(Map.of("Fe", 1, "C", 1)), Composition.parse("FeC"));
+        assertTrue(Composition.parse("").isEmpty(), "a material of no chemistry names nothing");
+
+        assertThrows(IllegalArgumentException.class, () -> Composition.parse("(C2H4)n"),
+                "a repeat of a group is not a plain formula");
+        assertThrows(IllegalArgumentException.class, () -> Composition.parse("Xx2"));
+    }
+
+    @Test
     void aCompositionDescribesItself() {
         assertEquals("Composition(C2H6O)", Composition.of(Map.of("C", 2, "H", 6, "O", 1)).toString());
     }

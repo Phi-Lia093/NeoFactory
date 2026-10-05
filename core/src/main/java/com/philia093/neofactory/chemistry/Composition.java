@@ -70,6 +70,49 @@ public final class Composition {
         return of(Map.of(element, count));
     }
 
+    /**
+     * Reads a formula such as {@code "Cu3Sn"} into the elements it names.
+     * <p>
+     * This is the formula a material of the game carries as a string, written the way a player reads it -
+     * a symbol followed by how many of it, one after another - and not a molecule of SMILES. A formula that
+     * names something this plain reading cannot follow - a repeat of a group, {@code "(C2H4)n"} - is
+     * refused, and a caller that has no chemistry to name answers with the empty composition instead, which
+     * is what a wood and a clay of the game do.
+     *
+     * @param formula the formula, empty for nothing
+     * @return the elements the formula counts
+     * @throws IllegalArgumentException when a symbol is unknown or the formula is not that plain
+     */
+    public static Composition parse(String formula) {
+        java.util.Objects.requireNonNull(formula, "formula");
+        Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        int index = 0;
+        while (index < formula.length()) {
+            char symbol = formula.charAt(index);
+            if (!Character.isUpperCase(symbol)) {
+                throw new IllegalArgumentException(
+                        "A formula is written as symbols and counts: " + formula);
+            }
+            int from = index;
+            index++;
+            if (index < formula.length() && Character.isLowerCase(formula.charAt(index))) {
+                index++;
+            }
+            String element = formula.substring(from, index);
+            if (!Elements.isKnown(element)) {
+                throw new IllegalArgumentException("Unknown element symbol: " + element);
+            }
+            int digitsFrom = index;
+            while (index < formula.length() && Character.isDigit(formula.charAt(index))) {
+                index++;
+            }
+            int count = index > digitsFrom
+                    ? Integer.parseInt(formula.substring(digitsFrom, index)) : 1;
+            counts.merge(element, count, Integer::sum);
+        }
+        return of(counts);
+    }
+
     /** The composition of nothing of no element. */
     public static Composition empty() {
         return EMPTY;

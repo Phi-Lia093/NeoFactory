@@ -92,6 +92,15 @@ public final class SaveTags {
     public static final String COUNT = "Count";
 
     /**
+     * The pile of substances a stack carries of its own.
+     * <p>
+     * Written for a stack that names a pile only it can name - a dust of the industry, a cell - and left
+     * out for every other stack, which answers with the pile of its item. What is written is the line a
+     * pile travels as, see {@link com.philia093.neofactory.chemistry.BlendText}.
+     */
+    public static final String CHEMICALS = "Chemicals";
+
+    /**
      * Damage a stack has taken.
      * <p>
      * Written for a piece that wears out and that has really been used, so a stack of stone or a new
@@ -300,6 +309,10 @@ public final class SaveTags {
             if (stack.damage() > 0) {
                 entry.putInt(DAMAGE, stack.damage());
             }
+            String chemicals = stack.chemicalsText();
+            if (chemicals != null) {
+                entry.putString(CHEMICALS, chemicals);
+            }
             list.add(entry);
         }
         return list;
@@ -334,6 +347,7 @@ public final class SaveTags {
             // which reads as a fresh piece.
             if (!stack.isEmpty()) {
                 stack.setDamage(entry.getInt(DAMAGE, 0));
+                stack.setChemicalsText(entry.getString(CHEMICALS, ""));
             }
             inventory.set(slot, stack);
         }

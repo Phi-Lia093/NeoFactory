@@ -1,5 +1,8 @@
 package com.philia093.neofactory.item;
 
+import com.philia093.neofactory.chemistry.Blend;
+import com.philia093.neofactory.chemistry.BlendText;
+
 import java.util.Objects;
 
 /**
@@ -19,6 +22,14 @@ import java.util.Objects;
  * stored inventory as well, see {@code SaveTags}. Because the damage belongs to the stack, two
  * stacks only merge while they are worn the same: a used axe and a new one are two pieces, not one
  * pile.
+ * <p>
+ * <b>A stack may carry a pile of substances of its own.</b> Most items do not need to: an ingot of iron is
+ * a hundred millibuckets of iron without any stack saying so, and the item answers it, see
+ * {@link Item#chemicals()}. A dust and a cell of the industry are the other way round - the item is one
+ * plain thing and what a stack really holds travels with the stack - because a cell of one acid and a cell
+ * of another are one item and must not be one stack. What a stack holds is kept as the line a pile
+ * travels as, see {@link com.philia093.neofactory.chemistry.BlendText}, so it goes into a save game like
+ * the damage of a piece does.
  */
 public final class ItemStack implements Damageable {
 
@@ -30,6 +41,15 @@ public final class ItemStack implements Damageable {
 
     /** Damage taken from the life of the item, {@code 0} for a fresh piece. */
     private int damage;
+
+    /**
+     * The pile of substances this stack holds, written the way a pile travels, {@code null} for a stack
+     * that answers with the pile of its own item.
+     */
+    private String chemicals;
+
+    /** The pile of {@link #chemicals}, worked out once and kept, so a machine is not parsing every frame. */
+    private Blend parsedChemicals;
 
     private ItemStack(Item item, int count) {
         this.item = item;
@@ -49,6 +69,78 @@ public final class ItemStack implements Damageable {
             return EMPTY;
         }
         return new ItemStack(item, Math.min(count, item.maxStackSize()));
+    }
+
+    /**
+     * Creates a stack that holds a pile of substances of its own.
+     * <p>
+     * This is the stack of a dust or a cell of the industry: the item is one plain thing and what it really
+     * holds - which substances and how much of each - travels with the stack and not with the item, so a
+     * cell of one acid and a cell of another are one item and two stacks, see {@link Blend}.
+     *
+     * @param item item type to store
+     * @param count requested amount, clamped to the stack size of the item
+     * @param chemicals the pile the stack holds
+     * @return the new stack, or {@link #EMPTY} when the item is {@code null} or the amount is not positive
+     */
+    public static ItemStack of(Item item, int count, Blend chemicals) {
+        ItemStack stack = of(item, count);
+        stack.setChemicals(chemicals);
+        return stack;
+    }
+
+    /**
+     * The pile of substances this stack holds.
+     * <p>
+     * A stack that carries a pile of its own answers with it - a dust of the industry, a cell - and every
+     * other stack answers with the pile of its item, which is what an ingot of iron is without any stack
+     * saying so, see {@link Item#chemicals()}. An item that holds no chemistry at all answers with the
+     * empty pile, which is what a tool and a torch do.
+     *
+     * @return the pile, never {@code null}
+     */
+    public Blend chemicals() {
+        if (chemicals != null) {
+            if (parsedChemicals == null) {
+                parsedChemicals = BlendText.read(chemicals);
+            }
+            return parsedChemicals;
+        }
+        return item == null ? Blend.empty() : item.chemicals();
+    }
+
+    /**
+     * The pile of this stack the way it is kept, {@code null} for a stack that carries none of its own.
+     *
+     * @return the line, or {@code null}
+     */
+    public String chemicalsText() {
+        return chemicals;
+    }
+
+    /**
+     * Writes the pile this stack holds.
+     * <p>
+     * An empty pile clears what the stack carried, so a stack that was emptied of its own content answers
+     * with the pile of its item again - which is what a cell that was poured out turns back into.
+     *
+     * @param blend the pile
+     * @throws NullPointerException when the pile is {@code null}
+     */
+    public void setChemicals(Blend blend) {
+        Objects.requireNonNull(blend, "blend");
+        this.chemicals = blend.isEmpty() ? null : BlendText.write(blend);
+        this.parsedChemicals = blend.isEmpty() ? null : blend;
+    }
+
+    /**
+     * Writes the pile this stack holds from the line a save file carried.
+     *
+     * @param text the line, {@code null} and empty for a stack with none of its own
+     */
+    public void setChemicalsText(String text) {
+        this.chemicals = text == null || text.isEmpty() ? null : text;
+        this.parsedChemicals = null;
     }
 
     /** {@code true} when this stack holds no item. */
@@ -86,9 +178,17 @@ public final class ItemStack implements Damageable {
         return other != null && !isEmpty() && item == other.item;
     }
 
-    /** {@code true} when the other stack may be merged into this one. */
+    /**
+     * {@code true} when the other stack may be merged into this one.
+     * <p>
+     * Two stacks of one item only merge while they are the same in everything a slot would stop telling
+     * apart: the damage a piece has taken, and the pile of substances a stack carries. A cell of one acid
+     * and a cell of another are one item and never one stack, so merging them would pour one into the other
+     * and lose which is which.
+     */
     public boolean isStackableWith(ItemStack other) {
-        return sameItem(other) && item.isStackable() && damage == other.damage;
+        return sameItem(other) && item.isStackable() && damage == other.damage
+                && Objects.equals(chemicals, other.chemicals);
     }
 
     /**
@@ -124,6 +224,8 @@ public final class ItemStack implements Damageable {
         count -= taken;
         ItemStack split = new ItemStack(item, taken);
         split.damage = damage;
+        split.chemicals = chemicals;
+        split.parsedChemicals = parsedChemicals;
         return split;
     }
 
@@ -194,6 +296,8 @@ public final class ItemStack implements Damageable {
         }
         ItemStack copy = new ItemStack(item, count);
         copy.damage = damage;
+        copy.chemicals = chemicals;
+        copy.parsedChemicals = parsedChemicals;
         return copy;
     }
 
@@ -215,11 +319,12 @@ public final class ItemStack implements Damageable {
             return false;
         }
         ItemStack other = (ItemStack) o;
-        return item == other.item && count == other.count && damage == other.damage;
+        return item == other.item && count == other.count && damage == other.damage
+                && Objects.equals(chemicals, other.chemicals);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(item, count, damage);
+        return Objects.hash(item, count, damage, chemicals);
     }
 }

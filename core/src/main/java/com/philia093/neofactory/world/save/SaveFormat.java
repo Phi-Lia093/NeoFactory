@@ -132,8 +132,14 @@ public final class SaveFormat {
      * moved: the blocks of the transformers went behind the fifteen diodes, so no block of the game moved at
      * all, see {@code Items#TRANSFORMER_FIRST_ID} and {@code Blocks#TRANSFORMER_FIRST_ID}. A world of version
      * 19 is therefore refused for the stored items of its materials and not for its blocks.
+     * <p>
+     * <b>What version 21 changed.</b> The chemistry of the industry arrived: a stack carries the pile of
+     * substances it holds of its own, under {@code SaveTags#CHEMICALS}, for a dust and for a cell whose
+     * content only the stack can name. Nothing that a world already holds moved for it - the pile is a
+     * second reason a stack of a newer world is read as it stands - but a world of version 20 cannot be
+     * read by this build at all: the layout grew and every change of the layout bumps this number.
      */
-    public static final int DATA_VERSION = 20;
+    public static final int DATA_VERSION = 21;
 
     /** Name of the root tag of a stored world. */
     public static final String ROOT_TAG = "NeoFactory";
