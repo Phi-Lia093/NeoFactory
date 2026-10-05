@@ -1,5 +1,6 @@
 package com.philia093.neofactory.chemistry;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,13 +33,15 @@ public final class Elements {
             Set.of("B", "C", "N", "O", "P", "S", "F", "Cl", "Br", "I");
 
     /**
-     * Every element symbol of the periodic table, the ones a bracket atom may name.
+     * Every element symbol of the periodic table, in the order of their atomic numbers.
      * <p>
      * The list is written out in full on purpose. A module that accepts the element a reaction happens to
      * need today and refuses the rest would have to be widened by every later age of the industry, and the
-     * widening is exactly where a typo slips in unnoticed; a complete table fails a bad symbol at once.
+     * widening is exactly where a typo slips in unnoticed; a complete table fails a bad symbol at once. The
+     * order is the order of the numbers, so an element's atomic number is where it stands, which is what the
+     * rules of priority are read by, see {@link Cip}.
      */
-    private static final Set<String> SYMBOLS = Set.of(
+    private static final List<String> PERIODIC_TABLE = List.of(
             "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
             "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca",
             "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
@@ -51,6 +54,9 @@ public final class Elements {
             "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
             "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds",
             "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og");
+
+    /** The same table looked up by symbol. */
+    private static final Set<String> SYMBOLS = Set.copyOf(PERIODIC_TABLE);
 
     private Elements() {
         // Utility class: never instantiated.
@@ -74,5 +80,20 @@ public final class Elements {
      */
     public static boolean isOrganicSubset(String symbol) {
         return symbol != null && ORGANIC_SUBSET.contains(symbol);
+    }
+
+    /**
+     * The atomic number of an element, which is where it stands in the table.
+     * <p>
+     * The number is what every rule of priority is read by, see {@link Cip}: a bromine outranks a chlorine
+     * because thirty five is more than seventeen, and the higher number wins wherever two branches are
+     * compared.
+     *
+     * @param symbol symbol of the element
+     * @return the atomic number, {@code 0} when the symbol names no element
+     */
+    public static int atomicNumber(String symbol) {
+        int position = PERIODIC_TABLE.indexOf(symbol);
+        return position < 0 ? 0 : position + 1;
     }
 }
