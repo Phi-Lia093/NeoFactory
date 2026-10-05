@@ -72,4 +72,36 @@ class DefaultValenceTest {
         // A closed shell is the same rule with nothing taken off.
         assertEquals(4, DefaultValence.implicitHydrogens("C", 0, false, 0, 0));
     }
+
+    @Test
+    void aChargeTakesABondFromACarbonWhicheverWayItGoes() {
+        // A carbon has no lone pair to give up, so its cation and its anion both hang on three bonds.
+        assertEquals(4, DefaultValence.targetValence("C", 0));
+        assertEquals(3, DefaultValence.targetValence("C", 1), "the methyl cation");
+        assertEquals(3, DefaultValence.targetValence("C", -1), "the methyl anion");
+        // A boron is short of a pair to begin with, so its anion is the four-bonded one.
+        assertEquals(4, DefaultValence.targetValence("B", -1), "the borate");
+        assertEquals(2, DefaultValence.targetValence("B", 1));
+        // An element that holds a lone pair follows the charge instead.
+        assertEquals(4, DefaultValence.targetValence("N", 1));
+        assertEquals(1, DefaultValence.targetValence("O", -1));
+    }
+
+    @Test
+    void aCationKeepsNoHydrogensItNeverHad() {
+        // The carbon of a cation that hangs on three bonds holds no hydrogen at all.
+        assertEquals(0, DefaultValence.implicitHydrogens("C", 1, false, 3));
+        assertEquals(2, DefaultValence.implicitHydrogens("C", 1, false, 1));
+        assertEquals(2, DefaultValence.implicitHydrogens("C", -1, false, 1), "the methyl anion");
+    }
+
+    @Test
+    void theLonePairsFollowFromTheElectronsLeftOver() {
+        assertEquals(2, DefaultValence.lonePairs("O", 0, 2, 0), "water");
+        assertEquals(3, DefaultValence.lonePairs("O", -1, 1, 0), "a hydroxide");
+        assertEquals(1, DefaultValence.lonePairs("N", 0, 3, 0), "an amine");
+        assertEquals(0, DefaultValence.lonePairs("C", 1, 3, 0), "a carbocation");
+        assertEquals(1, DefaultValence.lonePairs("C", -1, 3, 0), "a carbanion");
+        assertEquals(0, DefaultValence.lonePairs("C", 0, 3, 1), "a methyl radical");
+    }
 }

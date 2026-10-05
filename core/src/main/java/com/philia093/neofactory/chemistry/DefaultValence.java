@@ -44,6 +44,17 @@ public final class DefaultValence {
     private static final Map<String, Integer> DEFAULT_VALENCE = Map.of(
             "B", 3, "C", 4, "N", 3, "O", 2, "P", 3, "S", 2, "F", 1, "Cl", 1, "Br", 1, "I", 1);
 
+    /**
+     * Valence electrons of the neutral element, the count a formal charge is taken from.
+     * <p>
+     * The number is what is left beside the bonds: an atom of the organic subset holds its valence electrons
+     * as bonds and as lone pairs, and a charge is one electron taken away or added to that count, see
+     * {@link #lonePairs}.
+     */
+    private static final Map<String, Integer> VALENCE_ELECTRONS = Map.of(
+            "B", 3, "C", 4, "N", 5, "O", 6, "P", 5, "S", 6, "F", 7, "Cl", 7, "Br", 7, "I", 7);
+
+
     private DefaultValence() {
         // Utility class: never instantiated.
     }
@@ -75,8 +86,68 @@ public final class DefaultValence {
      * @param charge formal charge of the atom
      * @return the valence the hydrogens are counted against
      */
+    /**
+     * Bonds an element falls back on once a charge is taken into account.
+     * <p>
+     * <b>The charge moves the count one way for an element that holds a lone pair and the other way for one
+     * that does not.</b> A nitrogen, an oxygen, a sulfur or a halogen is built the same way in its neutral
+     * state - some bonds and at least one lone pair - so a positive charge turns a lone pair into a bond and
+     * a negative charge turns a bond into a lone pair: the count climbs or falls with the charge, which is
+     * what makes the ammonium nitrogen hold four bonds and the hydroxide oxygen one. A carbon has no lone
+     * pair to give up, so a charge there takes a bond <em>away</em> whichever way it goes: the methyl cation
+     * and the methyl anion both hang on three, and a table that added the charge would hand the cation two
+     * hydrogens it never had. A boron is the mirror of that - it is short of a pair to begin with - so a
+     * negative charge makes the bond it was missing and a positive one takes a bond away.
+     *
+     * @param element symbol of the element, one of the organic subset
+     * @param charge formal charge of the atom
+     * @return the valence the hydrogens are counted against, never negative
+     */
     public static int targetValence(String element, int charge) {
-        return Math.max(0, defaultValence(element) + charge);
+        int base = defaultValence(element);
+        if (element.equals("C")) {
+            return Math.max(0, base - Math.abs(charge));
+        }
+        if (element.equals("B")) {
+            return Math.max(0, base - charge);
+        }
+        return Math.max(0, base + charge);
+    }
+
+    /**
+     * Valence electrons of the neutral element.
+     *
+     * @param element symbol of the element, one of the organic subset
+     * @return the count of electrons the neutral atom brings
+     * @throws IllegalArgumentException when the element is no element of the organic subset
+     */
+    public static int valenceElectrons(String element) {
+        Integer electrons = VALENCE_ELECTRONS.get(element);
+        if (electrons == null) {
+            throw new IllegalArgumentException(
+                    "The element " + element + " is no element of the organic subset");
+        }
+        return electrons;
+    }
+
+    /**
+     * The lone pairs an atom is holding, once its bonds, its charge and its unpaired electrons are known.
+     * <p>
+     * An atom brings the valence electrons of its element, a charge takes one away or adds one, every bond
+     * takes two of them into a shared pair and every unpaired electron is one on its own; what is left over
+     * is held as lone pairs, two electrons to a pair. The count is what says how an arrow may start from an
+     * atom, see {@link Arrow}, and it is never a guess: an oxygen of a water holds two pairs, a hydroxide
+     * three, a carbocation none.
+     *
+     * @param element symbol of the element, one of the organic subset
+     * @param charge formal charge of the atom
+     * @param bondOrderSum shared pairs of every bond that ends at the atom
+     * @param radicals unpaired electrons of the atom, {@code 0} for a closed shell
+     * @return the number of lone pairs, never negative
+     */
+    public static int lonePairs(String element, int charge, int bondOrderSum, int radicals) {
+        int nonbonding = valenceElectrons(element) - charge - bondOrderSum - radicals;
+        return nonbonding <= 0 ? 0 : nonbonding / 2;
     }
 
     /**
