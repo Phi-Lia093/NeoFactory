@@ -11,7 +11,6 @@ import com.philia093.neofactory.machine.Transformers;
 import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.cable.Cables;
 import com.philia093.neofactory.fluid.Fluids;
-import com.philia093.neofactory.material.MaterialForm;
 import com.philia093.neofactory.material.Materials;
 import com.philia093.neofactory.pipe.Pipes;
 
@@ -698,17 +697,6 @@ public final class Items {
     /** The mallet, the soft hammer a player turns a whole block around with. */
     public static Item MALLET;
 
-    /**
-     * The plain dust of the industry, whose substances only its stack can name.
-     * <p>
-     * This is the one item a mixture travels as when it is a solid: a dust of copper and tin together, a
-     * dust of a salt, a dust of anything the catalog knows, all of them this one item and a stack that says
-     * what is in it, see {@link ItemStack#chemicals()}.
-     */
-    public static Item CHEMICAL_DUST;
-
-    /** The plain cell of the industry, whose substances only its stack can name. */
-    public static Item CHEMICAL_FLUID_CELL;
     /** Diamond pickaxe. */
     public static Item DIAMOND_PICKAXE;
     /** Diamond axe. */
@@ -1307,21 +1295,12 @@ public final class Items {
                 .faceTool(FaceTool.MALLET)
                 .build());
 
-        // And the two plain items the chemistry of the industry travels in, which arrived after every run
-        // of items the game was planned with and therefore take the numbers behind all of them: nothing that
-        // a stored inventory names moves, see ItemRegistry#nextId. A dust of the industry is one item whose
-        // content only its stack can name - the substances it holds and how much of each, in millibuckets -
-        // and the cell of the industry is the same for a fluid; a plain dust with no stack behind it holds
-        // no chemistry at all, which is the empty pile.
-        CHEMICAL_DUST = register(Item.builder(ItemRegistry.nextId(), "chemical_dust")
-                .displayName("Chemical Dust")
-                .texture(MaterialForm.DUST.texture())
-                .build());
-        CHEMICAL_FLUID_CELL = register(Item.builder(ItemRegistry.nextId(), "chemical_fluid_cell")
-                .displayName("Chemical Cell")
-                .texture(Item.ITEM_FOLDER + "fluid_cell")
-                .maxStackSize(FULL_CONTAINER_STACK)
-                .build());
+        // And the items the substances of the chemistry of the industry travel as, which arrived after every
+        // run of items the game was planned with and therefore take the numbers behind all of them: nothing
+        // that a stored inventory names moves, see ItemRegistry#nextId. A substance is an item of its own from
+        // here on - a dust of a solid, a cell of anything that flows - and a shape the game already had for a
+        // substance is borrowed instead of being made twice, see ChemicalItems.
+        ChemicalItems.registerAll();
 
         ItemRegistry.freeze();
     }
@@ -1361,6 +1340,20 @@ public final class Items {
     private static Item register(Item item) {
         ItemRegistry.register(item);
         return item;
+    }
+
+    /**
+     * Registers an item a substance of the catalog travels as, called by {@link ChemicalItems}.
+     * <p>
+     * The substances are given their items at the very end of {@link #registerAll()}, so their
+     * registration takes the numbers behind every run of items the game was planned with and nothing that
+     * a stored inventory already names moves, see {@link ItemRegistry#nextId()}.
+     *
+     * @param item item to register
+     * @return the registered item
+     */
+    static Item registerChemical(Item item) {
+        return register(item);
     }
 
     /**

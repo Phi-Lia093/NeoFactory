@@ -86,21 +86,21 @@ class ItemStackChemicalsTest {
     }
 
     @Test
-    void aPlainDustCarriesThePileItsStackNames() {
+    void aPlainItemCarriesThePileItsStackNames() {
         Blend pile = Blend.of(COPPER, 75).plus(Blend.of(TIN, 25));
-        ItemStack dust = ItemStack.of(Items.CHEMICAL_DUST, 1, pile);
+        ItemStack dust = ItemStack.of(Items.STICK, 1, pile);
 
         assertEquals(pile, dust.chemicals());
-        assertTrue(Items.CHEMICAL_DUST.chemicals().isEmpty(), "the plain dust itself holds no pile");
-        assertTrue(ItemStack.of(Items.CHEMICAL_DUST, 1).chemicals().isEmpty(),
+        assertTrue(Items.STICK.chemicals().isEmpty(), "the plain item itself holds no pile");
+        assertTrue(ItemStack.of(Items.STICK, 1).chemicals().isEmpty(),
                 "and neither does a stack that names none");
     }
 
     @Test
     void twoStacksOfOnePileMergeAndTwoDifferentOnesDoNot() {
-        ItemStack copper = ItemStack.of(Items.CHEMICAL_DUST, 1, Blend.of(COPPER, 100));
-        ItemStack tin = ItemStack.of(Items.CHEMICAL_DUST, 1, Blend.of(TIN, 100));
-        ItemStack moreCopper = ItemStack.of(Items.CHEMICAL_DUST, 1, Blend.of(COPPER, 100));
+        ItemStack copper = ItemStack.of(Items.STICK, 1, Blend.of(COPPER, 100));
+        ItemStack tin = ItemStack.of(Items.STICK, 1, Blend.of(TIN, 100));
+        ItemStack moreCopper = ItemStack.of(Items.STICK, 1, Blend.of(COPPER, 100));
 
         assertFalse(copper.isStackableWith(tin), "two piles are two stacks however plain the item is");
         assertTrue(copper.isStackableWith(moreCopper));
@@ -110,7 +110,7 @@ class ItemStackChemicalsTest {
     @Test
     void aCopyAndASplitCarryThePile() {
         Blend pile = Blend.of(COPPER, 75);
-        ItemStack dust = ItemStack.of(Items.CHEMICAL_DUST, 4, pile);
+        ItemStack dust = ItemStack.of(Items.STICK, 4, pile);
 
         assertEquals(pile, dust.copy().chemicals());
         assertEquals(pile, dust.split(2).chemicals());
@@ -121,13 +121,13 @@ class ItemStackChemicalsTest {
     void aPileSurvivesASaveGame() {
         Blend pile = Blend.of(COPPER, Fraction.of(75)).plus(Blend.of(TIN, Fraction.of(25)));
         PlayerInventory inventory = new PlayerInventory();
-        inventory.set(3, ItemStack.of(Items.CHEMICAL_DUST, 1, pile));
+        inventory.set(3, ItemStack.of(Items.STICK, 1, pile));
 
         NbtList list = SaveTags.writeInventory(inventory);
         PlayerInventory back = new PlayerInventory();
         SaveTags.readInventory(back, list);
 
-        assertEquals(Items.CHEMICAL_DUST, back.get(3).item());
+        assertEquals(Items.STICK, back.get(3).item());
         assertEquals(pile, back.get(3).chemicals());
     }
 }

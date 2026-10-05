@@ -1,5 +1,6 @@
 package com.philia093.neofactory.gui.creative;
 
+import com.philia093.neofactory.item.ChemicalItems;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.Items;
 import com.philia093.neofactory.pipe.PipeMaterials;
@@ -45,6 +46,7 @@ public final class CreativeRegistry {
             CreativeTab.items("pipes", "Pipes", Pipes.of(PipeMaterials.BRONZE, PipeSize.MEDIUM).item(),
                     CreativeRegistry::isPipe),
             CreativeTab.items("fluids", "Fluids", Items.WATER_CELL, CreativeRegistry::isFluid),
+            CreativeTab.items("chemical", "Chemical", Items.WATER_CELL, CreativeRegistry::isChemical),
             CreativeTab.items("materials", "Materials", Items.STICK, CreativeRegistry::isMaterial),
             CreativeTab.items("food", "Food", Items.APPLE, CreativeRegistry::isFood),
             CreativeTab.items("tools", "Tools", Items.IRON_PICKAXE, CreativeRegistry::isTool),
@@ -119,7 +121,24 @@ public final class CreativeRegistry {
     /** {@code true} when an item is a raw material the game has no other group for. */
     private static boolean isMaterial(Item item) {
         return item != Items.AIR && !item.isBlockItem() && !isTool(item) && !isFood(item)
-                && !isFluid(item);
+                && !isFluid(item) && !isChemical(item);
+    }
+
+    /**
+     * {@code true} when an item is the item a substance of the catalog travels as.
+     * <p>
+     * A substance is a thing of its own to the player and not a raw material among many: a dust of
+     * carbon, a cell of water and every other shape the chemistry of the industry is carried in have a
+     * tab of their own, so the substances are found in one place and no other tab has to be read through
+     * to find the one a recipe asks for, see {@link ChemicalItems}.
+     * <p>
+     * <b>An item that already stood for a substance moves here.</b> The dust of iron and the cell of
+     * water are the items the industry has handed around since it began; they are listed with the other
+     * substances rather than left behind, so a player who looks for a dust looks in one place and finds
+     * every one of them.
+     */
+    private static boolean isChemical(Item item) {
+        return ChemicalItems.isChemical(item);
     }
 
     /**
@@ -131,7 +150,7 @@ public final class CreativeRegistry {
      * {@link com.philia093.neofactory.item.FluidCells}.
      */
     private static boolean isFluid(Item item) {
-        return item.isFluidContainer();
+        return item.isFluidContainer() && !isChemical(item);
     }
 
     /**
