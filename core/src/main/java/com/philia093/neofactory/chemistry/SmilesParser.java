@@ -55,6 +55,7 @@ public final class SmilesParser {
         List<Bond> bonds = new ArrayList<>();
         Map<Integer, RingOpening> rings = new LinkedHashMap<>();
         Deque<Integer> branches = new ArrayDeque<>();
+        List<List<Integer>> written = new ArrayList<>();
         int previous = -1;
         PendingBond pending = null;
         int index = 0;
@@ -83,16 +84,19 @@ public final class SmilesParser {
                 index++;
             } else if (symbol == '[') {
                 index = readBracketAtom(smiles, start, atoms);
-                previous = connect(bonds, atoms, previous, atoms.size() - 1, pending, start);
+                written.add(new ArrayList<>());
+                previous = connect(bonds, atoms, written, previous, atoms.size() - 1, pending, start);
                 pending = null;
             } else if (isRingDigit(symbol) || symbol == '%') {
                 int[] ring = readRingNumber(smiles, start);
                 index = ring[1];
-                previous = closeOrOpenRing(bonds, atoms, rings, ring[0], previous, pending, start);
+                previous = closeOrOpenRing(bonds, atoms, written, rings, ring[0], previous, pending,
+                        start);
                 pending = null;
             } else {
                 index = readBareAtom(smiles, start, atoms);
-                previous = connect(bonds, atoms, previous, atoms.size() - 1, pending, start);
+                written.add(new ArrayList<>());
+                previous = connect(bonds, atoms, written, previous, atoms.size() - 1, pending, start);
                 pending = null;
             }
         }
@@ -101,6 +105,11 @@ public final class SmilesParser {
         }
         if (!branches.isEmpty()) {
             throw new SmilesException("A branch is opened and never closed");
+        }
+        for (int atom = 0; atom < atoms.size(); atom++) {
+            if (atoms.get(atom).isChiral()) {
+                atoms.get(atom).markWrittenOrder(toIntArray(written.get(atom)));
+            }
         }
         Aromatizer.aromatize(atoms, bonds);
         return new Molecule(atoms, bonds);
@@ -158,14 +167,52 @@ public final class SmilesParser {
      * @param position where the atom stands, for the message of a broken string
      * @return the index of the atom, to stand as the previous one from now on
      */
-    private static int connect(List<Bond> bonds, List<Atom> atoms, int previous, int atom,
-            PendingBond pending, int position) {
+    private static int connect(List<Bond> bonds, List<Atom> atoms, List<List<Integer>> written,
+            int previous, int atom, PendingBond pending, int position) {
         if (previous >= 0) {
             bonds.add(bondBetween(previous, atom, pending, atoms));
+            remember(atoms, written, previous, atom);
+            remember(atoms, written, atom, previous);
         } else if (pending != null) {
             throw new SmilesException("A bond is drawn before any atom", position);
         }
         return atom;
+    }
+
+    /** Records a neighbour a string wrote, for an atom that is a stereocentre. */
+    private static void remember(List<Atom> atoms, List<List<Integer>> written, int atom, int neighbour) {
+        if (atoms.get(atom).isChiral()) {
+            written.get(atom).add(neighbour);
+        }
+    }
+
+    /**
+     * Reserves the place a ring bond will take in the order of a stereocentre.
+     * <p>
+     * A ring digit is written where the bond stands in the string, so the neighbour it will close to belongs
+     * at that place and not at the end: the place is kept empty now and filled when the ring closes. An atom
+     * that is no stereocentre needs no place and the answer is {@code -1}.
+     *
+     * @param atoms atoms of the molecule so far
+     * @param written the order being recorded
+     * @param atom the atom the ring is opened at
+     * @return the place that was kept, {@code -1} for an atom that is no stereocentre
+     */
+    private static int reserve(List<Atom> atoms, List<List<Integer>> written, int atom) {
+        if (!atoms.get(atom).isChiral()) {
+            return -1;
+        }
+        written.get(atom).add(-1);
+        return written.get(atom).size() - 1;
+    }
+
+    /** An ordered list of neighbour indices as a plain array. */
+    private static int[] toIntArray(List<Integer> values) {
+        int[] array = new int[values.size()];
+        for (int index = 0; index < array.length; index++) {
+            array[index] = values.get(index);
+        }
+        return array;
     }
 
     /**
@@ -205,7 +252,7 @@ public final class SmilesParser {
      * @param position where the number stands, for the message of a broken string
      * @return the index of the atom the walk stands on, unchanged
      */
-    private static int closeOrOpenRing(List<Bond> bonds, List<Atom> atoms,
+    private static int closeOrOpenRing(List<Bond> bonds, List<Atom> atoms, List<List<Integer>> written,
             Map<Integer, RingOpening> rings, int number, int previous, PendingBond pending,
             int position) {
         RingOpening opening = rings.remove(number);
@@ -213,7 +260,7 @@ public final class SmilesParser {
             if (previous < 0) {
                 throw new SmilesException("A ring is opened before any atom", position);
             }
-            rings.put(number, new RingOpening(previous, pending));
+            rings.put(number, new RingOpening(previous, pending, reserve(atoms, written, previous)));
             return previous;
         }
         if (previous < 0) {
@@ -221,6 +268,10 @@ public final class SmilesParser {
         }
         PendingBond bond = pending != null ? pending : opening.bond;
         bonds.add(bondBetween(opening.atom, previous, bond, atoms));
+        if (opening.slot >= 0) {
+            written.get(opening.atom).set(opening.slot, previous);
+        }
+        remember(atoms, written, previous, opening.atom);
         return previous;
     }
 
@@ -370,8 +421,18 @@ public final class SmilesParser {
         } else {
             throw new SmilesException("A bracket atom names no element", index);
         }
+        int chirality = Atom.NO_CHIRALITY;
+        int atSigns = 0;
         while (index < length && smiles.charAt(index) == '@') {
             index++;
+            atSigns++;
+        }
+        if (atSigns == 1) {
+            chirality = Atom.CHIRAL_ONE;
+        } else if (atSigns == 2) {
+            chirality = Atom.CHIRAL_TWO;
+        } else if (atSigns > 2) {
+            throw new SmilesException("A tetrahedral atom is written with one '@' or two", start);
         }
         int hydrogens = 0;
         if (index < length && smiles.charAt(index) == 'H') {
@@ -417,7 +478,7 @@ public final class SmilesParser {
         if (index >= length || smiles.charAt(index) != ']') {
             throw new SmilesException("A bracket atom is never closed", start);
         }
-        atoms.add(Atom.bracketed(element, charge, isotope, aromatic, hydrogens, mapClass));
+        atoms.add(Atom.bracketed(element, charge, isotope, aromatic, hydrogens, mapClass, chirality, 0));
         return index + 1;
     }
 
@@ -455,15 +516,19 @@ public final class SmilesParser {
         }
     }
 
-    /** An atom a ring number is waiting to be closed at. */
+    /** An atom a ring number is waiting to be closed at, and the place the closing neighbour takes. */
     private static final class RingOpening {
 
         private final int atom;
         private final PendingBond bond;
 
-        private RingOpening(int atom, PendingBond bond) {
+        /** Place the closing neighbour takes in the order of the atom, {@code -1} when it is no centre. */
+        private final int slot;
+
+        private RingOpening(int atom, PendingBond bond, int slot) {
             this.atom = atom;
             this.bond = bond;
+            this.slot = slot;
         }
     }
 }

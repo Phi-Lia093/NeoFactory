@@ -79,6 +79,17 @@ public final class Atom {
      */
     private int radicals;
 
+    /**
+     * The neighbours of the atom in the order a string wrote them, empty when none was read.
+     * <p>
+     * The chirality of a tetrahedral atom is not a number of its own: {@code @} and {@code @@} say which way
+     * the neighbours were listed, so the listing itself has to be kept. The first entry is the atom the walk
+     * came from and the rest follow in the order their bonds were written, which is what
+     * {@link Cip} needs to turn the mark into R or S. A stereocentre that stands alone in a molecule
+     * carries an empty listing, which is no centre at all.
+     */
+    private int[] writtenNeighbours = new int[0];
+
     private Atom(String element, int charge, int isotope, boolean aromatic, boolean bracketed,
             int hydrogens, int mapClass, int chirality, int radicals) {
         this.element = element;
@@ -328,6 +339,20 @@ public final class Atom {
     /** Writes the unpaired electrons a reader found on this atom, an {@code [O]}, an {@code [CH3]}. */
     void markRadicals(int radicals) {
         this.radicals = radicals;
+    }
+
+    /**
+     * The neighbours of this atom in the order a string wrote them, empty when none was read.
+     *
+     * @return the neighbour indices, the atom the walk came from first
+     */
+    public int[] writtenNeighbours() {
+        return writtenNeighbours.clone();
+    }
+
+    /** Writes the order a reader recorded for the neighbours of this atom. */
+    void markWrittenOrder(int[] order) {
+        this.writtenNeighbours = order.clone();
     }
 
     @Override
