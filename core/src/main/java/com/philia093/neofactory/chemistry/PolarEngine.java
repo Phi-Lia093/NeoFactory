@@ -45,7 +45,7 @@ public final class PolarEngine implements ReactionEngine {
         if (substances.isEmpty() || rules.isEmpty()) {
             return List.of();
         }
-        Pot pot = lay(substances);
+        Pot pot = lay(system.content());
         Set<FunctionalGroup> present = presence(pot.molecule());
         List<Reaction> found = new ArrayList<>();
         for (ReactionRule rule : rules) {
@@ -60,19 +60,34 @@ public final class PolarEngine implements ReactionEngine {
         return List.copyOf(found);
     }
 
-    /** A vessel laid out as one molecule, every substance numbered after the one before it. */
-    private static Pot lay(List<Chemical> substances) {
-        List<Molecule> molecules = new ArrayList<>(substances.size());
-        for (Chemical chemical : substances) {
-            molecules.add(chemical.structure());
+    /**
+     * A vessel laid out as one molecule, every substance numbered after the one before it.
+     * <p>
+     * <b>A substance that stands in the vessel more than once is laid out more than once.</b> A reaction
+     * between two molecules of one substance - the condensation of an aldehyde with itself, the closing of
+     * two of them into a ring - is not a reaction of one molecule with itself, and a vessel that was laid out
+     * once would have the two halves of it be the same half. Two copies are enough for every rule of the
+     * table, because no rule of it takes three molecules, so that is how many are laid out.
+     */
+    private static Pot lay(Mixture content) {
+        List<Chemical> substances = new ArrayList<>(content.components().keySet());
+        List<Molecule> molecules = new ArrayList<>();
+        List<Integer> origins = new ArrayList<>();
+        for (int index = 0; index < substances.size(); index++) {
+            Chemical chemical = substances.get(index);
+            int copies = Math.min(2, Math.max(1, content.amountOf(chemical)));
+            Molecule molecule = Assemblies.materialize(chemical.structure());
+            for (int copy = 0; copy < copies; copy++) {
+                molecules.add(molecule);
+                for (int step = 0; step < molecule.atomCount(); step++) {
+                    origins.add(index);
+                }
+            }
         }
         Molecule joined = Assemblies.join(molecules);
-        int[] origin = new int[joined.atomCount()];
-        int at = 0;
-        for (int index = 0; index < substances.size(); index++) {
-            for (int step = 0; step < molecules.get(index).atomCount(); step++) {
-                origin[at++] = index;
-            }
+        int[] origin = new int[origins.size()];
+        for (int atom = 0; atom < origin.length; atom++) {
+            origin[atom] = origins.get(atom);
         }
         return new Pot(joined, origin, substances);
     }

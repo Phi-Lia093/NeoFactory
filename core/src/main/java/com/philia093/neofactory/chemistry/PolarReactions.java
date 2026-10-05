@@ -36,12 +36,112 @@ public final class PolarReactions {
         rules.add(hydrolysis());
         rules.add(cyanohydrin());
         rules.add(hemiacetal());
+        rules.add(aldol());
+        rules.add(dielsAlder());
+        rules.add(esterification());
+        rules.add(esterHydrolysis());
         rules.add(hydrogenation());
         rules.add(halogenation());
         rules.add(hydrohalogenation());
         rules.add(hydration());
+        rules.add(carbonylHydrogenation());
+        rules.add(alkaneHalogenation());
         rules.add(dehydration());
+        rules.add(dehydrogenation());
         return List.copyOf(rules);
+    }
+
+    /**
+     * A carbon beside a carbonyl taking the carbon of another carbonyl, which is the one reaction that builds
+     * a carbon to carbon bond out of two ordinary molecules and the reason the family is worth having.
+     * <p>
+     * Three arrows are drawn: the pair of the carbon to hydrogen bond makes the new carbon to carbon bond,
+     * the pair of the double bond goes to the oxygen, and the hydrogen lands on that oxygen - so that the one
+     * molecule loses a hydrogen and gains a carbon, and nothing else about it moves.
+     */
+    private static ReactionRule aldol() {
+        return new ReactionRule("aldol", "condensation", EnumSet.of(FunctionalGroup.CARBONYL),
+                PolarReactions::aldol);
+    }
+
+    private static Reaction aldol(Pot pot) {
+        Molecule molecule = pot.molecule();
+        List<Site> carbonyls = Sites.carbonyls(molecule);
+        for (Site giving : carbonyls) {
+            int alpha = alphaCarbonOf(molecule, giving.atom(0));
+            if (alpha < 0) {
+                continue;
+            }
+            int hydrogen = hydrogenOn(molecule, alpha);
+            if (hydrogen < 0) {
+                continue;
+            }
+            for (Site taking : carbonyls) {
+                int carbon = taking.atom(0);
+                int oxygen = taking.atom(1);
+                // The carbon that is attacked has to stand in another molecule: beside the one that gives
+                // the hydrogen it is a bond that is already there and not a reaction at all.
+                if (carbon == alpha || bondBetween(molecule, carbon, alpha) != null) {
+                    continue;
+                }
+                List<Arrow> arrows = List.of(
+                        Arrow.betweenBonds(alpha, hydrogen, alpha, carbon),
+                        Arrow.toLonePair(carbon, oxygen),
+                        Arrow.fromLonePair(oxygen, oxygen, hydrogen));
+                Molecule product = ElementaryStep.of("aldol", arrows).apply(molecule);
+                Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1);
+                if (pot.substanceOf(alpha).equals(pot.substanceOf(carbon))) {
+                    consumed = Mixture.of(pot.substanceOf(alpha), 2);
+                } else {
+                    consumed = consumed.plus(Mixture.of(pot.substanceOf(carbon), 1));
+                }
+                return pot.react(consumed, product, 0);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A diene and a double bond closing into a ring of six, the reaction that builds the rings a drug is made
+     * of out of two flat molecules.
+     * <p>
+     * Three arrows are drawn for the one moment: the pair of the first double bond of the diene makes the
+     * bond to the first carbon of the other molecule, the pair of that molecule makes the bond to the far end
+     * of the diene, and the pair of the far double bond makes the bond between the two middle carbons - which
+     * is what closes the ring.
+     */
+    private static ReactionRule dielsAlder() {
+        return new ReactionRule("dielsAlder", "pericyclic", EnumSet.of(FunctionalGroup.ALKENE),
+                PolarReactions::dielsAlder);
+    }
+
+    private static Reaction dielsAlder(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[][] diene = dieneOf(molecule);
+        if (diene == null) {
+            return null;
+        }
+        for (Site alkene : Sites.alkenes(molecule)) {
+            int first = alkene.atom(0);
+            int second = alkene.atom(1);
+            if (isIn(diene[0], first) || isIn(diene[0], second) || isIn(diene[1], first)
+                    || isIn(diene[1], second)) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.betweenBonds(diene[0][0], diene[0][1], diene[0][0], first),
+                    Arrow.betweenBonds(first, second, second, diene[1][1]),
+                    Arrow.betweenBonds(diene[1][0], diene[1][1], diene[0][1], diene[1][0]));
+            Molecule product = ElementaryStep.of("dielsAlder", arrows).apply(molecule);
+            Mixture consumed = Mixture.of(pot.substanceOf(diene[0][0]), 1);
+            if (pot.substanceOf(diene[0][0]).equals(pot.substanceOf(first))) {
+                consumed = Mixture.of(pot.substanceOf(diene[0][0]), 2);
+            } else {
+                consumed = consumed.plus(Mixture.of(pot.substanceOf(first), 1));
+            }
+            return pot.react(consumed, product, 0);
+        }
+        return null;
     }
 
     /**
@@ -211,7 +311,7 @@ public final class PolarReactions {
     private static int plainerCarbonOf(Molecule molecule, Site alkene) {
         int first = alkene.atom(0);
         int second = alkene.atom(1);
-        return molecule.atom(first).hydrogens() >= molecule.atom(second).hydrogens() ? first : second;
+        return Sites.hydrogensOn(molecule, first) >= Sites.hydrogensOn(molecule, second) ? first : second;
     }
 
     /** An alcohol losing water and leaving a double bond behind, the hydrogen of the carbon beside it going. */
@@ -237,6 +337,224 @@ public final class PolarReactions {
                         .elimination("dehydration", alpha, alcoholOxygen, beta, hydrogen)
                         .apply(molecule);
                 return pot.react(List.of(pot.substanceOf(alpha)), product, 0);
+            }
+        }
+        return null;
+    }
+
+    /** Hydrogen across the double bond of a carbonyl, which is what takes an aldehyde down to an alcohol. */
+    private static ReactionRule carbonylHydrogenation() {
+        return new ReactionRule("carbonylHydrogenation", "reduction",
+                EnumSet.of(FunctionalGroup.CARBONYL), PolarReactions::hydrogenateCarbonyl);
+    }
+
+    private static Reaction hydrogenateCarbonyl(Pot pot) {
+        Site carbonyl = first(Sites.carbonyls(pot.molecule()));
+        int[] hydrogen = hydrogenPair(pot.molecule());
+        if (carbonyl == null || hydrogen == null) {
+            return null;
+        }
+        Molecule product = ElementaryStep
+                .across("carbonylHydrogenation", carbonyl.atom(0), carbonyl.atom(1), hydrogen[0],
+                        hydrogen[1])
+                .apply(pot.molecule());
+        return pot.react(List.of(pot.substanceOf(carbonyl.atom(0)), pot.substanceOf(hydrogen[0])),
+                product, 0);
+    }
+
+    /**
+     * An alcohol losing hydrogen and coming out a carbonyl, which is the oxidation of the industry drawn the
+     * way it is run: a copper surface takes the hydrogen off and the bond left behind becomes the double one.
+     */
+    private static ReactionRule dehydrogenation() {
+        return new ReactionRule("dehydrogenation", "oxidation",
+                EnumSet.of(FunctionalGroup.HYDROXYL), PolarReactions::dehydrogenate);
+    }
+
+    private static Reaction dehydrogenate(Pot pot) {
+        Molecule molecule = pot.molecule();
+        for (Site hydroxyl : Sites.hydroxyls(molecule)) {
+            int oxygen = hydroxyl.atom(0);
+            int carbon = hydroxyl.atom(1);
+            int hydroxylHydrogen = hydrogenOn(molecule, oxygen);
+            int carbonHydrogen = hydrogenOn(molecule, carbon);
+            Bond link = bondBetween(molecule, carbon, oxygen);
+            if (hydroxylHydrogen < 0 || carbonHydrogen < 0 || link == null || link.order() != 1
+                    || carriesCarbonyl(molecule, carbon)) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.betweenBonds(carbon, carbonHydrogen, carbonHydrogen, hydroxylHydrogen),
+                    Arrow.toLonePair(hydroxylHydrogen, oxygen),
+                    Arrow.fromLonePair(oxygen, oxygen, carbon));
+            Molecule product = ElementaryStep.of("dehydrogenation", arrows).apply(molecule);
+            return pot.react(List.of(pot.substanceOf(carbon)), product, 0);
+        }
+        return null;
+    }
+
+    /**
+     * An acid and an alcohol giving an ester and water, the reaction a polyester is made by.
+     * <p>
+     * Six arrows are drawn: the lone pair of the alcohol into the carbonyl, the pair of the double bond to
+     * the carbonyl oxygen, the acid's own hydroxyl off with the pair, the pair back into the double bond, the
+     * alcohol's hydrogen off, and that hydrogen onto the group that just left - so that the group leaves as
+     * water and not as a hydroxide.
+     */
+    private static ReactionRule esterification() {
+        return new ReactionRule("esterification", "acyl substitution",
+                EnumSet.of(FunctionalGroup.CARBOXYLIC_ACID, FunctionalGroup.HYDROXYL),
+                PolarReactions::esterify);
+    }
+
+    private static Reaction esterify(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site acid = first(Sites.acids(molecule));
+        if (acid == null) {
+            return null;
+        }
+        int carbon = acid.atom(0);
+        int carbonylOxygen = acid.atom(1);
+        int acidOxygen = acid.atom(2);
+        for (Site hydroxyl : Sites.hydroxyls(molecule)) {
+            int alcoholOxygen = hydroxyl.atom(0);
+            int alcoholHydrogen = hydrogenOn(molecule, alcoholOxygen);
+            if (alcoholOxygen == acidOxygen || alcoholHydrogen < 0
+                    || pot.substanceOf(alcoholOxygen).equals(pot.substanceOf(carbon))) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.fromLonePair(alcoholOxygen, alcoholOxygen, carbon),
+                    Arrow.toLonePair(carbon, carbonylOxygen),
+                    Arrow.toLonePair(carbon, acidOxygen),
+                    Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                    Arrow.toLonePair(alcoholHydrogen, alcoholOxygen),
+                    Arrow.fromLonePair(acidOxygen, acidOxygen, alcoholHydrogen));
+            Molecule product = ElementaryStep.of("esterification", arrows).apply(molecule);
+            Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
+                    .plus(Mixture.of(pot.substanceOf(alcoholOxygen), 1));
+            return pot.react(consumed, product, 0);
+        }
+        return null;
+    }
+
+    /** An ester and water giving the acid and the alcohol back, the same six arrows the other way round. */
+    private static ReactionRule esterHydrolysis() {
+        return new ReactionRule("esterHydrolysis", "acyl substitution",
+                EnumSet.of(FunctionalGroup.ESTER), PolarReactions::hydrolyseEster);
+    }
+
+    private static Reaction hydrolyseEster(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site ester = first(Sites.esters(molecule));
+        int[] water = water(molecule);
+        if (ester == null || water == null) {
+            return null;
+        }
+        int carbon = ester.atom(0);
+        int carbonylOxygen = ester.atom(1);
+        int esterOxygen = ester.atom(2);
+        int waterHydrogen = water[0];
+        int waterOxygen = water[1];
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(waterOxygen, waterOxygen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(carbon, esterOxygen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                Arrow.toLonePair(waterHydrogen, waterOxygen),
+                Arrow.fromLonePair(esterOxygen, esterOxygen, waterHydrogen));
+        Molecule product = ElementaryStep.of("esterHydrolysis", arrows).apply(molecule);
+        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
+                .plus(Mixture.of(pot.substanceOf(waterOxygen), 1));
+        return pot.react(consumed, product, 0);
+    }
+
+    /**
+     * A halogen taking the place of a hydrogen on a saturated carbon, the first step of the radical chemistry
+     * of the industry.
+     * <p>
+     * The two arrows are the chain written as one move: the pair of the halogen to halogen bond makes the
+     * bond to the carbon and the pair of the carbon to hydrogen bond makes the acid - so that one halogen
+     * ends up on the carbon and the other leaves with the hydrogen.
+     */
+    private static ReactionRule alkaneHalogenation() {
+        return new ReactionRule("alkaneHalogenation", "radical", EnumSet.of(FunctionalGroup.ALKYL),
+                PolarReactions::halogenateAlkane);
+    }
+
+    private static Reaction halogenateAlkane(Pot pot) {
+        Site alkyl = first(Sites.alkyls(pot.molecule()));
+        int[] halogen = halogenPair(pot.molecule());
+        if (alkyl == null || halogen == null) {
+            return null;
+        }
+        int carbon = alkyl.atom(0);
+        int hydrogen = alkyl.atom(1);
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(halogen[0], halogen[1], halogen[0], carbon),
+                Arrow.betweenBonds(carbon, hydrogen, hydrogen, halogen[1]));
+        Molecule product = ElementaryStep.of("alkaneHalogenation", arrows).apply(pot.molecule());
+        return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(halogen[0])), product, 0);
+    }
+
+    /** The carbon beside a carbonyl that carries the hydrogens an aldol takes one of, or {@code -1}. */
+    private static int alphaCarbonOf(Molecule molecule, int carbonyl) {
+        for (int neighbour : molecule.neighbours(carbonyl)) {
+            if (isElement(molecule, neighbour, "C") && Sites.hydrogensOn(molecule, neighbour) > 0) {
+                return neighbour;
+            }
+        }
+        return -1;
+    }
+
+    /** {@code true} when a carbon already carries a double bond to an oxygen. */
+    private static boolean carriesCarbonyl(Molecule molecule, int carbon) {
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() <= 1 || !bond.touches(carbon)) {
+                continue;
+            }
+            int other = bond.other(carbon);
+            if (isElement(molecule, other, "O")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The two double bonds of a conjugated diene, or {@code null} when the molecule holds none. */
+    private static int[][] dieneOf(Molecule molecule) {
+        List<Site> alkenes = Sites.alkenes(molecule);
+        for (int first = 0; first < alkenes.size(); first++) {
+            for (int second = first + 1; second < alkenes.size(); second++) {
+                for (int inner : alkenes.get(first).atoms()) {
+                    for (int other : alkenes.get(second).atoms()) {
+                        Bond link = bondBetween(molecule, inner, other);
+                        if (link == null || link.order() != 1) {
+                            continue;
+                        }
+                        int outer = alkenes.get(first).atom(0) == inner ? alkenes.get(first).atom(1)
+                                : alkenes.get(first).atom(0);
+                        int far = alkenes.get(second).atom(0) == other ? alkenes.get(second).atom(1)
+                                : alkenes.get(second).atom(0);
+                        return new int[][] {{outer, inner}, {other, far}};
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** {@code true} when an index stands among a pair. */
+    private static boolean isIn(int[] pair, int atom) {
+        return pair[0] == atom || pair[1] == atom;
+    }
+
+    /** The bond between two atoms, or {@code null} when they share none. */
+    private static Bond bondBetween(Molecule molecule, int first, int second) {
+        for (int bondIndex : molecule.bondsOf(first)) {
+            Bond bond = molecule.bonds().get(bondIndex);
+            if (bond.other(first) == second) {
+                return bond;
             }
         }
         return null;
@@ -323,8 +641,17 @@ public final class PolarReactions {
     /** The oxygen of a hydroxide ion, or {@code -1} when there is none. */
     private static int hydroxide(Molecule molecule) {
         for (int atom = 0; atom < molecule.atomCount(); atom++) {
-            if (isElement(molecule, atom, "O") && molecule.atom(atom).charge() == -1
-                    && molecule.neighbours(atom).isEmpty()) {
+            if (!isElement(molecule, atom, "O") || molecule.atom(atom).charge() != -1) {
+                continue;
+            }
+            boolean onlyHydrogens = true;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (!isElement(molecule, neighbour, "H")) {
+                    onlyHydrogens = false;
+                    break;
+                }
+            }
+            if (onlyHydrogens) {
                 return atom;
             }
         }

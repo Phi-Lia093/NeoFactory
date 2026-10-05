@@ -121,18 +121,101 @@ class PolarEngineTest {
     @Test
     void aVesselNoRuleCoversIsLeftAlone() {
         assertNull(best("c1ccccc1"), "nothing is extrapolated out of a ring of carbon");
-        assertNull(best("CCCC"), "nothing is extrapolated out of an alkane");
-        assertNull(best("CCO"), "an alcohol whose hydrogen was not written out loses nothing");
+        assertNull(best("CCCC"), "nothing is extrapolated out of an alkane with nothing to react with");
+        assertNull(best("CC=O"), "an aldehyde with nothing to add is left alone");
+    }
+
+    @Test
+    void anAlcoholWhoseHydrogensWereLeftToTheirValenceIsReadTheSameWay() {
+        // The hydrogens are written out while a vessel is laid out, so a string that leaves them to the
+        // valence is read exactly as one that spells them out.
+        Reaction spelt = best("C([H])CO");
+        Reaction plain = best("CCO");
+
+        assertNotNull(plain, "ethanol loses water whether or not its hydrogens were written out");
+        assertEquals(Set.of("C2H4", "H2O"), formulas(plain.products()));
+        assertEquals(spelt.products(), plain.products(), "the two strings are the same vessel");
     }
 
     @Test
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(8, rules.size(), "the table of the polar families");
+        assertEquals(15, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
+    }
+
+    @Test
+    void aCarbonylTakesHydrogenAndComesOutAnAlcohol() {
+        Reaction reaction = best("CC=O", "[H][H]");
+
+        assertNotNull(reaction, "ethanal and hydrogen are ethanol");
+        assertEquals(Set.of("C2H6O"), formulas(reaction.products()));
+    }
+
+    @Test
+    void aMethanolLosesHydrogenBecauseItHasNoCarbonToLoseWaterWith() {
+        // Methanol has no carbon beside the one the hydroxyl hangs on, so it cannot dehydrate; what is left
+        // for it is the oxidation, and it comes out formaldehyde and hydrogen.
+        Reaction reaction = best("CO");
+
+        assertNotNull(reaction, "methanol comes out formaldehyde");
+        assertEquals(Set.of("CH2O", "H2"), formulas(reaction.products()));
+    }
+
+    @Test
+    void twoAldehydesGiveAnAldol() {
+        // Two molecules of ethanal stand in the vessel, so one may take the hydrogen off the other.
+        Reaction reaction = best("CC=O", "CC=O");
+
+        assertNotNull(reaction, "ethanal condenses with itself");
+        assertEquals(Set.of("C4H8O2"), formulas(reaction.products()));
+        assertEquals(Mixture.of(Chemical.parse("CC=O"), 2), reaction.reactants(),
+                "and it takes two molecules of it to do so");
+    }
+
+    @Test
+    void aDieneAndADoubleBondCloseIntoARingOfSix() {
+        Reaction reaction = best("C=CC=C", "C=C");
+
+        assertNotNull(reaction, "butadiene and ethene are cyclohexene");
+        assertEquals(Set.of("C6H10"), formulas(reaction.products()));
+
+        Molecule product = only(reaction.products()).structure();
+        int carbons = 0;
+        for (int atom = 0; atom < product.atomCount(); atom++) {
+            if (product.atom(atom).element().equals("C")) {
+                carbons++;
+            }
+        }
+        assertEquals(6, carbons, "the ring is made of all six carbons");
+    }
+
+    @Test
+    void anAcidAndAnAlcoholGiveAnEster() {
+        Reaction reaction = best("CC(=O)O", "CO");
+
+        assertNotNull(reaction, "ethanoic acid and methanol are methyl ethanoate");
+        assertEquals(Set.of("C3H6O2", "H2O"), formulas(reaction.products()));
+    }
+
+    @Test
+    void anEsterAndWaterGiveTheAcidAndTheAlcoholBack() {
+        Reaction reaction = best("CC(=O)OC", "[H]O[H]");
+
+        assertNotNull(reaction, "methyl ethanoate and water");
+        assertEquals(Set.of("C2H4O2", "CH4O"), formulas(reaction.products()));
+    }
+
+    @Test
+    void aHalogenTakesThePlaceOfAHydrogenOnAnAlkane() {
+        Reaction reaction = best("CC", "ClCl");
+
+        assertNotNull(reaction, "ethane and chlorine");
+        assertEquals(Set.of("C2H5Cl", "ClH"), formulas(reaction.products()),
+                "the acid of a halogen and a hydrogen is written with the halogen first");
     }
 
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */

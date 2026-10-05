@@ -58,21 +58,36 @@ public record Pot(Molecule molecule, int[] origin, List<Chemical> substances) {
      * @throws IllegalArgumentException when the rewritten molecule is not the pot's atoms changed
      */
     public Reaction react(List<Chemical> reactants, Molecule rewritten, int electrons) {
+        Mixture pile = Mixture.empty();
+        for (Chemical chemical : new LinkedHashSet<>(reactants)) {
+            pile = pile.plus(Mixture.of(chemical, 1));
+        }
+        return react(pile, rewritten, electrons);
+    }
+
+    /**
+     * Reads what a rule did to the laid out pot back out as a reaction, for a rule that needs more than one
+     * molecule of a substance - the two halves of an aldol, the two of a self-condensation.
+     *
+     * @param reactants the substances the rule touched, with how many molecules of each
+     * @param rewritten the molecule the rule left, its atoms numbered as the pot's
+     * @param electrons electrons the reaction takes in, negative when it gives them out
+     * @return the reaction
+     * @throws IllegalArgumentException when the rewritten molecule is not the pot's atoms changed
+     */
+    public Reaction react(Mixture reactants, Molecule rewritten, int electrons) {
         if (rewritten.atomCount() != molecule.atomCount()) {
             throw new IllegalArgumentException("A reaction changes bonds and never atoms");
         }
-        Set<Chemical> taking = new LinkedHashSet<>(reactants);
-        Mixture consumed = Mixture.empty();
-        for (Chemical chemical : taking) {
-            consumed = consumed.plus(Mixture.of(chemical, 1));
-        }
+        Set<Chemical> taking = new LinkedHashSet<>(reactants.components().keySet());
         Mixture produced = Mixture.empty();
         for (List<Integer> component : components(rewritten)) {
             if (takesPart(component, taking)) {
-                produced = produced.plus(Mixture.of(Chemical.of(piece(rewritten, component)), 1));
+                produced = produced.plus(
+                        Mixture.of(Chemical.of(Assemblies.fold(piece(rewritten, component))), 1));
             }
         }
-        return Reaction.of(consumed, produced, electrons, List.of());
+        return Reaction.of(reactants, produced, electrons, List.of());
     }
 
     /** {@code true} when a piece of the rewritten molecule holds an atom of a substance the rule named. */

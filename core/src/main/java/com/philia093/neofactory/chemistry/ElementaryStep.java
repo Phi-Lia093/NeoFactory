@@ -98,6 +98,17 @@ public final class ElementaryStep {
     }
 
     /**
+     * A step of raw arrows already gathered in a list.
+     *
+     * @param name the name of the step
+     * @param arrows the arrows, in the order they are drawn
+     * @return the step
+     */
+    public static ElementaryStep of(String name, List<Arrow> arrows) {
+        return new ElementaryStep(name, arrows);
+    }
+
+    /**
      * A step of raw arrows that builds a centre, the hand of it decided by the face a ligand came in from.
      *
      * @param name the name of the step

@@ -42,6 +42,9 @@ public enum FunctionalGroup {
     /** A carbon that carries a halogen. */
     HALIDE,
 
+    /** A carbon held to a hydrogen by a plain bond, the hydrogen a radical reaction takes away. */
+    ALKYL,
+
     /** A carbon held to a nitrogen by a triple bond. */
     NITRILE,
 

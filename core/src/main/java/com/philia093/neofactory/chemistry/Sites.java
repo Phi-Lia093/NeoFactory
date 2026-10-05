@@ -34,8 +34,38 @@ public final class Sites {
         sites.addAll(esters(molecule));
         sites.addAll(hydroxyls(molecule));
         sites.addAll(halides(molecule));
+        sites.addAll(alkyls(molecule));
         sites.addAll(nitriles(molecule));
         return sites;
+    }
+
+    /**
+     * The plain carbon to hydrogen bonds of a molecule, the hydrogens a radical reaction takes away.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the carbon first and the hydrogen second
+     */
+    public static List<Site> alkyls(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() != 1 || !isCarbon(molecule, bond.first())
+                    || !molecule.atom(bond.second()).element().equals("H")
+                    || carriesMultipleBond(molecule, bond.first())) {
+                continue;
+            }
+            sites.add(new Site(FunctionalGroup.ALKYL, List.of(bond.first(), bond.second())));
+        }
+        return sites;
+    }
+
+    /** {@code true} when an atom hangs on a bond of more than the first order. */
+    private static boolean carriesMultipleBond(Molecule molecule, int atom) {
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() > 1 && bond.touches(atom)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -104,7 +134,7 @@ public final class Sites {
     public static List<Site> aldehydes(Molecule molecule) {
         List<Site> sites = new ArrayList<>();
         for (Site carbonyl : carbonyls(molecule)) {
-            if (molecule.atom(carbonyl.atom(0)).hydrogens() > 0) {
+            if (hydrogensOn(molecule, carbonyl.atom(0)) > 0) {
                 sites.add(new Site(FunctionalGroup.ALDEHYDE, carbonyl.atoms()));
             }
         }
@@ -199,15 +229,28 @@ public final class Sites {
 
     /** {@code true} when an atom carries a hydrogen, spelled out as an atom or left to its valence. */
     private static boolean carriesHydrogen(Molecule molecule, int atom) {
-        if (molecule.atom(atom).hydrogens() > 0) {
-            return true;
-        }
+        return hydrogensOn(molecule, atom) > 0;
+    }
+
+    /**
+     * How many hydrogens hang on an atom, written out as atoms or left to its valence.
+     * <p>
+     * A molecule that stands in a vessel has had its hydrogens written out, so that an arrow may name one,
+     * see {@link Assemblies#materialize}; a molecule that was read from a string has them left to the valence
+     * instead. A finder that wants to know how plain an atom is cannot tell the two apart, so it asks here.
+     *
+     * @param molecule molecule to read
+     * @param atom index of the atom
+     * @return the number of hydrogens, however they are written
+     */
+    public static int hydrogensOn(Molecule molecule, int atom) {
+        int count = molecule.atom(atom).hydrogens();
         for (int neighbour : molecule.neighbours(atom)) {
             if (molecule.atom(neighbour).element().equals("H")) {
-                return true;
+                count++;
             }
         }
-        return false;
+        return count;
     }
 
     /**
