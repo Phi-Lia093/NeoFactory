@@ -81,6 +81,22 @@ public interface Chemical {
     }
 
     /**
+     * The substance a molecule is, for one that was never read from a string.
+     * <p>
+     * A template builds a molecule out of the pieces of another one and there is no string it was written
+     * as, so the canonical key stands in as its spelling: it is unique to the molecule and settled, which
+     * is all a caller that prints it or looks it up needs. A substance of the catalog has its real string,
+     * see {@link Substance}.
+     *
+     * @param molecule the molecule
+     * @return the substance
+     * @throws IllegalArgumentException when the molecule is empty
+     */
+    static Chemical of(Molecule molecule) {
+        return of(molecule, molecule.canonicalKey());
+    }
+
+    /**
      * Reads a substance from a SMILES string.
      * <p>
      * A string that names several pieces with a dot between them names a mixture - a salt of two ions, a

@@ -110,6 +110,21 @@ public final class Substances {
         return byChemical(chemical, phase) != null;
     }
 
+    /**
+     * {@code true} when the catalog holds a molecule in any of its phases.
+     *
+     * @param chemical the molecule, in any of its writings
+     * @return {@code true} when an entry matches
+     */
+    public boolean holds(Chemical chemical) {
+        for (Phase phase : Phase.values()) {
+            if (contains(chemical, phase)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Every substance of the catalog, in the order it was added. */
     public List<Substance> all() {
         return List.copyOf(byKey.values());

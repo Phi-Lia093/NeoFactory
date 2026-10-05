@@ -402,16 +402,22 @@ public final class SmilesParser {
             }
             charge = sign == '+' ? magnitude : -magnitude;
         }
+        int mapClass = 0;
         if (index < length && smiles.charAt(index) == ':') {
             index++;
+            int from = index;
             while (index < length && isRingDigit(smiles.charAt(index))) {
                 index++;
             }
+            if (index == from) {
+                throw new SmilesException("A map number needs a number", from);
+            }
+            mapClass = Integer.parseInt(smiles.substring(from, index));
         }
         if (index >= length || smiles.charAt(index) != ']') {
             throw new SmilesException("A bracket atom is never closed", start);
         }
-        atoms.add(Atom.bracketed(element, charge, isotope, aromatic, hydrogens));
+        atoms.add(Atom.bracketed(element, charge, isotope, aromatic, hydrogens, mapClass));
         return index + 1;
     }
 

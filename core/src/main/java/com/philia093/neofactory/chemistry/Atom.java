@@ -33,6 +33,9 @@ public final class Atom {
     private final int isotope;
     private final boolean bracketed;
 
+    /** The map number a template writes on this atom, {@code 0} when it carries none. */
+    private final int mapClass;
+
     /** {@code true} when the atom lies in an aromatic ring, marked by {@link Aromatizer}. */
     private boolean aromatic;
 
@@ -40,13 +43,14 @@ public final class Atom {
     private int hydrogens;
 
     private Atom(String element, int charge, int isotope, boolean aromatic, boolean bracketed,
-            int hydrogens) {
+            int hydrogens, int mapClass) {
         this.element = element;
         this.charge = charge;
         this.isotope = isotope;
         this.aromatic = aromatic;
         this.bracketed = bracketed;
         this.hydrogens = hydrogens;
+        this.mapClass = mapClass;
     }
 
     /**
@@ -64,7 +68,7 @@ public final class Atom {
         if (!Elements.isOrganicSubset(element)) {
             throw new IllegalArgumentException("A bare atom is one of the organic subset, not " + element);
         }
-        return new Atom(element, 0, 0, aromatic, false, UNRESOLVED_HYDROGEN);
+        return new Atom(element, 0, 0, aromatic, false, UNRESOLVED_HYDROGEN, 0);
     }
 
     /**
@@ -80,13 +84,63 @@ public final class Atom {
      */
     public static Atom bracketed(String element, int charge, int isotope, boolean aromatic,
             int hydrogens) {
+        return bracketed(element, charge, isotope, aromatic, hydrogens, 0);
+    }
+
+    /**
+     * Creates one bracketed atom with the map number of a reaction template.
+     *
+     * @param element symbol of the element
+     * @param charge formal charge of the atom
+     * @param isotope mass number, {@code 0} for the natural mix
+     * @param aromatic {@code true} when the symbol was written in the lower case of an aromatic atom
+     * @param hydrogens hydrogens the brackets spelled out
+     * @param mapClass map number of a template, {@code 0} for an atom that carries none
+     * @return the atom
+     * @throws IllegalArgumentException when the element is unknown or the hydrogens are negative
+     */
+    public static Atom bracketed(String element, int charge, int isotope, boolean aromatic,
+            int hydrogens, int mapClass) {
         if (!Elements.isKnown(element)) {
             throw new IllegalArgumentException("Unknown element symbol: " + element);
         }
         if (hydrogens < 0) {
             throw new IllegalArgumentException("A bracketed atom counts its hydrogens: " + hydrogens);
         }
-        return new Atom(element, charge, isotope, aromatic, true, hydrogens);
+        return new Atom(element, charge, isotope, aromatic, true, hydrogens, mapClass);
+    }
+
+    /**
+     * Creates an atom whose hydrogens a molecule works out again, for the rewrite of a template.
+     * <p>
+     * A reaction changes the bonds around an atom, so the hydrogens that were counted before the reaction
+     * are the wrong count after it - a carbon that was double bonded and now is single holds two more than
+     * it did. An atom that is carried through a rewrite is therefore not copied with the hydrogens it had
+     * but built again with none counted, so that the {@link Molecule} it lands in fills them in from the
+     * bonds it really turns out to have, see {@link DefaultValence}.
+     *
+     * @param element symbol of the element
+     * @param charge formal charge of the atom
+     * @param isotope mass number, {@code 0} for the natural mix
+     * @param aromatic {@code true} when the atom lies in an aromatic ring
+     * @return the atom, with its hydrogens to be worked out
+     */
+    static Atom rebuilt(String element, int charge, int isotope, boolean aromatic) {
+        return rebuilt(element, charge, isotope, aromatic, 0);
+    }
+
+    /**
+     * Creates an atom whose hydrogens a molecule works out again, carrying the map number of a pattern.
+     *
+     * @param element symbol of the element
+     * @param charge formal charge of the atom
+     * @param isotope mass number, {@code 0} for the natural mix
+     * @param aromatic {@code true} when the atom lies in an aromatic ring
+     * @param mapClass map number of a template, {@code 0} for an atom that carries none
+     * @return the atom, with its hydrogens to be worked out
+     */
+    static Atom rebuilt(String element, int charge, int isotope, boolean aromatic, int mapClass) {
+        return new Atom(element, charge, isotope, aromatic, true, UNRESOLVED_HYDROGEN, mapClass);
     }
 
     /** Symbol of the element of this atom. */
@@ -112,6 +166,11 @@ public final class Atom {
     /** {@code true} when the atom was written between brackets with its charge and hydrogens spelled out. */
     public boolean isBracketed() {
         return bracketed;
+    }
+
+    /** The map number a reaction template writes on this atom, {@code 0} when it carries none. */
+    public int mapClass() {
+        return mapClass;
     }
 
     /**
