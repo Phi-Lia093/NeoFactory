@@ -2,7 +2,10 @@ package com.philia093.neofactory.chemistry;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The priority of the ligands of a stereocentre and the configuration that follows from it: the R and S of a
@@ -51,11 +54,25 @@ public final class Cip {
      */
     public static int[] ligands(Molecule molecule, int atom) {
         Atom element = molecule.atom(atom);
-        int[] written = element.writtenNeighbours();
+        Set<Integer> bonded = new HashSet<>(molecule.neighbours(atom));
         List<Integer> ligands = new ArrayList<>();
-        for (int neighbour : written) {
-            ligands.add(neighbour);
+        Set<Integer> named = new HashSet<>();
+        for (int neighbour : element.writtenNeighbours()) {
+            // A bond that was broken after the molecule was written no longer names a ligand.
+            if (bonded.contains(neighbour) && named.add(neighbour)) {
+                ligands.add(neighbour);
+            }
         }
+        // A bond that was made after the molecule was written is not in the listing, so it is added here;
+        // where it stands does not matter, because a mark is worked out from the arrangement either way.
+        List<Integer> unlisted = new ArrayList<>();
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (!named.contains(neighbour)) {
+                unlisted.add(neighbour);
+            }
+        }
+        Collections.sort(unlisted);
+        ligands.addAll(unlisted);
         if (element.hydrogens() > 0) {
             ligands.add(HYDROGEN);
         }
@@ -159,24 +176,110 @@ public final class Cip {
      * @return {@code 'R'}, {@code 'S'}, or {@code 0} when the atom is no marked stereocentre
      */
     public static char configuration(Molecule molecule, int atom) {
-        int[] ligands = ligands(molecule, atom);
         int chirality = molecule.atom(atom).chirality();
-        if (ligands == null || chirality == Atom.NO_CHIRALITY) {
+        if (chirality == Atom.NO_CHIRALITY) {
+            return 0;
+        }
+        return configurationFor(molecule, atom, chirality);
+    }
+
+    /**
+     * The configuration an atom would come out with if it were written the given way.
+     *
+     * @param molecule molecule to read
+     * @param atom index of the atom
+     * @param chirality the way the neighbours are taken to be written, one of the two or none
+     * @return {@code 'R'}, {@code 'S'}, or {@code 0} when the atom is no centre
+     */
+    private static char configurationFor(Molecule molecule, int atom, int chirality) {
+        int[] ligands = ligands(molecule, atom);
+        if (ligands == null) {
             return 0;
         }
         int[] ranks = ranks(molecule);
-        for (int first = 0; first < 4; first++) {
-            for (int second = first + 1; second < 4; second++) {
-                if (priority(ranks, ligands[first]) == priority(ranks, ligands[second])) {
-                    return 0;
-                }
-            }
+        if (!distinct(ranks, ligands)) {
+            return 0;
         }
         double[][] place = tetrahedron(chirality);
         Integer[] order = {0, 1, 2, 3};
         Arrays.sort(order, (first, second) -> Integer.compare(priority(ranks, ligands[second]),
                 priority(ranks, ligands[first])));
         double volume = volume(place[order[0]], place[order[1]], place[order[2]], place[order[3]]);
+        if (volume > FLAT) {
+            return 'S';
+        }
+        return volume < -FLAT ? 'R' : 0;
+    }
+
+    /**
+     * The mark an atom has to be written with to come out with a configuration.
+     * <p>
+     * A step of a reaction does not know which way round the neighbours of the atom it built will end up
+     * being listed - that is a fact about the walk that wrote the molecule - but it does know which hand it
+     * means to make. The answer is therefore the mark that names that hand under the listing the molecule
+     * really has, which is what lets a rule say "this carbon comes out S" and be obeyed.
+     *
+     * @param molecule molecule to read
+     * @param atom index of the atom
+     * @param configuration the hand wanted, {@code 'R'} or {@code 'S'}
+     * @return {@link Atom#CHIRAL_ONE} or {@link Atom#CHIRAL_TWO}, or {@link Atom#NO_CHIRALITY} when the atom
+     *         is no centre at all
+     */
+    public static int markFor(Molecule molecule, int atom, char configuration) {
+        if (configurationFor(molecule, atom, Atom.CHIRAL_ONE) == configuration) {
+            return Atom.CHIRAL_ONE;
+        }
+        if (configurationFor(molecule, atom, Atom.CHIRAL_TWO) == configuration) {
+            return Atom.CHIRAL_TWO;
+        }
+        return Atom.NO_CHIRALITY;
+    }
+
+    /**
+     * The configuration a flat centre takes when a ligand comes in from one of its faces.
+     * <p>
+     * An atom joined by a double bond is flat: its three ligands stand in one plane and the incoming one
+     * comes from above or below it. The three are put in the order of their priority and spread a third of a
+     * turn apart, the incoming ligand is set down in front, and which way round the three spread is the whole
+     * difference between the two faces, see {@link Face}. The four ligands that result are then ordered by
+     * their priority and the sign of the volume of the tetrahedron decides R or S, exactly as it does for a
+     * centre that was written down, see {@link #configuration}.
+     *
+     * @param molecule molecule the attack was carried out on, the incoming ligand included
+     * @param centre index of the flat atom that was attacked
+     * @param incoming index of the ligand that came in
+     * @param face the face it came in from
+     * @return {@code 'R'}, {@code 'S'}, or {@code 0} when the centre does not have three other ligands
+     */
+    public static char afterFace(Molecule molecule, int centre, int incoming, Face face) {
+        List<Integer> others = new ArrayList<>();
+        for (int neighbour : molecule.neighbours(centre)) {
+            if (neighbour != incoming) {
+                others.add(neighbour);
+            }
+        }
+        if (molecule.atom(centre).hydrogens() > 0) {
+            others.add(HYDROGEN);
+        }
+        if (others.size() != 3) {
+            return 0;
+        }
+        int[] ranks = ranks(molecule);
+        others.sort((first, second) -> Integer.compare(priority(ranks, second), priority(ranks, first)));
+        double radius = 2.0 * Math.sqrt(2.0) / 3.0;
+        double turn = face == Face.RE ? -1.0 : 1.0;
+        double[][] corners = new double[4][3];
+        corners[0] = new double[] {0.0, 0.0, 1.0};
+        for (int index = 0; index < 3; index++) {
+            double angle = turn * index * 2.0 * Math.PI / 3.0;
+            corners[index + 1] = new double[] {radius * Math.cos(angle), radius * Math.sin(angle),
+                    -1.0 / 3.0};
+        }
+        int[] ligands = {incoming, others.get(0), others.get(1), others.get(2)};
+        Integer[] order = {0, 1, 2, 3};
+        Arrays.sort(order, (first, second) -> Integer.compare(priority(ranks, ligands[second]),
+                priority(ranks, ligands[first])));
+        double volume = volume(corners[order[0]], corners[order[1]], corners[order[2]], corners[order[3]]);
         if (volume > FLAT) {
             return 'S';
         }

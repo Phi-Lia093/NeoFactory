@@ -35,16 +35,7 @@ public final class Stereocentre {
     public static Molecule apply(Molecule molecule, int atom, StereoOutcome outcome) {
         Objects.requireNonNull(molecule, "molecule");
         Objects.requireNonNull(outcome, "outcome");
-        List<Atom> atoms = new ArrayList<>(molecule.atomCount());
-        for (int index = 0; index < molecule.atomCount(); index++) {
-            Atom old = molecule.atom(index);
-            int chirality = index == atom ? outcome.chirality(old.chirality()) : old.chirality();
-            Atom fresh = Atom.rebuilt(old.element(), old.charge(), old.isotope(), old.isAromatic(),
-                    old.mapClass(), chirality, old.radicals());
-            fresh.markWrittenOrder(old.writtenNeighbours());
-            atoms.add(fresh);
-        }
-        return new Molecule(atoms, new ArrayList<>(molecule.bonds()));
+        return withChirality(molecule, atom, outcome.chirality(molecule.atom(atom).chirality()));
     }
 
     /**
@@ -56,5 +47,37 @@ public final class Stereocentre {
      */
     public static Molecule invert(Molecule molecule, int atom) {
         return apply(molecule, atom, StereoOutcome.INVERT);
+    }
+
+    /**
+     * Writes a hand on an atom, whatever it carried before.
+     * <p>
+     * An inversion is a statement about the atom and not about the molecule, but a step of a reaction that
+     * builds a centre has no old hand to turn over: it knows only which one it means to make. This is that
+     * step's way of saying so - the mark is worked out for the listing the molecule really has, so the hand
+     * that comes out is the hand that was asked for, see {@link Cip#markFor}.
+     *
+     * @param molecule molecule to write on
+     * @param atom the atom to write a hand on
+     * @param configuration the hand wanted, {@code 'R'} or {@code 'S'}
+     * @return the molecule with that hand on that atom
+     */
+    public static Molecule set(Molecule molecule, int atom, char configuration) {
+        Objects.requireNonNull(molecule, "molecule");
+        return withChirality(molecule, atom, Cip.markFor(molecule, atom, configuration));
+    }
+
+    /** Every atom of a molecule built again, one of them with a named chirality. */
+    private static Molecule withChirality(Molecule molecule, int atom, int chirality) {
+        List<Atom> atoms = new ArrayList<>(molecule.atomCount());
+        for (int index = 0; index < molecule.atomCount(); index++) {
+            Atom old = molecule.atom(index);
+            int value = index == atom ? chirality : old.chirality();
+            Atom fresh = Atom.rebuilt(old.element(), old.charge(), old.isotope(), old.isAromatic(),
+                    old.mapClass(), value, old.radicals());
+            fresh.markWrittenOrder(old.writtenNeighbours());
+            atoms.add(fresh);
+        }
+        return new Molecule(atoms, new ArrayList<>(molecule.bonds()));
     }
 }
