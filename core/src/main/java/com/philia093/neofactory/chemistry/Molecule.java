@@ -41,6 +41,9 @@ public final class Molecule {
     private final Composition composition;
     private final int charge;
 
+    /** The canonical key of this molecule, worked out once and kept, see {@link #canonicalKey()}. */
+    private String canonicalKey;
+
     Molecule(List<Atom> atoms, List<Bond> bonds) {
         this.atoms = List.copyOf(atoms);
         this.bonds = List.copyOf(bonds);
@@ -219,12 +222,16 @@ public final class Molecule {
      * <p>
      * The key is the canonical labeling of the graph, so it never depends on the order an atom was written
      * in and never folds two molecules that are not the same into one, see {@link Canonicalizer}. The
-     * catalog of substances matches on it.
+     * catalog of substances matches on it, and the key of a molecule is worked out once and kept, because a
+     * solver asks for it on every substance it looks at and a labeling is not free.
      *
      * @return the key, never {@code null}
      */
     public String canonicalKey() {
-        return Canonicalizer.key(this);
+        if (canonicalKey == null) {
+            canonicalKey = Canonicalizer.key(this);
+        }
+        return canonicalKey;
     }
 
     @Override
