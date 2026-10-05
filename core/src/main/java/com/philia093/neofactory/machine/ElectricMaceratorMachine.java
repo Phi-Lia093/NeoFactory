@@ -28,7 +28,7 @@ public class ElectricMaceratorMachine extends ElectricMachine {
     /** The row of {@link MachineFamilies} this machine is built from. */
     public static final MachineFamilies.Family FAMILY = new MachineFamilies.Family(
             "macerator", "Macerator", List.of(RecipeType.GRINDING),
-            List.of(SlotKind.SMELTING), List.of(SlotKind.GENERIC), ElectricMachine.STANDARD_AMPS,
+            List.of(SlotKind.SMELTING), List.of(SlotKind.GENERIC), 0, 0, ElectricMachine.STANDARD_AMPS,
             ElectricMaceratorMachine::new);
 
     /**

@@ -37,7 +37,8 @@ Add-Type -AssemblyName System.Drawing
 $TILE = 16
 
 # The machines of the line: the folder of the pack, which is also the name the block is registered under.
-$Families = @('electric_furnace', 'macerator', 'compressor', 'extractor', 'hammer', 'alloy_smelter')
+$Families = @('electric_furnace', 'macerator', 'compressor', 'extractor', 'hammer', 'alloy_smelter',
+    'chemical_reactor', 'electrolyzer')
 
 # The tiers of the line, every one of them a casing of its own.
 $Tiers = @('lv', 'mv', 'hv')

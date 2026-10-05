@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "basicmachines/chemical_reactor/chemical_reactor_mv_bottom", "cullface": "down" },
+        "up": { "texture": "basicmachines/chemical_reactor/chemical_reactor_mv_top", "cullface": "up" },
+        "north": { "texture": "basicmachines/chemical_reactor/chemical_reactor_mv_front", "cullface": "north" },
+        "south": { "texture": "basicmachines/chemical_reactor/chemical_reactor_mv_side", "cullface": "south" },
+        "west": { "texture": "basicmachines/chemical_reactor/chemical_reactor_mv_side", "cullface": "west" },
+        "east": { "texture": "basicmachines/chemical_reactor/chemical_reactor_mv_side", "cullface": "east" }
+      }
+    }
+  ]
+}

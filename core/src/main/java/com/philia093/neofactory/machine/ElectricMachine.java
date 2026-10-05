@@ -77,14 +77,34 @@ public class ElectricMachine extends RecipeMachine {
      */
     protected ElectricMachine(MachineScreen screen, MachineInventory inventory, Voltage tier,
             int maxAmps, List<RecipeType> recipeTypes) {
+        this(screen, inventory, tier, maxAmps, recipeTypes, new MachineTank[0]);
+    }
+
+    /**
+     * Creates a machine of the electric age that also holds tanks of fluid.
+     * <p>
+     * The tanks are what a machine of the chemistry is fed with as well as its slots: a route of the
+     * industry names substances in millibuckets, so what is a gas or a liquid arrives in a tank and what
+     * is a solid arrives in a slot, see {@link com.philia093.neofactory.recipe.ChemicalRecipe}. The screen
+     * of the machine draws one tank per one of them at the foot of its panel.
+     *
+     * @param screen how this machine is shown, which decides how many tanks the panel draws
+     * @param inventory inventory whose slots carry the roles of the machine
+     * @param tier tier this machine was built for
+     * @param maxAmps largest current this machine takes, in amperes
+     * @param recipeTypes types of recipe the machine reads
+     * @param tanks tanks of fluid the machine holds, in the order the panel draws them
+     */
+    protected ElectricMachine(MachineScreen screen, MachineInventory inventory, Voltage tier,
+            int maxAmps, List<RecipeType> recipeTypes, MachineTank... tanks) {
         this(screen, inventory.withRole(MachineInventory.Role.ENERGY), recipeTypes, tier,
-                Math.max(1, maxAmps), bufferOf(tier, maxAmps));
+                Math.max(1, maxAmps), bufferOf(tier, maxAmps), tanks);
     }
 
     /** Creates a machine whose buffer was built before this constructor, so that the field is set once. */
     private ElectricMachine(MachineScreen screen, MachineInventory inventory, List<RecipeType> recipeTypes,
-            Voltage tier, int maxAmps, MachineEnergyStorage buffer) {
-        super(screen, inventory, buffer, recipeTypes);
+            Voltage tier, int maxAmps, MachineEnergyStorage buffer, MachineTank... tanks) {
+        super(screen, inventory, buffer, recipeTypes, tanks);
         this.tier = Objects.requireNonNull(tier, "tier");
         this.maxAmps = maxAmps;
         this.buffer = buffer;

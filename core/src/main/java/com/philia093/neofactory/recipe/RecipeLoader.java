@@ -198,7 +198,7 @@ public final class RecipeLoader {
         for (JsonValue medium : elementsOf(root.get("medium"))) {
             route.medium(substance(name, catalog, medium.asString()).chemical());
         }
-        return new ChemicalRecipe(name, type, route.build(), List.of(),
+        return new ChemicalRecipe(name, type, route.build(),
                 readMainProduct(name, catalog, root),
                 root.getFloat("time", ChemicalRecipe.DEFAULT_SECONDS), root.getInt("power", 0),
                 root.getInt("voltage", Voltage.ULTRA_LOW.euPerTick()));

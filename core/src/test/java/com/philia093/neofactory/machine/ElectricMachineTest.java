@@ -338,7 +338,7 @@ class ElectricMachineTest {
 
     @Test
     void everyFamilyAndTierOfTheLineIsAMachineOfItsOwn() {
-        assertEquals(18, MachineFamilies.all().size() * MachineFamilies.TIERS.size(),
+        assertEquals(24, MachineFamilies.all().size() * MachineFamilies.TIERS.size(),
                 "six families of three tiers make the machines of the line");
 
         for (MachineFamilies.Family family : MachineFamilies.all()) {
@@ -366,8 +366,10 @@ class ElectricMachineTest {
                 assertEquals(ProgressKind.GENERIC, screen.progress());
                 assertEquals(family.inputs(), screen.inputs());
                 assertEquals(family.outputs(), screen.outputs());
-                assertEquals(0, screen.fluidInputs() + screen.fluidOutputs(),
-                        "a machine of the line holds no tank: the power arrives over a line");
+                assertEquals(family.fluidInputs(), screen.fluidInputs());
+                assertEquals(family.fluidOutputs(), screen.fluidOutputs());
+                assertEquals(family.fluidInputs() + family.fluidOutputs(), machine.tankCount(),
+                        name + " holds the tanks its family names and no others");
 
                 // And the shape of the machine is really on disk, see import_basicmachines.ps1.
                 assertPresent("blocks/" + family.pictureOf(tier, "front") + ".png");

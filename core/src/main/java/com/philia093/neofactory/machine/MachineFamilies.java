@@ -48,7 +48,8 @@ public final class MachineFamilies {
      * @param factory the type a machine of the family is created as
      */
     public record Family(String name, String display, List<RecipeType> recipeTypes, List<SlotKind> inputs,
-            List<SlotKind> outputs, int maxAmps, Function<Voltage, ElectricMachine> factory) {
+            List<SlotKind> outputs, int fluidInputs, int fluidOutputs, int maxAmps,
+            Function<Voltage, ElectricMachine> factory) {
 
         public Family {
             Objects.requireNonNull(name, "name");
@@ -94,7 +95,7 @@ public final class MachineFamilies {
          */
         public MachineScreen screenOf(Voltage tier) {
             return new MachineScreen(titleOf(tier), MachineStyle.NORMAL, ProgressKind.GENERIC, inputs, outputs,
-                    0, 0, false);
+                    fluidInputs, fluidOutputs, false);
         }
 
         /**
@@ -149,7 +150,9 @@ public final class MachineFamilies {
             ElectricCompressorMachine.FAMILY,
             ElectricExtractorMachine.FAMILY,
             ElectricForgeHammerMachine.FAMILY,
-            ElectricAlloySmelterMachine.FAMILY);
+            ElectricAlloySmelterMachine.FAMILY,
+            ChemicalReactorMachine.FAMILY,
+            ElectrolyzerMachine.FAMILY);
 
     private MachineFamilies() {
         // Utility class: never instantiated.

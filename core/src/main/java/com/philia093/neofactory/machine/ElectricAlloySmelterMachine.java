@@ -35,6 +35,7 @@ public class ElectricAlloySmelterMachine extends ElectricMachine {
     public static final MachineFamilies.Family FAMILY = new MachineFamilies.Family(
             "alloy_smelter", "Alloy Smelter", List.of(RecipeType.ALLOY_SMELTING),
             List.of(SlotKind.SMELTING, SlotKind.SMELTING), List.of(SlotKind.GENERIC),
+            0, 0,
             ElectricMachine.STANDARD_AMPS, ElectricAlloySmelterMachine::new);
 
     /**

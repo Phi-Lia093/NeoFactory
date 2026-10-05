@@ -1,0 +1,16 @@
+{
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "basicmachines/electrolyzer/electrolyzer_lv_bottom", "cullface": "down" },
+        "up": { "texture": "basicmachines/electrolyzer/electrolyzer_lv_top", "cullface": "up" },
+        "north": { "texture": "basicmachines/electrolyzer/electrolyzer_lv_front", "cullface": "north" },
+        "south": { "texture": "basicmachines/electrolyzer/electrolyzer_lv_side", "cullface": "south" },
+        "west": { "texture": "basicmachines/electrolyzer/electrolyzer_lv_side", "cullface": "west" },
+        "east": { "texture": "basicmachines/electrolyzer/electrolyzer_lv_side", "cullface": "east" }
+      }
+    }
+  ]
+}
