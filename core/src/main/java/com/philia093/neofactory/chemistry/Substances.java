@@ -197,6 +197,7 @@ public final class Substances {
         catalog.register("sulfur dioxide", "O=S=O", Phase.GAS);
         catalog.register("hydrogen chloride", "Cl", Phase.GAS);
         catalog.register("methanol", "CO", Phase.LIQUID);
+        catalog.register("dimethyl ether", "COC", Phase.GAS);
         catalog.register("ethanol", "CCO", Phase.LIQUID);
         catalog.register("acetic acid", "CC(=O)O", Phase.LIQUID);
         catalog.register("benzene", "c1ccccc1", Phase.LIQUID);

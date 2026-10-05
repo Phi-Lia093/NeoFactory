@@ -1,9 +1,7 @@
 package com.philia093.neofactory.chemistry;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * The one rule every reaction of the module has to keep: the atoms and the charge both have to come out.
@@ -107,69 +105,21 @@ public final class Conservation {
      * {@code true} when a difference can be written as whole numbers of the background substances.
      * <p>
      * With no background at all the difference has to be nothing, which is a reaction in a closed vessel;
-     * with one or a few background substances the difference has to be a whole number of them, which is
-     * found by trying the whole numbers that could reach it, one substance at a time, and giving up as soon
-     * as one substance can touch an element no substance below it can, see {@link #reachable}.
+     * with one or a few background substances the difference has to be a whole number of them, which
+     * {@link Lattice} works out. The change of a reaction is written in whole atoms here and the substances
+     * of the medium are whole molecules, and the lattice is told both of them in the same scale - a molecule
+     * being one millibucket of its atoms - so that the two levels of the module ask one question and not
+     * two, see {@link ElementAmounts}.
      *
      * @param difference what the reaction changed
      * @param background substances that may move whole and unnumbered
      * @return {@code true} when the difference is a whole number of them
      */
     private static boolean inBackground(Composition difference, List<Chemical> background) {
-        if (difference.isEmpty()) {
-            return true;
-        }
-        if (background.isEmpty()) {
-            return false;
-        }
-        List<Composition> vectors = new ArrayList<>(background.size());
+        List<ElementAmounts> vectors = new ArrayList<>(background.size());
         for (Chemical chemical : background) {
-            vectors.add(chemical.composition());
+            vectors.add(ElementAmounts.of(chemical.composition()));
         }
-        return reachable(difference, vectors, 0, bound(difference, vectors));
-    }
-
-    /** A whole number big enough for every background substance, and then a little. */
-    private static int bound(Composition difference, List<Composition> vectors) {
-        int largest = 0;
-        for (int value : difference.byElement().values()) {
-            largest = Math.max(largest, Math.abs(value));
-        }
-        for (Composition vector : vectors) {
-            for (int value : vector.byElement().values()) {
-                largest = Math.max(largest, Math.abs(value));
-            }
-        }
-        return largest + 1;
-    }
-
-    /** Tries every whole number of one background substance and hands the rest to the ones behind it. */
-    private static boolean reachable(Composition difference, List<Composition> vectors, int index,
-            int bound) {
-        if (index == vectors.size()) {
-            return difference.isEmpty();
-        }
-        for (int coefficient = -bound; coefficient <= bound; coefficient++) {
-            Composition rest = difference.minus(vectors.get(index).times(coefficient));
-            if (reachableAtAll(rest, vectors, index + 1)
-                    && reachable(rest, vectors, index + 1, bound)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Gives up early when an element of the rest is one no substance behind this one can touch. */
-    private static boolean reachableAtAll(Composition rest, List<Composition> vectors, int from) {
-        Set<String> covered = new HashSet<>();
-        for (int index = from; index < vectors.size(); index++) {
-            covered.addAll(vectors.get(index).elements());
-        }
-        for (String element : rest.elements()) {
-            if (!covered.contains(element)) {
-                return false;
-            }
-        }
-        return true;
+        return Lattice.inBackground(ElementAmounts.of(difference), vectors);
     }
 }

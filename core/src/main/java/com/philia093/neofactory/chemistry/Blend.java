@@ -181,17 +181,16 @@ public final class Blend {
      *
      * @return the amount of every element, empty amounts dropped
      */
-    public Map<String, Fraction> elementAmounts() {
+    public ElementAmounts elementAmounts() {
         Map<String, Fraction> elements = new LinkedHashMap<>();
         for (Map.Entry<Chemical, Fraction> entry : amounts.entrySet()) {
             for (Map.Entry<String, Integer> element : entry.getKey().composition().byElement()
                     .entrySet()) {
-                Fraction amount = entry.getValue().times(Fraction.of(element.getValue()));
-                elements.merge(element.getKey(), amount, Fraction::plus);
+                elements.merge(element.getKey(),
+                        entry.getValue().times(Fraction.of(element.getValue())), Fraction::plus);
             }
         }
-        elements.values().removeIf(Fraction::isZero);
-        return elements;
+        return ElementAmounts.of(elements);
     }
 
     /**

@@ -25,6 +25,9 @@ public final class Amounts {
     /** Millibuckets of a substance one nugget of it holds. */
     public static final Fraction NUGGET = Fraction.of(10);
 
+    /** Millibuckets of a substance one dust of it holds, the same as an ingot of it. */
+    public static final Fraction DUST = Fraction.of(100);
+
     /** Millibuckets a full cell of fluid carries. */
     public static final Fraction FLUID_CELL = Fraction.of(1000);
 

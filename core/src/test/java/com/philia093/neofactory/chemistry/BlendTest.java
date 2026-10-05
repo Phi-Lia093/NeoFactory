@@ -31,7 +31,7 @@ class BlendTest {
 
         assertEquals(Fraction.of(100), ingot.total());
         assertTrue(ingot.isPure());
-        assertEquals(Map.of("Fe", Fraction.of(100)), ingot.elementAmounts());
+        assertEquals(ElementAmounts.of(Map.of("Fe", Fraction.of(100))), ingot.elementAmounts());
         assertEquals(Fraction.ZERO, ingot.charge());
     }
 
@@ -41,7 +41,8 @@ class BlendTest {
 
         assertFalse(bronze.isPure(), "an alloy is a pile of substances and not one compound");
         assertEquals(Fraction.of(100), bronze.total());
-        assertEquals(Map.of("Cu", Fraction.of(75), "Sn", Fraction.of(25)), bronze.elementAmounts());
+        assertEquals(ElementAmounts.of(Map.of("Cu", Fraction.of(75), "Sn", Fraction.of(25))),
+                bronze.elementAmounts());
     }
 
     @Test
@@ -50,7 +51,7 @@ class BlendTest {
         Blend nugget = Blend.of(COPPER, Fraction.of(15, 2)).plus(Blend.of(TIN, Fraction.of(5, 2)));
 
         assertEquals(Fraction.of(10), nugget.total());
-        assertEquals(Map.of("Cu", Fraction.of(15, 2), "Sn", Fraction.of(5, 2)),
+        assertEquals(ElementAmounts.of(Map.of("Cu", Fraction.of(15, 2), "Sn", Fraction.of(5, 2))),
                 nugget.elementAmounts());
     }
 
@@ -71,7 +72,7 @@ class BlendTest {
     void anIonCarriesItsCharge() {
         Blend sodium = Blend.of(SODIUM, 100);
 
-        assertEquals(Fraction.of(100), sodium.elementAmounts().get("Na"));
+        assertEquals(Fraction.of(100), sodium.elementAmounts().amountOf("Na"));
         assertEquals(Fraction.of(100), sodium.charge());
     }
 
