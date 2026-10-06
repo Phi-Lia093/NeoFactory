@@ -142,7 +142,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(43, rules.size(), "the table of the polar families");
+        assertEquals(45, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }

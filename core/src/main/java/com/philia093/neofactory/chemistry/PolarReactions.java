@@ -97,6 +97,8 @@ public final class PolarReactions {
         rules.add(knoevenagel());
         rules.add(henry());
         rules.add(mannich());
+        rules.add(electrocyclicClosing());
+        rules.add(photocycloaddition());
         return List.copyOf(rules);
     }
 
@@ -2147,6 +2149,134 @@ public final class PolarReactions {
                 Arrow.fromLonePair(oxygen, oxygen, givingHydrogen));
         Molecule product = ElementaryStep.of("mannich", arrows).apply(molecule);
         return pot.react(product, 0, carbon, nitrogen, giving);
+    }
+
+    /**
+     * The two ends of a chain of three double bonds joining, which is what an electrocyclic closing is.
+     * <p>
+     * One arrow is drawn twice over: the pair of the double bond at one end of the chain makes the bond to the
+     * far end, and the pair of the middle double bond takes its place, one bond along. What comes out is a
+     * ring of six with two double bonds in it, and - this being the one shape of the table that no pair of
+     * groups can be said to react - the rule asks the ring of the molecule instead: a chain only closes if
+     * the two ends of it stand far enough apart, see {@link #mayJoin}.
+     */
+    private static ReactionRule electrocyclicClosing() {
+        return new ReactionRule("electrocyclicClosing", "pericyclic", 2,
+                EnumSet.of(FunctionalGroup.ALKENE), Conditions.at(Warmth.HEATED),
+                PolarReactions::closeElectrocyclic);
+    }
+
+    private static Reaction closeElectrocyclic(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] chain = trieneOf(molecule);
+        if (chain == null) {
+            return null;
+        }
+        int first = chain[0];
+        int last = chain[5];
+        if (bondBetween(molecule, first, last) != null || !mayJoin(pot, first, last)) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(chain[0], chain[1], chain[0], chain[5]),
+                Arrow.betweenBonds(chain[2], chain[3], chain[1], chain[2]));
+        Molecule product = ElementaryStep.of("electrocyclicClosing", arrows).apply(molecule);
+        return pot.react(product, 0, first, last);
+    }
+
+    /**
+     * The six carbons of a chain of three double bonds, in the order they are joined, or {@code null}.
+     *
+     * @param molecule molecule to read
+     * @return the six atoms, the outermost two first and last
+     */
+    private static int[] trieneOf(Molecule molecule) {
+        List<Site> alkenes = Sites.alkenes(molecule);
+        for (int first = 0; first < alkenes.size(); first++) {
+            for (int second = 0; second < alkenes.size(); second++) {
+                if (second == first) {
+                    continue;
+                }
+                int[] link = singleBondLink(molecule, alkenes.get(first), alkenes.get(second));
+                if (link == null) {
+                    continue;
+                }
+                for (int third = 0; third < alkenes.size(); third++) {
+                    if (third == first || third == second) {
+                        continue;
+                    }
+                    int[] far = singleBondLink(molecule, alkenes.get(second), alkenes.get(third));
+                    if (far == null || far[0] != link[1]) {
+                        continue;
+                    }
+                    return new int[] {link[2], link[0], link[1], far[0], far[1], far[2]};
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The two atoms by which two double bonds are joined, or {@code null} when they are not.
+     *
+     * @param molecule molecule to read
+     * @param one one double bond
+     * @param other the other
+     * @return the atom of the first, the atom of the second, and the far end of the first
+     */
+    private static int[] singleBondLink(Molecule molecule, Site one, Site other) {
+        for (int near : one.atoms()) {
+            for (int far : other.atoms()) {
+                Bond link = bondBetween(molecule, near, far);
+                if (link == null || link.order() != 1) {
+                    continue;
+                }
+                int outer = one.atom(0) == near ? one.atom(1) : one.atom(0);
+                int beyond = other.atom(0) == far ? other.atom(1) : other.atom(0);
+                return new int[] {near, far, outer, beyond};
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Two double bonds closing into a ring of four under a light, which is the one reaction of the table a
+     * light is needed for.
+     * <p>
+     * Two arrows are drawn: the pair of one double bond makes the bond to the far carbon of the other, and the
+     * pair of that other makes the bond back to the far carbon of the first. A light is not a reagent and is
+     * asked for as a condition, and it is demanded rather than wondered at, so the same vessel in the dark
+     * answers nothing at all - which is what the test of it says, both ways round.
+     */
+    private static ReactionRule photocycloaddition() {
+        return new ReactionRule("photocycloaddition", "pericyclic", 2,
+                EnumSet.of(FunctionalGroup.ALKENE),
+                Conditions.builder().warmth(Warmth.AMBIENT).lighted(true).build(),
+                PolarReactions::closePhotocycloaddition);
+    }
+
+    private static Reaction closePhotocycloaddition(Pot pot) {
+        Molecule molecule = pot.molecule();
+        List<Site> alkenes = Sites.alkenes(molecule);
+        for (int index = 0; index < alkenes.size(); index++) {
+            for (int other = index + 1; other < alkenes.size(); other++) {
+                Site one = alkenes.get(index);
+                Site two = alkenes.get(other);
+                int first = one.atom(0);
+                int second = one.atom(1);
+                int third = two.atom(0);
+                int fourth = two.atom(1);
+                if (pot.sharesAMolecule(first, third) || bondBetween(molecule, first, third) != null) {
+                    continue;
+                }
+                List<Arrow> arrows = List.of(
+                        Arrow.betweenBonds(third, fourth, third, second),
+                        Arrow.betweenBonds(first, second, first, fourth));
+                Molecule product = ElementaryStep.of("photocycloaddition", arrows).apply(molecule);
+                return pot.react(product, 0, first, third);
+            }
+        }
+        return null;
     }
 
     /**

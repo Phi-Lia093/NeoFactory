@@ -8,6 +8,7 @@ import java.util.TreeSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -174,6 +175,32 @@ class ChainReactionsTest {
                 "a carbonyl stands at one end of it");
         assertFalse(Sites.amines(onlyCarbonProduct(reaction).structure()).isEmpty(),
                 "and an amine at the other");
+    }
+
+    @Test
+    void aChainOfThreeDoubleBondsClosesIntoARingOfSix() {
+        // Hexa-1,3,5-triene over a flame: the two ends join and what comes out is a ring with two double
+        // bonds in it, which is the same atoms arranged another way.
+        Reaction reaction = best(Warmth.HEATED, "C=CC=CC=C");
+
+        assertNotNull(reaction, "a chain of three double bonds closes");
+        assertEquals(Set.of("C6H8"), formulas(reaction.products()));
+        assertFalse(Rings.cycles(only(reaction.products()).structure()).isEmpty(),
+                "and what came out of it is a ring");
+    }
+
+    @Test
+    void twoDoubleBondsCloseIntoARingOfFourInTheLight() {
+        // Two molecules of ethene under a light: a ring of four. The same vessel in the dark does nothing,
+        // because a light is a condition that is demanded and not merely wondered at.
+        Reaction lit = best(Conditions.builder().lighted(true).build(), "C=C", "C=C");
+
+        assertNotNull(lit, "two molecules of ethene under a light");
+        assertEquals(Set.of("C4H8"), formulas(lit.products()), "cyclobutane");
+        assertFalse(Rings.cycles(only(lit.products()).structure()).isEmpty(), "and it is a ring");
+
+        Reaction dark = best(Conditions.at(Warmth.AMBIENT), "C=C", "C=C");
+        assertNull(dark, "and the same vessel in the dark answers nothing");
     }
 
     /** The one reaction an engine would run at a setting in a vessel of the substances named. */
