@@ -141,7 +141,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(20, rules.size(), "the table of the polar families");
+        assertEquals(22, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
@@ -342,6 +342,34 @@ class PolarEngineTest {
         Reaction reaction = best("c1ccccc1", "CS(=O)(=O)O");
 
         assertNull(reaction, "a ring and an acid that is no electrophile are not a reaction");
+    }
+
+    @Test
+    void anAmineTakesAnAcidOverIntoAnAmide() {
+        // Acetic acid and methylamine are the amide and the water - and never an imine of an acid, which is
+        // not a reaction anyone has ever run: a nucleophile looking for a carbonyl walks past an acid.
+        Reaction reaction = best("CC(=O)O", "CN");
+
+        assertNotNull(reaction, "an acid and an amine are an amide");
+        assertEquals(Set.of("C3H7NO", "H2O"), formulas(reaction.products()));
+    }
+
+    @Test
+    void aCarbonylAndTwoAlcoholsAreAnAcetal() {
+        Reaction reaction = best("CC=O", "CCO", "CCO");
+
+        assertNotNull(reaction, "an aldehyde and two alcohols are an acetal");
+        assertEquals(Set.of("C6H14O2", "H2O"), formulas(reaction.products()));
+    }
+
+    @Test
+    void oneAlcoholIsNotEnoughForAnAcetal() {
+        // The hemiacetal is what one alcohol gives: the rule for the acetal stands above it and answers
+        // nothing at all when the second alcohol is not in the vessel.
+        Reaction reaction = best("CC=O", "CCO");
+
+        assertNotNull(reaction, "an aldehyde and one alcohol are a hemiacetal");
+        assertEquals(Set.of("C4H10O2"), formulas(reaction.products()));
     }
 
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */

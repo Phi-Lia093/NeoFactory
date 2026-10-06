@@ -35,6 +35,7 @@ public final class PolarReactions {
         List<ReactionRule> rules = new ArrayList<>();
         rules.add(hydrolysis());
         rules.add(cyanohydrin());
+        rules.add(acetalFormation());
         rules.add(hemiacetal());
         rules.add(imineFormation());
         rules.add(sulfonation());
@@ -43,6 +44,7 @@ public final class PolarReactions {
         rules.add(michaelAddition());
         rules.add(enolateAlkylation());
         rules.add(dielsAlder());
+        rules.add(amideFormation());
         rules.add(esterification());
         rules.add(esterHydrolysis());
         rules.add(hydrogenation());
@@ -439,6 +441,141 @@ public final class PolarReactions {
             Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
                     .plus(Mixture.of(pot.substanceOf(alcoholOxygen), 1));
             return pot.react(consumed, product, 0);
+        }
+        return null;
+    }
+
+    /**
+     * An acid and an amine giving an amide and water, the reaction a protein and half the drugs there are are
+     * built by.
+     * <p>
+     * The six arrows are the ones of the making of an ester with a nitrogen in the place of the alcohol's
+     * oxygen: the lone pair of the amine into the carbonyl, the pair of the double bond to the carbonyl
+     * oxygen, one hydrogen off the nitrogen onto the acid's own hydroxyl - which is what makes that hydroxyl
+     * a water and not a hydroxide - the bond to it breaking with the pair, the pair back into the double
+     * bond, and the amide left behind. The oxygen of the water is the acid's and the hydrogen is the amine's,
+     * which is what a chemist would find if the two were labelled.
+     * <p>
+     * <b>The amine is written before the alcohol in the table.</b> A vessel that holds an acid with both an
+     * amine and an alcohol in it reacts the amine first, because a nitrogen is the stronger nucleophile of the
+     * two - and where that is written is here, in the order of the rules, since the engine has no measure of
+     * how strong a nucleophile is beyond which of two rules is the sharper.
+     */
+    private static ReactionRule amideFormation() {
+        return new ReactionRule("amideFormation", "acyl substitution",
+                EnumSet.of(FunctionalGroup.CARBOXYLIC_ACID, FunctionalGroup.AMINE),
+                PolarReactions::formAmide);
+    }
+
+    private static Reaction formAmide(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site acid = first(Sites.acids(molecule));
+        int[] amine = amineWithHydrogenOf(molecule);
+        if (acid == null || amine == null) {
+            return null;
+        }
+        int carbon = acid.atom(0);
+        int carbonylOxygen = acid.atom(1);
+        int acidOxygen = acid.atom(2);
+        int nitrogen = amine[0];
+        int hydrogen = amine[1];
+        if (pot.substanceOf(nitrogen).equals(pot.substanceOf(carbon))
+                || bondBetween(molecule, carbon, nitrogen) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(hydrogen, nitrogen),
+                Arrow.fromLonePair(acidOxygen, acidOxygen, hydrogen),
+                Arrow.toLonePair(carbon, acidOxygen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon));
+        Molecule product = ElementaryStep.of("amideFormation", arrows).apply(molecule);
+        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
+                .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
+        return pot.react(consumed, product, 0);
+    }
+
+    /** A nitrogen that carries a hydrogen and hangs on a carbon, the nitrogen and one hydrogen of it. */
+    private static int[] amineWithHydrogenOf(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "N") || molecule.atom(atom).charge() != 0) {
+                continue;
+            }
+            int hydrogen = -1;
+            boolean carbon = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (isElement(molecule, neighbour, "H") && molecule.atom(neighbour).charge() == 0) {
+                    hydrogen = hydrogen < 0 ? neighbour : hydrogen;
+                } else if (isElement(molecule, neighbour, "C")) {
+                    carbon = true;
+                }
+            }
+            if (carbon && hydrogen >= 0) {
+                return new int[] {atom, hydrogen};
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A carbonyl and two alcohols giving an acetal and water, the reaction a carbonyl is hidden behind while
+     * the rest of a molecule is worked on.
+     * <p>
+     * Eight arrows are drawn, the four of a hemiacetal and the four that take it the rest of the way: the
+     * first alcohol into the carbonyl, the pair of the double bond to the oxygen, its own hydrogen onto that
+     * oxygen - which is the hemiacetal - then the second alcohol into the carbon it left behind, the bond to
+     * the first one's oxygen breaking with the pair, the second alcohol's own hydrogen off, and that hydrogen
+     * onto the oxygen that just left, so that it leaves as water and not as a hydroxide.
+     * <p>
+     * <b>The two alcohols are the same substance</b>, which is what a vessel holding two molecules of one
+     * alcohol is; a carbonyl with two different alcohols about it is left alone rather than answered with a
+     * mixed acetal nobody asked for. The rule stands above the hemiacetal in the table, since a vessel that
+     * holds two alcohols can go all the way and one that holds one cannot reach it at all.
+     */
+    private static ReactionRule acetalFormation() {
+        return new ReactionRule("acetalFormation", "carbonyl addition",
+                EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.HYDROXYL),
+                PolarReactions::formAcetal);
+    }
+
+    private static Reaction formAcetal(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site carbonyl = bestCarbonyl(molecule);
+        if (carbonyl == null) {
+            return null;
+        }
+        int carbon = carbonyl.atom(0);
+        int oxygen = carbonyl.atom(1);
+        List<Site> hydroxyls = Sites.hydroxyls(molecule);
+        for (Site first : hydroxyls) {
+            int firstOxygen = first.atom(0);
+            int firstHydrogen = hydrogenOn(molecule, firstOxygen);
+            if (firstHydrogen < 0 || firstOxygen == oxygen
+                    || pot.substanceOf(firstOxygen).equals(pot.substanceOf(carbon))) {
+                continue;
+            }
+            for (Site second : hydroxyls) {
+                int secondOxygen = second.atom(0);
+                int secondHydrogen = hydrogenOn(molecule, secondOxygen);
+                if (secondHydrogen < 0 || secondOxygen == firstOxygen || secondOxygen == oxygen
+                        || !pot.substanceOf(secondOxygen).equals(pot.substanceOf(firstOxygen))) {
+                    continue;
+                }
+                List<Arrow> arrows = List.of(
+                        Arrow.fromLonePair(firstOxygen, firstOxygen, carbon),
+                        Arrow.toLonePair(carbon, oxygen),
+                        Arrow.toLonePair(firstHydrogen, firstOxygen),
+                        Arrow.fromLonePair(oxygen, oxygen, firstHydrogen),
+                        Arrow.fromLonePair(secondOxygen, secondOxygen, carbon),
+                        Arrow.toLonePair(carbon, oxygen),
+                        Arrow.toLonePair(secondHydrogen, secondOxygen),
+                        Arrow.fromLonePair(oxygen, oxygen, secondHydrogen));
+                Molecule product = ElementaryStep.of("acetalFormation", arrows).apply(molecule);
+                Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
+                        .plus(Mixture.of(pot.substanceOf(firstOxygen), 2));
+                return pot.react(consumed, product, 0);
+            }
         }
         return null;
     }
@@ -902,11 +1039,22 @@ public final class PolarReactions {
         return -1;
     }
 
-    /** The carbonyl a nucleophile attacks first: the readier one, see {@link Reactivity}. */
+    /**
+     * The carbonyl a nucleophile attacks first: the readier one, see {@link Reactivity}.
+     * <p>
+     * <b>A carbonyl that carries an oxygen of its own is not one of these.</b> An acid and an ester are
+     * attacked by a nucleophile too, but what that attack gives is not what the addition to a plain carbonyl
+     * gives, and the rules of those two are written against the acid and the ester as whole groups - so an
+     * amine in search of a carbonyl to condense with walks past an acid instead of answering with an imine of
+     * it, which no chemist has ever made.
+     */
     private static Site bestCarbonyl(Molecule molecule) {
         Site best = null;
         int highest = Integer.MIN_VALUE;
         for (Site carbonyl : Sites.carbonyls(molecule)) {
+            if (carriesAnOxygenOfItsOwn(molecule, carbonyl.atom(0), carbonyl.atom(1))) {
+                continue;
+            }
             int score = Reactivity.electrophilicity(molecule, carbonyl.atom(0));
             if (score > highest) {
                 highest = score;
@@ -914,6 +1062,20 @@ public final class PolarReactions {
             }
         }
         return best;
+    }
+
+    /** {@code true} when a carbonyl carbon carries an oxygen that is no part of its double bond. */
+    private static boolean carriesAnOxygenOfItsOwn(Molecule molecule, int carbon, int carbonylOxygen) {
+        for (int neighbour : molecule.neighbours(carbon)) {
+            if (neighbour == carbonylOxygen || !isElement(molecule, neighbour, "O")) {
+                continue;
+            }
+            Bond bond = bondBetween(molecule, carbon, neighbour);
+            if (bond != null && bond.order() == 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The aldehyde a nucleophile attacks first, or {@code null} when the molecule holds none. */
