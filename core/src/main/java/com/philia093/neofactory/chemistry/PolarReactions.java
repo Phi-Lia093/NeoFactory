@@ -2981,14 +2981,21 @@ public final class PolarReactions {
         int[] first = hydrogens.get(0);
         int[] second = hydrogens.get(1);
         int[] third = hydrogens.get(2);
-        List<Arrow> arrows = List.of(
-                Arrow.toLonePair(anionic, nitrogen),
-                Arrow.betweenBonds(first[0], first[1], anionic, first[1]),
-                Arrow.fromLonePair(anionic, anionic, first[0]),
-                Arrow.betweenBonds(second[0], second[1], second[0], carbonyl),
-                Arrow.betweenBonds(carbonyl, nitrogen, nitrogen, second[1]),
-                Arrow.betweenBonds(nitrogen, carbonyl, nitrogen, third[0]),
-                Arrow.betweenBonds(third[0], third[1], carbonyl, third[1]));
+        List<Arrow> arrows = new ArrayList<>();
+        if (nitro[3] == 1) {
+            // The group written the neutral way - a nitrogen held to both its oxygens by double bonds -
+            // is first read as the charged one it stands for: one of the two double bonds is pushed onto
+            // its oxygen, which leaves that oxygen carrying the charge and the nitrogen one bond fewer,
+            // and from there the reaction is the very one the charged form is taken apart by.
+            arrows.add(Arrow.toLonePair(nitrogen, anionic));
+        }
+        arrows.add(Arrow.toLonePair(anionic, nitrogen));
+        arrows.add(Arrow.betweenBonds(first[0], first[1], anionic, first[1]));
+        arrows.add(Arrow.fromLonePair(anionic, anionic, first[0]));
+        arrows.add(Arrow.betweenBonds(second[0], second[1], second[0], carbonyl));
+        arrows.add(Arrow.betweenBonds(carbonyl, nitrogen, nitrogen, second[1]));
+        arrows.add(Arrow.betweenBonds(nitrogen, carbonyl, nitrogen, third[0]));
+        arrows.add(Arrow.betweenBonds(third[0], third[1], carbonyl, third[1]));
         Molecule product = ElementaryStep.of("nitroReduction", arrows).apply(molecule);
         return pot.react(product, 0, nitrogen, first[0], first[1], second[0], second[1], third[0],
                 third[1]);
@@ -2996,27 +3003,42 @@ public final class PolarReactions {
 
     /**
      * The nitro group of a molecule as the two oxygens and the nitrogen of it, the double one first.
+     * <p>
+     * <b>The group is met in two writings.</b> An aromatic route may leave it the neutral way - the
+     * nitrogen held to both its oxygens by double bonds, every charge nothing - or the charged way it is
+     * usually drawn, one oxygen double and the other single and carrying a charge. Both are the same group,
+     * and the fourth number says which was found: {@code 0} for the charged one, which is taken apart as it
+     * stands, and {@code 1} for the neutral one, which needs one arrow first to become the charged one.
      *
      * @param molecule molecule to read
-     * @return the nitrogen, the oxygen of its double bond and the charged oxygen that keeps the single one,
-     *         or {@code null} when the vessel holds no such group
+     * @return the nitrogen, the oxygen of its double bond, the oxygen of its other bond and whether that
+     *         other bond has to be pushed onto its oxygen first, or {@code null} when the vessel holds no
+     *         such group
      */
     private static int[] nitroGroup(Molecule molecule) {
         for (Site nitro : Sites.nitros(molecule)) {
             int nitrogen = nitro.atom(0);
             int doubled = -1;
             int single = -1;
+            int other = -1;
             for (int index = 1; index < nitro.atoms().size(); index++) {
                 int oxygen = nitro.atom(index);
                 Bond bond = bondBetween(molecule, nitrogen, oxygen);
                 if (bond != null && bond.order() == 2) {
-                    doubled = oxygen;
-                } else if (molecule.atom(oxygen).charge() == -1) {
+                    if (doubled < 0) {
+                        doubled = oxygen;
+                    } else {
+                        other = oxygen;
+                    }
+                } else {
                     single = oxygen;
                 }
             }
-            if (doubled >= 0 && single >= 0) {
-                return new int[] {nitrogen, doubled, single};
+            if (doubled >= 0 && single >= 0 && molecule.atom(single).charge() == -1) {
+                return new int[] {nitrogen, doubled, single, 0};
+            }
+            if (doubled >= 0 && other >= 0) {
+                return new int[] {nitrogen, doubled, other, 1};
             }
         }
         return null;

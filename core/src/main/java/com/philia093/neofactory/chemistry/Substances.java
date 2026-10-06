@@ -217,6 +217,33 @@ public final class Substances {
         catalog.register("nitrous acid", "ON=O", Phase.LIQUID);
         catalog.register("aluminium chloride", "[Al](Cl)(Cl)Cl", Phase.SOLID);
         catalog.register("iron(III) bromide", "[Fe](Br)(Br)Br", Phase.SOLID);
+        // The petrochemicals and the building blocks of a modern fibre and a modern medicine: the small
+        // molecules a player starts the organic side from - the gases of a refinery, the aromatics an
+        // alkylation or a dehydrogenation leaves, the amines and the acid chlorides a ring is built into a
+        // fibre or a drug out of. Every one of them is here because a route of the table names it as a
+        // reagent or comes out with it, and none of them is a guess at a shape the chemistry already knows.
+        catalog.register("butane", "CCCC", Phase.GAS);
+        catalog.register("1,3-butadiene", "C=CC=C", Phase.GAS);
+        catalog.register("propene", "CC=C", Phase.GAS);
+        catalog.register("methylamine", "CN", Phase.GAS);
+        catalog.register("ethylbenzene", "CCc1ccccc1", Phase.LIQUID);
+        catalog.register("styrene", "C=Cc1ccccc1", Phase.LIQUID);
+        catalog.register("o-xylene", "Cc1ccccc1C", Phase.LIQUID);
+        catalog.register("m-xylene", "Cc1cccc(C)c1", Phase.LIQUID);
+        catalog.register("p-xylene", "Cc1ccc(C)cc1", Phase.LIQUID);
+        catalog.register("benzaldehyde", "O=Cc1ccccc1", Phase.LIQUID);
+        catalog.register("benzyl alcohol", "OCc1ccccc1", Phase.LIQUID);
+        catalog.register("aniline", "Nc1ccccc1", Phase.LIQUID);
+        catalog.register("nitrobenzene", "O=[N+]([O-])c1ccccc1", Phase.LIQUID);
+        catalog.register("acetyl chloride", "CC(=O)Cl", Phase.LIQUID);
+        catalog.register("acrylonitrile", "C=CC#N", Phase.LIQUID);
+        catalog.register("phenol", "Oc1ccccc1", Phase.SOLID);
+        catalog.register("benzoic acid", "OC(=O)c1ccccc1", Phase.SOLID);
+        catalog.register("terephthalic acid", "OC(=O)c1ccc(C(=O)O)cc1", Phase.SOLID);
+        catalog.register("isophthalic acid", "OC(=O)c1cccc(C(=O)O)c1", Phase.SOLID);
+        catalog.register("o-phenylenediamine", "Nc1ccccc1N", Phase.SOLID);
+        catalog.register("p-phenylenediamine", "Nc1ccc(N)cc1", Phase.SOLID);
+        catalog.register("p-nitroaniline", "Nc1ccc([N+](=O)[O-])cc1", Phase.SOLID);
         return catalog;
     }
 
