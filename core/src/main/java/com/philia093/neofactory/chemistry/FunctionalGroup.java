@@ -63,6 +63,15 @@ public enum FunctionalGroup {
     /** A carbonyl whose carbon carries a nitrogen, the amide an acid and an amine are joined into. */
     AMIDE,
 
+    /** A carbonyl whose carbon carries a halogen, the acid chloride a ring is acylated by. */
+    ACYL_HALIDE,
+
+    /** A nitrogen held to two oxygens, the nitro group a ring is given by nitric acid. */
+    NITRO,
+
+    /** A nitrogen held to one oxygen by a double bond, the nitroso group a nitro one loses an oxygen into. */
+    NITROSO,
+
     /** A ring whose bonds are the blurred ones of an aromatic ring. */
     AROMATIC_RING
 }

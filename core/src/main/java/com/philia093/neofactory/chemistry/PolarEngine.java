@@ -85,8 +85,9 @@ public final class PolarEngine implements ReactionEngine {
      * <b>A substance that stands in the vessel more than once is laid out more than once.</b> A reaction
      * between two molecules of one substance - the condensation of an aldehyde with itself, the closing of
      * two of them into a ring - is not a reaction of one molecule with itself, and a vessel that was laid out
-     * once would have the two halves of it be the same half. Two copies are enough for every rule of the
-     * table, because no rule of it takes three molecules, so that is how many are laid out.
+     * once would have the two halves of it be the same half. Three copies are laid out, because the rule that
+     * needs the most of one substance - the reduction of a nitro group to an amine, which spends three
+     * molecules of hydrogen - takes three, and no rule takes more.
      */
     private static Pot lay(Mixture content) {
         List<Chemical> substances = new ArrayList<>(content.components().keySet());
@@ -95,7 +96,7 @@ public final class PolarEngine implements ReactionEngine {
         List<Integer> copies = new ArrayList<>();
         for (int index = 0; index < substances.size(); index++) {
             Chemical chemical = substances.get(index);
-            int copiesOfIt = Math.min(2, Math.max(1, content.amountOf(chemical)));
+            int copiesOfIt = Math.min(3, Math.max(1, content.amountOf(chemical)));
             Molecule molecule = Assemblies.materialize(chemical.structure());
             for (int copy = 0; copy < copiesOfIt; copy++) {
                 molecules.add(molecule);

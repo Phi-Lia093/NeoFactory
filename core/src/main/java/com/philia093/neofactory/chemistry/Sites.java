@@ -40,6 +40,9 @@ public final class Sites {
         sites.addAll(enols(molecule));
         sites.addAll(imines(molecule));
         sites.addAll(amides(molecule));
+        sites.addAll(acylHalides(molecule));
+        sites.addAll(nitros(molecule));
+        sites.addAll(nitroso(molecule));
         sites.addAll(anions(molecule));
         sites.addAll(aromaticRings(molecule));
         return sites;
@@ -377,6 +380,95 @@ public final class Sites {
     /** A carbon that hangs on an atom, or {@code -1}. */
     private static int carbonOn(Molecule molecule, int atom) {
         return carbonOn(molecule, atom, -1);
+    }
+
+    /**
+     * The nitrogens held to one oxygen by a double bond and to nothing else but a carbon.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the nitrogen first and the oxygen second
+     */
+    public static List<Site> nitroso(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isNitrogen(molecule, atom)) {
+                continue;
+            }
+            int oxygen = -1;
+            int carbons = 0;
+            boolean others = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                Bond bond = bondBetween(molecule, atom, neighbour);
+                if (isOxygen(molecule, neighbour) && bond != null && bond.order() == 2) {
+                    oxygen = neighbour;
+                } else if (isCarbon(molecule, neighbour)) {
+                    carbons++;
+                } else if (!molecule.atom(neighbour).element().equals("H")) {
+                    others = true;
+                }
+            }
+            if (oxygen >= 0 && carbons == 1 && !others) {
+                sites.add(new Site(FunctionalGroup.NITROSO, List.of(atom, oxygen)));
+            }
+        }
+        return sites;
+    }
+
+    /**
+     * The carbonyls whose carbon carries a halogen, the acid chlorides of the organic side.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the carbonyl carbon, the carbonyl oxygen and the halogen third
+     */
+    public static List<Site> acylHalides(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (Site carbonyl : carbonyls(molecule)) {
+            int carbon = carbonyl.atom(0);
+            for (int neighbour : molecule.neighbours(carbon)) {
+                if (isHalogen(molecule, neighbour)) {
+                    sites.add(new Site(FunctionalGroup.ACYL_HALIDE,
+                            List.of(carbon, carbonyl.atom(1), neighbour)));
+                    break;
+                }
+            }
+        }
+        return sites;
+    }
+
+    /**
+     * The nitrogens held to two oxygens, the nitro groups of the organic side.
+     * <p>
+     * The two oxygens are held to the nitrogen by a double bond or by a double bond and a lone pair, because
+     * that is the difference between writing the group on a string and writing it on a ring: a nitrobenzene
+     * is drawn with one oxygen held by two pairs and one by a pair and a charge, and it is the same group.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the nitrogen, then the two oxygens
+     */
+    public static List<Site> nitros(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isNitrogen(molecule, atom)) {
+                continue;
+            }
+            List<Integer> oxygens = new ArrayList<>();
+            int carbons = 0;
+            boolean others = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (isOxygen(molecule, neighbour)) {
+                    oxygens.add(neighbour);
+                } else if (isCarbon(molecule, neighbour)) {
+                    carbons++;
+                } else if (!molecule.atom(neighbour).element().equals("H")) {
+                    others = true;
+                }
+            }
+            if (oxygens.size() == 2 && carbons <= 1 && !others) {
+                sites.add(new Site(FunctionalGroup.NITRO,
+                        List.of(atom, oxygens.get(0), oxygens.get(1))));
+            }
+        }
+        return sites;
     }
 
     /**

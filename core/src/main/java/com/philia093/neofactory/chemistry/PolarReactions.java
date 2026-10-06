@@ -26,6 +26,12 @@ public final class PolarReactions {
     /** The metal the adding of hydrogen is run over, the nickel the catalog carries. */
     private static final Chemical NICKEL = Chemical.parse("[Ni]");
 
+    /** The Lewis acid a Friedel-Crafts reaction is run over. */
+    private static final Chemical ALUMINIUM_CHLORIDE = Chemical.parse("[Al](Cl)(Cl)Cl");
+
+    /** The Lewis acid a ring is brominated over. */
+    private static final Chemical IRON_BROMIDE = Chemical.parse("[Fe](Br)(Br)Br");
+
     /** The water an ester is hydrolysed in, which is the substance and not the word. */
     private static final Chemical WATER = Chemical.parse("O");
 
@@ -83,6 +89,11 @@ public final class PolarReactions {
         rules.add(amideHydrolysis());
         rules.add(transesterification());
         rules.add(aminolysisOfEster());
+        rules.add(nitration());
+        rules.add(friedelCraftsAlkylation());
+        rules.add(friedelCraftsAcylation());
+        rules.add(aromaticHalogenation());
+        rules.add(aromaticSubstitution());
         return List.copyOf(rules);
     }
 
@@ -1663,6 +1674,300 @@ public final class PolarReactions {
                 Arrow.fromLonePair(esterOxygen, esterOxygen, hydrogen));
         Molecule product = ElementaryStep.of("aminolysisOfEster", arrows).apply(molecule);
         return pot.react(product, 0, carbon, nitrogen);
+    }
+
+    /**
+     * Draws a substitution on a ring: the ring written out as Kekulé wrote it, whatever the rule draws first
+     * drawn on that, the electrophile taking the place of a hydrogen, and the ring read as a ring again.
+     * <p>
+     * Five rules of the aromatic side are this one shape - the sulfur of an acid, the nitrogen of nitric acid,
+     * the carbon of an alkyl halide and of an acid chloride, and a halogen of a molecule of one - and they
+     * differ in nothing but what is drawn before the attack and what is drawn at the moment of it. The place
+     * on the ring is the one the group already standing there sends an electrophile to, so the regiochemistry
+     * of a ring comes out of one table for all of them, see {@link Reactivity#directsToTheSides}.
+     *
+     * @param pot the vessel
+     * @param electrophile the atom that takes the place of the hydrogen
+     * @param before the arrows drawn before the ring is touched
+     * @param onAttack the arrows drawn at the moment the ring attacks
+     * @param landing the atom the hydrogen that leaves goes to
+     * @param touched the atoms the rule touched besides the two of the ring
+     * @return the reaction, or {@code null} when the ring has no place to give
+     */
+    private static Reaction onTheRing(Pot pot, int electrophile, List<Arrow> before, List<Arrow> onAttack,
+            int landing, int... touched) {
+        Molecule molecule = pot.molecule();
+        Molecule drawn = Assemblies.kekulized(molecule);
+        for (Site ring : Sites.aromaticRings(molecule)) {
+            Molecule ready = drawn;
+            for (Arrow arrow : before) {
+                ready = arrow.apply(ready);
+            }
+            int[] place = attackPlace(ready, ring.atoms());
+            if (place == null) {
+                continue;
+            }
+            int position = place[0];
+            int beside = place[1];
+            if (pot.sharesAMolecule(position, electrophile)) {
+                // The electrophile and the ring stand in one molecule, which is a ring being closed on
+                // itself - a bridge, and no reaction of this table draws one.
+                continue;
+            }
+            int hydrogen = hydrogenOn(ready, position);
+            if (hydrogen < 0) {
+                continue;
+            }
+            Molecule step = Arrow.betweenBonds(position, beside, position, electrophile).apply(ready);
+            for (Arrow arrow : onAttack) {
+                step = arrow.apply(step);
+            }
+            step = Arrow.betweenBonds(position, hydrogen, position, beside).apply(step);
+            if (landing >= 0) {
+                step = Arrow.fromLonePair(landing, landing, hydrogen).apply(step);
+            }
+            int[] atoms = new int[touched.length + 2];
+            atoms[0] = position;
+            atoms[1] = electrophile;
+            for (int index = 0; index < touched.length; index++) {
+                atoms[index + 2] = touched[index];
+            }
+            return pot.react(Assemblies.aromatized(step), 0, atoms);
+        }
+        return null;
+    }
+
+    /**
+     * The nitrogen of nitric acid taking the place of a hydrogen on a ring, which is what gives a ring its
+     * nitro group.
+     * <p>
+     * The sulfuric acid the reaction is run over is a catalyst and never a substance the reaction spends: the
+     * rule asks for it among the conditions, and the arrow that gives the nitric acid its proton is followed
+     * by one that takes that proton back off the ring, so the acid comes out of the vessel as it went in and
+     * the balance of the answer is the ring and the nitric acid alone.
+     */
+    private static ReactionRule nitration() {
+        return new ReactionRule("nitration", "substitution", 4,
+                EnumSet.of(FunctionalGroup.AROMATIC_RING),
+                Conditions.builder().warmth(Warmth.HEATED).catalyst(SULFURIC_ACID).build(),
+                PolarReactions::nitrate);
+    }
+
+    private static Reaction nitrate(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] nitric = nitricAcid(molecule);
+        if (nitric == null) {
+            return null;
+        }
+        int nitrogen = nitric[0];
+        int hydroxyl = nitric[1];
+        int charged = nitric[2];
+        int hydroxylHydrogen = hydrogenOn(molecule, hydroxyl);
+        if (hydroxylHydrogen < 0) {
+            return null;
+        }
+        List<Arrow> before = List.of(
+                Arrow.toLonePair(hydroxylHydrogen, hydroxyl),
+                Arrow.fromLonePair(charged, charged, hydroxylHydrogen));
+        List<Arrow> onAttack = List.of(
+                Arrow.toLonePair(nitrogen, charged),
+                Arrow.fromLonePair(hydroxyl, hydroxyl, nitrogen));
+        return onTheRing(pot, nitrogen, before, onAttack, charged, nitrogen, charged);
+    }
+
+    /**
+     * The nitrogen of a nitric acid, its hydroxyl oxygen, and the oxygen that carries the charge of it.
+     *
+     * @param molecule molecule to read
+     * @return the three atoms, or {@code null} when the vessel holds no nitric acid
+     */
+    private static int[] nitricAcid(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "N") || molecule.neighbours(atom).size() != 3) {
+                continue;
+            }
+            int hydroxyl = -1;
+            int charged = -1;
+            boolean allOxygen = true;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (!isElement(molecule, neighbour, "O")) {
+                    allOxygen = false;
+                    break;
+                }
+                if (molecule.atom(neighbour).charge() < 0) {
+                    charged = neighbour;
+                } else if (hydrogenOn(molecule, neighbour) >= 0) {
+                    hydroxyl = neighbour;
+                }
+            }
+            if (allOxygen && hydroxyl >= 0 && charged >= 0) {
+                return new int[] {atom, hydroxyl, charged};
+            }
+        }
+        return null;
+    }
+
+    /** An alkyl group of a halide taking the place of a hydrogen on a ring, over a Lewis acid. */
+    private static ReactionRule friedelCraftsAlkylation() {
+        return new ReactionRule("friedelCraftsAlkylation", "substitution", 3,
+                EnumSet.of(FunctionalGroup.AROMATIC_RING, FunctionalGroup.HALIDE),
+                Conditions.builder().warmth(Warmth.HEATED).catalyst(ALUMINIUM_CHLORIDE).build(),
+                PolarReactions::alkylateRing);
+    }
+
+    private static Reaction alkylateRing(Pot pot) {
+        Site halide = bestHalide(pot.molecule());
+        if (halide == null) {
+            return null;
+        }
+        int carbon = halide.atom(0);
+        int halogen = halide.atom(1);
+        if (carriesDoubleBond(pot.molecule(), carbon)) {
+            // An aryl halide is no alkyl halide: its carbon is held flat by the ring and a ring is never
+            // given an alkyl group by one of its own.
+            return null;
+        }
+        return onTheRing(pot, carbon, List.of(Arrow.toLonePair(carbon, halogen)), List.of(), halogen,
+                carbon, halogen);
+    }
+
+    /** {@code true} when an atom is held by a double or a triple bond, which makes it no saturated one. */
+    private static boolean carriesDoubleBond(Molecule molecule, int atom) {
+        for (int index : molecule.bondsOf(atom)) {
+            if (molecule.bonds().get(index).order() > 1) {
+                return true;
+            }
+        }
+        return molecule.atom(atom).isAromatic();
+    }
+
+    /** The acyl group of an acid chloride taking the place of a hydrogen on a ring, over a Lewis acid. */
+    private static ReactionRule friedelCraftsAcylation() {
+        return new ReactionRule("friedelCraftsAcylation", "substitution", 3,
+                EnumSet.of(FunctionalGroup.AROMATIC_RING, FunctionalGroup.ACYL_HALIDE),
+                Conditions.builder().warmth(Warmth.HEATED).catalyst(ALUMINIUM_CHLORIDE).build(),
+                PolarReactions::acylateRing);
+    }
+
+    private static Reaction acylateRing(Pot pot) {
+        Site acyl = first(Sites.acylHalides(pot.molecule()));
+        if (acyl == null) {
+            return null;
+        }
+        int carbon = acyl.atom(0);
+        int halogen = acyl.atom(2);
+        // The carbon of an acid chloride keeps its oxygen held by two pairs all the way through: what makes
+        // it an electrophile is the acid that leaves it, and what the ring attacks is that carbon as it is.
+        return onTheRing(pot, carbon, List.of(Arrow.toLonePair(carbon, halogen)), List.of(), halogen,
+                carbon, halogen);
+    }
+
+    /** A halogen of a molecule of a halogen taking the place of a hydrogen on a ring, over a Lewis acid. */
+    private static ReactionRule aromaticHalogenation() {
+        return new ReactionRule("aromaticHalogenation", "substitution", 3,
+                EnumSet.of(FunctionalGroup.AROMATIC_RING),
+                Conditions.builder().warmth(Warmth.HEATED).catalyst(IRON_BROMIDE).build(),
+                PolarReactions::halogenateRing);
+    }
+
+    private static Reaction halogenateRing(Pot pot) {
+        int[] halogen = halogenPair(pot.molecule());
+        if (halogen == null) {
+            return null;
+        }
+        return onTheRing(pot, halogen[0], List.of(), List.of(Arrow.toLonePair(halogen[0], halogen[1])),
+                halogen[1], halogen[0], halogen[1]);
+    }
+
+    /**
+     * A nucleophile taking the place of a halogen on a ring that carries something pulling electrons out of
+     * it, which is the one substitution a ring does by itself.
+     * <p>
+     * <b>A plain ring does not do this.</b> Chlorobenzene stands in a bottle of lye and nothing happens to it;
+     * what makes the difference is a nitro group beside the halogen - or across from it - because that is what
+     * pulls the electrons of the ring towards it and leaves the carbon the halogen hangs on open to an attack.
+     * So the rule asks for such a group and for the halide to stand beside it or across from it, which is the
+     * regiochemistry of the reaction and not something a rule may leave out.
+     */
+    private static ReactionRule aromaticSubstitution() {
+        return new ReactionRule("snAr", "substitution", 3,
+                EnumSet.of(FunctionalGroup.AROMATIC_RING, FunctionalGroup.HALIDE),
+                Conditions.at(Warmth.HEATED), PolarReactions::substituteAromatic);
+    }
+
+    private static Reaction substituteAromatic(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int hydroxide = hydroxide(molecule);
+        if (hydroxide < 0) {
+            return null;
+        }
+        Molecule drawn = Assemblies.kekulized(molecule);
+        for (Site halide : Sites.halides(molecule)) {
+            int carbon = halide.atom(0);
+            int halogen = halide.atom(1);
+            if (!pulledOn(molecule, carbon)) {
+                continue;
+            }
+            int[] beside = ringNeighbours(drawn, carbon);
+            if (beside == null) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.fromLonePair(hydroxide, hydroxide, carbon),
+                    Arrow.betweenBonds(carbon, beside[0], beside[0], beside[1]),
+                    Arrow.toLonePair(carbon, halogen),
+                    Arrow.betweenBonds(beside[0], beside[1], carbon, beside[0]));
+            Molecule product = ElementaryStep.of("snAr", arrows).apply(drawn);
+            return pot.react(Assemblies.aromatized(product), 0, carbon, hydroxide);
+        }
+        return null;
+    }
+
+    /** {@code true} when a ring carbon stands beside or across from a group that pulls electrons out of it. */
+    private static boolean pulledOn(Molecule molecule, int carbon) {
+        List<Integer> ring = null;
+        for (List<Integer> cycle : Rings.cycles(molecule)) {
+            if (cycle.contains(carbon)) {
+                ring = cycle;
+                break;
+            }
+        }
+        if (ring == null) {
+            return false;
+        }
+        int size = ring.size();
+        int index = ring.indexOf(carbon);
+        for (int step : new int[] {1, size - 1, size / 2}) {
+            int beside = ring.get((index + step) % size);
+            for (int neighbour : molecule.neighbours(beside)) {
+                if (neighbour != carbon && !ring.contains(neighbour)
+                        && !Reactivity.directsToTheSides(molecule, neighbour)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** The two ring neighbours of an atom of a ring, the one it is held to by a double bond first. */
+    private static int[] ringNeighbours(Molecule molecule, int atom) {
+        List<Integer> ring = null;
+        for (List<Integer> cycle : Rings.cycles(molecule)) {
+            if (cycle.contains(atom)) {
+                ring = cycle;
+                break;
+            }
+        }
+        if (ring == null) {
+            return null;
+        }
+        int size = ring.size();
+        int index = ring.indexOf(atom);
+        int next = ring.get((index + 1) % size);
+        int previous = ring.get((index + size - 1) % size);
+        Bond forward = bondBetween(molecule, atom, next);
+        return forward != null && forward.order() == 2 ? new int[] {next, previous}
+                : new int[] {previous, next};
     }
 
     /**
