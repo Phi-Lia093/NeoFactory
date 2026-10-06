@@ -108,6 +108,9 @@ public final class PolarReactions {
         rules.add(eneReaction());
         rules.add(imidazoleFormation());
         rules.add(nitroReduction());
+        rules.add(halogenHomolysis());
+        rules.add(radicalAddition());
+        rules.add(radicalCoupling());
         return List.copyOf(rules);
     }
 
@@ -3053,6 +3056,99 @@ public final class PolarReactions {
             }
         }
         return found;
+    }
+
+    /**
+     * A molecule of a halogen coming apart into two radicals under a light, which is the moment a radical
+     * chain of the industry is started at.
+     * <p>
+     * One arrow is drawn, and it is the only shape a pair of electrons cannot be written with: the bond goes
+     * evenly, each halogen keeping the electron it contributed and coming out an atom with one unpaired
+     * electron and no charge. A light is demanded rather than wondered at - the same vessel in the dark
+     * stands as it is - because a halogen bond is broken by light and not by standing at a bench.
+     */
+    private static ReactionRule halogenHomolysis() {
+        return new ReactionRule("halogenHomolysis", "radical", 2, EnumSet.of(FunctionalGroup.HALOGEN),
+                Conditions.builder().warmth(Warmth.HEATED).lighted(true).build(),
+                PolarReactions::homolyseHalogen);
+    }
+
+    private static Reaction homolyseHalogen(Pot pot) {
+        Site halogen = first(Sites.halogens(pot.molecule()));
+        if (halogen == null) {
+            return null;
+        }
+        Molecule product = ElementaryStep
+                .of("halogenHomolysis", List.of(Arrow.homolysis(halogen.atom(0), halogen.atom(1))))
+                .apply(pot.molecule());
+        return pot.react(product, 0, halogen.atom(0));
+    }
+
+    /**
+     * A radical taking one end of a double bond and leaving a radical on the other, which is the step a
+     * polymer chain is grown by.
+     * <p>
+     * Two arrows are drawn and each carries one electron: the unpaired electron of the radical makes the bond
+     * to the carbon that carries more hydrogens, and one electron of the double bond is left behind as an
+     * unpaired electron on the other carbon - so that the chain gains a repeat unit and the radical moves to
+     * the far end of it, ready for the next one. What is not drawn is the pairing of the two electrons: the
+     * two arrows are the two halves, and the bond between them comes out whole all the same.
+     * <p>
+     * <b>The radical goes to the carbon that carries fewer hydrogens</b>, which is the steadier radical - the
+     * benzylic and the substituted one of a monomer - so a chain of styrene grows a radical on the carbon
+     * beside the ring and not on the end of it, which is what the trade finds.
+     */
+    private static ReactionRule radicalAddition() {
+        return new ReactionRule("radicalAddition", "radical", 2,
+                EnumSet.of(FunctionalGroup.RADICAL, FunctionalGroup.ALKENE),
+                Conditions.at(Warmth.HEATED), PolarReactions::addRadical);
+    }
+
+    private static Reaction addRadical(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site alkene = bestAlkene(molecule);
+        Site radical = first(Sites.radicals(molecule));
+        if (alkene == null || radical == null) {
+            return null;
+        }
+        int attacker = radical.atom(0);
+        int near = plainerCarbonOf(molecule, alkene);
+        int far = near == alkene.atom(0) ? alkene.atom(1) : alkene.atom(0);
+        if (pot.sharesAMolecule(attacker, near) || bondBetween(molecule, attacker, near) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromRadical(attacker, attacker, near),
+                Arrow.toRadical(near, far, far));
+        Molecule product = ElementaryStep.of("radicalAddition", arrows).apply(molecule);
+        return pot.react(product, 0, attacker, far);
+    }
+
+    /**
+     * Two radicals whose unpaired electrons pair up into a bond, which is how a radical chain is stopped.
+     * <p>
+     * One arrow is drawn for the two electrons and the bond they make between them: it is the mirror of the
+     * homolysis a chain is started by, and what it leaves is a vessel with no radical in it at all.
+     */
+    private static ReactionRule radicalCoupling() {
+        return new ReactionRule("radicalCoupling", "radical", EnumSet.of(FunctionalGroup.RADICAL),
+                PolarReactions::coupleRadicals);
+    }
+
+    private static Reaction coupleRadicals(Pot pot) {
+        Molecule molecule = pot.molecule();
+        List<Site> radicals = Sites.radicals(molecule);
+        if (radicals.size() < 2) {
+            return null;
+        }
+        int first = radicals.get(0).atom(0);
+        int second = radicals.get(1).atom(0);
+        if (first == second || bondBetween(molecule, first, second) != null) {
+            return null;
+        }
+        Molecule product = ElementaryStep.of("radicalCoupling", List.of(Arrow.couple(first, second)))
+                .apply(molecule);
+        return pot.react(product, 0, first, second);
     }
 
     /** {@code true} when an atom of a molecule is of a named element. */

@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * One pair of electrons moving, the curved arrow a chemist draws over a reaction.
+ * Electrons moving through a molecule, the curved arrow a chemist draws over a reaction.
  * <p>
  * Every reaction of an organic molecule is a handful of these and nothing else. A pair of electrons is in one
  * of two places at the start - held as a lone pair on an atom, or shared in a bond - and it goes to one of
@@ -15,11 +15,21 @@ import java.util.Objects;
  * was not there before. The nucleophile of a substitution is a lone pair on its way to a bond, the leaving
  * group is a bond on its way to a lone pair, and a shift of a hydride is a bond on its way to another bond.
  * <p>
+ * <b>An arrow may carry one electron instead of a pair, which is the arrow of a radical.</b> Half of the
+ * chemistry of an industry is run by unpaired electrons - a chain halogenation, the growth of a polymer, the
+ * homolysis a peroxide starts a reaction with - and none of it can be written with pairs alone: a bond that
+ * splits evenly leaves a radical on each of its two atoms, and a radical that comes in on a double bond
+ * leaves one behind on the far carbon. Such an arrow is drawn with a single barb, and the electron it
+ * carries is taken from or left as an unpaired electron, see {@link #fromRadical} and {@link #toRadical}.
+ * The two halves of a bond that splits, and the two radicals that close into one, are one move each, see
+ * {@link #homolysis} and {@link #couple}.
+ * <p>
  * <b>Where the electrons go decides the charges, and nothing has to be said twice.</b> A pair of electrons
  * that leaves an atom takes one electron of the count with it and a pair that arrives brings one, so the
- * formal charge of every atom follows from what its bonds and its lone pairs became. An arrow therefore
- * names no charge at all: it moves a pair, and the charges fall out of the move, which is what keeps the
- * charge of the whole molecule the same and a mechanism from quietly making one.
+ * formal charge of every atom follows from what its bonds, its lone pairs and its unpaired electrons became.
+ * An arrow therefore names no charge at all and never a radical count either: it moves electrons, and both
+ * fall out of the move, which is what keeps the charge of the whole molecule the same and a mechanism from
+ * quietly making one.
  * <p>
  * <b>The atoms are the same atoms afterwards.</b> An arrow changes bonds and never atoms, so the atoms of the
  * molecule keep their places, their elements, their isotopes and the chirality a reaction decided to leave on
@@ -28,41 +38,49 @@ import java.util.Objects;
  */
 public final class Arrow {
 
-    /** Where the pair of electrons comes from. */
-    public enum Donor {
+    /** A bond that an arrow made or broke, keyed by its two atoms. */
+    private final Map<Long, Integer> bondChange;
 
-        /** A lone pair the atom was holding. */
-        LONE_PAIR,
+    /** How many lone pairs an arrow took off or left on an atom. */
+    private final Map<Integer, Integer> lonePairChange;
 
-        /** One pair of a bond the two atoms were sharing. */
-        BOND
+    /** How many unpaired electrons an arrow took off or left on an atom. */
+    private final Map<Integer, Integer> radicalChange;
+
+    /** How much of an atom's share of the bonds around it an arrow took off or added. */
+    private final Map<Integer, Integer> orderChange;
+
+    private Arrow(Map<Long, Integer> bondChange, Map<Integer, Integer> lonePairChange,
+            Map<Integer, Integer> radicalChange, Map<Integer, Integer> orderChange) {
+        this.bondChange = bondChange;
+        this.lonePairChange = lonePairChange;
+        this.radicalChange = radicalChange;
+        this.orderChange = orderChange;
     }
 
-    /** Where the pair of electrons goes. */
-    public enum Acceptor {
-
-        /** A bond the two atoms now share, whether or not they shared one before. */
-        BOND,
-
-        /** A lone pair the atom now holds. */
-        LONE_PAIR
+    /** An empty move, the start of every arrow a factory below builds. */
+    private static Arrow empty() {
+        return new Arrow(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
-    private final Donor donor;
-    private final int donorFirst;
-    private final int donorSecond;
-    private final Acceptor acceptor;
-    private final int acceptorFirst;
-    private final int acceptorSecond;
+    /** Changes the shared pairs of the bond between two atoms, on both of their counts. */
+    private Arrow withBond(int first, int second, int amount) {
+        bondChange.merge(pairKey(first, second), amount, Integer::sum);
+        orderChange.merge(first, amount, Integer::sum);
+        orderChange.merge(second, amount, Integer::sum);
+        return this;
+    }
 
-    private Arrow(Donor donor, int donorFirst, int donorSecond, Acceptor acceptor, int acceptorFirst,
-            int acceptorSecond) {
-        this.donor = donor;
-        this.donorFirst = donorFirst;
-        this.donorSecond = donorSecond;
-        this.acceptor = acceptor;
-        this.acceptorFirst = acceptorFirst;
-        this.acceptorSecond = acceptorSecond;
+    /** Gives an atom a lone pair more, or takes one of its own away. */
+    private Arrow withLonePair(int atom, int amount) {
+        lonePairChange.merge(atom, amount, Integer::sum);
+        return this;
+    }
+
+    /** Leaves an atom an unpaired electron more, or takes one of its own away. */
+    private Arrow withRadical(int atom, int amount) {
+        radicalChange.merge(atom, amount, Integer::sum);
+        return this;
     }
 
     /**
@@ -74,7 +92,7 @@ public final class Arrow {
      * @return the arrow
      */
     public static Arrow fromLonePair(int lonePairAtom, int first, int second) {
-        return new Arrow(Donor.LONE_PAIR, lonePairAtom, -1, Acceptor.BOND, first, second);
+        return empty().withLonePair(lonePairAtom, -1).withBond(first, second, 1);
     }
 
     /**
@@ -85,7 +103,7 @@ public final class Arrow {
      * @return the arrow
      */
     public static Arrow toLonePair(int first, int second) {
-        return new Arrow(Donor.BOND, first, second, Acceptor.LONE_PAIR, second, -1);
+        return empty().withBond(first, second, -1).withLonePair(second, 1);
     }
 
     /**
@@ -99,49 +117,96 @@ public final class Arrow {
      */
     public static Arrow betweenBonds(int donorFirst, int donorSecond, int acceptorFirst,
             int acceptorSecond) {
-        return new Arrow(Donor.BOND, donorFirst, donorSecond, Acceptor.BOND, acceptorFirst,
-                acceptorSecond);
+        return empty().withBond(donorFirst, donorSecond, -1).withBond(acceptorFirst, acceptorSecond, 1);
     }
 
     /**
-     * Pushes the pair of electrons through a molecule.
+     * A bond that breaks and leaves one of its two electrons on each of its atoms, the homolysis a radical
+     * chain is started with.
+     * <p>
+     * The pair of a bond is shared, so a bond that comes apart evenly is not two arrows but one: each atom
+     * keeps the electron it contributed, and both come out with an unpaired electron and neither with a
+     * charge. An arrow that could only move a whole pair would have to hand both electrons to one atom, which
+     * is a heterolysis and a different reaction.
+     *
+     * @param first one end of the bond that breaks
+     * @param second the other end of it
+     * @return the arrow
+     */
+    public static Arrow homolysis(int first, int second) {
+        return empty().withBond(first, second, -1).withRadical(first, 1).withRadical(second, 1);
+    }
+
+    /**
+     * Two radicals whose unpaired electrons pair up into a bond, the termination a radical chain is ended by.
+     *
+     * @param first one atom that brought an unpaired electron
+     * @param second the other
+     * @return the arrow
+     */
+    public static Arrow couple(int first, int second) {
+        return empty().withRadical(first, -1).withRadical(second, -1).withBond(first, second, 1);
+    }
+
+    /**
+     * An unpaired electron of an atom that goes into a bond, the first half of a radical adding to a double
+     * bond.
+     * <p>
+     * One electron makes a bond only together with another, so this arrow is drawn beside one that supplies
+     * the other half - the pair of the double bond, one electron of which stays behind as a radical on the
+     * far carbon, see {@link #toRadical}.
+     *
+     * @param radicalAtom atom the unpaired electron was held on
+     * @param first one end of the bond the electron makes
+     * @param second the other end of that bond
+     * @return the arrow
+     */
+    public static Arrow fromRadical(int radicalAtom, int first, int second) {
+        return empty().withRadical(radicalAtom, -1).withBond(first, second, 1);
+    }
+
+    /**
+     * A bond that parts with one of its two electrons, which is left as an unpaired electron on an atom.
+     *
+     * @param first one end of the bond
+     * @param second the other end of it
+     * @param radicalAtom the atom the unpaired electron is left on
+     * @return the arrow
+     */
+    public static Arrow toRadical(int first, int second, int radicalAtom) {
+        return empty().withBond(first, second, -1).withRadical(radicalAtom, 1);
+    }
+
+    /**
+     * Pushes the electrons through a molecule.
      *
      * @param molecule molecule the arrow is drawn on
      * @return the molecule the arrow leaves behind
-     * @throws IllegalStateException when the arrow names a bond that is not there
+     * @throws IllegalStateException when the arrow names a bond or a radical that is not there
      */
     public Molecule apply(Molecule molecule) {
         Objects.requireNonNull(molecule, "molecule");
         int count = molecule.atomCount();
-        int[] orderChange = new int[count];
-        int[] lonePairChange = new int[count];
-        Map<Long, Integer> bondChange = new HashMap<>();
-        if (donor == Donor.LONE_PAIR) {
-            lonePairChange[donorFirst] -= 1;
-        } else {
-            orderChange[donorFirst] -= 1;
-            orderChange[donorSecond] -= 1;
-            add(bondChange, donorFirst, donorSecond, -1);
-        }
-        if (acceptor == Acceptor.LONE_PAIR) {
-            lonePairChange[acceptorFirst] += 1;
-        } else {
-            orderChange[acceptorFirst] += 1;
-            orderChange[acceptorSecond] += 1;
-            add(bondChange, acceptorFirst, acceptorSecond, 1);
-        }
         List<Atom> atoms = new ArrayList<>();
         for (int atom = 0; atom < count; atom++) {
             Atom old = molecule.atom(atom);
-            int charge = old.charge() - (2 * lonePairChange[atom] + orderChange[atom]);
+            int lonePairs = lonePairChange.getOrDefault(atom, 0);
+            int radicals = radicalChange.getOrDefault(atom, 0);
+            int order = orderChange.getOrDefault(atom, 0);
+            int charge = old.charge() - (2 * lonePairs + radicals + order);
+            int held = old.radicals() + radicals;
+            if (held < 0) {
+                throw new IllegalStateException("An arrow spends a radical that is not there");
+            }
             Atom fresh = Atom.rebuilt(old.element(), charge, old.isotope(), old.isAromatic(),
-                    old.mapClass(), old.chirality(), old.radicals());
+                    old.mapClass(), old.chirality(), held);
             fresh.markWrittenOrder(old.writtenNeighbours());
             atoms.add(fresh);
         }
         List<Bond> bonds = new ArrayList<>();
+        Map<Long, Integer> remaining = new HashMap<>(bondChange);
         for (Bond bond : molecule.bonds()) {
-            Integer change = bondChange.remove(pairKey(bond.first(), bond.second()));
+            Integer change = remaining.remove(pairKey(bond.first(), bond.second()));
             int order = bond.order() + (change == null ? 0 : change);
             if (order <= 0) {
                 continue;
@@ -149,7 +214,7 @@ public final class Arrow {
             bonds.add(bond.isAromatic() ? Bond.aromatic(bond.first(), bond.second())
                     : Bond.of(bond.first(), bond.second(), order, bond.stereo()));
         }
-        for (Map.Entry<Long, Integer> entry : bondChange.entrySet()) {
+        for (Map.Entry<Long, Integer> entry : remaining.entrySet()) {
             if (entry.getValue() < 0) {
                 throw new IllegalStateException("An arrow breaks a bond that is not there");
             }
@@ -157,11 +222,6 @@ public final class Arrow {
                     entry.getValue()));
         }
         return new Molecule(atoms, bonds);
-    }
-
-    /** Adds to the change of the bond between two atoms. */
-    private static void add(Map<Long, Integer> change, int first, int second, int amount) {
-        change.merge(pairKey(first, second), amount, Integer::sum);
     }
 
     /** A key of an unordered pair of atoms. */

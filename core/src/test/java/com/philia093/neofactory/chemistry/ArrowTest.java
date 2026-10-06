@@ -70,6 +70,53 @@ class ArrowTest {
         assertThrows(IllegalArgumentException.class, () -> Mechanism.of("nothing"));
     }
 
+    @Test
+    void aBondThatSplitsEvenlyLeavesARadicalOnEachOfItsAtoms() {
+        // A molecule of bromine under a light, which is how a radical chain is started.
+        Molecule molecule = SmilesParser.parse("[Br][Br]");
+
+        Molecule product = Arrow.homolysis(0, 1).apply(molecule);
+
+        assertNull(bond(product, 0, 1), "the bond is gone");
+        assertEquals(1, product.atom(0).radicals(), "and each atom kept one of its electrons");
+        assertEquals(1, product.atom(1).radicals());
+        assertEquals(0, product.charge(), "with no charge made on either of them");
+    }
+
+    @Test
+    void twoRadicalsPairUpIntoABond() {
+        Molecule molecule = SmilesParser.parse("[CH3].[CH3]");
+
+        Molecule product = Mechanism.of("radicalCoupling", Arrow.couple(0, 1)).apply(molecule);
+
+        assertNotNull(bond(product, 0, 1), "the two carbons are held together now");
+        assertEquals(0, product.atom(0).radicals(), "and neither is a radical any more");
+        assertEquals(0, product.atom(1).radicals());
+        assertEquals(0, product.charge());
+    }
+
+    @Test
+    void anUnpairedElectronAndHalfOfADoubleBondMakeABondAndLeaveOneBehind() {
+        // A methyl radical and ethene, as the two single-electron arrows the addition is drawn with.
+        Molecule molecule = SmilesParser.parse("[CH3].C=C");
+
+        Molecule product = Mechanism.of("radicalAddition",
+                Arrow.fromRadical(0, 0, 1),
+                Arrow.toRadical(1, 2, 2)).apply(molecule);
+
+        assertNotNull(bond(product, 0, 1), "the radical holds the carbon of the double bond now");
+        assertEquals(0, product.atom(0).radicals(), "and is a radical no more");
+        assertEquals(1, product.atom(2).radicals(), "the far carbon is the one left a radical");
+        assertEquals(0, product.charge(), "and no charge was made");
+    }
+
+    @Test
+    void anArrowThatSpendsARadicalThatIsNotThereIsRefused() {
+        Molecule closedShell = SmilesParser.parse("C=C");
+
+        assertThrows(IllegalStateException.class, () -> Arrow.fromRadical(0, 0, 1).apply(closedShell));
+    }
+
     /** The bond between two atoms, or {@code null} when they share none. */
     private static Bond bond(Molecule molecule, int first, int second) {
         for (int bondIndex : molecule.bondsOf(first)) {

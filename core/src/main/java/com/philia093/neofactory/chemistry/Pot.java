@@ -80,8 +80,12 @@ public record Pot(Molecule molecule, int[] origin, int[] copies, List<Chemical> 
      * would be, which is why it is worked out here once.
      * <p>
      * What the vessel gains are the pieces the rewritten molecule fell into - but only those of them that
-     * hold an atom of a substance the rule named, so that whatever merely stood by is on neither side of the
-     * answer.
+     * hold an atom of a molecule the rule named, so that whatever merely stood by is on neither side of the
+     * answer. <b>The test is the molecule and not the substance.</b> A vessel may hold more of a reagent than
+     * the rule spends - two atoms of a halogen under a light, three molecules of hydrogen where the reduction
+     * takes three and one to spare - and the ones it did not touch are no part of what happened: a piece that
+     * holds an atom of an untouched molecule of the very substance the rule did touch is a molecule that
+     * stood by, and counting it would make the answer gain a substance the reaction never made.
      *
      * @param rewritten the molecule the rule left, its atoms numbered as the pot's
      * @param electrons electrons the reaction takes in, negative when it gives them out
@@ -111,7 +115,7 @@ public record Pot(Molecule molecule, int[] origin, int[] copies, List<Chemical> 
                 reactants = reactants.plus(Mixture.of(substances.get(substance), count));
             }
         }
-        Set<Chemical> taking = new LinkedHashSet<>(reactants.components().keySet());
+        Set<Long> taking = new LinkedHashSet<>(molecules);
         Mixture produced = Mixture.empty();
         for (List<Integer> component : components(rewritten)) {
             if (takesPart(component, taking)) {
@@ -127,10 +131,10 @@ public record Pot(Molecule molecule, int[] origin, int[] copies, List<Chemical> 
         return ((long) origin[atom] << 32) | (copies[atom] & 0xffffffffL);
     }
 
-    /** {@code true} when a piece of the rewritten molecule holds an atom of a substance the rule named. */
-    private boolean takesPart(List<Integer> component, Set<Chemical> taking) {
+    /** {@code true} when a piece of the rewritten molecule holds an atom of a molecule the rule named. */
+    private boolean takesPart(List<Integer> component, Set<Long> taking) {
         for (int atom : component) {
-            if (taking.contains(substances.get(origin[atom]))) {
+            if (taking.contains(moleculeKey(atom))) {
                 return true;
             }
         }

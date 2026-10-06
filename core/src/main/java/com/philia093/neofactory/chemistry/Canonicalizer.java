@@ -332,8 +332,16 @@ public final class Canonicalizer {
     /** What an atom is, before any neighbour is looked at. */
     private static String invariant(Molecule molecule, int atom) {
         Atom value = molecule.atom(atom);
-        return value.element() + ':' + value.charge() + ':' + value.isotope() + ':'
+        String description = value.element() + ':' + value.charge() + ':' + value.isotope() + ':'
                 + value.hydrogens() + (value.isAromatic() ? ":a" : ":-");
+        if (value.isRadical()) {
+            // An unpaired electron is as much of what an atom is as a charge is, and two molecules that
+            // differ in it are two substances and not one. The count is written after everything else and
+            // only when there is one, so that a molecule of the closed shell keeps the very key it had
+            // before radicals could be moved at all.
+            description = description + ":r" + value.radicals();
+        }
+        return description;
     }
 
     /** How a bond is written: its order, its aromatic mark and its stereo. */

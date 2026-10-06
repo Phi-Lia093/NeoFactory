@@ -27,9 +27,12 @@ import java.util.Map;
  * <p>
  * <b>What is written and what is not.</b> The elements of the organic subset are written bare when their
  * hydrogens follow from their bonds and the atom carries nothing else, and between brackets otherwise, with
- * the isotope, the charge and the hydrogens spelled out. The mark of a stereo double bond is not written
- * yet, and neither is an unpaired electron, which the language of the module has no letter for; a molecule
- * carrying those is written as its plain skeleton.
+ * the isotope, the charge and the hydrogens spelled out. <b>A radical needs nothing of its own</b>: an atom
+ * that holds an unpaired electron holds one bond fewer than its element would take, so its hydrogens are
+ * fewer and it is written between brackets - a methyl radical is {@code [CH3]} and a hydroxyl one
+ * {@code [OH]}, which is exactly how the reader takes them back in and hands them their unpaired electron.
+ * The mark of a stereo double bond is not written yet; a molecule carrying one is written as its plain
+ * skeleton.
  */
 public final class SmilesWriter {
 

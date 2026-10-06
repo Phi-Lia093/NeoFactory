@@ -73,5 +73,11 @@ public enum FunctionalGroup {
     NITROSO,
 
     /** A ring whose bonds are the blurred ones of an aromatic ring. */
-    AROMATIC_RING
+    AROMATIC_RING,
+
+    /** An atom that holds an unpaired electron, the radical a chain is carried by. */
+    RADICAL,
+
+    /** Two halogens held to each other, the molecule a halogen is homolysed out of. */
+    HALOGEN
 }

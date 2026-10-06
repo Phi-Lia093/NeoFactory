@@ -45,6 +45,42 @@ public final class Sites {
         sites.addAll(nitroso(molecule));
         sites.addAll(anions(molecule));
         sites.addAll(aromaticRings(molecule));
+        sites.addAll(radicals(molecule));
+        sites.addAll(halogens(molecule));
+        return sites;
+    }
+
+    /**
+     * The atoms of a molecule that hold an unpaired electron, the carriers of a radical chain.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the charged atom alone
+     */
+    public static List<Site> radicals(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (molecule.atom(atom).isRadical()) {
+                sites.add(new Site(FunctionalGroup.RADICAL, List.of(atom)));
+            }
+        }
+        return sites;
+    }
+
+    /**
+     * The bonds between two halogens of one element, the halogen molecule a chain is started from.
+     *
+     * @param molecule molecule to read
+     * @return the sites, one halogen first and the other second
+     */
+    public static List<Site> halogens(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (Bond bond : molecule.bonds()) {
+            if (isHalogen(molecule, bond.first()) && isHalogen(molecule, bond.second())
+                    && molecule.atom(bond.first()).element()
+                            .equals(molecule.atom(bond.second()).element())) {
+                sites.add(new Site(FunctionalGroup.HALOGEN, List.of(bond.first(), bond.second())));
+            }
+        }
         return sites;
     }
 

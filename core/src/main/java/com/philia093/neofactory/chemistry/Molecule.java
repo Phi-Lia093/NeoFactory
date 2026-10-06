@@ -77,20 +77,33 @@ public final class Molecule {
     }
 
     /**
-     * Fills in the hydrogens of every bare atom, once the bonds and the aromatic rings are known.
+     * Fills in the hydrogens of every bare atom and the unpaired electrons of every bracketed one.
      * <p>
-     * A bracketed atom already carries the hydrogens its brackets spelled out and is left alone; a bare
-     * atom asks {@link DefaultValence} how many its element leaves room for, which depends on the charge,
-     * on whether it lies in an aromatic ring and on how many bonds already end at it.
+     * A bare atom asks {@link DefaultValence} how many hydrogens its element leaves room for, which depends
+     * on the charge, on whether it lies in an aromatic ring and on how many bonds already end at it. A
+     * bracketed atom already carries the hydrogens its brackets spelled out, <b>except that a bracketed atom
+     * written with fewer hydrogens than its valence has the rest as unpaired electrons</b> - which is exactly
+     * how a string writes a radical: {@code [CH3]} is a methyl radical, {@code [OH]} a hydroxyl one and
+     * {@code [O]} an oxygen atom. Only a neutral atom of the organic subset is read that way, because a
+     * bracketed ion is written for its charge and never for a radical: {@code [O-]} is a hydroxide, which is
+     * a closed shell and not an oxygen atom with an electron to spare.
      */
     private void resolveHydrogens() {
         for (int index = 0; index < atoms.size(); index++) {
             Atom atom = atoms.get(index);
-            if (atom.hydrogens() != Atom.UNRESOLVED_HYDROGEN) {
+            int bonds = bondOrderSum(index);
+            if (atom.hydrogens() == Atom.UNRESOLVED_HYDROGEN) {
+                atom.resolveHydrogens(DefaultValence.implicitHydrogens(atom.element(), atom.charge(),
+                        atom.isAromatic(), bonds, atom.radicals()));
                 continue;
             }
-            atom.resolveHydrogens(DefaultValence.implicitHydrogens(atom.element(), atom.charge(),
-                    atom.isAromatic(), bondOrderSum(index), atom.radicals()));
+            if (atom.charge() == 0 && Elements.isOrganicSubset(atom.element())) {
+                int shortfall = DefaultValence.implicitHydrogens(atom.element(), 0, atom.isAromatic(),
+                        bonds, 0) - atom.hydrogens();
+                if (shortfall > 0) {
+                    atom.markRadicals(shortfall);
+                }
+            }
         }
     }
 
