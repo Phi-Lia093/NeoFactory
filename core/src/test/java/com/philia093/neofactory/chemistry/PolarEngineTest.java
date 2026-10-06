@@ -141,7 +141,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(22, rules.size(), "the table of the polar families");
+        assertEquals(23, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
@@ -370,6 +370,16 @@ class PolarEngineTest {
 
         assertNotNull(reaction, "an aldehyde and one alcohol are a hemiacetal");
         assertEquals(Set.of("C4H10O2"), formulas(reaction.products()));
+    }
+
+    @Test
+    void aSecondaryAmineTakesAKetoneOverIntoAnEnamine() {
+        // Propanone and dimethylamine: the double bond comes out between the carbonyl carbon and the carbon
+        // beside it, because an amine of two carbons has no hydrogen left to lose off its nitrogen.
+        Reaction reaction = best("CC(=O)C", "CNC");
+
+        assertNotNull(reaction, "a ketone and an amine of two carbons are an enamine");
+        assertEquals(Set.of("C5H11N", "H2O"), formulas(reaction.products()));
     }
 
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */

@@ -38,6 +38,7 @@ public final class PolarReactions {
         rules.add(acetalFormation());
         rules.add(hemiacetal());
         rules.add(imineFormation());
+        rules.add(enamineFormation());
         rules.add(sulfonation());
         rules.add(aldol());
         rules.add(claisenCondensation());
@@ -575,6 +576,86 @@ public final class PolarReactions {
                 Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
                         .plus(Mixture.of(pot.substanceOf(firstOxygen), 2));
                 return pot.react(consumed, product, 0);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A ketone and an amine of two carbons giving an enamine and water, the reaction a carbonyl is made into
+     * the soft nucleophile the trade builds rings with.
+     * <p>
+     * Seven arrows are drawn, the six of an imine as far as the carbinolamine and the one that takes it
+     * away: the amine into the carbonyl, the pair of the double bond to the oxygen, the one hydrogen the
+     * nitrogen carries off onto that oxygen, the second carbon of the nitrogen losing the hydrogen beside it
+     * - which is what makes the double bond of the enamine, since an amine of two carbons has no hydrogen
+     * left to lose off the nitrogen itself - the bond to the hydroxyl breaking with the pair, and that
+     * hydrogen onto the hydroxyl so that it leaves as water.
+     */
+    private static ReactionRule enamineFormation() {
+        return new ReactionRule("enamineFormation", "condensation", 6,
+                EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.AMINE),
+                PolarReactions::formEnamine);
+    }
+
+    private static Reaction formEnamine(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site carbonyl = bestCarbonyl(molecule);
+        int[] amine = secondaryAmineOf(molecule);
+        if (carbonyl == null || amine == null) {
+            return null;
+        }
+        int carbon = carbonyl.atom(0);
+        int oxygen = carbonyl.atom(1);
+        int nitrogen = amine[0];
+        int hydrogen = amine[1];
+        int alpha = alphaCarbonOf(molecule, carbon);
+        if (alpha < 0) {
+            return null;
+        }
+        int alphaHydrogen = hydrogenOn(molecule, alpha);
+        if (alphaHydrogen < 0 || bondBetween(molecule, carbon, nitrogen) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.toLonePair(hydrogen, nitrogen),
+                Arrow.fromLonePair(oxygen, oxygen, hydrogen),
+                Arrow.betweenBonds(alpha, alphaHydrogen, alpha, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.fromLonePair(oxygen, oxygen, alphaHydrogen));
+        Molecule product = ElementaryStep.of("enamineFormation", arrows).apply(molecule);
+        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
+                .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
+        return pot.react(consumed, product, 0);
+    }
+
+    /**
+     * The nitrogen of an amine of two carbons, with the one hydrogen it carries.
+     *
+     * @param molecule molecule to read
+     * @return the nitrogen and its hydrogen, or {@code null} when there is none
+     */
+    private static int[] secondaryAmineOf(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "N") || molecule.atom(atom).charge() != 0) {
+                continue;
+            }
+            int hydrogen = -1;
+            int carbons = 0;
+            boolean other = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (isElement(molecule, neighbour, "H") && molecule.atom(neighbour).charge() == 0) {
+                    hydrogen = hydrogen < 0 ? neighbour : -2;
+                } else if (isElement(molecule, neighbour, "C")) {
+                    carbons++;
+                } else {
+                    other = true;
+                }
+            }
+            if (hydrogen >= 0 && carbons == 2 && !other) {
+                return new int[] {atom, hydrogen};
             }
         }
         return null;
