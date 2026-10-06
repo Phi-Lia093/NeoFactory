@@ -208,6 +208,15 @@ public final class Substances {
         catalog.register("acetic acid", "CC(=O)O", Phase.LIQUID);
         catalog.register("benzene", "c1ccccc1", Phase.LIQUID);
         catalog.register("sulfuric acid", "OS(=O)(=O)O", Phase.LIQUID);
+        // The reagents the organic side draws its reactions with: each one is a substance a player has to
+        // hold before the rule that asks for it can run, which is why a rule and its reagent are written
+        // down at the same time.
+        catalog.register("hydrogen cyanide", "C#N", Phase.LIQUID);
+        catalog.register("hydroxylamine", "NO", Phase.LIQUID);
+        catalog.register("hydrogen peroxide", "OO", Phase.LIQUID);
+        catalog.register("nitrous acid", "ON=O", Phase.LIQUID);
+        catalog.register("aluminium chloride", "[Al](Cl)(Cl)Cl", Phase.SOLID);
+        catalog.register("iron(III) bromide", "[Fe](Br)(Br)Br", Phase.SOLID);
         return catalog;
     }
 

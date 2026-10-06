@@ -35,7 +35,7 @@ class FluidTest {
         assertEquals(Fluids.STEAM, Fluids.byName("steam"));
         assertNull(Fluids.byName("oil"), "an unknown name finds nothing");
         assertNull(Fluids.byName(null), "and so does no name at all");
-        assertEquals(27, Fluids.all().size(), "a fluid of every liquid and gas of the catalog, and lava");
+        assertEquals(31, Fluids.all().size(), "a fluid of every liquid and gas of the catalog, and lava");
     }
 
     @Test

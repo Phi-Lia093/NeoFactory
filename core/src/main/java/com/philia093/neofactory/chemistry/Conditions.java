@@ -27,7 +27,7 @@ public final class Conditions {
 
     /** The conditions that name nothing: a recipe that asks for nothing, a machine that measures nothing. */
     public static final Conditions NONE = new Conditions(null, null, null, null, Set.of(), null, false,
-            null, null);
+            null, null, false);
 
     private final Fraction minTemperature;
     private final Fraction maxTemperature;
@@ -38,10 +38,11 @@ public final class Conditions {
     private final boolean current;
     private final Warmth warmth;
     private final Chemical medium;
+    private final boolean lighted;
 
     private Conditions(Fraction minTemperature, Fraction maxTemperature, Fraction minPressure,
             Fraction maxPressure, Set<Chemical> catalysts, Phase phase, boolean current, Warmth warmth,
-            Chemical medium) {
+            Chemical medium, boolean lighted) {
         this.minTemperature = minTemperature;
         this.maxTemperature = maxTemperature;
         this.minPressure = minPressure;
@@ -51,6 +52,7 @@ public final class Conditions {
         this.current = current;
         this.warmth = warmth;
         this.medium = medium;
+        this.lighted = lighted;
     }
 
     /**
@@ -139,6 +141,9 @@ public final class Conditions {
     public boolean within(Conditions offered) {
         Objects.requireNonNull(offered, "offered");
         if (current && !offered.current) {
+            return false;
+        }
+        if (lighted && !offered.lighted) {
             return false;
         }
         if (!inside(minTemperature, maxTemperature, offered.minTemperature, offered.maxTemperature)) {
@@ -240,12 +245,27 @@ public final class Conditions {
         return current;
     }
 
+    /**
+     * {@code true} when a light stands over this vessel, or when a route of this kind needs one.
+     * <p>
+     * A light is the second of the two conditions the organic side asks for and does not merely wonder at,
+     * and it is asked exactly the way a current is, see {@link #current()}: a reaction that only runs in the
+     * light - the closing of two double bonds into a ring of four, the chain a radical runs - demands one of
+     * what it is offered, so a vessel that says nothing of a light is never matched against it, and a vessel
+     * that is lit may run anything that does not care about light at all.
+     *
+     * @return {@code true} when a light is needed or is standing over the vessel
+     */
+    public boolean lighted() {
+        return lighted;
+    }
+
     @Override
     public String toString() {
         return "Conditions(temperature " + minTemperature + ".." + maxTemperature + ", pressure "
                 + minPressure + ".." + maxPressure + ", catalysts " + catalysts.size() + ", phase "
                 + phase + ", warmth " + warmth + ", medium " + medium + (current ? ", a current" : "")
-                + ")";
+                + (lighted ? ", a light" : "") + ")";
     }
 
     /** Builds a set of conditions a range at a time. */
@@ -260,6 +280,7 @@ public final class Conditions {
         private boolean current;
         private Warmth warmth;
         private Chemical medium;
+        private boolean lighted;
 
         private Builder() {
             // A builder holds nothing until it is told.
@@ -366,10 +387,21 @@ public final class Conditions {
             return this;
         }
 
+        /**
+         * Says that a light stands over a vessel, or that a route of this kind needs one.
+         *
+         * @param lighted {@code true} when a light is standing over it or is needed
+         * @return this builder
+         */
+        public Builder lighted(boolean lighted) {
+            this.lighted = lighted;
+            return this;
+        }
+
         /** Builds the conditions. */
         public Conditions build() {
             return new Conditions(minTemperature, maxTemperature, minPressure, maxPressure, catalysts,
-                    phase, current, warmth, medium);
+                    phase, current, warmth, medium, lighted);
         }
     }
 }

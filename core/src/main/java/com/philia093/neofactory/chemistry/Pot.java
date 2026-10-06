@@ -22,15 +22,25 @@ import java.util.Set;
  * there is not part of what happened, and a reaction that named it would be a reaction that claims to have
  * done something it did not.
  *
+ * <b>An atom remembers which molecule of its substance it came from, and not only which substance.</b> A
+ * substance that stands in the vessel twice is laid out twice, so that a reaction between two molecules of
+ * one substance is not read as a reaction of one molecule with itself; and a rule that carries a change out
+ * on two atoms of <em>one</em> laid out molecule has run a reaction inside that molecule - the closing of a
+ * ring, most often - which spends one molecule of it and not two. Which of the two happened is not something
+ * a rule has to say: it names the atoms it touched, and the counting of molecules follows from where they
+ * came from, see {@link #react(Molecule, int, int...)}.
+ *
  * @param molecule everything that stands in the vessel, laid out as one molecule
  * @param origin which substance every atom of it came from
+ * @param copies which molecule of that substance every atom of it came from
  * @param substances the substances, in the order they were laid out in
  */
-public record Pot(Molecule molecule, int[] origin, List<Chemical> substances) {
+public record Pot(Molecule molecule, int[] origin, int[] copies, List<Chemical> substances) {
 
     /** Copies what a caller might write to, so the pot stays what it was read from. */
     public Pot {
         origin = origin.clone();
+        copies = copies.clone();
         substances = List.copyOf(substances);
     }
 
@@ -45,39 +55,61 @@ public record Pot(Molecule molecule, int[] origin, List<Chemical> substances) {
     }
 
     /**
-     * Reads what a rule did to the laid out pot back out as a reaction.
+     * {@code true} when two atoms came from one and the same molecule of the vessel.
      * <p>
-     * The substances the rule names are what the vessel loses, and what it gains are the pieces the
-     * rewritten molecule fell into - but only those of them that hold an atom of a substance the rule named,
-     * so that whatever merely stood by is on neither side of the answer.
+     * Two atoms of one substance that stood in the vessel twice are <em>not</em> of one molecule, and a rule
+     * that needs two molecules of something - the two alcohols of an acetal, the two esters of a Claisen -
+     * asks this and is answered with what really stands there.
      *
-     * @param reactants the substances the rule touched
-     * @param rewritten the molecule the rule left, its atoms numbered as the pot's
-     * @param electrons electrons the reaction takes in, negative when it gives them out
-     * @return the reaction
-     * @throws IllegalArgumentException when the rewritten molecule is not the pot's atoms changed
+     * @param first index of one atom
+     * @param second index of the other
+     * @return {@code true} when a single molecule of the vessel holds both
      */
-    public Reaction react(List<Chemical> reactants, Molecule rewritten, int electrons) {
-        Mixture pile = Mixture.empty();
-        for (Chemical chemical : new LinkedHashSet<>(reactants)) {
-            pile = pile.plus(Mixture.of(chemical, 1));
-        }
-        return react(pile, rewritten, electrons);
+    public boolean sharesAMolecule(int first, int second) {
+        return origin[first] == origin[second] && copies[first] == copies[second];
     }
 
     /**
-     * Reads what a rule did to the laid out pot back out as a reaction, for a rule that needs more than one
-     * molecule of a substance - the two halves of an aldol, the two of a self-condensation.
+     * Reads what a rule did to the laid out pot back out as a reaction.
+     * <p>
+     * <b>The rule names the atoms it touched and the pot counts the molecules.</b> Every atom belongs to one
+     * molecule of one substance, so the substances the vessel loses are the substances of the atoms named and
+     * the amount of each is how many of their molecules those atoms came from - one, for a rule that joined
+     * two places of a single molecule, and two, for a rule that joined two molecules of one substance. A rule
+     * that had to work that out for itself would be a rule that could be wrong about it, and one of them
+     * would be, which is why it is worked out here once.
+     * <p>
+     * What the vessel gains are the pieces the rewritten molecule fell into - but only those of them that
+     * hold an atom of a substance the rule named, so that whatever merely stood by is on neither side of the
+     * answer.
      *
-     * @param reactants the substances the rule touched, with how many molecules of each
      * @param rewritten the molecule the rule left, its atoms numbered as the pot's
      * @param electrons electrons the reaction takes in, negative when it gives them out
+     * @param touched the atoms the rule carried its change out on
      * @return the reaction
      * @throws IllegalArgumentException when the rewritten molecule is not the pot's atoms changed
      */
-    public Reaction react(Mixture reactants, Molecule rewritten, int electrons) {
+    public Reaction react(Molecule rewritten, int electrons, int... touched) {
         if (rewritten.atomCount() != molecule.atomCount()) {
             throw new IllegalArgumentException("A reaction changes bonds and never atoms");
+        }
+        Set<Integer> substancesTouched = new LinkedHashSet<>();
+        Set<Long> molecules = new LinkedHashSet<>();
+        for (int atom : touched) {
+            substancesTouched.add(origin[atom]);
+            molecules.add(moleculeKey(atom));
+        }
+        Mixture reactants = Mixture.empty();
+        for (int substance : substancesTouched) {
+            int count = 0;
+            for (long molecule : molecules) {
+                if ((int) (molecule >>> 32) == substance) {
+                    count++;
+                }
+            }
+            if (count > 0) {
+                reactants = reactants.plus(Mixture.of(substances.get(substance), count));
+            }
         }
         Set<Chemical> taking = new LinkedHashSet<>(reactants.components().keySet());
         Mixture produced = Mixture.empty();
@@ -88,6 +120,11 @@ public record Pot(Molecule molecule, int[] origin, List<Chemical> substances) {
             }
         }
         return Reaction.of(reactants, produced, electrons, List.of());
+    }
+
+    /** A key of the molecule of the vessel an atom came from, its substance and its copy together. */
+    private long moleculeKey(int atom) {
+        return ((long) origin[atom] << 32) | (copies[atom] & 0xffffffffL);
     }
 
     /** {@code true} when a piece of the rewritten molecule holds an atom of a substance the rule named. */

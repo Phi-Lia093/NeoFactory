@@ -37,6 +37,7 @@ public final class Sites {
         sites.addAll(alkyls(molecule));
         sites.addAll(nitriles(molecule));
         sites.addAll(amines(molecule));
+        sites.addAll(anions(molecule));
         sites.addAll(aromaticRings(molecule));
         return sites;
     }
@@ -349,6 +350,35 @@ public final class Sites {
     /** A carbon that hangs on an atom, or {@code -1}. */
     private static int carbonOn(Molecule molecule, int atom) {
         return carbonOn(molecule, atom, -1);
+    }
+
+    /**
+     * The atoms of a molecule that carry a negative charge, the anions a workup gives a proton back to.
+     * <p>
+     * <b>An ion standing on its own is no site.</b> A vessel of water with a hydroxide in it would have the
+     * hydroxide take a proton off the water and give it straight back, which is a reaction that changes
+     * nothing and would be offered as an answer all the same; so an atom counts only when something that is
+     * no hydrogen hangs on it, which is what makes it an anion of a molecule - the alkoxide an addition left
+     * behind, the cyanide of the trade - and not a loose ion of the medium.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the charged atom alone
+     */
+    public static List<Site> anions(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (molecule.atom(atom).charge() >= 0) {
+                continue;
+            }
+            boolean heavy = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                heavy |= !molecule.atom(neighbour).element().equals("H");
+            }
+            if (heavy) {
+                sites.add(new Site(FunctionalGroup.ANION, List.of(atom)));
+            }
+        }
+        return sites;
     }
 
     /**

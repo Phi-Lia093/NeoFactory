@@ -142,7 +142,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(23, rules.size(), "the table of the polar families");
+        assertEquals(24, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
@@ -510,6 +510,48 @@ class PolarEngineTest {
             first[1] * second[2] - first[2] * second[1],
             first[2] * second[0] - first[0] * second[2],
             first[0] * second[1] - first[1] * second[0]};
+    }
+
+    @Test
+    void anAnionTakesItsProtonBackOutOfWater() {
+        // The cyanohydrin the engine draws is an anion, because that is what stands there after the arrows:
+        // pouring it into water is the step that makes it a molecule.
+        Reaction reaction = best("CC([O-])(C#N)C", "O");
+
+        assertNotNull(reaction, "an alkoxide and water");
+        assertEquals(Set.of("C4H7NO", "HO"), formulas(reaction.products()),
+                "the cyanohydrin comes out neutral and the water a hydroxide");
+        assertEquals(reaction.reactants().charge(), reaction.products().charge(),
+                "the charge the alkoxide carried went onto the hydroxide and nowhere else");
+    }
+
+    @Test
+    void theWorkupHappensAfterTheReactionAndNotBefore() {
+        // A cyanide, an aldehyde and water: what the vessel does is the condensation, and the workup of what
+        // comes out of it is a second operation and not the first.
+        Reaction reaction = best("[C-]#N", "CC=O", "O");
+
+        assertNotNull(reaction, "the three of them stand in one vessel");
+        assertEquals(Set.of("C3H4NO"), formulas(reaction.products()),
+                "the cyanohydrin was made first, anion and all");
+    }
+
+    @Test
+    void theCarbonBesideTheHydroxylDecidesWhichCarbonylComesOut() {
+        // An alcohol loses its hydrogen and what is left of the carbon decides the carbonyl: two hydrogens
+        // beside the hydroxyl leave an aldehyde, one leaves a ketone. Both molecules here have a carbon that
+        // carries no hydrogen beside the hydroxyl, so the loss of water, which is the other thing heat does
+        // to an alcohol, has nowhere to go and the oxidation is what the vessel does.
+        Reaction primary = best(Warmth.HEATED, "CC(C)(C)CO");
+
+        assertNotNull(primary, "a primary alcohol of a carbon with no hydrogen beside it");
+        assertEquals(Set.of("C5H10O", "H2"), formulas(primary.products()),
+                "an aldehyde and hydrogen");
+
+        Reaction secondary = best(Warmth.HEATED, "OC(c1ccccc1)c1ccccc1");
+        assertNotNull(secondary, "and a secondary one");
+        assertEquals(Set.of("C13H10O", "H2"), formulas(secondary.products()),
+                "a ketone and hydrogen, and never an aldehyde");
     }
 
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */

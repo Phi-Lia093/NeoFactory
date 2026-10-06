@@ -71,6 +71,7 @@ public final class PolarReactions {
         rules.add(alkaneHalogenation());
         rules.add(dehydration());
         rules.add(dehydrogenation());
+        rules.add(protonation());
         return List.copyOf(rules);
     }
 
@@ -104,7 +105,8 @@ public final class PolarReactions {
                 int oxygen = taking.atom(1);
                 // The carbon that is attacked has to stand in another molecule: beside the one that gives
                 // the hydrogen it is a bond that is already there and not a reaction at all.
-                if (carbon == alpha || bondBetween(molecule, carbon, alpha) != null) {
+                if (carbon == alpha || bondBetween(molecule, carbon, alpha) != null
+                        || !mayJoin(pot, carbon, alpha)) {
                     continue;
                 }
                 List<Arrow> arrows = List.of(
@@ -112,13 +114,7 @@ public final class PolarReactions {
                         Arrow.toLonePair(carbon, oxygen),
                         Arrow.fromLonePair(oxygen, oxygen, hydrogen));
                 Molecule product = ElementaryStep.of("aldol", arrows).apply(molecule);
-                Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1);
-                if (pot.substanceOf(alpha).equals(pot.substanceOf(carbon))) {
-                    consumed = Mixture.of(pot.substanceOf(alpha), 2);
-                } else {
-                    consumed = consumed.plus(Mixture.of(pot.substanceOf(carbon), 1));
-                }
-                return pot.react(consumed, product, 0);
+                return pot.react(product, 0, alpha, carbon);
             }
         }
         return null;
@@ -156,13 +152,7 @@ public final class PolarReactions {
                     Arrow.betweenBonds(first, second, second, diene[1][1]),
                     Arrow.betweenBonds(diene[1][0], diene[1][1], diene[0][1], diene[1][0]));
             Molecule product = ElementaryStep.of("dielsAlder", arrows).apply(molecule);
-            Mixture consumed = Mixture.of(pot.substanceOf(diene[0][0]), 1);
-            if (pot.substanceOf(diene[0][0]).equals(pot.substanceOf(first))) {
-                consumed = Mixture.of(pot.substanceOf(diene[0][0]), 2);
-            } else {
-                consumed = consumed.plus(Mixture.of(pot.substanceOf(first), 1));
-            }
-            return pot.react(consumed, product, 0);
+                return pot.react(product, 0, diene[0][0], first);
         }
         return null;
     }
@@ -188,7 +178,7 @@ public final class PolarReactions {
         int halogen = halide.atom(1);
         Molecule product = ElementaryStep.substitution("hydrolysis", hydroxide, carbon, halogen)
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(hydroxide)), product, 0);
+        return pot.react(product, 0, carbon, hydroxide);
     }
 
     /** A cyanide into the carbonyl of an aldehyde or a ketone, the pair of the double bond to the oxygen. */
@@ -209,7 +199,7 @@ public final class PolarReactions {
         Face face = Steric.faceFor(pot.molecule(), carbon, cyanide);
         Molecule product = ElementaryStep.addition("cyanohydrin", cyanide, carbon, oxygen, face)
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(cyanide)), product, 0);
+        return pot.react(product, 0, carbon, cyanide);
     }
 
     /**
@@ -236,8 +226,7 @@ public final class PolarReactions {
         int oxygen = aldehyde.atom(1);
         int alcoholOxygen = hydroxyl.atom(0);
         int hydrogen = hydrogenOn(pot.molecule(), alcoholOxygen);
-        if (hydrogen < 0 || alcoholOxygen == oxygen || pot.substanceOf(alcoholOxygen)
-                .equals(pot.substanceOf(carbon))) {
+        if (hydrogen < 0 || alcoholOxygen == oxygen || !mayJoin(pot, carbon, alcoholOxygen)) {
             return null;
         }
         List<Arrow> arrows = List.of(
@@ -249,7 +238,7 @@ public final class PolarReactions {
                 .of("hemiacetal", arrows, carbon, alcoholOxygen,
                         Steric.faceFor(pot.molecule(), carbon, alcoholOxygen))
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(alcoholOxygen)), product, 0);
+        return pot.react(product, 0, carbon, alcoholOxygen);
     }
 
     /** Hydrogen across the double bond of an alkene. */
@@ -268,8 +257,7 @@ public final class PolarReactions {
         Molecule product = ElementaryStep
                 .across("hydrogenation", alkene.atom(0), alkene.atom(1), hydrogen[0], hydrogen[1])
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(alkene.atom(0)), pot.substanceOf(hydrogen[0])), product,
-                0);
+        return pot.react(product, 0, alkene.atom(0), hydrogen[0]);
     }
 
     /** A halogen across the double bond of an alkene, one halogen to each carbon of it. */
@@ -288,8 +276,7 @@ public final class PolarReactions {
         Molecule product = ElementaryStep
                 .across("halogenation", alkene.atom(0), alkene.atom(1), halogen[0], halogen[1])
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(alkene.atom(0)), pot.substanceOf(halogen[0])), product,
-                0);
+        return pot.react(product, 0, alkene.atom(0), halogen[0]);
     }
 
     /**
@@ -312,7 +299,7 @@ public final class PolarReactions {
         int second = first == alkene.atom(0) ? alkene.atom(1) : alkene.atom(0);
         Molecule product = ElementaryStep.across("hydrohalogenation", first, second, acid[0], acid[1])
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(first), pot.substanceOf(acid[0])), product, 0);
+        return pot.react(product, 0, first, acid[0]);
     }
 
     /**
@@ -334,7 +321,7 @@ public final class PolarReactions {
         int second = first == alkene.atom(0) ? alkene.atom(1) : alkene.atom(0);
         Molecule product = ElementaryStep.across("hydration", first, second, water[0], water[1])
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(first), pot.substanceOf(water[1])), product, 0);
+        return pot.react(product, 0, first, water[1]);
     }
 
     /** The carbon of an alkene that carries more hydrogens, which is the one a hydrogen is added to. */
@@ -367,7 +354,7 @@ public final class PolarReactions {
                 Molecule product = ElementaryStep
                         .elimination("dehydration", alpha, alcoholOxygen, beta, hydrogen)
                         .apply(molecule);
-                return pot.react(List.of(pot.substanceOf(alpha)), product, 0);
+                return pot.react(product, 0, alpha);
             }
         }
         return null;
@@ -390,13 +377,18 @@ public final class PolarReactions {
                 .across("carbonylHydrogenation", carbonyl.atom(0), carbonyl.atom(1), hydrogen[0],
                         hydrogen[1])
                 .apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(carbonyl.atom(0)), pot.substanceOf(hydrogen[0])),
-                product, 0);
+        return pot.react(product, 0, carbonyl.atom(0), hydrogen[0]);
     }
 
     /**
      * An alcohol losing hydrogen and coming out a carbonyl, which is the oxidation of the industry drawn the
-     * way it is run: a copper surface takes the hydrogen off and the bond left behind becomes the double one.
+     * way it is run: a hot metal takes the hydrogen off - the copper of a laboratory and the nickel of a
+     * works are the same statement - and the bond left behind becomes the double one.
+     * <p>
+     * <b>Every alcohol is one of these and the carbon decides which carbonyl comes out.</b> A carbon that
+     * carries two hydrogens beside its hydroxyl has one to spare and gives an aldehyde; one that carries a
+     * single hydrogen gives a ketone; and one that carries none, or that already stands in a carbonyl, is
+     * left alone. Which of the three it is falls out of the molecule and is not something the rule says.
      */
     private static ReactionRule dehydrogenation() {
         return new ReactionRule("dehydrogenation", "oxidation", 1,
@@ -421,7 +413,7 @@ public final class PolarReactions {
                     Arrow.toLonePair(hydroxylHydrogen, oxygen),
                     Arrow.fromLonePair(oxygen, oxygen, carbon));
             Molecule product = ElementaryStep.of("dehydrogenation", arrows).apply(molecule);
-            return pot.react(List.of(pot.substanceOf(carbon)), product, 0);
+            return pot.react(product, 0, carbon);
         }
         return null;
     }
@@ -453,7 +445,7 @@ public final class PolarReactions {
             int alcoholOxygen = hydroxyl.atom(0);
             int alcoholHydrogen = hydrogenOn(molecule, alcoholOxygen);
             if (alcoholOxygen == acidOxygen || alcoholHydrogen < 0
-                    || pot.substanceOf(alcoholOxygen).equals(pot.substanceOf(carbon))) {
+                    || !mayJoin(pot, carbon, alcoholOxygen)) {
                 continue;
             }
             List<Arrow> arrows = List.of(
@@ -464,9 +456,7 @@ public final class PolarReactions {
                     Arrow.toLonePair(alcoholHydrogen, alcoholOxygen),
                     Arrow.fromLonePair(acidOxygen, acidOxygen, alcoholHydrogen));
             Molecule product = ElementaryStep.of("esterification", arrows).apply(molecule);
-            Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
-                    .plus(Mixture.of(pot.substanceOf(alcoholOxygen), 1));
-            return pot.react(consumed, product, 0);
+                return pot.react(product, 0, carbon, alcoholOxygen);
         }
         return null;
     }
@@ -505,8 +495,7 @@ public final class PolarReactions {
         int acidOxygen = acid.atom(2);
         int nitrogen = amine[0];
         int hydrogen = amine[1];
-        if (pot.substanceOf(nitrogen).equals(pot.substanceOf(carbon))
-                || bondBetween(molecule, carbon, nitrogen) != null) {
+        if (bondBetween(molecule, carbon, nitrogen) != null || !mayJoin(pot, carbon, nitrogen)) {
             return null;
         }
         List<Arrow> arrows = List.of(
@@ -517,9 +506,7 @@ public final class PolarReactions {
                 Arrow.toLonePair(carbon, acidOxygen),
                 Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon));
         Molecule product = ElementaryStep.of("amideFormation", arrows).apply(molecule);
-        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
-                .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
-        return pot.react(consumed, product, 0);
+        return pot.react(product, 0, carbon, nitrogen);
     }
 
     /** A nitrogen that carries a hydrogen and hangs on a carbon, the nitrogen and one hydrogen of it. */
@@ -577,15 +564,15 @@ public final class PolarReactions {
         for (Site first : hydroxyls) {
             int firstOxygen = first.atom(0);
             int firstHydrogen = hydrogenOn(molecule, firstOxygen);
-            if (firstHydrogen < 0 || firstOxygen == oxygen
-                    || pot.substanceOf(firstOxygen).equals(pot.substanceOf(carbon))) {
+            if (firstHydrogen < 0 || firstOxygen == oxygen || !mayJoin(pot, carbon, firstOxygen)) {
                 continue;
             }
             for (Site second : hydroxyls) {
                 int secondOxygen = second.atom(0);
                 int secondHydrogen = hydrogenOn(molecule, secondOxygen);
                 if (secondHydrogen < 0 || secondOxygen == firstOxygen || secondOxygen == oxygen
-                        || !pot.substanceOf(secondOxygen).equals(pot.substanceOf(firstOxygen))) {
+                        || pot.sharesAMolecule(secondOxygen, firstOxygen)
+                        || !mayJoin(pot, carbon, secondOxygen)) {
                     continue;
                 }
                 List<Arrow> arrows = List.of(
@@ -598,9 +585,7 @@ public final class PolarReactions {
                         Arrow.toLonePair(secondHydrogen, secondOxygen),
                         Arrow.fromLonePair(oxygen, oxygen, secondHydrogen));
                 Molecule product = ElementaryStep.of("acetalFormation", arrows).apply(molecule);
-                Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
-                        .plus(Mixture.of(pot.substanceOf(firstOxygen), 2));
-                return pot.react(consumed, product, 0);
+                return pot.react(product, 0, carbon, firstOxygen, secondOxygen);
             }
         }
         return null;
@@ -639,7 +624,8 @@ public final class PolarReactions {
             return null;
         }
         int alphaHydrogen = hydrogenOn(molecule, alpha);
-        if (alphaHydrogen < 0 || bondBetween(molecule, carbon, nitrogen) != null) {
+        if (alphaHydrogen < 0 || bondBetween(molecule, carbon, nitrogen) != null
+                || !mayJoin(pot, carbon, nitrogen)) {
             return null;
         }
         List<Arrow> arrows = List.of(
@@ -651,9 +637,7 @@ public final class PolarReactions {
                 Arrow.toLonePair(carbon, oxygen),
                 Arrow.fromLonePair(oxygen, oxygen, alphaHydrogen));
         Molecule product = ElementaryStep.of("enamineFormation", arrows).apply(molecule);
-        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
-                .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
-        return pot.react(consumed, product, 0);
+        return pot.react(product, 0, carbon, nitrogen);
     }
 
     /**
@@ -713,9 +697,7 @@ public final class PolarReactions {
                 Arrow.toLonePair(waterHydrogen, waterOxygen),
                 Arrow.fromLonePair(esterOxygen, esterOxygen, waterHydrogen));
         Molecule product = ElementaryStep.of("esterHydrolysis", arrows).apply(molecule);
-        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
-                .plus(Mixture.of(pot.substanceOf(waterOxygen), 1));
-        return pot.react(consumed, product, 0);
+        return pot.react(product, 0, carbon, waterOxygen);
     }
 
     /**
@@ -744,7 +726,47 @@ public final class PolarReactions {
                 Arrow.betweenBonds(halogen[0], halogen[1], halogen[0], carbon),
                 Arrow.betweenBonds(carbon, hydrogen, hydrogen, halogen[1]));
         Molecule product = ElementaryStep.of("alkaneHalogenation", arrows).apply(pot.molecule());
-        return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(halogen[0])), product, 0);
+        return pot.react(product, 0, carbon, halogen[0]);
+    }
+
+    /**
+     * An anion of a molecule taking a proton from water, the last thing that happens to a reaction of the
+     * organic side.
+     * <p>
+     * <b>A reaction that leaves a charge behind is a reaction that is not finished.</b> The cyanide that comes
+     * into a carbonyl leaves the oxygen of it holding the pair, and the aldol leaves a carbon beside the
+     * carbonyl holding one; what a chemist writes on the arrow is the anion, and what a chemist then does is
+     * pour the vessel into water and let it take a proton. That step is written here as a step of its own,
+     * with two arrows: the water's own bond to one of its hydrogens breaking and the pair staying on the
+     * oxygen - which is what makes the water a hydroxide - and the pair the anion held making the bond to that
+     * hydrogen. So the anion comes out neutral and the vessel gains a hydroxide, which is the whole of what
+     * an acid and a base do to one another.
+     * <p>
+     * <b>It stands last in the table of the rules.</b> A workup is what happens when nothing else can, and a
+     * rule that named a group is a better answer for a vessel than one that names a charge - so this rule is
+     * written with a selectivity of nothing and stands lowest of all, and a vessel that could have condensed
+     * something condenses it first and is worked up second, which is the order a chemist works in.
+     */
+    private static ReactionRule protonation() {
+        return new ReactionRule("protonation", "acid and base", 0, EnumSet.of(FunctionalGroup.ANION),
+                Conditions.at(Warmth.AMBIENT), PolarReactions::protonate);
+    }
+
+    private static Reaction protonate(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site anion = first(Sites.anions(molecule));
+        int[] water = water(molecule);
+        if (anion == null || water == null) {
+            return null;
+        }
+        int charged = anion.atom(0);
+        int hydrogen = water[0];
+        int oxygen = water[1];
+        List<Arrow> arrows = List.of(
+                Arrow.toLonePair(hydrogen, oxygen),
+                Arrow.fromLonePair(charged, charged, hydrogen));
+        Molecule product = ElementaryStep.of("protonation", arrows).apply(molecule);
+        return pot.react(product, 0, charged, oxygen);
     }
 
     /** The carbon beside a carbonyl that carries the hydrogens an aldol takes one of, or {@code -1}. */
@@ -839,7 +861,7 @@ public final class PolarReactions {
                 continue;
             }
             int hydrogen = hydrogenOn(molecule, alpha);
-            if (hydrogen < 0 || pot.substanceOf(alpha).equals(pot.substanceOf(alkylCarbon))) {
+            if (hydrogen < 0 || !mayJoin(pot, alpha, alkylCarbon)) {
                 continue;
             }
             List<Arrow> arrows = List.of(
@@ -847,9 +869,7 @@ public final class PolarReactions {
                     Arrow.toLonePair(alkylCarbon, halogen),
                     Arrow.fromLonePair(halogen, halogen, hydrogen));
             Molecule product = ElementaryStep.of("enolateAlkylation", arrows).apply(molecule);
-            Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1)
-                    .plus(Mixture.of(pot.substanceOf(alkylCarbon), 1));
-            return pot.react(consumed, product, 0);
+                return pot.react(product, 0, alpha, alkylCarbon);
         }
         return null;
     }
@@ -885,7 +905,8 @@ public final class PolarReactions {
                 int carbon = taking.atom(0);
                 int oxygen = taking.atom(1);
                 int alkoxide = taking.atom(2);
-                if (alkoxide == giving.atom(2) || bondBetween(molecule, carbon, alpha) != null) {
+                if (alkoxide == giving.atom(2) || bondBetween(molecule, carbon, alpha) != null
+                        || !mayJoin(pot, alpha, carbon)) {
                     continue;
                 }
                 List<Arrow> arrows = List.of(
@@ -895,13 +916,7 @@ public final class PolarReactions {
                         Arrow.fromLonePair(oxygen, oxygen, carbon),
                         Arrow.fromLonePair(alkoxide, alkoxide, hydrogen));
                 Molecule product = ElementaryStep.of("claisenCondensation", arrows).apply(molecule);
-                Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1);
-                if (pot.substanceOf(alpha).equals(pot.substanceOf(carbon))) {
-                    consumed = Mixture.of(pot.substanceOf(alpha), 2);
-                } else {
-                    consumed = consumed.plus(Mixture.of(pot.substanceOf(carbon), 1));
-                }
-                return pot.react(consumed, product, 0);
+                return pot.react(product, 0, alpha, carbon);
             }
         }
         return null;
@@ -939,7 +954,7 @@ public final class PolarReactions {
             }
             int hydrogen = hydrogenOn(molecule, alpha);
             if (hydrogen < 0 || bondBetween(molecule, alpha, far) != null
-                    || pot.substanceOf(alpha).equals(pot.substanceOf(far))) {
+                    || !mayJoin(pot, alpha, far)) {
                 continue;
             }
             List<Arrow> arrows = List.of(
@@ -948,9 +963,7 @@ public final class PolarReactions {
                     Arrow.toLonePair(carbonEnone, oxygenEnone),
                     Arrow.fromLonePair(oxygenEnone, oxygenEnone, hydrogen));
             Molecule product = ElementaryStep.of("michaelAddition", arrows).apply(molecule);
-            Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1)
-                    .plus(Mixture.of(pot.substanceOf(far), 1));
-            return pot.react(consumed, product, 0);
+                return pot.react(product, 0, alpha, far);
         }
         return null;
     }
@@ -997,9 +1010,7 @@ public final class PolarReactions {
                 Arrow.toLonePair(carbon, oxygen),
                 Arrow.fromLonePair(nitrogen, nitrogen, carbon));
         Molecule product = ElementaryStep.of("imineFormation", arrows).apply(molecule);
-        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
-                .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
-        return pot.react(consumed, product, 0);
+        return pot.react(product, 0, carbon, nitrogen);
     }
 
     /**
@@ -1053,9 +1064,7 @@ public final class PolarReactions {
                     Arrow.fromLonePair(oxygen, oxygen, hydrogen));
             Molecule product = Assemblies.aromatized(
                     ElementaryStep.of("sulfonation", arrows).apply(drawn));
-            Mixture consumed = Mixture.of(pot.substanceOf(position), 1)
-                    .plus(Mixture.of(pot.substanceOf(sulfur), 1));
-            return pot.react(consumed, product, 0);
+                return pot.react(product, 0, position, sulfur);
         }
         return null;
     }
@@ -1296,6 +1305,26 @@ public final class PolarReactions {
             }
         }
         return null;
+    }
+
+    /**
+     * {@code true} when two places a rule would join may be joined at all.
+     * <p>
+     * <b>Two places of two molecules are two molecules standing beside one another, and two places of one
+     * molecule close a ring.</b> The first is the reaction the trade runs by the thousand and the second is
+     * the one a ring is made by, and both are wanted - the closing of a lactone, the aldol that folds a
+     * chain into a ring - but a ring of three is not one a rule of this table may draw: a bond joining the
+     * ends of a chain that are only two atoms apart is a triangle nobody's geometry allows. So the two
+     * places have to stand four bonds apart or more, and a rule asks this before it carries its change out.
+     *
+     * @param pot the vessel
+     * @param first index of one atom the rule would join
+     * @param second index of the other
+     * @return {@code true} when the two may be joined
+     */
+    private static boolean mayJoin(Pot pot, int first, int second) {
+        return !pot.sharesAMolecule(first, second)
+                || Rings.distance(pot.molecule(), first, second) >= 3;
     }
 
     /** The first of a list, or {@code null} when it is empty. */

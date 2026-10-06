@@ -92,23 +92,27 @@ public final class PolarEngine implements ReactionEngine {
         List<Chemical> substances = new ArrayList<>(content.components().keySet());
         List<Molecule> molecules = new ArrayList<>();
         List<Integer> origins = new ArrayList<>();
+        List<Integer> copies = new ArrayList<>();
         for (int index = 0; index < substances.size(); index++) {
             Chemical chemical = substances.get(index);
-            int copies = Math.min(2, Math.max(1, content.amountOf(chemical)));
+            int copiesOfIt = Math.min(2, Math.max(1, content.amountOf(chemical)));
             Molecule molecule = Assemblies.materialize(chemical.structure());
-            for (int copy = 0; copy < copies; copy++) {
+            for (int copy = 0; copy < copiesOfIt; copy++) {
                 molecules.add(molecule);
                 for (int step = 0; step < molecule.atomCount(); step++) {
                     origins.add(index);
+                    copies.add(copy);
                 }
             }
         }
         Molecule joined = Assemblies.join(molecules);
         int[] origin = new int[origins.size()];
+        int[] copy = new int[copies.size()];
         for (int atom = 0; atom < origin.length; atom++) {
             origin[atom] = origins.get(atom);
+            copy[atom] = copies.get(atom);
         }
-        return new Pot(joined, origin, substances);
+        return new Pot(joined, origin, copy, substances);
     }
 
     /** The groups that stand in what the vessel holds. */

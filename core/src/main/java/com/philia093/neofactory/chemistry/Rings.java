@@ -130,6 +130,27 @@ public final class Rings {
     }
 
     /**
+     * How many bonds apart two atoms of a molecule stand, counted the short way.
+     * <p>
+     * A rule that joins two places of one molecule closes a ring, and a ring is only a ring at all if it is
+     * big enough: what is asked here is how far the two places are from one another, so that a rule may
+     * refuse to close a ring of three and wait for two places that are four or five bonds apart.
+     *
+     * @param molecule molecule to walk
+     * @param first index of one atom
+     * @param second index of the other
+     * @return the number of bonds on the shortest path, {@code -1} when no path joins them
+     */
+    public static int distance(Molecule molecule, int first, int second) {
+        Objects.requireNonNull(molecule, "molecule");
+        if (first == second) {
+            return 0;
+        }
+        List<Integer> path = shortestPath(molecule, first, second, -1);
+        return path == null ? -1 : path.size() - 1;
+    }
+
+    /**
      * The shortest path between two atoms that does not walk over one bond.
      *
      * @param molecule molecule to walk

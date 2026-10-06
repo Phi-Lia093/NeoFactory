@@ -51,6 +51,9 @@ public enum FunctionalGroup {
     /** A nitrogen that carries a hydrogen and hangs on a carbon, the amine a carbonyl is condensed with. */
     AMINE,
 
+    /** An atom of a molecule that carries a negative charge, the anion a workup gives its proton back to. */
+    ANION,
+
     /** A ring whose bonds are the blurred ones of an aromatic ring. */
     AROMATIC_RING
 }
