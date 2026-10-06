@@ -142,7 +142,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(24, rules.size(), "the table of the polar families");
+        assertEquals(35, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
@@ -514,13 +514,13 @@ class PolarEngineTest {
 
     @Test
     void anAnionTakesItsProtonBackOutOfWater() {
-        // The cyanohydrin the engine draws is an anion, because that is what stands there after the arrows:
-        // pouring it into water is the step that makes it a molecule.
-        Reaction reaction = best("CC([O-])(C#N)C", "O");
+        // The alkoxide an addition leaves behind, poured into water: that is the step that makes it a
+        // molecule again, and the charge it carried goes onto the hydroxide.
+        Reaction reaction = best("CC([O-])C", "O");
 
         assertNotNull(reaction, "an alkoxide and water");
-        assertEquals(Set.of("C4H7NO", "HO"), formulas(reaction.products()),
-                "the cyanohydrin comes out neutral and the water a hydroxide");
+        assertEquals(Set.of("C3H8O", "HO"), formulas(reaction.products()),
+                "the alcohol comes out neutral and the water a hydroxide");
         assertEquals(reaction.reactants().charge(), reaction.products().charge(),
                 "the charge the alkoxide carried went onto the hydroxide and nowhere else");
     }

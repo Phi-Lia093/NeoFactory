@@ -69,6 +69,6 @@ class SitesTest {
     void everyFinderAnswersWithTheAtomsItNamed() {
         assertTrue(Sites.all(SmilesParser.parse("CC(=O)O")).stream()
                 .anyMatch(site -> site.group() == FunctionalGroup.CARBOXYLIC_ACID));
-        assertEquals(1, Sites.nitriles(SmilesParser.parse("[C-]#N")).size(), "cyanide");
+        assertEquals(1, Sites.nitriles(SmilesParser.parse("CC#N")).size(), "acetonitrile");
     }
 }

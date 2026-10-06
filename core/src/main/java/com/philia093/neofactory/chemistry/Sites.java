@@ -37,6 +37,9 @@ public final class Sites {
         sites.addAll(alkyls(molecule));
         sites.addAll(nitriles(molecule));
         sites.addAll(amines(molecule));
+        sites.addAll(enols(molecule));
+        sites.addAll(imines(molecule));
+        sites.addAll(amides(molecule));
         sites.addAll(anions(molecule));
         sites.addAll(aromaticRings(molecule));
         return sites;
@@ -297,7 +300,14 @@ public final class Sites {
     }
 
     /**
-     * The carbons held to a nitrogen by a triple bond.
+     * The carbons held to a nitrogen by a triple bond and to something that is no hydrogen besides.
+     * <p>
+     * <b>The one condition is what keeps a cyanide from being a nitrile.</b> A cyanide ion is a carbon and a
+     * nitrogen and nothing else, and a vessel holding one would be read as a vessel holding a nitrile of the
+     * trade: the water of it would be taken to be the water of a hydrolysis instead of the water an alkoxide
+     * takes its proton back out of. A nitrile of the trade carries the rest of a molecule on its carbon - the
+     * carbon of a chain, a ring, an ester - so that is what is asked for, and neither cyanide nor hydrogen
+     * cyanide is asked about.
      *
      * @param molecule molecule to read
      * @return the sites, the carbon first and the nitrogen second
@@ -308,13 +318,30 @@ public final class Sites {
             if (bond.order() != 3) {
                 continue;
             }
+            int carbon = -1;
+            int nitrogen = -1;
             if (isCarbon(molecule, bond.first()) && isNitrogen(molecule, bond.second())) {
-                sites.add(new Site(FunctionalGroup.NITRILE, List.of(bond.first(), bond.second())));
+                carbon = bond.first();
+                nitrogen = bond.second();
             } else if (isNitrogen(molecule, bond.first()) && isCarbon(molecule, bond.second())) {
-                sites.add(new Site(FunctionalGroup.NITRILE, List.of(bond.second(), bond.first())));
+                carbon = bond.second();
+                nitrogen = bond.first();
+            }
+            if (carbon >= 0 && carriesMoreThanHydrogen(molecule, carbon, nitrogen)) {
+                sites.add(new Site(FunctionalGroup.NITRILE, List.of(carbon, nitrogen)));
             }
         }
         return sites;
+    }
+
+    /** {@code true} when an atom carries something that is neither a hydrogen nor a named neighbour. */
+    private static boolean carriesMoreThanHydrogen(Molecule molecule, int atom, int other) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (neighbour != other && !molecule.atom(neighbour).element().equals("H")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A hydroxyl oxygen that hangs on a carbon and on nothing else but its hydrogens, or {@code -1}. */
@@ -350,6 +377,80 @@ public final class Sites {
     /** A carbon that hangs on an atom, or {@code -1}. */
     private static int carbonOn(Molecule molecule, int atom) {
         return carbonOn(molecule, atom, -1);
+    }
+
+    /**
+     * The hydroxyls that stand on a carbon held by a double bond, the enols of the organic side.
+     * <p>
+     * An enol is the shape a carbonyl takes for a moment when a hydrogen finds its way from the carbon beside
+     * it to the oxygen, and it is written here as the hydroxyl and the two carbons of its double bond
+     * together, because the whole of what happens to it is a question of those three atoms.
+     * <p>
+     * <b>A hydroxyl on a carbon held by a double bond to a nitrogen counts too.</b> That is the shape a
+     * nitrile is a water away from and the amide is a breath away from, and the trade has a name of its own
+     * for it - the imidic acid - but what happens to it is the same three arrows, so it is found here and
+     * the rule of the tautomerism runs on it all the same.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the oxygen first, the carbon it hangs on second and the far atom third
+     */
+    public static List<Site> enols(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (Site hydroxyl : hydroxyls(molecule)) {
+            int carbon = hydroxyl.atom(1);
+            for (int neighbour : molecule.neighbours(carbon)) {
+                Bond bond = bondBetween(molecule, carbon, neighbour);
+                if (bond != null && bond.order() == 2 && !bond.isAromatic()
+                        && (isCarbon(molecule, neighbour) || isNitrogen(molecule, neighbour))) {
+                    sites.add(new Site(FunctionalGroup.ENOL,
+                            List.of(hydroxyl.atom(0), carbon, neighbour)));
+                    break;
+                }
+            }
+        }
+        return sites;
+    }
+
+    /**
+     * The carbons held to a nitrogen by a double bond, the imines of the organic side.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the carbon first and the nitrogen second
+     */
+    public static List<Site> imines(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() != 2 || bond.isAromatic()) {
+                continue;
+            }
+            if (isCarbon(molecule, bond.first()) && isNitrogen(molecule, bond.second())) {
+                sites.add(new Site(FunctionalGroup.IMINE, List.of(bond.first(), bond.second())));
+            } else if (isCarbon(molecule, bond.second()) && isNitrogen(molecule, bond.first())) {
+                sites.add(new Site(FunctionalGroup.IMINE, List.of(bond.second(), bond.first())));
+            }
+        }
+        return sites;
+    }
+
+    /**
+     * The carbonyls whose carbon carries a nitrogen, the amides of the organic side.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the carbonyl carbon, the carbonyl oxygen and the nitrogen third
+     */
+    public static List<Site> amides(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (Site carbonyl : carbonyls(molecule)) {
+            int carbon = carbonyl.atom(0);
+            for (int neighbour : molecule.neighbours(carbon)) {
+                if (isNitrogen(molecule, neighbour)) {
+                    sites.add(new Site(FunctionalGroup.AMIDE,
+                            List.of(carbon, carbonyl.atom(1), neighbour)));
+                    break;
+                }
+            }
+        }
+        return sites;
     }
 
     /**

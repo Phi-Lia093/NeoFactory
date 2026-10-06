@@ -72,6 +72,17 @@ public final class PolarReactions {
         rules.add(dehydration());
         rules.add(dehydrogenation());
         rules.add(protonation());
+        rules.add(ketoEnolTautomerism());
+        rules.add(alkyneHydrogenation());
+        rules.add(alkyneHydrohalogenation());
+        rules.add(alkyneHydration());
+        rules.add(nitrileHydrolysis());
+        rules.add(nitrileHydrogenation());
+        rules.add(imineReduction());
+        rules.add(imineHydrolysis());
+        rules.add(amideHydrolysis());
+        rules.add(transesterification());
+        rules.add(aminolysisOfEster());
         return List.copyOf(rules);
     }
 
@@ -1308,6 +1319,353 @@ public final class PolarReactions {
     }
 
     /**
+     * An enol falling into the carbonyl it stands for, which is the last step of every addition that went
+     * through one.
+     * <p>
+     * An enol is not a substance a vessel holds for long: the hydrogen that found its way to the oxygen turns
+     * round and goes back to the far carbon, and the pair the double bond left behind closes the oxygen onto
+     * the carbonyl. Three arrows are drawn, and what comes out is the carbonyl the enol was the shape of - a
+     * ketone if the carbon the hydroxyl hangs on carries another carbon, an aldehyde if it carries a
+     * hydrogen. The rule stands high in the table because the trade never writes an enol down as a product:
+     * what a vessel holds is what the enol becomes.
+     */
+    private static ReactionRule ketoEnolTautomerism() {
+        return new ReactionRule("ketoEnolTautomerism", "tautomerism", 5,
+                EnumSet.of(FunctionalGroup.ENOL), Conditions.at(Warmth.AMBIENT),
+                PolarReactions::tautomerise);
+    }
+
+    private static Reaction tautomerise(Pot pot) {
+        Molecule molecule = pot.molecule();
+        for (Site enol : Sites.enols(molecule)) {
+            int oxygen = enol.atom(0);
+            int carbon = enol.atom(1);
+            int far = enol.atom(2);
+            int hydrogen = hydrogenOn(molecule, oxygen);
+            if (hydrogen < 0) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.toLonePair(hydrogen, oxygen),
+                    Arrow.betweenBonds(carbon, far, far, hydrogen),
+                    Arrow.fromLonePair(oxygen, oxygen, carbon));
+            Molecule product = ElementaryStep.of("ketoEnolTautomerism", arrows).apply(molecule);
+            return pot.react(product, 0, carbon, far);
+        }
+        return null;
+    }
+
+    /** Hydrogen across the triple bond of an alkyne, which leaves the double bond of an alkene behind. */
+    private static ReactionRule alkyneHydrogenation() {
+        return new ReactionRule("alkyneHydrogenation", "addition", 1, EnumSet.of(FunctionalGroup.ALKYNE),
+                Conditions.at(Warmth.AMBIENT, Set.of(NICKEL)), PolarReactions::hydrogenateAlkyne);
+    }
+
+    private static Reaction hydrogenateAlkyne(Pot pot) {
+        Site alkyne = first(Sites.alkynes(pot.molecule()));
+        int[] hydrogen = hydrogenPair(pot.molecule());
+        if (alkyne == null || hydrogen == null) {
+            return null;
+        }
+        Molecule product = ElementaryStep
+                .across("alkyneHydrogenation", alkyne.atom(0), alkyne.atom(1), hydrogen[0], hydrogen[1])
+                .apply(pot.molecule());
+        return pot.react(product, 0, alkyne.atom(0), hydrogen[0]);
+    }
+
+    /** The hydrogen and the halogen of an acid across the triple bond, the hydrogen to the plainer carbon. */
+    private static ReactionRule alkyneHydrohalogenation() {
+        return new ReactionRule("alkyneHydrohalogenation", "addition", 1,
+                EnumSet.of(FunctionalGroup.ALKYNE), Conditions.at(Warmth.AMBIENT),
+                PolarReactions::hydrohalogenateAlkyne);
+    }
+
+    private static Reaction hydrohalogenateAlkyne(Pot pot) {
+        Site alkyne = first(Sites.alkynes(pot.molecule()));
+        int[] acid = hydrogenHalide(pot.molecule());
+        if (alkyne == null || acid == null) {
+            return null;
+        }
+        int first = plainerCarbonOf(pot.molecule(), alkyne);
+        int second = first == alkyne.atom(0) ? alkyne.atom(1) : alkyne.atom(0);
+        Molecule product = ElementaryStep
+                .across("alkyneHydrohalogenation", first, second, acid[0], acid[1])
+                .apply(pot.molecule());
+        return pot.react(product, 0, first, acid[0]);
+    }
+
+    /**
+     * The hydrogen of water across the triple bond of an alkyne, which leaves an enol behind.
+     * <p>
+     * The water goes on the Markovnikov way, the hydrogen to the carbon that carries more of them, so the
+     * hydroxyl lands on the carbon that carries the carbon of the chain - and what stands there for a moment
+     * is an enol, which the tautomerism of the table turns into the ketone. That is why hydrating an alkyne
+     * gives a ketone and hydrating an alkene gives an alcohol.
+     */
+    private static ReactionRule alkyneHydration() {
+        return new ReactionRule("alkyneHydration", "addition", 1, EnumSet.of(FunctionalGroup.ALKYNE),
+                Conditions.at(Warmth.HEATED), PolarReactions::hydrateAlkyne);
+    }
+
+    private static Reaction hydrateAlkyne(Pot pot) {
+        Site alkyne = first(Sites.alkynes(pot.molecule()));
+        int[] water = water(pot.molecule());
+        if (alkyne == null || water == null) {
+            return null;
+        }
+        int first = plainerCarbonOf(pot.molecule(), alkyne);
+        int second = first == alkyne.atom(0) ? alkyne.atom(1) : alkyne.atom(0);
+        Molecule product = ElementaryStep
+                .across("alkyneHydration", first, second, water[0], water[1]).apply(pot.molecule());
+        return pot.react(product, 0, first, water[1]);
+    }
+
+    /**
+     * The water across a nitrile, which leaves the shape the amide is a breath away from.
+     * <p>
+     * Four arrows are drawn: the lone pair of the water into the carbon of the nitrile, one pair of the triple
+     * bond onto the nitrogen - which is what makes the nitrogen hold a charge - the water's own hydrogen off
+     * with the pair staying on its oxygen, and that hydrogen onto the nitrogen. What comes out is a hydroxyl
+     * on a carbon held to a nitrogen by a double bond, and the tautomerism of the table turns that into the
+     * amide: hydrolysing a nitrile is two steps, and the engine runs it as two.
+     */
+    private static ReactionRule nitrileHydrolysis() {
+        return new ReactionRule("nitrileHydrolysis", "acyl substitution", 2,
+                EnumSet.of(FunctionalGroup.NITRILE), Conditions.at(Warmth.HEATED, WATER),
+                PolarReactions::hydrolyseNitrile);
+    }
+
+    private static Reaction hydrolyseNitrile(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site nitrile = first(Sites.nitriles(molecule));
+        int[] water = water(molecule);
+        if (nitrile == null || water == null) {
+            return null;
+        }
+        int carbon = nitrile.atom(0);
+        int nitrogen = nitrile.atom(1);
+        int hydrogen = water[0];
+        int oxygen = water[1];
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(oxygen, oxygen, carbon),
+                Arrow.toLonePair(carbon, nitrogen),
+                Arrow.toLonePair(hydrogen, oxygen),
+                Arrow.fromLonePair(nitrogen, nitrogen, hydrogen));
+        Molecule product = ElementaryStep.of("nitrileHydrolysis", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, oxygen);
+    }
+
+    /** Hydrogen across the triple bond of a nitrile, which leaves the imine behind. */
+    private static ReactionRule nitrileHydrogenation() {
+        return new ReactionRule("nitrileHydrogenation", "addition", 1,
+                EnumSet.of(FunctionalGroup.NITRILE), Conditions.at(Warmth.AMBIENT, Set.of(NICKEL)),
+                PolarReactions::hydrogenateNitrile);
+    }
+
+    private static Reaction hydrogenateNitrile(Pot pot) {
+        Site nitrile = first(Sites.nitriles(pot.molecule()));
+        int[] hydrogen = hydrogenPair(pot.molecule());
+        if (nitrile == null || hydrogen == null) {
+            return null;
+        }
+        Molecule product = ElementaryStep
+                .across("nitrileHydrogenation", nitrile.atom(0), nitrile.atom(1), hydrogen[0],
+                        hydrogen[1])
+                .apply(pot.molecule());
+        return pot.react(product, 0, nitrile.atom(0), hydrogen[0]);
+    }
+
+    /**
+     * Hydrogen across the double bond of an imine, which is the second half of making an amine out of a
+     * carbonyl - and the whole reason a ketone is worth condensing with an amine in the first place.
+     */
+    private static ReactionRule imineReduction() {
+        return new ReactionRule("imineReduction", "reduction", 1, EnumSet.of(FunctionalGroup.IMINE),
+                Conditions.at(Warmth.AMBIENT, Set.of(NICKEL)), PolarReactions::reduceImine);
+    }
+
+    private static Reaction reduceImine(Pot pot) {
+        Site imine = first(Sites.imines(pot.molecule()));
+        int[] hydrogen = hydrogenPair(pot.molecule());
+        if (imine == null || hydrogen == null) {
+            return null;
+        }
+        Molecule product = ElementaryStep
+                .across("imineReduction", imine.atom(1), imine.atom(0), hydrogen[0], hydrogen[1])
+                .apply(pot.molecule());
+        return pot.react(product, 0, imine.atom(0), hydrogen[0]);
+    }
+
+    /**
+     * The water across an imine, which takes it back to the carbonyl it came from and leaves the amine.
+     * <p>
+     * Eight arrows are drawn and they are the condensation read backwards: the water into the carbon, one
+     * pair of the double bond onto the nitrogen, the water's first hydrogen onto the oxygen and the pair of
+     * the nitrogen onto it - which is the carbinolamine - the hydroxyl's own hydrogen off and onto the
+     * nitrogen so that the nitrogen leaves holding four bonds, the bond between them breaking, and the pair
+     * the oxygen holds closing the carbonyl. Both hydrogens of the water end up on the nitrogen, which is why
+     * the imine of an aldehyde gives ammonia.
+     */
+    private static ReactionRule imineHydrolysis() {
+        return new ReactionRule("imineHydrolysis", "hydrolysis", 2, EnumSet.of(FunctionalGroup.IMINE),
+                Conditions.at(Warmth.HEATED, WATER), PolarReactions::hydrolyseImine);
+    }
+
+    private static Reaction hydrolyseImine(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site imine = first(Sites.imines(molecule));
+        int[] water = water(molecule);
+        if (imine == null || water == null) {
+            return null;
+        }
+        int carbon = imine.atom(0);
+        int nitrogen = imine.atom(1);
+        int oxygen = water[1];
+        int[] hydrogens = waterHydrogens(molecule, oxygen);
+        if (hydrogens == null) {
+            return null;
+        }
+        int first = hydrogens[0];
+        int second = hydrogens[1];
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(oxygen, oxygen, carbon),
+                Arrow.toLonePair(carbon, nitrogen),
+                Arrow.toLonePair(first, oxygen),
+                Arrow.fromLonePair(nitrogen, nitrogen, first),
+                Arrow.toLonePair(second, oxygen),
+                Arrow.fromLonePair(nitrogen, nitrogen, second),
+                Arrow.toLonePair(carbon, nitrogen),
+                Arrow.fromLonePair(oxygen, oxygen, carbon));
+        Molecule product = ElementaryStep.of("imineHydrolysis", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, oxygen);
+    }
+
+    /**
+     * The water across an amide, which gives the acid and the amine back.
+     * <p>
+     * It is drawn as the imine's hydrolysis is, with the nitrogen of the amide in the place of the one of the
+     * imine: the water into the carbonyl, the pair of the double bond onto the oxygen that held it, the
+     * water's first hydrogen onto that oxygen - which is the intermediate an acid and an amine are made
+     * through - its second hydrogen onto the nitrogen so that the nitrogen leaves holding four bonds, the
+     * bond between them breaking, and the pair the water's oxygen holds closing the carbonyl. So the acid
+     * comes out of the water's oxygen and the amine of the amide's nitrogen, which is what a chemist with
+     * labelled atoms would find.
+     */
+    private static ReactionRule amideHydrolysis() {
+        return new ReactionRule("amideHydrolysis", "hydrolysis", 2, EnumSet.of(FunctionalGroup.AMIDE),
+                Conditions.at(Warmth.HEATED, WATER), PolarReactions::hydrolyseAmide);
+    }
+
+    private static Reaction hydrolyseAmide(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site amide = first(Sites.amides(molecule));
+        int[] water = water(molecule);
+        if (amide == null || water == null) {
+            return null;
+        }
+        int carbon = amide.atom(0);
+        int carbonylOxygen = amide.atom(1);
+        int nitrogen = amide.atom(2);
+        int oxygen = water[1];
+        int[] hydrogens = waterHydrogens(molecule, oxygen);
+        if (hydrogens == null) {
+            return null;
+        }
+        int first = hydrogens[0];
+        int second = hydrogens[1];
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(oxygen, oxygen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(first, oxygen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, first),
+                Arrow.toLonePair(second, oxygen),
+                Arrow.fromLonePair(nitrogen, nitrogen, second),
+                Arrow.toLonePair(carbon, nitrogen),
+                Arrow.fromLonePair(oxygen, oxygen, carbon));
+        Molecule product = ElementaryStep.of("amideHydrolysis", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, oxygen);
+    }
+
+    /**
+     * An ester and another alcohol, which is how an ester is changed into another one without ever going back
+     * to the acid: the same six arrows the making of an ester is drawn with, and what leaves is the alcohol
+     * the ester was made of.
+     */
+    private static ReactionRule transesterification() {
+        return new ReactionRule("transesterification", "acyl substitution", 2,
+                EnumSet.of(FunctionalGroup.ESTER, FunctionalGroup.HYDROXYL),
+                Conditions.at(Warmth.HEATED), PolarReactions::transesterify);
+    }
+
+    private static Reaction transesterify(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site ester = first(Sites.esters(molecule));
+        if (ester == null) {
+            return null;
+        }
+        int carbon = ester.atom(0);
+        int carbonylOxygen = ester.atom(1);
+        int esterOxygen = ester.atom(2);
+        for (Site hydroxyl : Sites.hydroxyls(molecule)) {
+            int alcoholOxygen = hydroxyl.atom(0);
+            int alcoholHydrogen = hydrogenOn(molecule, alcoholOxygen);
+            if (alcoholHydrogen < 0 || alcoholOxygen == esterOxygen || alcoholOxygen == carbonylOxygen
+                    || pot.sharesAMolecule(alcoholOxygen, carbon)
+                    || bondBetween(molecule, carbon, alcoholOxygen) != null) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.fromLonePair(alcoholOxygen, alcoholOxygen, carbon),
+                    Arrow.toLonePair(carbon, carbonylOxygen),
+                    Arrow.toLonePair(carbon, esterOxygen),
+                    Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                    Arrow.toLonePair(alcoholHydrogen, alcoholOxygen),
+                    Arrow.fromLonePair(esterOxygen, esterOxygen, alcoholHydrogen));
+            Molecule product = ElementaryStep.of("transesterification", arrows).apply(molecule);
+            return pot.react(product, 0, carbon, alcoholOxygen);
+        }
+        return null;
+    }
+
+    /**
+     * An ester and an amine, which gives the amide and the alcohol: the same six arrows once more, with a
+     * nitrogen where the oxygen that comes in was - which is how a protein is made when the acid of it will
+     * not stand being heated.
+     */
+    private static ReactionRule aminolysisOfEster() {
+        return new ReactionRule("aminolysisOfEster", "acyl substitution", 2,
+                EnumSet.of(FunctionalGroup.ESTER, FunctionalGroup.AMINE),
+                Conditions.at(Warmth.HEATED), PolarReactions::aminolyseEster);
+    }
+
+    private static Reaction aminolyseEster(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site ester = first(Sites.esters(molecule));
+        int[] amine = amineWithHydrogenOf(molecule);
+        if (ester == null || amine == null) {
+            return null;
+        }
+        int carbon = ester.atom(0);
+        int carbonylOxygen = ester.atom(1);
+        int esterOxygen = ester.atom(2);
+        int nitrogen = amine[0];
+        int hydrogen = amine[1];
+        if (pot.sharesAMolecule(nitrogen, carbon)
+                || bondBetween(molecule, carbon, nitrogen) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(carbon, esterOxygen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                Arrow.toLonePair(hydrogen, nitrogen),
+                Arrow.fromLonePair(esterOxygen, esterOxygen, hydrogen));
+        Molecule product = ElementaryStep.of("aminolysisOfEster", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, nitrogen);
+    }
+
+    /**
      * {@code true} when two places a rule would join may be joined at all.
      * <p>
      * <b>Two places of two molecules are two molecules standing beside one another, and two places of one
@@ -1426,10 +1784,47 @@ public final class PolarReactions {
     }
 
     /** The carbon of a cyanide ion, or {@code -1} when there is none. */
+    /**
+     * The two hydrogens of a molecule of water, or {@code null} when it carries fewer than two.
+     * <p>
+     * A water is asked for both of its hydrogens by the two rules that take a molecule of it apart, and the
+     * two have to be two different atoms: a rule that asked for the hydrogen of a water twice would draw the
+     * second arrow on a bond the first arrow had already broken.
+     *
+     * @param molecule molecule to read
+     * @param oxygen the oxygen of the water
+     * @return the two hydrogens
+     */
+    private static int[] waterHydrogens(Molecule molecule, int oxygen) {
+        List<Integer> hydrogens = new ArrayList<>();
+        for (int neighbour : molecule.neighbours(oxygen)) {
+            if (isElement(molecule, neighbour, "H")) {
+                hydrogens.add(neighbour);
+            }
+        }
+        return hydrogens.size() < 2 ? null : new int[] {hydrogens.get(0), hydrogens.get(1)};
+    }
+
+    /**
+     * The carbon of a cyanide ion, or {@code -1} when the vessel holds none.
+     * <p>
+     * A cyanide is not a nitrile of the trade and is not found as one, see {@link Sites#nitriles}: it is a
+     * carbon and a nitrogen with nothing else on the carbon and a charge of its own, so it is looked for as
+     * what it is.
+     *
+     * @param molecule molecule to read
+     * @return the carbon of the ion, or {@code -1}
+     */
     private static int cyanide(Molecule molecule) {
-        for (Site nitrile : Sites.nitriles(molecule)) {
-            if (molecule.atom(nitrile.atom(0)).charge() == -1) {
-                return nitrile.atom(0);
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "C") || molecule.atom(atom).charge() != -1) {
+                continue;
+            }
+            for (int neighbour : molecule.neighbours(atom)) {
+                Bond bond = bondBetween(molecule, atom, neighbour);
+                if (bond != null && bond.order() == 3 && isElement(molecule, neighbour, "N")) {
+                    return atom;
+                }
             }
         }
         return -1;
