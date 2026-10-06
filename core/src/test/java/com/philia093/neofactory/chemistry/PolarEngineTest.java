@@ -122,7 +122,8 @@ class PolarEngineTest {
     @Test
     void aVesselNoRuleCoversIsLeftAlone() {
         assertNull(best("c1ccccc1"), "nothing is extrapolated out of a ring of carbon");
-        assertNull(best("CCCC"), "nothing is extrapolated out of an alkane with nothing to react with");
+        assertNull(best(Warmth.AMBIENT, "CCCC"),
+                "nothing is extrapolated out of an alkane at a bench with nothing done to it");
         assertNull(best("CC=O"), "an aldehyde with nothing to add is left alone");
     }
 
@@ -142,7 +143,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(45, rules.size(), "the table of the polar families");
+        assertEquals(54, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }

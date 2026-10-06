@@ -99,6 +99,15 @@ public final class PolarReactions {
         rules.add(mannich());
         rules.add(electrocyclicClosing());
         rules.add(photocycloaddition());
+        rules.add(amineAlkylation());
+        rules.add(acylationOfAlcohol());
+        rules.add(acylationOfAmine());
+        rules.add(aldehydeOxidation());
+        rules.add(alkaneDehydrogenation());
+        rules.add(hydrocyanation());
+        rules.add(eneReaction());
+        rules.add(imidazoleFormation());
+        rules.add(nitroReduction());
         return List.copyOf(rules);
     }
 
@@ -1903,10 +1912,12 @@ public final class PolarReactions {
 
     private static Reaction substituteAromatic(Pot pot) {
         Molecule molecule = pot.molecule();
-        int hydroxide = hydroxide(molecule);
-        if (hydroxide < 0) {
+        int[] nucleophile = aromaticNucleophile(molecule);
+        if (nucleophile == null) {
             return null;
         }
+        int incoming = nucleophile[0];
+        int hydrogen = nucleophile[1];
         Molecule drawn = Assemblies.kekulized(molecule);
         for (Site halide : Sites.halides(molecule)) {
             int carbon = halide.atom(0);
@@ -1918,13 +1929,53 @@ public final class PolarReactions {
             if (beside == null) {
                 continue;
             }
-            List<Arrow> arrows = List.of(
-                    Arrow.fromLonePair(hydroxide, hydroxide, carbon),
-                    Arrow.betweenBonds(carbon, beside[0], beside[0], beside[1]),
-                    Arrow.toLonePair(carbon, halogen),
-                    Arrow.betweenBonds(beside[0], beside[1], carbon, beside[0]));
+            List<Arrow> arrows = new ArrayList<>();
+            arrows.add(Arrow.fromLonePair(incoming, incoming, carbon));
+            arrows.add(Arrow.betweenBonds(carbon, beside[0], beside[0], beside[1]));
+            arrows.add(Arrow.toLonePair(carbon, halogen));
+            arrows.add(Arrow.betweenBonds(beside[0], beside[1], carbon, beside[0]));
+            if (hydrogen >= 0) {
+                // A nucleophile that came in neutral is left charged by the attack, so the hydrogen it was
+                // carrying goes onto the halogen that left and the two come out as substances.
+                arrows.add(Arrow.toLonePair(hydrogen, incoming));
+                arrows.add(Arrow.fromLonePair(halogen, halogen, hydrogen));
+            }
             Molecule product = ElementaryStep.of("snAr", arrows).apply(drawn);
-            return pot.react(Assemblies.aromatized(product), 0, carbon, hydroxide);
+            return pot.react(Assemblies.aromatized(product), 0, carbon, incoming);
+        }
+        return null;
+    }
+
+    /**
+     * The atom a ring that pulls electrons out of itself is attacked by, with a hydrogen of it when there is
+     * one to hand over.
+     * <p>
+     * Three kinds of reagent add a group to such a ring and they are looked for here, sharpest first: the
+     * hydroxide of the trade, which is charged and hands over nothing; a nitrogen with a hydrogen on it,
+     * which is an amine and gives an arylamine; and an oxygen with a hydrogen on it, which is an alcohol or a
+     * phenol and gives an aryl ether. A charged reagent is answered with it and {@code -1} for the hydrogen,
+     * since the attack leaves it neutral and there is nothing to finish off; the other two hand one hydrogen
+     * over so that the halogen that left comes out an acid.
+     *
+     * @param molecule molecule to read
+     * @return the attacking atom and a hydrogen of it, or the attacking atom and {@code -1} when it is
+     *         charged, or {@code null} when the vessel holds none
+     */
+    private static int[] aromaticNucleophile(Molecule molecule) {
+        int hydroxide = hydroxide(molecule);
+        if (hydroxide >= 0) {
+            return new int[] {hydroxide, -1};
+        }
+        int[] amine = amineWithHydrogenOf(molecule);
+        if (amine != null) {
+            return new int[] {amine[0], amine[1]};
+        }
+        Site hydroxyl = first(Sites.hydroxyls(molecule));
+        if (hydroxyl != null) {
+            int hydrogen = hydrogenOn(molecule, hydroxyl.atom(0));
+            if (hydrogen >= 0) {
+                return new int[] {hydroxyl.atom(0), hydrogen};
+            }
         }
         return null;
     }
@@ -2443,6 +2494,543 @@ public final class PolarReactions {
             }
         }
         return -1;
+    }
+
+    /**
+     * An amine taking the place of the halogen of an alkyl halide, the reaction almost every modern medicine
+     * is put together with.
+     * <p>
+     * The two arrows of a substitution are drawn and two more finish it off: the nitrogen into the carbon and
+     * the halogen out with the pair, which is the whole of the step, and then the hydrogen the nitrogen was
+     * carrying goes onto the halogen - so that what leaves the vessel is hydrogen chloride and a free amine,
+     * and not the bromide of an ammonium that nobody asked for. The carbon is turned over, as every carbon a
+     * nucleophile comes in behind is.
+     * <p>
+     * <b>The carbon has to be a saturated one and the two have to stand in two molecules.</b> An aryl halide
+     * is no alkyl halide - its carbon is held flat by the ring - and a nitrogen held to the carbon already is
+     * a bond that stands there; what this rule draws is two molecules meeting and never a chain folding back
+     * on itself.
+     */
+    private static ReactionRule amineAlkylation() {
+        return new ReactionRule("amineAlkylation", "substitution", 3,
+                EnumSet.of(FunctionalGroup.AMINE, FunctionalGroup.HALIDE),
+                Conditions.at(Warmth.HEATED), PolarReactions::alkylateAmine);
+    }
+
+    private static Reaction alkylateAmine(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] amine = amineWithHydrogenOf(molecule);
+        if (amine == null) {
+            return null;
+        }
+        int nitrogen = amine[0];
+        int hydrogen = amine[1];
+        for (Site halide : Sites.halides(molecule)) {
+            int carbon = halide.atom(0);
+            int halogen = halide.atom(1);
+            if (carriesDoubleBond(molecule, carbon) || pot.sharesAMolecule(nitrogen, carbon)
+                    || bondBetween(molecule, nitrogen, carbon) != null) {
+                continue;
+            }
+            Molecule product = ElementaryStep
+                    .substitution("amineAlkylation", nitrogen, carbon, halogen,
+                            List.of(Arrow.toLonePair(hydrogen, nitrogen),
+                                    Arrow.fromLonePair(halogen, halogen, hydrogen)))
+                    .apply(molecule);
+            return pot.react(product, 0, carbon, nitrogen);
+        }
+        return null;
+    }
+
+    /**
+     * An acid chloride and an alcohol giving an ester and hydrogen chloride, which is how a polyester is
+     * made when the acid itself is too slow to be worth waiting for.
+     * <p>
+     * Six arrows are drawn: the alcohol's oxygen into the carbonyl, the pair of the double bond to the
+     * carbonyl oxygen, the halogen off with the pair, the pair back into the double bond - so that the carbon
+     * keeps its oxygen and takes the alcohol in its place - then the alcohol's hydrogen off and onto the
+     * halogen, so that the halogen leaves as an acid and never as an ion.
+     */
+    private static ReactionRule acylationOfAlcohol() {
+        return new ReactionRule("acylationOfAlcohol", "acyl substitution", 3,
+                EnumSet.of(FunctionalGroup.ACYL_HALIDE, FunctionalGroup.HYDROXYL),
+                Conditions.at(Warmth.HEATED), PolarReactions::acylateAlcohol);
+    }
+
+    private static Reaction acylateAlcohol(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site acyl = first(Sites.acylHalides(molecule));
+        if (acyl == null) {
+            return null;
+        }
+        int carbon = acyl.atom(0);
+        int carbonylOxygen = acyl.atom(1);
+        int halogen = acyl.atom(2);
+        for (Site hydroxyl : Sites.hydroxyls(molecule)) {
+            int alcoholOxygen = hydroxyl.atom(0);
+            int alcoholHydrogen = hydrogenOn(molecule, alcoholOxygen);
+            if (alcoholHydrogen < 0 || alcoholOxygen == carbonylOxygen
+                    || pot.sharesAMolecule(alcoholOxygen, carbon)
+                    || bondBetween(molecule, carbon, alcoholOxygen) != null) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.fromLonePair(alcoholOxygen, alcoholOxygen, carbon),
+                    Arrow.toLonePair(carbon, carbonylOxygen),
+                    Arrow.toLonePair(carbon, halogen),
+                    Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                    Arrow.toLonePair(alcoholHydrogen, alcoholOxygen),
+                    Arrow.fromLonePair(halogen, halogen, alcoholHydrogen));
+            Molecule product = ElementaryStep.of("acylationOfAlcohol", arrows).apply(molecule);
+            return pot.react(product, 0, carbon, alcoholOxygen);
+        }
+        return null;
+    }
+
+    /**
+     * An acid chloride and an amine giving an amide and hydrogen chloride, the industrial way a fibre is
+     * spun: two acid chlorides and a diamine meeting over and over.
+     * <p>
+     * The six arrows are the ones of the making of an ester with a nitrogen in the place of the alcohol's
+     * oxygen, and the hydrogen the nitrogen was carrying goes onto the halogen so that the acid leaves whole.
+     */
+    private static ReactionRule acylationOfAmine() {
+        return new ReactionRule("acylationOfAmine", "acyl substitution", 3,
+                EnumSet.of(FunctionalGroup.ACYL_HALIDE, FunctionalGroup.AMINE),
+                Conditions.at(Warmth.HEATED), PolarReactions::acylateAmine);
+    }
+
+    private static Reaction acylateAmine(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site acyl = first(Sites.acylHalides(molecule));
+        int[] amine = amineWithHydrogenOf(molecule);
+        if (acyl == null || amine == null) {
+            return null;
+        }
+        int carbon = acyl.atom(0);
+        int carbonylOxygen = acyl.atom(1);
+        int halogen = acyl.atom(2);
+        int nitrogen = amine[0];
+        int hydrogen = amine[1];
+        if (pot.sharesAMolecule(nitrogen, carbon) || bondBetween(molecule, carbon, nitrogen) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(carbon, halogen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                Arrow.toLonePair(hydrogen, nitrogen),
+                Arrow.fromLonePair(halogen, halogen, hydrogen));
+        Molecule product = ElementaryStep.of("acylationOfAmine", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, nitrogen);
+    }
+
+    /**
+     * An aldehyde and water giving an acid and hydrogen, the oxidation the industry runs to turn a
+     * petrochemical into the acid a fibre is made of.
+     * <p>
+     * Three arrows are drawn, and they are the ones of the losing of hydrogen the other way round: the pair
+     * of the aldehyde's carbon to hydrogen bond makes a bond to a hydrogen of the water, the water's oxygen
+     * takes that bond's pair as a lone pair, and the lone pair comes back as the bond to the carbon - so that
+     * the aldehyde takes the water's oxygen for its own acid and the two hydrogens leave together as a
+     * molecule of hydrogen.
+     */
+    private static ReactionRule aldehydeOxidation() {
+        return new ReactionRule("aldehydeOxidation", "oxidation", 1,
+                EnumSet.of(FunctionalGroup.ALDEHYDE), Conditions.at(Warmth.HEATED),
+                PolarReactions::oxidiseAldehyde);
+    }
+
+    private static Reaction oxidiseAldehyde(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site aldehyde = bestAldehyde(molecule);
+        int[] water = water(molecule);
+        if (aldehyde == null || water == null) {
+            return null;
+        }
+        int carbon = aldehyde.atom(0);
+        int aldehydeHydrogen = hydrogenOn(molecule, carbon);
+        int waterHydrogen = water[0];
+        int waterOxygen = water[1];
+        if (aldehydeHydrogen < 0 || pot.sharesAMolecule(carbon, waterOxygen)) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(carbon, aldehydeHydrogen, aldehydeHydrogen, waterHydrogen),
+                Arrow.toLonePair(waterHydrogen, waterOxygen),
+                Arrow.fromLonePair(waterOxygen, waterOxygen, carbon));
+        Molecule product = ElementaryStep.of("aldehydeOxidation", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, waterOxygen);
+    }
+
+    /**
+     * A carbon to carbon bond of an alkane losing a hydrogen off each of its two carbons and coming out a
+     * double bond: the dehydrogenation a works runs to turn butane into the diene of a rubber and
+     * ethylbenzene into styrene.
+     * <p>
+     * Two arrows are drawn, and the pair of electrons the new double bond is made of is no lone pair but the
+     * very bond to a hydrogen that is leaving: the pair of the first carbon to hydrogen bond makes a bond
+     * between the two hydrogens, and the pair of the second carbon to hydrogen bond closes the double bond -
+     * so that the two hydrogens leave as a molecule of hydrogen and nothing carries a charge at any moment.
+     * <p>
+     * <b>Both carbons have to be plain ones.</b> A carbon that already carries a double bond has no room for
+     * the one that comes, and a carbon held to an oxygen or a nitrogen is not the pair of a dehydrogenation
+     * at all: an alcohol in that place loses its hydrogen into a carbonyl instead, which is a rule of its
+     * own.
+     */
+    private static ReactionRule alkaneDehydrogenation() {
+        return new ReactionRule("alkaneDehydrogenation", "oxidation", 1,
+                EnumSet.of(FunctionalGroup.ALKYL), Conditions.at(Warmth.HEATED, Set.of(NICKEL)),
+                PolarReactions::dehydrogenateAlkane);
+    }
+
+    private static Reaction dehydrogenateAlkane(Pot pot) {
+        Molecule molecule = pot.molecule();
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() != 1 || bond.isAromatic()) {
+                continue;
+            }
+            int first = bond.first();
+            int second = bond.second();
+            if (!isElement(molecule, first, "C") || !isElement(molecule, second, "C")
+                    || carriesDoubleBond(molecule, first) || carriesDoubleBond(molecule, second)
+                    || !plainCarbon(molecule, first) || !plainCarbon(molecule, second)) {
+                continue;
+            }
+            int firstHydrogen = hydrogenOn(molecule, first);
+            int secondHydrogen = hydrogenOn(molecule, second);
+            if (firstHydrogen < 0 || secondHydrogen < 0) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.betweenBonds(first, firstHydrogen, firstHydrogen, secondHydrogen),
+                    Arrow.betweenBonds(second, secondHydrogen, second, first));
+            Molecule product = ElementaryStep.of("alkaneDehydrogenation", arrows).apply(molecule);
+            return pot.react(product, 0, first, second);
+        }
+        return null;
+    }
+
+    /** {@code true} when a carbon is held to nothing but carbons and hydrogens. */
+    private static boolean plainCarbon(Molecule molecule, int atom) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            String element = molecule.atom(neighbour).element();
+            if (!element.equals("C") && !element.equals("H")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The hydrogen and the cyanide group of hydrogen cyanide added across the triple bond of an alkyne, the
+     * reaction that turns acetylene into the acrylonitrile a plastic is made of.
+     * <p>
+     * Two arrows are drawn, exactly as the adding of an acid across a double bond is, with the hydrogen of
+     * the hydrogen cyanide where the hydrogen of the acid stood: the pair of the hydrogen to cyanide bond
+     * makes the bond to the carbon that carries more hydrogens of the two, and the pair of the triple bond
+     * makes the bond to the cyanide - so that the hydrogen takes the end the rule of Markovnikov sends it to
+     * and the carbon that is left takes the group, which is the very reaction the trade runs over a copper
+     * salt.
+     */
+    private static ReactionRule hydrocyanation() {
+        return new ReactionRule("hydrocyanation", "addition", 2,
+                EnumSet.of(FunctionalGroup.ALKYNE), Conditions.at(Warmth.HEATED),
+                PolarReactions::hydrocyanate);
+    }
+
+    private static Reaction hydrocyanate(Pot pot) {
+        Site alkyne = first(Sites.alkynes(pot.molecule()));
+        int[] cyanohydrin = hydrogenCyanide(pot.molecule());
+        if (alkyne == null || cyanohydrin == null) {
+            return null;
+        }
+        int first = plainerCarbonOf(pot.molecule(), alkyne);
+        int second = first == alkyne.atom(0) ? alkyne.atom(1) : alkyne.atom(0);
+        Molecule product = ElementaryStep
+                .across("hydrocyanation", first, second, cyanohydrin[0], cyanohydrin[1])
+                .apply(pot.molecule());
+        return pot.react(product, 0, first, cyanohydrin[0]);
+    }
+
+    /** The hydrogen and the carbon of a molecule of hydrogen cyanide, or {@code null} when there is none. */
+    private static int[] hydrogenCyanide(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "C") || molecule.atom(atom).charge() != 0) {
+                continue;
+            }
+            int hydrogen = -1;
+            boolean nitrile = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (isElement(molecule, neighbour, "H")) {
+                    hydrogen = neighbour;
+                } else {
+                    Bond bond = bondBetween(molecule, atom, neighbour);
+                    if (bond != null && bond.order() == 3 && isElement(molecule, neighbour, "N")) {
+                        nitrile = true;
+                    }
+                }
+            }
+            if (nitrile && hydrogen >= 0) {
+                return new int[] {hydrogen, atom};
+            }
+        }
+        return null;
+    }
+
+    /**
+     * An alkene with a hydrogen on the carbon beside its double bond and a second alkene, giving one longer
+     * alkene with the double bond of the first shifted along it: the ene reaction.
+     * <p>
+     * Two arrows are drawn, because the pair of electrons of a six-membered ring that the reaction is
+     * sometimes drawn with would have to begin as a lone pair and a double bond has none to spare: the pair
+     * of the allylic carbon to hydrogen bond makes the bond to the far carbon of the other alkene, and the
+     * pair of that alkene's own double bond makes the bond back to the allylic carbon. So the hydrogen goes
+     * to the far carbon, the near one joins the allylic carbon, and the double bond of the alkene that gave
+     * the hydrogen never moves.
+     * <p>
+     * <b>The allylic carbon is a saturated one beside a double bond</b> - it must carry the hydrogen the
+     * reaction takes and must not itself stand in a double bond - and the two halves meet across a bond that
+     * is not already there, which is what a ring the pair would close is refused by.
+     */
+    private static ReactionRule eneReaction() {
+        return new ReactionRule("eneReaction", "pericyclic", 2,
+                EnumSet.of(FunctionalGroup.ALKENE), Conditions.at(Warmth.HEATED),
+                PolarReactions::reactEne);
+    }
+
+    private static Reaction reactEne(Pot pot) {
+        Molecule molecule = pot.molecule();
+        List<Site> alkenes = Sites.alkenes(molecule);
+        for (Site alkene : alkenes) {
+            for (int near : alkene.atoms()) {
+                int far = near == alkene.atom(0) ? alkene.atom(1) : alkene.atom(0);
+                for (int allylic : molecule.neighbours(near)) {
+                    if (allylic == far) {
+                        continue;
+                    }
+                    int hydrogen = hydrogenOn(molecule, allylic);
+                    if (hydrogen < 0 || carriesDoubleBond(molecule, allylic)) {
+                        continue;
+                    }
+                    for (Site enophile : alkenes) {
+                        if (enophile == alkene) {
+                            continue;
+                        }
+                        for (int theirNear : enophile.atoms()) {
+                            int theirFar = theirNear == enophile.atom(0) ? enophile.atom(1)
+                                    : enophile.atom(0);
+                            if (!mayJoin(pot, allylic, theirNear)
+                                    || molecule.neighbours(theirFar).contains(allylic)) {
+                                continue;
+                            }
+                            List<Arrow> arrows = List.of(
+                                    Arrow.betweenBonds(allylic, hydrogen, hydrogen, theirFar),
+                                    Arrow.betweenBonds(theirNear, theirFar, theirNear, allylic));
+                            Molecule product = ElementaryStep.of("eneReaction", arrows).apply(molecule);
+                            return pot.react(product, 0, allylic, theirNear);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * An acid and an ortho diamine closing into a benzimidazole with two molecules of water, the reaction the
+     * repeating unit of a fire-proof fibre and half the anthelmintics there are share.
+     * <p>
+     * Two condensations are drawn one after the other. The first is the making of an amide, six arrows: the
+     * first nitrogen into the acid's carbonyl, the pair of the double bond to its oxygen, one hydrogen off
+     * that nitrogen onto the acid's own hydroxyl, the hydroxyl off with the pair and the pair back into the
+     * double bond - so the ring keeps an amide at that nitrogen and a molecule of water leaves. The second is
+     * the same again turned on the amide's own carbonyl: the second nitrogen into it, the pair of the double
+     * bond to the oxygen, and now <em>both</em> the second nitrogen's hydrogens onto that oxygen - so that
+     * the oxygen leaves as the second water, the carbon is left a bare one, and the lone pair of the nitrogen
+     * closes the ring as the double bond between them.
+     * <p>
+     * <b>The two nitrogens have to be primary and to hang on carbons that stand side by side on a ring.</b>
+     * That is what an ortho diamine is: only a nitrogen with two hydrogens of its own can give one to the
+     * first water and one to the second, and only two carbons one bond apart close the five-membered ring the
+     * two nitrogens and the acid's carbon make.
+     */
+    private static ReactionRule imidazoleFormation() {
+        return new ReactionRule("imidazoleFormation", "condensation", 3,
+                EnumSet.of(FunctionalGroup.CARBOXYLIC_ACID, FunctionalGroup.AMINE,
+                        FunctionalGroup.AROMATIC_RING),
+                Conditions.at(Warmth.HEATED), PolarReactions::closeImidazole);
+    }
+
+    private static Reaction closeImidazole(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site acid = first(Sites.acids(molecule));
+        int[] diamines = orthoDiamines(molecule);
+        if (acid == null || diamines == null) {
+            return null;
+        }
+        int carbon = acid.atom(0);
+        int carbonylOxygen = acid.atom(1);
+        int acidOxygen = acid.atom(2);
+        int acidHydrogen = hydrogenOn(molecule, acidOxygen);
+        int firstNitrogen = diamines[0];
+        int firstHydrogen = diamines[1];
+        int secondNitrogen = diamines[2];
+        int secondHydrogen = diamines[3];
+        int secondOther = diamines[4];
+        if (acidHydrogen < 0 || pot.sharesAMolecule(carbon, firstNitrogen)
+                || bondBetween(molecule, carbon, firstNitrogen) != null
+                || bondBetween(molecule, carbon, secondNitrogen) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(firstNitrogen, firstNitrogen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(firstHydrogen, firstNitrogen),
+                Arrow.fromLonePair(acidOxygen, acidOxygen, firstHydrogen),
+                Arrow.toLonePair(carbon, acidOxygen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, carbon),
+                Arrow.fromLonePair(secondNitrogen, secondNitrogen, carbon),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.toLonePair(secondHydrogen, secondNitrogen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, secondHydrogen),
+                Arrow.toLonePair(secondOther, secondNitrogen),
+                Arrow.fromLonePair(carbonylOxygen, carbonylOxygen, secondOther),
+                Arrow.toLonePair(carbon, carbonylOxygen),
+                Arrow.fromLonePair(secondNitrogen, secondNitrogen, carbon));
+        Molecule product = ElementaryStep.of("imidazoleFormation", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, firstNitrogen, secondNitrogen);
+    }
+
+    /**
+     * Two nitrogens of an aromatic ring, each of them primary and hanging on carbons that stand side by side,
+     * the ortho diamine a benzimidazole is closed out of.
+     *
+     * @param molecule molecule to read
+     * @return the first nitrogen and one of its hydrogens, then the second nitrogen, one of its hydrogens and
+     *         the other, or {@code null} when the vessel holds no such pair
+     */
+    private static int[] orthoDiamines(Molecule molecule) {
+        for (Site ring : Sites.aromaticRings(molecule)) {
+            List<Integer> atoms = ring.atoms();
+            for (int index = 0; index < atoms.size(); index++) {
+                int here = atoms.get(index);
+                int next = atoms.get((index + 1) % atoms.size());
+                int[] first = primaryAmineOn(molecule, here);
+                int[] second = primaryAmineOn(molecule, next);
+                if (first != null && second != null) {
+                    return new int[] {first[0], first[1], second[0], second[1], second[2]};
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The nitrogen of a primary amine hanging on an atom, with its two hydrogens, or {@code null}. */
+    private static int[] primaryAmineOn(Molecule molecule, int atom) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (!isElement(molecule, neighbour, "N") || molecule.atom(neighbour).charge() != 0) {
+                continue;
+            }
+            List<Integer> hydrogens = new ArrayList<>();
+            for (int other : molecule.neighbours(neighbour)) {
+                if (isElement(molecule, other, "H")) {
+                    hydrogens.add(other);
+                }
+            }
+            if (hydrogens.size() == 2) {
+                return new int[] {neighbour, hydrogens.get(0), hydrogens.get(1)};
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The nitro group of a ring taken all the way down to an amine with three molecules of hydrogen, the
+     * reaction that turns a ring the nitration gave a nitro group into the aniline half the dyes, the fibres
+     * and the medicines of the trade are built on.
+     * <p>
+     * Three steps are drawn one after the other and they need three molecules of hydrogen between them. The
+     * first is the loss of the anionic oxygen of the group: the bond to it breaks with the pair going onto
+     * the nitrogen, and the oxygen takes a molecule of hydrogen and leaves as water - which is the nitro
+     * group come down to the nitroso one. The second is hydrogen across the nitroso double bond, exactly as
+     * a molecule of hydrogen goes across the double bond of an imine: one hydrogen onto the nitrogen and one
+     * onto the oxygen, which leaves a hydroxylamine. The third takes the hydroxylamine apart: the bond to
+     * the oxygen becomes the second bond to a hydrogen of the third molecule of hydrogen - so the nitrogen
+     * comes out with two hydrogens and the oxygen leaves as the second water.
+     * <p>
+     * <b>Three molecules of hydrogen are spent and two waters leave</b>, which is the balance a works runs:
+     * the group loses both its oxygens and the nitrogen is left the plain amine of an aniline.
+     */
+    private static ReactionRule nitroReduction() {
+        return new ReactionRule("nitroReduction", "reduction", 3, EnumSet.of(FunctionalGroup.NITRO),
+                Conditions.at(Warmth.AMBIENT, Set.of(NICKEL)), PolarReactions::reduceNitro);
+    }
+
+    private static Reaction reduceNitro(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] nitro = nitroGroup(molecule);
+        List<int[]> hydrogens = hydrogenMolecules(molecule);
+        if (nitro == null || hydrogens.size() < 3) {
+            return null;
+        }
+        int nitrogen = nitro[0];
+        int carbonyl = nitro[1];
+        int anionic = nitro[2];
+        int[] first = hydrogens.get(0);
+        int[] second = hydrogens.get(1);
+        int[] third = hydrogens.get(2);
+        List<Arrow> arrows = List.of(
+                Arrow.toLonePair(anionic, nitrogen),
+                Arrow.betweenBonds(first[0], first[1], anionic, first[1]),
+                Arrow.fromLonePair(anionic, anionic, first[0]),
+                Arrow.betweenBonds(second[0], second[1], second[0], carbonyl),
+                Arrow.betweenBonds(carbonyl, nitrogen, nitrogen, second[1]),
+                Arrow.betweenBonds(nitrogen, carbonyl, nitrogen, third[0]),
+                Arrow.betweenBonds(third[0], third[1], carbonyl, third[1]));
+        Molecule product = ElementaryStep.of("nitroReduction", arrows).apply(molecule);
+        return pot.react(product, 0, nitrogen, first[0], first[1], second[0], second[1], third[0],
+                third[1]);
+    }
+
+    /**
+     * The nitro group of a molecule as the two oxygens and the nitrogen of it, the double one first.
+     *
+     * @param molecule molecule to read
+     * @return the nitrogen, the oxygen of its double bond and the charged oxygen that keeps the single one,
+     *         or {@code null} when the vessel holds no such group
+     */
+    private static int[] nitroGroup(Molecule molecule) {
+        for (Site nitro : Sites.nitros(molecule)) {
+            int nitrogen = nitro.atom(0);
+            int doubled = -1;
+            int single = -1;
+            for (int index = 1; index < nitro.atoms().size(); index++) {
+                int oxygen = nitro.atom(index);
+                Bond bond = bondBetween(molecule, nitrogen, oxygen);
+                if (bond != null && bond.order() == 2) {
+                    doubled = oxygen;
+                } else if (molecule.atom(oxygen).charge() == -1) {
+                    single = oxygen;
+                }
+            }
+            if (doubled >= 0 && single >= 0) {
+                return new int[] {nitrogen, doubled, single};
+            }
+        }
+        return null;
+    }
+
+    /** Every molecule of hydrogen of a molecule, as the two atoms of each. */
+    private static List<int[]> hydrogenMolecules(Molecule molecule) {
+        List<int[]> found = new ArrayList<>();
+        for (Bond bond : molecule.bonds()) {
+            if (isElement(molecule, bond.first(), "H") && isElement(molecule, bond.second(), "H")) {
+                found.add(new int[] {bond.first(), bond.second()});
+            }
+        }
+        return found;
     }
 
     /** {@code true} when an atom of a molecule is of a named element. */

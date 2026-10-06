@@ -1,5 +1,6 @@
 package com.philia093.neofactory.chemistry;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -60,6 +61,36 @@ public final class ElementaryStep {
                 Arrow.fromLonePair(nucleophile, nucleophile, carbon),
                 Arrow.toLonePair(carbon, leavingGroup)),
                 carbon, -1, null, StereoOutcome.INVERT);
+    }
+
+    /**
+     * A substitution whose leaving group is finished off by a pair of arrows of its own afterwards.
+     * <p>
+     * The two arrows of a substitution leave the nucleophile carrying the positive charge an attack always
+     * gives it and the group that left carrying the negative one, which is a salt and not the answer a bench
+     * wants: an amine that takes an alkyl group off a bromide comes out a bromide of the ammonium and never
+     * the free amine. The workup is what turns the two ions back into substances - a hydrogen off the
+     * nucleophile onto the leaving group, so that what leaves is an acid - and it is drawn by the rule that
+     * knows the reagent and handed in here, since a name and a leaving group are all this step can see.
+     * <p>
+     * The carbon is turned over exactly as a plain substitution turns it, because the workup touches the
+     * nucleophile and the leaving group and never the centre: the hand of the carbon was decided by which side
+     * the nucleophile came in from and nothing later changes it.
+     *
+     * @param name the name of the step, for a log line and a test
+     * @param nucleophile the atom that brings the pair of electrons
+     * @param carbon the carbon that is attacked
+     * @param leavingGroup the atom that takes the pair of the breaking bond
+     * @param workup the arrows that finish the leaving group off, drawn after the substitution
+     * @return the step
+     */
+    public static ElementaryStep substitution(String name, int nucleophile, int carbon, int leavingGroup,
+            List<Arrow> workup) {
+        List<Arrow> arrows = new ArrayList<>();
+        arrows.add(Arrow.fromLonePair(nucleophile, nucleophile, carbon));
+        arrows.add(Arrow.toLonePair(carbon, leavingGroup));
+        arrows.addAll(Objects.requireNonNull(workup, "workup"));
+        return new ElementaryStep(name, arrows, carbon, -1, null, StereoOutcome.INVERT);
     }
 
     /**
