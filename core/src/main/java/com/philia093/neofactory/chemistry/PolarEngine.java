@@ -47,17 +47,29 @@ public final class PolarEngine implements ReactionEngine {
         }
         Pot pot = lay(system.content());
         Set<FunctionalGroup> present = presence(pot.molecule());
-        List<Reaction> found = new ArrayList<>();
+        List<Chosen> found = new ArrayList<>();
         for (ReactionRule rule : rules) {
             if (!present.containsAll(rule.needs())) {
                 continue;
             }
             Reaction reaction = rule.write(pot);
             if (reaction != null && Conservation.balanced(reaction)) {
-                found.add(reaction);
+                found.add(new Chosen(rule, reaction));
             }
         }
-        return List.copyOf(found);
+        // The more particular rule is the better answer, and among rules of one particularity the one written
+        // higher in the table stands first; the sort is stable, so the table settles every tie.
+        found.sort((first, second) -> Integer.compare(second.rule.selectivity(),
+                first.rule.selectivity()));
+        List<Reaction> answers = new ArrayList<>(found.size());
+        for (Chosen chosen : found) {
+            answers.add(chosen.reaction);
+        }
+        return List.copyOf(answers);
+    }
+
+    /** A rule and the answer it gave, so that the answers may be ordered by the rule that wrote them. */
+    private record Chosen(ReactionRule rule, Reaction reaction) {
     }
 
     /**

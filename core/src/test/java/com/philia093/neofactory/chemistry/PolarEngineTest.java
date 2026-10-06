@@ -141,7 +141,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(15, rules.size(), "the table of the polar families");
+        assertEquals(19, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
@@ -216,6 +216,79 @@ class PolarEngineTest {
         assertNotNull(reaction, "ethane and chlorine");
         assertEquals(Set.of("C2H5Cl", "ClH"), formulas(reaction.products()),
                 "the acid of a halogen and a hydrogen is written with the halogen first");
+    }
+
+    @Test
+    void twoEstersJoinAtACarbonAndGiveAKetoEster() {
+        Reaction reaction = best("CC(=O)OC", "CC(=O)OC");
+
+        assertNotNull(reaction, "methyl ethanoate condenses with itself");
+        assertEquals(Set.of("C5H8O3", "CH4O"), formulas(reaction.products()),
+                "the keto ester and the alcohol of the group that left");
+    }
+
+    @Test
+    void anAmineAndAnAldehydeLoseWaterAndGiveAnImine() {
+        Reaction reaction = best("CC=O", "CN");
+
+        assertNotNull(reaction, "ethanal and methylamine are an imine");
+        assertEquals(Set.of("C3H7N", "H2O"), formulas(reaction.products()));
+    }
+
+    @Test
+    void aCarbonylAndAnEnoneJoinIntoTwoCarbonylsThreeApart() {
+        // Propenal and ethanal: the conjugate addition, which is what an enolate does with an enone.
+        Reaction reaction = best("C=CC=O", "CC=O");
+
+        assertNotNull(reaction, "propenal and ethanal join into a two carbonyl chain of five carbons");
+        assertEquals(Set.of("C5H8O2"), formulas(reaction.products()));
+    }
+
+    @Test
+    void anAlkylHalidePutsItsAlkylWhereTheHydrogenStood() {
+        Reaction reaction = best("CC(=O)C", "CBr");
+
+        assertNotNull(reaction, "propanone and bromomethane are butanone and the acid");
+        assertEquals(Set.of("C4H8O", "BrH"), formulas(reaction.products()));
+    }
+
+    @Test
+    void aCyanideAttacksTheAldehydeAndNotTheKetoneBesideIt() {
+        // An aldehyde beside a ketone is a vessel where two places would do, and only the readier one reacts.
+        Reaction reaction = best("CC=O", "CC(=O)C", "[C-]#N");
+
+        assertNotNull(reaction, "the cyanide comes into one of the two carbonyls");
+        assertEquals(Set.of("C3H4NO"), formulas(reaction.products()),
+                "the cyanohydrin of the aldehyde: the ketone was left where it stood");
+    }
+
+    @Test
+    void theHalogenThatLeavesMostEasilyIsTheOneThatLeaves() {
+        // A chloride beside a bromide with a hydroxide in the vessel: the bromide goes and the chloride stays.
+        Reaction reaction = best("ClCCBr", "[OH-]");
+
+        assertNotNull(reaction, "the hydroxide takes the place of one of the two halogens");
+        assertEquals(Set.of("C2H5ClO", "Br"), formulas(reaction.products()),
+                "the bromide left and the chloride is still there");
+    }
+
+    @Test
+    void aNucleophileReachesTheCarbonThatIsNotCrowded() {
+        // Two bromides on carbons of different crowding: the plainer one is reached first.
+        Reaction reaction = best("CC(Br)CCBr", "[OH-]");
+
+        assertNotNull(reaction, "the hydroxide takes the place of one of the two bromides");
+        Molecule product = null;
+        for (Chemical chemical : reaction.products().components().keySet()) {
+            if (chemical.composition().formula().startsWith("C")) {
+                product = chemical.structure();
+            }
+        }
+        assertNotNull(product, "the alcohol is one of the substances that come out");
+        int carbon = carbonCarrying(product, "O");
+        assertEquals(2, Sites.hydrogensOn(product, carbon),
+                "the alcohol stands on the carbon that carries two hydrogens and not on the one that "
+                        + "carries one");
     }
 
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */

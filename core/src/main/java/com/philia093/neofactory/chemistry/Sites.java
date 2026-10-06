@@ -36,6 +36,29 @@ public final class Sites {
         sites.addAll(halides(molecule));
         sites.addAll(alkyls(molecule));
         sites.addAll(nitriles(molecule));
+        sites.addAll(amines(molecule));
+        return sites;
+    }
+
+    /**
+     * The nitrogens that carry a hydrogen and hang on a carbon, the amines of the organic side.
+     *
+     * @param molecule molecule to read
+     * @return the sites, the nitrogen first and the carbon it hangs on second
+     */
+    public static List<Site> amines(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isNitrogen(molecule, atom) || molecule.atom(atom).charge() != 0
+                    || !carriesHydrogen(molecule, atom)) {
+                continue;
+            }
+            int carbon = carbonOn(molecule, atom);
+            if (carbon < 0) {
+                continue;
+            }
+            sites.add(new Site(FunctionalGroup.AMINE, List.of(atom, carbon)));
+        }
         return sites;
     }
 

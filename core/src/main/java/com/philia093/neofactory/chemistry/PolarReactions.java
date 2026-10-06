@@ -36,7 +36,11 @@ public final class PolarReactions {
         rules.add(hydrolysis());
         rules.add(cyanohydrin());
         rules.add(hemiacetal());
+        rules.add(imineFormation());
         rules.add(aldol());
+        rules.add(claisenCondensation());
+        rules.add(michaelAddition());
+        rules.add(enolateAlkylation());
         rules.add(dielsAlder());
         rules.add(esterification());
         rules.add(esterHydrolysis());
@@ -156,7 +160,7 @@ public final class PolarReactions {
     }
 
     private static Reaction hydrolyse(Pot pot) {
-        Site halide = first(Sites.halides(pot.molecule()));
+        Site halide = bestHalide(pot.molecule());
         int hydroxide = hydroxide(pot.molecule());
         if (halide == null || hydroxide < 0) {
             return null;
@@ -175,7 +179,7 @@ public final class PolarReactions {
     }
 
     private static Reaction cyanohydrin(Pot pot) {
-        Site carbonyl = first(Sites.carbonyls(pot.molecule()));
+        Site carbonyl = bestCarbonyl(pot.molecule());
         int cyanide = cyanide(pot.molecule());
         if (carbonyl == null || cyanide < 0) {
             return null;
@@ -202,7 +206,7 @@ public final class PolarReactions {
     }
 
     private static Reaction hemiacetal(Pot pot) {
-        Site aldehyde = first(Sites.aldehydes(pot.molecule()));
+        Site aldehyde = bestAldehyde(pot.molecule());
         Site hydroxyl = first(Sites.hydroxyls(pot.molecule()));
         if (aldehyde == null || hydroxyl == null) {
             return null;
@@ -232,7 +236,7 @@ public final class PolarReactions {
     }
 
     private static Reaction hydrogenate(Pot pot) {
-        Site alkene = first(Sites.alkenes(pot.molecule()));
+        Site alkene = bestAlkene(pot.molecule());
         int[] hydrogen = hydrogenPair(pot.molecule());
         if (alkene == null || hydrogen == null) {
             return null;
@@ -251,7 +255,7 @@ public final class PolarReactions {
     }
 
     private static Reaction halogenate(Pot pot) {
-        Site alkene = first(Sites.alkenes(pot.molecule()));
+        Site alkene = bestAlkene(pot.molecule());
         int[] halogen = halogenPair(pot.molecule());
         if (alkene == null || halogen == null) {
             return null;
@@ -273,7 +277,7 @@ public final class PolarReactions {
     }
 
     private static Reaction hydrohalogenate(Pot pot) {
-        Site alkene = first(Sites.alkenes(pot.molecule()));
+        Site alkene = bestAlkene(pot.molecule());
         int[] acid = hydrogenHalide(pot.molecule());
         if (alkene == null || acid == null) {
             return null;
@@ -295,7 +299,7 @@ public final class PolarReactions {
     }
 
     private static Reaction hydrate(Pot pot) {
-        Site alkene = first(Sites.alkenes(pot.molecule()));
+        Site alkene = bestAlkene(pot.molecule());
         int[] water = water(pot.molecule());
         if (alkene == null || water == null) {
             return null;
@@ -349,7 +353,7 @@ public final class PolarReactions {
     }
 
     private static Reaction hydrogenateCarbonyl(Pot pot) {
-        Site carbonyl = first(Sites.carbonyls(pot.molecule()));
+        Site carbonyl = bestCarbonyl(pot.molecule());
         int[] hydrogen = hydrogenPair(pot.molecule());
         if (carbonyl == null || hydrogen == null) {
             return null;
@@ -555,6 +559,321 @@ public final class PolarReactions {
             Bond bond = molecule.bonds().get(bondIndex);
             if (bond.other(first) == second) {
                 return bond;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A carbonyl beside another taking an alkyl group off a halide, which is how a carbon is put where a
+     * hydrogen stood - the reaction a chemist reaches for when a skeleton has to be built up.
+     * <p>
+     * Three arrows are drawn: the pair of the carbon to hydrogen bond beside the first carbonyl makes the
+     * bond to the carbon of the halide, the pair of the carbon to halogen bond leaves as a halide, and the
+     * hydrogen goes to it. A base is what the reaction is run over and is not drawn here; the rule is written
+     * above the arrow the way a chemist writes it, and the vessel names the two substances it joins.
+     */
+    private static ReactionRule enolateAlkylation() {
+        return new ReactionRule("enolateAlkylation", "condensation", 5,
+                EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.HALIDE, FunctionalGroup.ALKYL),
+                PolarReactions::alkylateEnolate);
+    }
+
+    private static Reaction alkylateEnolate(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site halide = bestHalide(molecule);
+        if (halide == null) {
+            return null;
+        }
+        int alkylCarbon = halide.atom(0);
+        int halogen = halide.atom(1);
+        for (Site carbonyl : Sites.carbonyls(molecule)) {
+            int alpha = alphaCarbonOf(molecule, carbonyl.atom(0));
+            if (alpha < 0 || bondBetween(molecule, alpha, alkylCarbon) != null) {
+                continue;
+            }
+            int hydrogen = hydrogenOn(molecule, alpha);
+            if (hydrogen < 0 || pot.substanceOf(alpha).equals(pot.substanceOf(alkylCarbon))) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.betweenBonds(alpha, hydrogen, alpha, alkylCarbon),
+                    Arrow.toLonePair(alkylCarbon, halogen),
+                    Arrow.fromLonePair(halogen, halogen, hydrogen));
+            Molecule product = ElementaryStep.of("enolateAlkylation", arrows).apply(molecule);
+            Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1)
+                    .plus(Mixture.of(pot.substanceOf(alkylCarbon), 1));
+            return pot.react(consumed, product, 0);
+        }
+        return null;
+    }
+
+    /**
+     * Two esters joining at a carbon and giving a keto ester, which is where the carbon of a Claisen comes
+     * from and the way a chain of carbons is lengthened by two at a time.
+     * <p>
+     * Five arrows are drawn, the same shape the making of an ester has: the pair of the carbon to hydrogen
+     * bond beside the first ester makes the bond to the second, the pair of the double bond goes to its
+     * oxygen, its own alkoxide leaves with the pair, the double bond comes back, and the hydrogen lands on
+     * the group that left - so that an alcohol stands beside the keto ester on the right.
+     */
+    private static ReactionRule claisenCondensation() {
+        return new ReactionRule("claisenCondensation", "condensation", 4,
+                EnumSet.of(FunctionalGroup.ESTER), PolarReactions::condenseClaisen);
+    }
+
+    private static Reaction condenseClaisen(Pot pot) {
+        Molecule molecule = pot.molecule();
+        List<Site> esters = Sites.esters(molecule);
+        for (Site giving : esters) {
+            int alpha = alphaCarbonOf(molecule, giving.atom(0));
+            if (alpha < 0) {
+                continue;
+            }
+            int hydrogen = hydrogenOn(molecule, alpha);
+            if (hydrogen < 0) {
+                continue;
+            }
+            for (Site taking : esters) {
+                int carbon = taking.atom(0);
+                int oxygen = taking.atom(1);
+                int alkoxide = taking.atom(2);
+                if (alkoxide == giving.atom(2) || bondBetween(molecule, carbon, alpha) != null) {
+                    continue;
+                }
+                List<Arrow> arrows = List.of(
+                        Arrow.betweenBonds(alpha, hydrogen, alpha, carbon),
+                        Arrow.toLonePair(carbon, oxygen),
+                        Arrow.toLonePair(carbon, alkoxide),
+                        Arrow.fromLonePair(oxygen, oxygen, carbon),
+                        Arrow.fromLonePair(alkoxide, alkoxide, hydrogen));
+                Molecule product = ElementaryStep.of("claisenCondensation", arrows).apply(molecule);
+                Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1);
+                if (pot.substanceOf(alpha).equals(pot.substanceOf(carbon))) {
+                    consumed = Mixture.of(pot.substanceOf(alpha), 2);
+                } else {
+                    consumed = consumed.plus(Mixture.of(pot.substanceOf(carbon), 1));
+                }
+                return pot.react(consumed, product, 0);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The carbon beside a carbonyl joining the far end of a double bond that is beside another carbonyl -
+     * the conjugate addition, where a molecule is built up without the double bond being lost.
+     * <p>
+     * Four arrows are drawn: the pair of the carbon to hydrogen bond beside the first carbonyl makes the bond
+     * to the far carbon of the double bond, the pair of that double bond makes the bond to the middle carbon,
+     * the pair of the carbonyl goes to its oxygen, and the hydrogen lands on that oxygen - so that the
+     * molecule comes out with the two carbonyls three carbons apart.
+     */
+    private static ReactionRule michaelAddition() {
+        return new ReactionRule("michaelAddition", "conjugate addition", 4,
+                EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.ALKENE),
+                PolarReactions::addMichael);
+    }
+
+    private static Reaction addMichael(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] enone = enoneOf(molecule);
+        if (enone == null) {
+            return null;
+        }
+        int far = enone[0];
+        int near = enone[1];
+        int carbonEnone = enone[2];
+        int oxygenEnone = enone[3];
+        for (Site carbonyl : Sites.carbonyls(molecule)) {
+            int alpha = alphaCarbonOf(molecule, carbonyl.atom(0));
+            if (alpha < 0 || carbonyl.atom(0) == carbonEnone || alpha == near || alpha == far) {
+                continue;
+            }
+            int hydrogen = hydrogenOn(molecule, alpha);
+            if (hydrogen < 0 || bondBetween(molecule, alpha, far) != null
+                    || pot.substanceOf(alpha).equals(pot.substanceOf(far))) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.betweenBonds(alpha, hydrogen, alpha, far),
+                    Arrow.betweenBonds(far, near, near, carbonEnone),
+                    Arrow.toLonePair(carbonEnone, oxygenEnone),
+                    Arrow.fromLonePair(oxygenEnone, oxygenEnone, hydrogen));
+            Molecule product = ElementaryStep.of("michaelAddition", arrows).apply(molecule);
+            Mixture consumed = Mixture.of(pot.substanceOf(alpha), 1)
+                    .plus(Mixture.of(pot.substanceOf(far), 1));
+            return pot.react(consumed, product, 0);
+        }
+        return null;
+    }
+
+    /**
+     * An amine and a carbonyl coming together and losing water, which is what turns a flat carbonyl into the
+     * carbon to nitrogen double bond a great many drugs are hung on.
+     * <p>
+     * Six arrows are drawn: the lone pair of the nitrogen into the carbonyl, the pair of the double bond to
+     * the oxygen, the two hydrogens of the amine each going over to that oxygen - which leaves it a molecule
+     * of water - the bond to it breaking, and the lone pair of the nitrogen closing the double bond. Both
+     * hydrogens of the amine end up in the water, which is why a primary amine gives an imine with no
+     * hydrogen on its nitrogen.
+     */
+    private static ReactionRule imineFormation() {
+        return new ReactionRule("imineFormation", "condensation", 6,
+                EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.AMINE),
+                PolarReactions::formImine);
+    }
+
+    private static Reaction formImine(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site carbonyl = bestCarbonyl(molecule);
+        int[] amine = amineOf(molecule);
+        if (carbonyl == null || amine == null) {
+            return null;
+        }
+        int carbon = carbonyl.atom(0);
+        int oxygen = carbonyl.atom(1);
+        int nitrogen = amine[0];
+        int first = amine[1];
+        int second = amine[2];
+        if (pot.substanceOf(carbon).equals(pot.substanceOf(nitrogen))
+                || bondBetween(molecule, carbon, nitrogen) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.toLonePair(first, nitrogen),
+                Arrow.fromLonePair(oxygen, oxygen, first),
+                Arrow.toLonePair(second, nitrogen),
+                Arrow.fromLonePair(oxygen, oxygen, second),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon));
+        Molecule product = ElementaryStep.of("imineFormation", arrows).apply(molecule);
+        Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
+                .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
+        return pot.react(consumed, product, 0);
+    }
+
+    /** The carbonyl a nucleophile attacks first: the readier one, see {@link Reactivity}. */
+    private static Site bestCarbonyl(Molecule molecule) {
+        Site best = null;
+        int highest = Integer.MIN_VALUE;
+        for (Site carbonyl : Sites.carbonyls(molecule)) {
+            int score = Reactivity.electrophilicity(molecule, carbonyl.atom(0));
+            if (score > highest) {
+                highest = score;
+                best = carbonyl;
+            }
+        }
+        return best;
+    }
+
+    /** The aldehyde a nucleophile attacks first, or {@code null} when the molecule holds none. */
+    private static Site bestAldehyde(Molecule molecule) {
+        Site best = null;
+        int highest = Integer.MIN_VALUE;
+        for (Site aldehyde : Sites.aldehydes(molecule)) {
+            int score = Reactivity.electrophilicity(molecule, aldehyde.atom(0));
+            if (score > highest) {
+                highest = score;
+                best = aldehyde;
+            }
+        }
+        return best;
+    }
+
+    /** The double bond an electrophile adds across first: the better nucleophile, see {@link Reactivity}. */
+    private static Site bestAlkene(Molecule molecule) {
+        Site best = null;
+        int highest = Integer.MIN_VALUE;
+        for (Site alkene : Sites.alkenes(molecule)) {
+            int score = Reactivity.nucleophilicity(molecule, alkene);
+            if (score > highest) {
+                highest = score;
+                best = alkene;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * The halogen a nucleophile takes the place of first.
+     * <p>
+     * Two orders are read at once and they are not the same order: the halogen that leaves most easily is the
+     * one the reaction runs at, and among halogens that leave alike the plainer carbon is the one reached
+     * first. The ease of leaving settles it before the crowding does, which is why the former is counted ten
+     * times and the latter once.
+     */
+    private static Site bestHalide(Molecule molecule) {
+        Site best = null;
+        int highest = Integer.MIN_VALUE;
+        for (Site halide : Sites.halides(molecule)) {
+            int score = Reactivity.leavingAbility(molecule, halide.atom(1)) * 10
+                    - Reactivity.crowding(molecule, halide.atom(0));
+            if (score > highest) {
+                highest = score;
+                best = halide;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * The four atoms of a double bond that stands beside a carbonyl, or {@code null} when there is none.
+     *
+     * @param molecule molecule to read
+     * @return the far carbon, the one beside the carbonyl, the carbonyl carbon and its oxygen
+     */
+    private static int[] enoneOf(Molecule molecule) {
+        for (Site alkene : Sites.alkenes(molecule)) {
+            int first = alkene.atom(0);
+            int second = alkene.atom(1);
+            for (int near : new int[] {first, second}) {
+                int far = near == first ? second : first;
+                for (int neighbour : molecule.neighbours(near)) {
+                    if (neighbour == far || !isElement(molecule, neighbour, "C")) {
+                        continue;
+                    }
+                    Bond link = bondBetween(molecule, near, neighbour);
+                    if (link == null || link.order() != 1) {
+                        continue;
+                    }
+                    for (int oxygen : molecule.neighbours(neighbour)) {
+                        Bond doubleBond = bondBetween(molecule, neighbour, oxygen);
+                        if (doubleBond != null && doubleBond.order() == 2
+                                && isElement(molecule, oxygen, "O")) {
+                            return new int[] {far, near, neighbour, oxygen};
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The nitrogen of a primary amine, its two hydrogens with it, or {@code null} when there is none.
+     *
+     * @param molecule molecule to read
+     * @return the nitrogen and its two hydrogens
+     */
+    private static int[] amineOf(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "N") || molecule.atom(atom).charge() != 0) {
+                continue;
+            }
+            List<Integer> hydrogens = new ArrayList<>();
+            boolean carbon = false;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (isElement(molecule, neighbour, "H") && molecule.atom(neighbour).charge() == 0) {
+                    hydrogens.add(neighbour);
+                } else if (isElement(molecule, neighbour, "C")) {
+                    carbon = true;
+                }
+            }
+            if (carbon && hydrogens.size() == 2) {
+                return new int[] {atom, hydrogens.get(0), hydrogens.get(1)};
             }
         }
         return null;

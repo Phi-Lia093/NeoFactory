@@ -48,6 +48,9 @@ public enum FunctionalGroup {
     /** A carbon held to a nitrogen by a triple bond. */
     NITRILE,
 
+    /** A nitrogen that carries a hydrogen and hangs on a carbon, the amine a carbonyl is condensed with. */
+    AMINE,
+
     /** A ring whose bonds are the blurred ones of an aromatic ring. */
     AROMATIC_RING
 }
