@@ -182,6 +182,115 @@ public final class Assemblies {
         return folded;
     }
 
+    /**
+     * The same molecule with the blurred bonds of its rings written out as single and double ones.
+     * <p>
+     * Nothing can be added across a bond that is blurred, because there is no pair of electrons written on it
+     * to be moved: an electrophile takes the ring of a benzene apart by taking one pair of it into a bond of
+     * its own, and the pair has to be somewhere for that to be drawn. The rings are therefore written the way
+     * Kekulé wrote them - alternating single and double bonds around the ring - and the reaction is drawn on
+     * that, see {@link #aromatized} for the way back.
+     * <p>
+     * <b>Only a ring that can be written that way is touched.</b> A ring of an odd number of atoms cannot
+     * alternate all the way round, and a ring that shares bonds with another - the two halves of naphthalene -
+     * cannot be written without settling both at once; such a ring is left as it stands, and a rule that needs
+     * it answers nothing rather than something wrong.
+     *
+     * @param molecule molecule to write out
+     * @return the molecule with the rings of it written as single and double bonds
+     */
+    public static Molecule kekulized(Molecule molecule) {
+        List<Atom> atoms = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            Atom value = molecule.atom(atom);
+            atoms.add(Atom.bracketed(value.element(), value.charge(), value.isotope(), false,
+                    value.hydrogens(), value.mapClass(), value.chirality(), value.radicals()));
+            atoms.get(atom).markWrittenOrder(value.writtenNeighbours());
+        }
+        List<Bond> bonds = new ArrayList<>();
+        Map<Long, Integer> indexOfBond = new HashMap<>();
+        for (Bond bond : molecule.bonds()) {
+            indexOfBond.put(pairKey(bond.first(), bond.second()), bonds.size());
+            bonds.add(Bond.of(bond.first(), bond.second(), bond.order(), bond.stereo()));
+        }
+        for (List<Integer> ring : Rings.cycles(molecule)) {
+            int size = ring.size();
+            if (size % 2 != 0 || !allAromatic(molecule, ring)) {
+                continue;
+            }
+            boolean untouched = true;
+            for (int step = 0; step < size; step++) {
+                Bond bond = molecule.bonds().get(indexOfBond.get(
+                        pairKey(ring.get(step), ring.get((step + 1) % size))));
+                if (!bond.isAromatic()) {
+                    untouched = false;
+                    break;
+                }
+            }
+            if (!untouched) {
+                continue;
+            }
+            for (int step = 0; step < size; step += 2) {
+                int at = indexOfBond.get(pairKey(ring.get(step), ring.get((step + 1) % size)));
+                Bond bond = bonds.get(at);
+                bonds.set(at, Bond.of(bond.first(), bond.second(), 2, bond.stereo()));
+            }
+        }
+        return new Molecule(atoms, bonds);
+    }
+
+    /**
+     * The same molecule with the rings of it read again: what is a ring of alternating bonds is blurred once
+     * more, see {@link Aromatizer}.
+     *
+     * @param molecule molecule to read again
+     * @return the molecule with its aromatic rings marked
+     */
+    public static Molecule aromatized(Molecule molecule) {
+        List<Atom> atoms = new ArrayList<>();
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            Atom value = molecule.atom(atom);
+            atoms.add(Atom.bracketed(value.element(), value.charge(), value.isotope(), false,
+                    value.hydrogens(), value.mapClass(), value.chirality(), value.radicals()));
+            atoms.get(atom).markWrittenOrder(value.writtenNeighbours());
+        }
+        List<Bond> bonds = new ArrayList<>();
+        for (Bond bond : molecule.bonds()) {
+            bonds.add(Bond.of(bond.first(), bond.second(), bond.order(), bond.stereo()));
+        }
+        Aromatizer.aromatize(atoms, bonds);
+        return new Molecule(atoms, bonds);
+    }
+
+    /** {@code true} when every bond of a ring is one of the blurred ones. */
+    private static boolean allAromatic(Molecule molecule, List<Integer> ring) {
+        for (int step = 0; step < ring.size(); step++) {
+            Bond bond = bondBetween(molecule, ring.get(step), ring.get((step + 1) % ring.size()));
+            if (bond == null || !bond.isAromatic()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The bond between two atoms, or {@code null} when they share none. */
+    private static Bond bondBetween(Molecule molecule, int first, int second) {
+        for (int bondIndex : molecule.bondsOf(first)) {
+            Bond bond = molecule.bonds().get(bondIndex);
+            if (bond.other(first) == second) {
+                return bond;
+            }
+        }
+        return null;
+    }
+
+    /** A key of an unordered pair of atoms. */
+    private static long pairKey(int first, int second) {
+        int low = Math.min(first, second);
+        int high = Math.max(first, second);
+        return ((long) low << 32) | (high & 0xffffffffL);
+    }
+
     /** A bond of one molecule, moved to where that molecule stands in a laid out one. */
     private static Bond move(Bond bond, int offset) {
         if (bond.isAromatic()) {

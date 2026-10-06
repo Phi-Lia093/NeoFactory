@@ -160,11 +160,36 @@ public final class Canonicalizer {
                 description[atom] = current[atom] + ">" + neighbours;
             }
             int[] refined = rank(description);
-            if (Arrays.equals(refined, current)) {
+            if (splitsNothingFurther(refined, current)) {
                 return refined;
             }
             current = refined;
         }
+    }
+
+    /**
+     * {@code true} when a round has pulled no two atoms apart that the round before it had not.
+     * <p>
+     * <b>The colours are compared as a partition and never as numbers.</b> The number a round hands an atom
+     * is only the place its description came in a sorted list, so two rounds that separate exactly the same
+     * pairs of atoms may still number them differently - and a loop that waited for the numbers to stop
+     * moving would wait for ever on a molecule whose descriptions sort in a different order from one round to
+     * the next. What the loop is really waiting for is that no pair of atoms that shared a colour before
+     * carries two different ones now, and that is what is asked here.
+     *
+     * @param refined the colours this round handed out
+     * @param before the colours of the round before it
+     * @return {@code true} when the two separate the same pairs of atoms
+     */
+    private static boolean splitsNothingFurther(int[] refined, int[] before) {
+        for (int first = 0; first < refined.length; first++) {
+            for (int second = first + 1; second < refined.length; second++) {
+                if ((refined[first] == refined[second]) != (before[first] == before[second])) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** Turns the descriptions of the atoms into colours, two atoms of one description sharing one. */

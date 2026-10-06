@@ -37,6 +37,7 @@ public final class PolarReactions {
         rules.add(cyanohydrin());
         rules.add(hemiacetal());
         rules.add(imineFormation());
+        rules.add(sulfonation());
         rules.add(aldol());
         rules.add(claisenCondensation());
         rules.add(michaelAddition());
@@ -753,6 +754,152 @@ public final class PolarReactions {
         Mixture consumed = Mixture.of(pot.substanceOf(carbon), 1)
                 .plus(Mixture.of(pot.substanceOf(nitrogen), 1));
         return pot.react(consumed, product, 0);
+    }
+
+    /**
+     * The sulfur of an acid taking the place of a hydrogen on an aromatic ring, which is the way a ring is
+     * given a group at all - and the reaction the whole of aromatic chemistry is written against.
+     * <p>
+     * <b>A ring cannot be drawn on as it stands.</b> The bonds of an aromatic ring stand for the electrons of
+     * the whole of it and not for one pair of them, so there is no pair written on one of those bonds for an
+     * arrow to move; the ring is written the way Kekulé wrote it, the substitution is drawn on that, and the
+     * ring is read as a ring again at the end, see {@link Assemblies#kekulized}. Which is the whole reason
+     * the engine has those two readings at all.
+     * <p>
+     * Four arrows are drawn: the pair of the double bond beside the carbon that is attacked makes the bond to
+     * the sulfur while one pair of a sulfur oxygen is left behind on that oxygen, the pair of the carbon to
+     * hydrogen bond comes back into the ring - which is what closes it again - and the hydrogen that left
+     * lands on the oxygen that was left holding the pair. A ring that already carries a group of its own is
+     * attacked where that group sends the electrophile, see {@link Reactivity#directsToTheSides}.
+     */
+    private static ReactionRule sulfonation() {
+        return new ReactionRule("sulfonation", "substitution", 4,
+                EnumSet.of(FunctionalGroup.AROMATIC_RING), PolarReactions::sulfonate);
+    }
+
+    private static Reaction sulfonate(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int sulfur = sulfurTrioxideOf(molecule);
+        if (sulfur < 0) {
+            return null;
+        }
+        int oxygen = sulfurTrioxideOxygen(molecule, sulfur);
+        if (oxygen < 0) {
+            return null;
+        }
+        Molecule drawn = Assemblies.kekulized(molecule);
+        for (Site ring : Sites.aromaticRings(molecule)) {
+            int[] place = attackPlace(drawn, ring.atoms());
+            if (place == null) {
+                continue;
+            }
+            int position = place[0];
+            int beside = place[1];
+            int hydrogen = hydrogenOn(molecule, position);
+            if (hydrogen < 0) {
+                continue;
+            }
+            List<Arrow> arrows = List.of(
+                    Arrow.betweenBonds(position, beside, position, sulfur),
+                    Arrow.toLonePair(sulfur, oxygen),
+                    Arrow.betweenBonds(position, hydrogen, position, beside),
+                    Arrow.fromLonePair(oxygen, oxygen, hydrogen));
+            Molecule product = Assemblies.aromatized(
+                    ElementaryStep.of("sulfonation", arrows).apply(drawn));
+            Mixture consumed = Mixture.of(pot.substanceOf(position), 1)
+                    .plus(Mixture.of(pot.substanceOf(sulfur), 1));
+            return pot.react(consumed, product, 0);
+        }
+        return null;
+    }
+
+    /**
+     * Where on a ring an electrophile goes: the carbon that carries a hydrogen and that the group already on
+     * the ring sends it to, together with the neighbour that carbon takes the pair of the ring from.
+     *
+     * @param molecule the ring written out as single and double bonds
+     * @param ring the atoms of the ring in bond order
+     * @return the carbon attacked and the neighbour its pair comes from, or {@code null} when the ring has no
+     *         place to give
+     */
+    private static int[] attackPlace(Molecule molecule, List<Integer> ring) {
+        int size = ring.size();
+        int director = -1;
+        for (int step = 0; step < size; step++) {
+            if (substituentOf(molecule, ring, ring.get(step)) >= 0) {
+                director = step;
+                break;
+            }
+        }
+        boolean sides = director < 0
+                || Reactivity.directsToTheSides(molecule, substituentOf(molecule, ring, ring.get(director)));
+        for (int step = 1; step <= size / 2; step++) {
+            // Beside the group and across from it are the positions a group that lends electrons fills, and
+            // the ones past a carbon are the two a group that pulls them leaves - see Reactivity. A ring of
+            // anything but six is not read that way: its positions are of five kinds and not of four.
+            if (size == 6 && director >= 0 && (step % 2 == 1) != sides) {
+                continue;
+            }
+            int index = Math.floorMod(director < 0 ? step - 1 : director + step, size);
+            int position = ring.get(index);
+            if (!isElement(molecule, position, "C") || hydrogenOn(molecule, position) < 0
+                    || substituentOf(molecule, ring, position) >= 0) {
+                continue;
+            }
+            int next = ring.get((index + 1) % size);
+            int previous = ring.get(Math.floorMod(index - 1, size));
+            Bond forward = bondBetween(molecule, position, next);
+            int beside = forward != null && forward.order() == 2 ? next : previous;
+            Bond pair = bondBetween(molecule, position, beside);
+            if (pair == null || pair.order() != 2) {
+                continue;
+            }
+            return new int[] {position, beside};
+        }
+        return null;
+    }
+
+    /** The atom that hangs on a ring atom and is no atom of the ring, or {@code -1}. */
+    private static int substituentOf(Molecule molecule, List<Integer> ring, int atom) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (!isElement(molecule, neighbour, "H") && !ring.contains(neighbour)) {
+                return neighbour;
+            }
+        }
+        return -1;
+    }
+
+    /** The sulfur of a molecule of sulfur trioxide, or {@code -1} when the vessel holds none. */
+    private static int sulfurTrioxideOf(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "S") || molecule.atom(atom).charge() != 0
+                    || molecule.neighbours(atom).size() != 3) {
+                continue;
+            }
+            int oxygens = 0;
+            for (int neighbour : molecule.neighbours(atom)) {
+                Bond bond = bondBetween(molecule, atom, neighbour);
+                if (isElement(molecule, neighbour, "O") && bond != null && bond.order() == 2) {
+                    oxygens++;
+                }
+            }
+            if (oxygens == 3) {
+                return atom;
+            }
+        }
+        return -1;
+    }
+
+    /** An oxygen of sulfur trioxide free to take the hydrogen the ring gives up, or {@code -1}. */
+    private static int sulfurTrioxideOxygen(Molecule molecule, int sulfur) {
+        for (int neighbour : molecule.neighbours(sulfur)) {
+            Bond bond = bondBetween(molecule, sulfur, neighbour);
+            if (isElement(molecule, neighbour, "O") && bond != null && bond.order() == 2
+                    && Sites.hydrogensOn(molecule, neighbour) == 0) {
+                return neighbour;
+            }
+        }
+        return -1;
     }
 
     /** The carbonyl a nucleophile attacks first: the readier one, see {@link Reactivity}. */

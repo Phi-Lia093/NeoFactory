@@ -116,6 +116,55 @@ public final class Reactivity {
         return heavyNeighbours(molecule, carbon);
     }
 
+    /**
+     * Where the group already on a ring sends an electrophile: to the positions beside it, or to the ones past
+     * a carbon of them.
+     * <p>
+     * A ring is not attacked at random. A group that holds a pair of electrons it can lend to the ring - an
+     * oxygen, a nitrogen, a halogen, a plain carbon - pushes electrons into it and makes the positions beside
+     * itself and across from itself the richer ones, so the electrophile goes there; a group that pulls
+     * electrons out of the ring - a nitro, a carbonyl, a nitrile - empties the same positions and leaves the
+     * ones past a carbon as the only choice. That is the whole of what the trade means by a ring being
+     * directed, and it is the one part of aromatic chemistry that is a rule of thumb rather than a rate: what
+     * is written here is which of two positions reacts, and never by how much.
+     *
+     * @param molecule molecule to read
+     * @param substituent the atom that hangs on the ring
+     * @return {@code true} when the electrophile is sent beside the group, {@code false} when past one carbon
+     */
+    public static boolean directsToTheSides(Molecule molecule, int substituent) {
+        switch (molecule.atom(substituent).element()) {
+            case "N":
+            case "S":
+            case "C":
+                // An amine lends the pair of its nitrogen to the ring and a thiol the one of its sulfur,
+                // while a nitro, a sulfonyl, a carbonyl and a nitrile take the electrons of the ring away
+                // instead: the difference is whether the atom beside the ring is held by a double bond.
+                return !carriesWithdrawingDoubleBond(molecule, substituent);
+            case "O":
+            case "F":
+            case "Cl":
+            case "Br":
+            case "I":
+                return true;
+            default:
+                return true;
+        }
+    }
+
+    /** {@code true} when an atom is held by a double bond to an oxygen or a nitrogen, which takes electrons. */
+    private static boolean carriesWithdrawingDoubleBond(Molecule molecule, int atom) {
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() > 1 && bond.touches(atom)) {
+                String other = molecule.atom(bond.other(atom)).element();
+                if (other.equals("O") || other.equals("N")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** How many atoms that are no hydrogen hang on an atom. */
     private static int heavyNeighbours(Molecule molecule, int atom) {
         int count = 0;

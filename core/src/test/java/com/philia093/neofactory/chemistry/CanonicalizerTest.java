@@ -45,6 +45,15 @@ class CanonicalizerTest {
         assertSameKey("[Na+].[Cl-]", "[Cl-].[Na+]", "a salt written ion first or ion last");
     }
 
+    @Test
+    void aRingWithTwoGroupsOnItIsLabelledAndTheLabellingStops() {
+        // A methyl beside a sulfonic acid on a ring: the refinement of the colours hands them out in a
+        // different order from one round to the next, so the loop that waits for the colours to settle has to
+        // ask whether any two atoms were pulled apart and never whether the numbers stopped moving - a loop
+        // that waited for the numbers would wait for ever on this molecule and label nothing.
+        assertSameKey("Cc1ccccc1S(=O)(=O)O", "O=S(=O)(O)c1ccccc1C", "toluenesulfonic acid read either way");
+    }
+
     private static void assertSameKey(String first, String second, String what) {
         assertEquals(SmilesParser.parse(first).canonicalKey(), SmilesParser.parse(second).canonicalKey(),
                 what + ": " + first + " and " + second + " name the same molecule");

@@ -141,7 +141,7 @@ class PolarEngineTest {
     void everyRuleOfTheTableNamesTheGroupsItNeeds() {
         List<ReactionRule> rules = PolarReactions.all();
 
-        assertEquals(19, rules.size(), "the table of the polar families");
+        assertEquals(20, rules.size(), "the table of the polar families");
         for (ReactionRule rule : rules) {
             assertTrue(!rule.needs().isEmpty(), rule.name() + " names no group at all");
         }
@@ -291,6 +291,59 @@ class PolarEngineTest {
                         + "carries one");
     }
 
+    @Test
+    void sulfurTrioxideTakesThePlaceOfAHydrogenOnARing() {
+        Reaction reaction = best("c1ccccc1", "O=S(=O)=O");
+
+        assertNotNull(reaction, "benzene and sulfur trioxide are benzenesulfonic acid");
+        assertEquals(Set.of("C6H6O3S"), formulas(reaction.products()));
+        assertEquals(reaction.reactants().charge(), reaction.products().charge(), "the charge came out");
+
+        Molecule product = only(reaction.products()).structure();
+        assertEquals(6, Sites.aromaticRings(product).get(0).size(),
+                "the ring is a ring again and not a chain of alternating bonds");
+    }
+
+    @Test
+    void aGroupOnARingSendsTheElectrophileBesideItself() {
+        // Toluene: a methyl lends electrons to the ring, so the sulfur goes beside it - or across from it -
+        // and never past a carbon.
+        Reaction reaction = best("Cc1ccccc1", "O=S(=O)=O");
+
+        assertNotNull(reaction, "toluene and sulfur trioxide are toluenesulfonic acid");
+        assertEquals(Set.of("C7H8O3S"), formulas(reaction.products()));
+
+        Molecule product = only(reaction.products()).structure();
+        List<Integer> ring = Sites.aromaticRings(product).get(0).atoms();
+        int distance = ringDistance(ring, ringCarbonCarrying(product, ring, "S"),
+                ringCarbonCarrying(product, ring, "C"));
+        assertEquals(1, distance, "the sulfur stands beside the methyl and not past a carbon of it");
+    }
+
+    @Test
+    void aGroupThatPullsElectronsSendsTheElectrophilePastACarbon() {
+        // Nitrobenzene: the nitro group empties the positions beside it, so the sulfur goes a carbon on.
+        Reaction reaction = best("O=[N+]([O-])c1ccccc1", "O=S(=O)=O");
+
+        assertNotNull(reaction, "nitrobenzene and sulfur trioxide");
+        assertEquals(Set.of("C6H5NO5S"), formulas(reaction.products()));
+
+        Molecule product = only(reaction.products()).structure();
+        List<Integer> ring = Sites.aromaticRings(product).get(0).atoms();
+        int distance = ringDistance(ring, ringCarbonCarrying(product, ring, "S"),
+                ringCarbonCarrying(product, ring, "N"));
+        assertEquals(2, distance, "the sulfur stands one carbon past the nitro group");
+    }
+
+    @Test
+    void aRingWithNoElectrophileInTheVesselIsLeftAlone() {
+        // The groups are there but the sulfur trioxide is not, and a rule that needs a reagent of its own
+        // answers nothing rather than guessing one.
+        Reaction reaction = best("c1ccccc1", "CS(=O)(=O)O");
+
+        assertNull(reaction, "a ring and an acid that is no electrophile are not a reaction");
+    }
+
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */
     private static Reaction best(String... smiles) {
         Mixture pot = Mixture.empty();
@@ -358,5 +411,26 @@ class PolarEngineTest {
             }
         }
         return count;
+    }
+
+    /** How far apart two atoms of a ring stand, counted the short way round it. */
+    private static int ringDistance(List<Integer> ring, int first, int second) {
+        int apart = Math.abs(ring.indexOf(first) - ring.indexOf(second));
+        return Math.min(apart, ring.size() - apart);
+    }
+
+    /** The carbon of a ring that carries a group holding a named element. */
+    private static int ringCarbonCarrying(Molecule molecule, List<Integer> ring, String element) {
+        for (int atom : ring) {
+            if (!molecule.atom(atom).element().equals("C")) {
+                continue;
+            }
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (!ring.contains(neighbour) && molecule.atom(neighbour).element().equals(element)) {
+                    return atom;
+                }
+            }
+        }
+        return -1;
     }
 }

@@ -37,6 +37,7 @@ public final class Sites {
         sites.addAll(alkyls(molecule));
         sites.addAll(nitriles(molecule));
         sites.addAll(amines(molecule));
+        sites.addAll(aromaticRings(molecule));
         return sites;
     }
 
@@ -348,6 +349,41 @@ public final class Sites {
     /** A carbon that hangs on an atom, or {@code -1}. */
     private static int carbonOn(Molecule molecule, int atom) {
         return carbonOn(molecule, atom, -1);
+    }
+
+    /**
+     * The rings of a molecule whose bonds are all the blurred ones of an aromatic ring.
+     *
+     * @param molecule molecule to read
+     * @return one site per ring, the atoms of it in bond order
+     */
+    public static List<Site> aromaticRings(Molecule molecule) {
+        List<Site> sites = new ArrayList<>();
+        for (List<Integer> ring : Rings.cycles(molecule)) {
+            boolean aromatic = true;
+            for (int step = 0; step < ring.size(); step++) {
+                Bond bond = bondBetween(molecule, ring.get(step), ring.get((step + 1) % ring.size()));
+                if (bond == null || !bond.isAromatic()) {
+                    aromatic = false;
+                    break;
+                }
+            }
+            if (aromatic) {
+                sites.add(new Site(FunctionalGroup.AROMATIC_RING, ring));
+            }
+        }
+        return sites;
+    }
+
+    /** The bond between two atoms, or {@code null} when they share none. */
+    private static Bond bondBetween(Molecule molecule, int first, int second) {
+        for (int bondIndex : molecule.bondsOf(first)) {
+            Bond bond = molecule.bonds().get(bondIndex);
+            if (bond.other(first) == second) {
+                return bond;
+            }
+        }
+        return null;
     }
 
     /** {@code true} when an atom of a molecule is a nitrogen. */
