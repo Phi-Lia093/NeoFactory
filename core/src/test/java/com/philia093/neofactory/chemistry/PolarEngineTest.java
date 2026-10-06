@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -416,6 +417,99 @@ class PolarEngineTest {
 
         Reaction inEthanol = best(Warmth.HEATED, Chemical.parse("CCO"), "CCOC(C)=O", "O");
         assertNull(inEthanol, "and ethanol is not water");
+    }
+
+    @Test
+    void aLigandComesInOnTheFaceTheMoleculeLeavesOpen() {
+        // 2-phenylpropanal: the phenyl stands over one face of its carbonyl and hydrogens over the other, and
+        // the shape says which - so the face a ligand comes in on is the one the phenyl is not over.
+        Molecule molecule = Assemblies.materialize(Chemical.parse("CC(c1ccccc1)C=O").structure());
+        Conformer shape = Conformer.build(molecule);
+        int carbon = carbonylCarbonOf(molecule);
+        int phenyl = ipsoOf(molecule, carbon);
+
+        Face chosen = Steric.faceFor(molecule, carbon, -1);
+
+        // The face the phenyl stands over is read off the shape the way the trade reads one: the two ligands
+        // of highest priority make a turn, and the side the turn points away from is the one from which they
+        // read clockwise, which is Re.
+        double[] corner = shape.position(carbon);
+        double[] highest = unit(take(shape.position(neighbourOf(molecule, carbon, "O")), corner));
+        double[] next = unit(take(shape.position(secondOf(molecule, carbon, "O")), corner));
+        double[] phenylWay = unit(take(shape.position(phenyl), corner));
+        double turnPoints = dot(cross(highest, next), phenylWay);
+        Face overThePhenyl = turnPoints > 0.0 ? Face.SI : Face.RE;
+
+        assertNotEquals(overThePhenyl, chosen,
+                "the ligand comes in on the side the phenyl is not standing over");
+    }
+
+    /** The carbon of the one carbonyl of a molecule. */
+    private static int carbonylCarbonOf(Molecule molecule) {
+        for (Site carbonyl : Sites.carbonyls(molecule)) {
+            return carbonyl.atom(0);
+        }
+        throw new IllegalStateException("no carbonyl in the molecule");
+    }
+
+    /** The ring carbon that stands two bonds from an atom, which is where its substituent joins a ring. */
+    private static int ipsoOf(Molecule molecule, int atom) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            for (int next : molecule.neighbours(neighbour)) {
+                for (List<Integer> ring : Rings.cycles(molecule)) {
+                    if (ring.contains(next)) {
+                        return next;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** The neighbour of an atom that holds a named element. */
+    private static int neighbourOf(Molecule molecule, int atom, String element) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (molecule.atom(neighbour).element().equals(element)) {
+                return neighbour;
+            }
+        }
+        throw new IllegalStateException("no " + element + " on atom " + atom);
+    }
+
+    /** The second neighbour of an atom that holds a named element, which for a carbonyl is a hydrogen. */
+    private static int secondOf(Molecule molecule, int atom, String element) {
+        int found = 0;
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (molecule.atom(neighbour).element().equals(element) && ++found == 2) {
+                return neighbour;
+            }
+        }
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (molecule.atom(neighbour).element().equals("H")) {
+                return neighbour;
+            }
+        }
+        throw new IllegalStateException("no second ligand on atom " + atom);
+    }
+
+    private static double[] take(double[] point, double[] from) {
+        return new double[] {point[0] - from[0], point[1] - from[1], point[2] - from[2]};
+    }
+
+    private static double[] unit(double[] vector) {
+        double length = Math.sqrt(dot(vector, vector));
+        return new double[] {vector[0] / length, vector[1] / length, vector[2] / length};
+    }
+
+    private static double dot(double[] first, double[] second) {
+        return first[0] * second[0] + first[1] * second[1] + first[2] * second[2];
+    }
+
+    private static double[] cross(double[] first, double[] second) {
+        return new double[] {
+            first[1] * second[2] - first[2] * second[1],
+            first[2] * second[0] - first[0] * second[2],
+            first[0] * second[1] - first[1] * second[0]};
     }
 
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */

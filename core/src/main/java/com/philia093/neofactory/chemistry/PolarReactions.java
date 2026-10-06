@@ -206,7 +206,8 @@ public final class PolarReactions {
         }
         int carbon = carbonyl.atom(0);
         int oxygen = carbonyl.atom(1);
-        Molecule product = ElementaryStep.addition("cyanohydrin", cyanide, carbon, oxygen, Face.RE)
+        Face face = Steric.faceFor(pot.molecule(), carbon, cyanide);
+        Molecule product = ElementaryStep.addition("cyanohydrin", cyanide, carbon, oxygen, face)
                 .apply(pot.molecule());
         return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(cyanide)), product, 0);
     }
@@ -244,7 +245,9 @@ public final class PolarReactions {
                 Arrow.toLonePair(carbon, oxygen),
                 Arrow.toLonePair(hydrogen, alcoholOxygen),
                 Arrow.fromLonePair(oxygen, oxygen, hydrogen));
-        Molecule product = ElementaryStep.of("hemiacetal", arrows, carbon, alcoholOxygen, Face.RE)
+        Molecule product = ElementaryStep
+                .of("hemiacetal", arrows, carbon, alcoholOxygen,
+                        Steric.faceFor(pot.molecule(), carbon, alcoholOxygen))
                 .apply(pot.molecule());
         return pot.react(List.of(pot.substanceOf(carbon), pot.substanceOf(alcoholOxygen)), product, 0);
     }
