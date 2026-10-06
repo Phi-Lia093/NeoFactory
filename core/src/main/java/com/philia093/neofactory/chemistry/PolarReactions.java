@@ -94,6 +94,9 @@ public final class PolarReactions {
         rules.add(friedelCraftsAcylation());
         rules.add(aromaticHalogenation());
         rules.add(aromaticSubstitution());
+        rules.add(knoevenagel());
+        rules.add(henry());
+        rules.add(mannich());
         return List.copyOf(rules);
     }
 
@@ -1968,6 +1971,182 @@ public final class PolarReactions {
         Bond forward = bondBetween(molecule, atom, next);
         return forward != null && forward.order() == 2 ? new int[] {next, previous}
                 : new int[] {previous, next};
+    }
+
+    /**
+     * The carbon between two carbonyls of one molecule joining the carbon of an aldehyde, which is the
+     * reaction a handle is put on a molecule with.
+     * <p>
+     * Six arrows are drawn, and they are the aldol and the losing of water one after the other: the pair of
+     * the carbon to hydrogen bond between the two carbonyls makes the bond to the aldehyde, the pair of the
+     * aldehyde's double bond onto its oxygen, the hydrogen onto that oxygen - which is the aldol shape - and
+     * then the hydrogen off the carbon that was the aldehyde, the pair the other carbon holds closing the
+     * double bond between them, and that hydrogen onto the oxygen so that what leaves is water. The double
+     * bond that comes out is held between two groups that pull electrons, which is what makes it worth
+     * having: everything is added across it afterwards.
+     */
+    private static ReactionRule knoevenagel() {
+        return new ReactionRule("knoevenagel", "condensation", 3,
+                EnumSet.of(FunctionalGroup.ALDEHYDE), Conditions.at(Warmth.HEATED),
+                PolarReactions::condenseKnoevenagel);
+    }
+
+    private static Reaction condenseKnoevenagel(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site aldehyde = bestAldehyde(molecule);
+        if (aldehyde == null) {
+            return null;
+        }
+        int carbon = aldehyde.atom(0);
+        int oxygen = aldehyde.atom(1);
+        int[] active = activeMethylene(molecule, carbon);
+        if (active == null) {
+            return null;
+        }
+        int giving = active[0];
+        int givingHydrogen = active[1];
+        int aldehydeHydrogen = hydrogenOn(molecule, carbon);
+        if (aldehydeHydrogen < 0 || !mayJoin(pot, giving, carbon)) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(giving, givingHydrogen, giving, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.fromLonePair(oxygen, oxygen, givingHydrogen),
+                Arrow.betweenBonds(carbon, aldehydeHydrogen, carbon, giving),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.fromLonePair(oxygen, oxygen, aldehydeHydrogen));
+        Molecule product = ElementaryStep.of("knoevenagel", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, giving);
+    }
+
+    /**
+     * The carbon between two groups that pull electrons, with one of the hydrogens it carries.
+     *
+     * @param molecule molecule to read
+     * @param notThis an atom that may not be the one taken, which is the carbon being attacked
+     * @return the carbon and its hydrogen, or {@code null} when the vessel holds none
+     */
+    private static int[] activeMethylene(Molecule molecule, int notThis) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "C") || atom == notThis) {
+                continue;
+            }
+            int pulling = 0;
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (neighbour != notThis && !Reactivity.directsToTheSides(molecule, neighbour)) {
+                    pulling++;
+                }
+            }
+            int hydrogen = hydrogenOn(molecule, atom);
+            if (pulling >= 2 && hydrogen >= 0) {
+                return new int[] {atom, hydrogen};
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A carbon beside a nitro group joining the carbon of an aldehyde, which is the Henry reaction.
+     * <p>
+     * The carbon beside a nitro group is a carbon a pair of electrons can be taken off, so it is drawn as the
+     * aldol is: the pair of the carbon to hydrogen bond makes the bond to the aldehyde, the pair of the double
+     * bond goes to its oxygen, and the hydrogen follows it there. What comes out is a nitro alcohol, and a
+     * molecule of water taken off it afterwards leaves the double bond a nitro group holds.
+     */
+    private static ReactionRule henry() {
+        return new ReactionRule("henry", "condensation", 2,
+                EnumSet.of(FunctionalGroup.ALDEHYDE, FunctionalGroup.NITRO), Conditions.at(Warmth.COLD),
+                PolarReactions::addHenry);
+    }
+
+    private static Reaction addHenry(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site aldehyde = bestAldehyde(molecule);
+        Site nitro = first(Sites.nitros(molecule));
+        if (aldehyde == null || nitro == null) {
+            return null;
+        }
+        int carbon = aldehyde.atom(0);
+        int oxygen = aldehyde.atom(1);
+        int nitrogen = nitro.atom(0);
+        int giving = -1;
+        int givingHydrogen = -1;
+        for (int neighbour : molecule.neighbours(nitrogen)) {
+            if (!isElement(molecule, neighbour, "C")) {
+                continue;
+            }
+            int hydrogen = hydrogenOn(molecule, neighbour);
+            if (hydrogen >= 0 && mayJoin(pot, neighbour, carbon)) {
+                giving = neighbour;
+                givingHydrogen = hydrogen;
+            }
+        }
+        if (giving < 0) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(giving, givingHydrogen, giving, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.fromLonePair(oxygen, oxygen, givingHydrogen));
+        Molecule product = ElementaryStep.of("henry", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, giving);
+    }
+
+    /**
+     * An aldehyde and an amine and the carbon beside a carbonyl of a third molecule in one vessel: the three
+     * part reaction a great many drugs are started with.
+     * <p>
+     * Eight arrows are drawn, and they are the condensation and the aldol one after the other: the amine into
+     * the aldehyde, the pair of the double bond onto its oxygen, a hydrogen off the nitrogen onto that oxygen,
+     * the pair of the carbon to hydrogen bond beside a carbonyl onto the carbon of the aldehyde, the bond to
+     * the hydroxyl breaking with the pair, the second hydrogen off the nitrogen onto that oxygen - so that it
+     * leaves as water and the nitrogen leaves holding what it came in with - and the carbonyl the pair came
+     * from closing again. What comes out holds an amine at one end and a carbonyl at the other.
+     */
+    private static ReactionRule mannich() {
+        return new ReactionRule("mannich", "condensation", 4,
+                EnumSet.of(FunctionalGroup.ALDEHYDE, FunctionalGroup.AMINE),
+                Conditions.at(Warmth.HEATED), PolarReactions::reactMannich);
+    }
+
+    private static Reaction reactMannich(Pot pot) {
+        Molecule molecule = pot.molecule();
+        Site aldehyde = bestAldehyde(molecule);
+        int[] amine = amineWithHydrogenOf(molecule);
+        if (aldehyde == null || amine == null) {
+            return null;
+        }
+        int carbon = aldehyde.atom(0);
+        int oxygen = aldehyde.atom(1);
+        int nitrogen = amine[0];
+        int first = amine[1];
+        int giving = -1;
+        int givingHydrogen = -1;
+        for (Site site : Sites.carbonyls(molecule)) {
+            int alpha = alphaCarbonOf(molecule, site.atom(0));
+            if (alpha < 0 || alpha == carbon) {
+                continue;
+            }
+            int hydrogen = hydrogenOn(molecule, alpha);
+            if (hydrogen >= 0 && alpha != first && mayJoin(pot, alpha, carbon)) {
+                giving = alpha;
+                givingHydrogen = hydrogen;
+            }
+        }
+        if (giving < 0) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.fromLonePair(nitrogen, nitrogen, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.toLonePair(first, nitrogen),
+                Arrow.fromLonePair(oxygen, oxygen, first),
+                Arrow.betweenBonds(giving, givingHydrogen, giving, carbon),
+                Arrow.toLonePair(carbon, oxygen),
+                Arrow.fromLonePair(oxygen, oxygen, givingHydrogen));
+        Molecule product = ElementaryStep.of("mannich", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, nitrogen, giving);
     }
 
     /**

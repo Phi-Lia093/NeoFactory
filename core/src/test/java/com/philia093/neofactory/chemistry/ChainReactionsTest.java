@@ -125,6 +125,57 @@ class ChainReactionsTest {
                 "the carbonyl it came from and the amine");
     }
 
+    @Test
+    void anAldolLosesWaterAndLeavesTheDoubleBondOfAnEnone() {
+        // The aldol of two ethanals is a hydroxyl aldehyde; heat takes the water off it and leaves the
+        // double bond between the carbonyl and the carbon beside it.
+        Reaction aldol = best(Warmth.AMBIENT, "CC=O", "CC=O");
+
+        assertNotNull(aldol, "two molecules of ethanal condense");
+        Reaction enone = next(aldol, Warmth.HEATED);
+
+        assertNotNull(enone, "and the hydroxyl it carries is lost with heat");
+        assertEquals(Set.of("C4H6O", "H2O"), formulas(enone.products()),
+                "the enone and the water");
+        assertFalse(Sites.alkenes(onlyCarbonProduct(enone).structure()).isEmpty(),
+                "what came out of it holds a double bond");
+    }
+
+    @Test
+    void aCarbonBetweenTwoCarbonylsPutsAHandleOnAnAldehyde() {
+        // Ethyl acetoacetate and benzaldehyde: the carbon between its two carbonyls joins the aldehyde and
+        // the water goes, which is the double bond a nitro group or a second carbonyl is then added across.
+        Reaction reaction = best(Warmth.HEATED, "CCOC(=O)CC(C)=O", "O=Cc1ccccc1");
+
+        assertNotNull(reaction, "an active methylene and an aldehyde");
+        assertEquals(Set.of("C13H14O3", "H2O"), formulas(reaction.products()),
+                "the joined molecule and the water");
+    }
+
+    @Test
+    void aCarbonBesideANitroGroupJoinsAnAldehyde() {
+        Reaction reaction = best(Warmth.COLD, "C[N+](=O)[O-]", "O=Cc1ccccc1");
+
+        assertNotNull(reaction, "nitromethane and benzaldehyde in the cold");
+        assertEquals(Set.of("C8H9NO3"), formulas(reaction.products()),
+                "the nitro alcohol, the two of them joined and nothing lost");
+    }
+
+    @Test
+    void anAmineAndAnAldehydeAndACarbonylMakeTheThreePartProduct() {
+        // Benzaldehyde, methylamine and propanone: the condensation first, the aldol across it second, so
+        // what comes out holds an amine at one end and a carbonyl at the other.
+        Reaction reaction = best(Warmth.HEATED, "O=Cc1ccccc1", "CN", "CC(=O)C");
+
+        assertNotNull(reaction, "the three of them in one vessel");
+        assertEquals(Set.of("C11H15NO", "H2O"), formulas(reaction.products()),
+                "the amino ketone and the water");
+        assertFalse(Sites.carbonyls(onlyCarbonProduct(reaction).structure()).isEmpty(),
+                "a carbonyl stands at one end of it");
+        assertFalse(Sites.amines(onlyCarbonProduct(reaction).structure()).isEmpty(),
+                "and an amine at the other");
+    }
+
     /** The one reaction an engine would run at a setting in a vessel of the substances named. */
     private static Reaction best(Warmth warmth, String... smiles) {
         return best(Conditions.at(warmth), smiles);
@@ -165,5 +216,15 @@ class ChainReactionsTest {
     /** The one substance of a pile. */
     private static Chemical only(Mixture mixture) {
         return mixture.components().keySet().iterator().next();
+    }
+
+    /** The one substance of a pile that holds carbon. */
+    private static Chemical onlyCarbonProduct(Reaction reaction) {
+        for (Chemical chemical : reaction.products().components().keySet()) {
+            if (chemical.composition().formula().startsWith("C")) {
+                return chemical;
+            }
+        }
+        throw new IllegalStateException("no carbon in " + reaction.products());
     }
 }
