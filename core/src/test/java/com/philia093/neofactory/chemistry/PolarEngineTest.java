@@ -382,13 +382,69 @@ class PolarEngineTest {
         assertEquals(Set.of("C5H11N", "H2O"), formulas(reaction.products()));
     }
 
+    @Test
+    void aRuleThatNeedsAFlameDoesNotRunAtRoomTemperature() {
+        // An alcohol loses its water over a flame; the same vessel on a bench is another answer entirely.
+        Reaction overAFlame = best(Warmth.HEATED, "CCO");
+
+        assertNotNull(overAFlame, "ethanol over a flame loses water");
+        assertEquals(Set.of("C2H4", "H2O"), formulas(overAFlame.products()));
+
+        Reaction standingThere = best(Warmth.AMBIENT, "CCO");
+        assertNull(standingThere, "and on a bench at room temperature it does nothing at all");
+    }
+
+    @Test
+    void aRuleThatNeedsAMetalDoesNotRunWithoutIt() {
+        // Ethene and hydrogen: over nickel they are an alkane, over copper they stand as they are.
+        Reaction overNickel = best(Warmth.AMBIENT, Set.of(Chemical.parse("[Ni]")), "C=C", "[H][H]");
+
+        assertNotNull(overNickel, "hydrogen is added over a metal");
+        assertEquals(Set.of("C2H6"), formulas(overNickel.products()));
+
+        Reaction overCopper = best(Warmth.AMBIENT, Set.of(Chemical.parse("[Cu]")), "C=C", "[H][H]");
+        assertNull(overCopper, "and copper is not the metal for it");
+    }
+
+    @Test
+    void aRouteWrittenForWaterDoesNotRunInSomethingElse() {
+        // Ethyl acetate is hydrolysed in water and not in an alcohol, which would only put it back.
+        Reaction inWater = best(Warmth.HEATED, Chemical.parse("O"), "CCOC(C)=O", "O");
+
+        assertNotNull(inWater, "ethyl acetate in water over a flame");
+        assertEquals(Set.of("C2H4O2", "C2H6O"), formulas(inWater.products()));
+
+        Reaction inEthanol = best(Warmth.HEATED, Chemical.parse("CCO"), "CCOC(C)=O", "O");
+        assertNull(inEthanol, "and ethanol is not water");
+    }
+
     /** The one reaction an engine would run in a vessel of the substances named by their strings. */
     private static Reaction best(String... smiles) {
+        return best(Conditions.NONE, smiles);
+    }
+
+    /** The one reaction an engine would run at one of the three settings. */
+    private static Reaction best(Warmth warmth, String... smiles) {
+        return best(Conditions.at(warmth), smiles);
+    }
+
+    /** The one reaction an engine would run over the catalysts that stand in the vessel. */
+    private static Reaction best(Warmth warmth, Set<Chemical> catalysts, String... smiles) {
+        return best(Conditions.at(warmth, catalysts), smiles);
+    }
+
+    /** The one reaction an engine would run in a medium. */
+    private static Reaction best(Warmth warmth, Chemical medium, String... smiles) {
+        return best(Conditions.at(warmth, medium), smiles);
+    }
+
+    /** The one reaction an engine would run in a vessel of the conditions and the substances named. */
+    private static Reaction best(Conditions conditions, String... smiles) {
         Mixture pot = Mixture.empty();
         for (String one : smiles) {
             pot = pot.plus(Mixture.of(Chemical.parse(one), 1));
         }
-        return ENGINE.best(System.of(pot, Phase.LIQUID));
+        return ENGINE.best(System.of(pot, Phase.LIQUID).with(conditions));
     }
 
     /** The formulas of the substances of a pile, which is what a balance is read off. */

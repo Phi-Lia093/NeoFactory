@@ -34,6 +34,7 @@ public final class ReactionRule {
     private final String category;
     private final int selectivity;
     private final Set<FunctionalGroup> needs;
+    private final Conditions conditions;
     private final Writing writing;
 
     /**
@@ -65,10 +66,33 @@ public final class ReactionRule {
      */
     public ReactionRule(String name, String category, int selectivity, Set<FunctionalGroup> needs,
             Writing writing) {
+        this(name, category, selectivity, needs, Conditions.NONE, writing);
+    }
+
+    /**
+     * Creates a rule that only runs in a vessel of the conditions it names.
+     * <p>
+     * <b>The groups are not the whole of what a reaction needs.</b> An alkene and hydrogen are an alkane
+     * only over a metal, an alcohol loses water only over a flame, and an ester is hydrolysed in water and
+     * not in the alcohol that would put it back. Those are conditions of the vessel and not groups in it, so
+     * they are named here and asked of the vessel before the rule is tried, see {@link PolarEngine#infer}.
+     * A dimension a rule does not name is one it does not care about, and a dimension a vessel does not name
+     * does not block, see {@link Conditions#within(Conditions)}.
+     *
+     * @param name the name of the rule, for a log line and a test
+     * @param category the family of reactions the rule belongs to
+     * @param selectivity how particular the rule is, higher for the more particular
+     * @param needs the groups that have to stand in the vessel
+     * @param conditions the heat, the medium and the catalysts the vessel has to offer
+     * @param writing what the rule does when both are there
+     */
+    public ReactionRule(String name, String category, int selectivity, Set<FunctionalGroup> needs,
+            Conditions conditions, Writing writing) {
         this.name = Objects.requireNonNull(name, "name");
         this.category = Objects.requireNonNull(category, "category");
         this.selectivity = selectivity;
         this.needs = Set.copyOf(Objects.requireNonNull(needs, "needs"));
+        this.conditions = Objects.requireNonNull(conditions, "conditions");
         this.writing = Objects.requireNonNull(writing, "writing");
     }
 
@@ -90,6 +114,11 @@ public final class ReactionRule {
     /** The groups that have to stand in a vessel for this rule to be tried at all. */
     public Set<FunctionalGroup> needs() {
         return needs;
+    }
+
+    /** The heat, the medium and the catalysts this rule needs of a vessel, {@link Conditions#NONE} for none. */
+    public Conditions conditions() {
+        return conditions;
     }
 
     /**

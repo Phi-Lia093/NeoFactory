@@ -24,6 +24,13 @@ import java.util.Set;
  * <b>The table is the priority.</b> The rules are asked in the order they are written and the answers come
  * back in the same order, so the sharper rule of a pot is written above the looser one and the first answer
  * is the one a machine would run.
+ * <p>
+ * <b>What a rule asks for is a group and a condition, and the two are asked of different things.</b> The
+ * groups are asked of the molecules the vessel holds, which are laid out and read once for the whole table;
+ * the condition - the heat, the medium, the catalysts - is asked of the vessel itself, which knows how it is
+ * being run, see {@link Conditions}. A rule whose groups are all there still answers nothing if the vessel
+ * is run the wrong way for it, which is what keeps an alcohol from losing its water on a bench that is only
+ * standing there.
  */
 public final class PolarEngine implements ReactionEngine {
 
@@ -49,7 +56,7 @@ public final class PolarEngine implements ReactionEngine {
         Set<FunctionalGroup> present = presence(pot.molecule());
         List<Chosen> found = new ArrayList<>();
         for (ReactionRule rule : rules) {
-            if (!present.containsAll(rule.needs())) {
+            if (!present.containsAll(rule.needs()) || !rule.conditions().within(system.conditions())) {
                 continue;
             }
             Reaction reaction = rule.write(pot);

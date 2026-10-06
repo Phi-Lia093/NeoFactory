@@ -3,6 +3,7 @@ package com.philia093.neofactory.chemistry;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The rules of the polar families: the reactions of a double bond, of a carbonyl, of an alcohol and of a
@@ -22,12 +23,26 @@ import java.util.List;
  */
 public final class PolarReactions {
 
+    /** The metal the adding of hydrogen is run over, the nickel the catalog carries. */
+    private static final Chemical NICKEL = Chemical.parse("[Ni]");
+
+    /** The water an ester is hydrolysed in, which is the substance and not the word. */
+    private static final Chemical WATER = Chemical.parse("O");
+
+    /** The acid a ring is sulfonated in, the oleum a chemist pours sulfur trioxide into. */
+    private static final Chemical SULFURIC_ACID = Chemical.parse("OS(=O)(=O)O");
+
     private PolarReactions() {
         // Utility class: never instantiated.
     }
 
     /**
      * The rules of the polar families, the sharper ones first.
+     * <p>
+     * Each rule also names how it is run, where a reaction is one that is only run one way: an aldol goes at
+     * the temperature the vessel stands at, a Diels-Alder is given a flame, an enolate is made in the cold,
+     * hydrogen is added over nickel. A rule that names nothing of the kind is a rule that may be run
+     * anywhere, which is how every rule stood before the vessel was asked the question at all.
      *
      * @return the table
      */
@@ -68,8 +83,8 @@ public final class PolarReactions {
      * molecule loses a hydrogen and gains a carbon, and nothing else about it moves.
      */
     private static ReactionRule aldol() {
-        return new ReactionRule("aldol", "condensation", EnumSet.of(FunctionalGroup.CARBONYL),
-                PolarReactions::aldol);
+        return new ReactionRule("aldol", "condensation", 1, EnumSet.of(FunctionalGroup.CARBONYL),
+                Conditions.at(Warmth.AMBIENT), PolarReactions::aldol);
     }
 
     private static Reaction aldol(Pot pot) {
@@ -119,8 +134,8 @@ public final class PolarReactions {
      * is what closes the ring.
      */
     private static ReactionRule dielsAlder() {
-        return new ReactionRule("dielsAlder", "pericyclic", EnumSet.of(FunctionalGroup.ALKENE),
-                PolarReactions::dielsAlder);
+        return new ReactionRule("dielsAlder", "pericyclic", 1, EnumSet.of(FunctionalGroup.ALKENE),
+                Conditions.at(Warmth.HEATED), PolarReactions::dielsAlder);
     }
 
     private static Reaction dielsAlder(Pot pot) {
@@ -159,8 +174,8 @@ public final class PolarReactions {
      * that is the whole of what the rule says about the configuration.
      */
     private static ReactionRule hydrolysis() {
-        return new ReactionRule("hydrolysis", "substitution",
-                EnumSet.of(FunctionalGroup.HALIDE), PolarReactions::hydrolyse);
+        return new ReactionRule("hydrolysis", "substitution", 1, EnumSet.of(FunctionalGroup.HALIDE),
+                Conditions.at(Warmth.AMBIENT), PolarReactions::hydrolyse);
     }
 
     private static Reaction hydrolyse(Pot pot) {
@@ -178,8 +193,9 @@ public final class PolarReactions {
 
     /** A cyanide into the carbonyl of an aldehyde or a ketone, the pair of the double bond to the oxygen. */
     private static ReactionRule cyanohydrin() {
-        return new ReactionRule("cyanohydrin", "carbonyl addition",
-                EnumSet.of(FunctionalGroup.CARBONYL), PolarReactions::cyanohydrin);
+        return new ReactionRule("cyanohydrin", "carbonyl addition", 1,
+                EnumSet.of(FunctionalGroup.CARBONYL), Conditions.at(Warmth.AMBIENT),
+                PolarReactions::cyanohydrin);
     }
 
     private static Reaction cyanohydrin(Pot pot) {
@@ -204,9 +220,9 @@ public final class PolarReactions {
      * decided, and the vessel neither gains nor loses an atom.
      */
     private static ReactionRule hemiacetal() {
-        return new ReactionRule("hemiacetal", "carbonyl addition",
+        return new ReactionRule("hemiacetal", "carbonyl addition", 2,
                 EnumSet.of(FunctionalGroup.ALDEHYDE, FunctionalGroup.HYDROXYL),
-                PolarReactions::hemiacetal);
+                Conditions.at(Warmth.AMBIENT), PolarReactions::hemiacetal);
     }
 
     private static Reaction hemiacetal(Pot pot) {
@@ -235,8 +251,9 @@ public final class PolarReactions {
 
     /** Hydrogen across the double bond of an alkene. */
     private static ReactionRule hydrogenation() {
-        return new ReactionRule("hydrogenation", "addition",
-                EnumSet.of(FunctionalGroup.ALKENE), PolarReactions::hydrogenate);
+        return new ReactionRule("hydrogenation", "addition", 1,
+                EnumSet.of(FunctionalGroup.ALKENE), Conditions.at(Warmth.AMBIENT, Set.of(NICKEL)),
+                PolarReactions::hydrogenate);
     }
 
     private static Reaction hydrogenate(Pot pot) {
@@ -254,8 +271,9 @@ public final class PolarReactions {
 
     /** A halogen across the double bond of an alkene, one halogen to each carbon of it. */
     private static ReactionRule halogenation() {
-        return new ReactionRule("halogenation", "addition",
-                EnumSet.of(FunctionalGroup.ALKENE), PolarReactions::halogenate);
+        return new ReactionRule("halogenation", "addition", 1,
+                EnumSet.of(FunctionalGroup.ALKENE), Conditions.at(Warmth.AMBIENT),
+                PolarReactions::halogenate);
     }
 
     private static Reaction halogenate(Pot pot) {
@@ -276,8 +294,9 @@ public final class PolarReactions {
      * more hydrogens of the two - which is the whole of what the rule of Markovnikov says.
      */
     private static ReactionRule hydrohalogenation() {
-        return new ReactionRule("hydrohalogenation", "addition",
-                EnumSet.of(FunctionalGroup.ALKENE), PolarReactions::hydrohalogenate);
+        return new ReactionRule("hydrohalogenation", "addition", 1,
+                EnumSet.of(FunctionalGroup.ALKENE), Conditions.at(Warmth.AMBIENT),
+                PolarReactions::hydrohalogenate);
     }
 
     private static Reaction hydrohalogenate(Pot pot) {
@@ -298,8 +317,8 @@ public final class PolarReactions {
      * more hydrogens of the two.
      */
     private static ReactionRule hydration() {
-        return new ReactionRule("hydration", "addition", EnumSet.of(FunctionalGroup.ALKENE),
-                PolarReactions::hydrate);
+        return new ReactionRule("hydration", "addition", 1, EnumSet.of(FunctionalGroup.ALKENE),
+                Conditions.at(Warmth.HEATED), PolarReactions::hydrate);
     }
 
     private static Reaction hydrate(Pot pot) {
@@ -324,7 +343,8 @@ public final class PolarReactions {
 
     /** An alcohol losing water and leaving a double bond behind, the hydrogen of the carbon beside it going. */
     private static ReactionRule dehydration() {
-        return new ReactionRule("dehydration", "elimination", EnumSet.of(FunctionalGroup.HYDROXYL),
+        return new ReactionRule("dehydration", "elimination", 1,
+                EnumSet.of(FunctionalGroup.HYDROXYL), Conditions.at(Warmth.HEATED),
                 PolarReactions::dehydrate);
     }
 
@@ -352,8 +372,9 @@ public final class PolarReactions {
 
     /** Hydrogen across the double bond of a carbonyl, which is what takes an aldehyde down to an alcohol. */
     private static ReactionRule carbonylHydrogenation() {
-        return new ReactionRule("carbonylHydrogenation", "reduction",
-                EnumSet.of(FunctionalGroup.CARBONYL), PolarReactions::hydrogenateCarbonyl);
+        return new ReactionRule("carbonylHydrogenation", "reduction", 1,
+                EnumSet.of(FunctionalGroup.CARBONYL), Conditions.at(Warmth.AMBIENT, Set.of(NICKEL)),
+                PolarReactions::hydrogenateCarbonyl);
     }
 
     private static Reaction hydrogenateCarbonyl(Pot pot) {
@@ -375,8 +396,9 @@ public final class PolarReactions {
      * way it is run: a copper surface takes the hydrogen off and the bond left behind becomes the double one.
      */
     private static ReactionRule dehydrogenation() {
-        return new ReactionRule("dehydrogenation", "oxidation",
-                EnumSet.of(FunctionalGroup.HYDROXYL), PolarReactions::dehydrogenate);
+        return new ReactionRule("dehydrogenation", "oxidation", 1,
+                EnumSet.of(FunctionalGroup.HYDROXYL), Conditions.at(Warmth.HEATED, Set.of(NICKEL)),
+                PolarReactions::dehydrogenate);
     }
 
     private static Reaction dehydrogenate(Pot pot) {
@@ -410,9 +432,9 @@ public final class PolarReactions {
      * water and not as a hydroxide.
      */
     private static ReactionRule esterification() {
-        return new ReactionRule("esterification", "acyl substitution",
+        return new ReactionRule("esterification", "acyl substitution", 2,
                 EnumSet.of(FunctionalGroup.CARBOXYLIC_ACID, FunctionalGroup.HYDROXYL),
-                PolarReactions::esterify);
+                Conditions.at(Warmth.HEATED), PolarReactions::esterify);
     }
 
     private static Reaction esterify(Pot pot) {
@@ -463,9 +485,9 @@ public final class PolarReactions {
      * how strong a nucleophile is beyond which of two rules is the sharper.
      */
     private static ReactionRule amideFormation() {
-        return new ReactionRule("amideFormation", "acyl substitution",
+        return new ReactionRule("amideFormation", "acyl substitution", 2,
                 EnumSet.of(FunctionalGroup.CARBOXYLIC_ACID, FunctionalGroup.AMINE),
-                PolarReactions::formAmide);
+                Conditions.at(Warmth.HEATED), PolarReactions::formAmide);
     }
 
     private static Reaction formAmide(Pot pot) {
@@ -535,9 +557,9 @@ public final class PolarReactions {
      * holds two alcohols can go all the way and one that holds one cannot reach it at all.
      */
     private static ReactionRule acetalFormation() {
-        return new ReactionRule("acetalFormation", "carbonyl addition",
+        return new ReactionRule("acetalFormation", "carbonyl addition", 2,
                 EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.HYDROXYL),
-                PolarReactions::formAcetal);
+                Conditions.at(Warmth.HEATED), PolarReactions::formAcetal);
     }
 
     private static Reaction formAcetal(Pot pot) {
@@ -595,7 +617,7 @@ public final class PolarReactions {
     private static ReactionRule enamineFormation() {
         return new ReactionRule("enamineFormation", "condensation", 6,
                 EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.AMINE),
-                PolarReactions::formEnamine);
+                Conditions.at(Warmth.HEATED), PolarReactions::formEnamine);
     }
 
     private static Reaction formEnamine(Pot pot) {
@@ -663,8 +685,9 @@ public final class PolarReactions {
 
     /** An ester and water giving the acid and the alcohol back, the same six arrows the other way round. */
     private static ReactionRule esterHydrolysis() {
-        return new ReactionRule("esterHydrolysis", "acyl substitution",
-                EnumSet.of(FunctionalGroup.ESTER), PolarReactions::hydrolyseEster);
+        return new ReactionRule("esterHydrolysis", "acyl substitution", 1,
+                EnumSet.of(FunctionalGroup.ESTER), Conditions.at(Warmth.HEATED, WATER),
+                PolarReactions::hydrolyseEster);
     }
 
     private static Reaction hydrolyseEster(Pot pot) {
@@ -701,7 +724,8 @@ public final class PolarReactions {
      * ends up on the carbon and the other leaves with the hydrogen.
      */
     private static ReactionRule alkaneHalogenation() {
-        return new ReactionRule("alkaneHalogenation", "radical", EnumSet.of(FunctionalGroup.ALKYL),
+        return new ReactionRule("alkaneHalogenation", "radical", 1,
+                EnumSet.of(FunctionalGroup.ALKYL), Conditions.at(Warmth.HEATED),
                 PolarReactions::halogenateAlkane);
     }
 
@@ -795,7 +819,7 @@ public final class PolarReactions {
     private static ReactionRule enolateAlkylation() {
         return new ReactionRule("enolateAlkylation", "condensation", 5,
                 EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.HALIDE, FunctionalGroup.ALKYL),
-                PolarReactions::alkylateEnolate);
+                Conditions.at(Warmth.COLD), PolarReactions::alkylateEnolate);
     }
 
     private static Reaction alkylateEnolate(Pot pot) {
@@ -838,7 +862,8 @@ public final class PolarReactions {
      */
     private static ReactionRule claisenCondensation() {
         return new ReactionRule("claisenCondensation", "condensation", 4,
-                EnumSet.of(FunctionalGroup.ESTER), PolarReactions::condenseClaisen);
+                EnumSet.of(FunctionalGroup.ESTER), Conditions.at(Warmth.HEATED),
+                PolarReactions::condenseClaisen);
     }
 
     private static Reaction condenseClaisen(Pot pot) {
@@ -891,7 +916,7 @@ public final class PolarReactions {
     private static ReactionRule michaelAddition() {
         return new ReactionRule("michaelAddition", "conjugate addition", 4,
                 EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.ALKENE),
-                PolarReactions::addMichael);
+                Conditions.at(Warmth.AMBIENT), PolarReactions::addMichael);
     }
 
     private static Reaction addMichael(Pot pot) {
@@ -940,7 +965,7 @@ public final class PolarReactions {
     private static ReactionRule imineFormation() {
         return new ReactionRule("imineFormation", "condensation", 6,
                 EnumSet.of(FunctionalGroup.CARBONYL, FunctionalGroup.AMINE),
-                PolarReactions::formImine);
+                Conditions.at(Warmth.AMBIENT), PolarReactions::formImine);
     }
 
     private static Reaction formImine(Pot pot) {
@@ -992,7 +1017,8 @@ public final class PolarReactions {
      */
     private static ReactionRule sulfonation() {
         return new ReactionRule("sulfonation", "substitution", 4,
-                EnumSet.of(FunctionalGroup.AROMATIC_RING), PolarReactions::sulfonate);
+                EnumSet.of(FunctionalGroup.AROMATIC_RING),
+                Conditions.at(Warmth.HEATED, SULFURIC_ACID), PolarReactions::sulfonate);
     }
 
     private static Reaction sulfonate(Pot pot) {

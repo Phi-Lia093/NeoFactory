@@ -23,11 +23,20 @@ public final class System {
     private final Mixture content;
     private final List<Chemical> background;
     private final Phase phase;
+    private final Conditions conditions;
 
     private System(Mixture content, List<Chemical> background, Phase phase) {
         this.content = Objects.requireNonNull(content, "content");
         this.background = List.copyOf(Objects.requireNonNull(background, "background"));
         this.phase = Objects.requireNonNull(phase, "phase");
+        this.conditions = Conditions.NONE;
+    }
+
+    private System(Mixture content, List<Chemical> background, Phase phase, Conditions conditions) {
+        this.content = Objects.requireNonNull(content, "content");
+        this.background = List.copyOf(Objects.requireNonNull(background, "background"));
+        this.phase = Objects.requireNonNull(phase, "phase");
+        this.conditions = Objects.requireNonNull(conditions, "conditions");
     }
 
     /**
@@ -65,6 +74,33 @@ public final class System {
                 Phase.AQUEOUS);
     }
 
+    /**
+     * Creates a system with the conditions it is run at.
+     *
+     * @param content what was put in
+     * @param phase the state of it
+     * @param background substances that may move whole and unnumbered
+     * @param conditions how hot the vessel is, what it is filled with and what stands in it
+     * @return the system
+     */
+    public static System of(Mixture content, Phase phase, List<Chemical> background,
+            Conditions conditions) {
+        return new System(content, background, phase, conditions);
+    }
+
+    /**
+     * The same system run at other conditions.
+     * <p>
+     * A vessel is what it holds and how it is run, and a caller usually knows the second only after the
+     * first: what stands in the reactor is read off its slots and tanks and the setting of it off the dial.
+     *
+     * @param conditions how hot the vessel is, what it is filled with and what stands in it
+     * @return the same content run at those conditions
+     */
+    public System with(Conditions conditions) {
+        return new System(content, background, phase, Objects.requireNonNull(conditions, "conditions"));
+    }
+
     /** What was put into the vessel. */
     public Mixture content() {
         return content;
@@ -80,8 +116,21 @@ public final class System {
         return phase;
     }
 
+    /**
+     * How hot the vessel is run, what it is filled with and what stands in it.
+     * <p>
+     * A system that was built without conditions names none, which is a vessel that is not measured: every
+     * dimension of it is one that does not block, see {@link Conditions}.
+     *
+     * @return the conditions
+     */
+    public Conditions conditions() {
+        return conditions;
+    }
+
     @Override
     public String toString() {
-        return "System(" + content + ", " + phase + ", background " + background.size() + ")";
+        return "System(" + content + ", " + phase + ", background " + background.size() + ", "
+                + conditions + ")";
     }
 }

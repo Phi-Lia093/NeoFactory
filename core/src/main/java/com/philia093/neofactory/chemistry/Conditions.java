@@ -26,7 +26,8 @@ import java.util.Set;
 public final class Conditions {
 
     /** The conditions that name nothing: a recipe that asks for nothing, a machine that measures nothing. */
-    public static final Conditions NONE = new Conditions(null, null, null, null, Set.of(), null, false);
+    public static final Conditions NONE = new Conditions(null, null, null, null, Set.of(), null, false,
+            null, null);
 
     private final Fraction minTemperature;
     private final Fraction maxTemperature;
@@ -35,9 +36,12 @@ public final class Conditions {
     private final Set<Chemical> catalysts;
     private final Phase phase;
     private final boolean current;
+    private final Warmth warmth;
+    private final Chemical medium;
 
     private Conditions(Fraction minTemperature, Fraction maxTemperature, Fraction minPressure,
-            Fraction maxPressure, Set<Chemical> catalysts, Phase phase, boolean current) {
+            Fraction maxPressure, Set<Chemical> catalysts, Phase phase, boolean current, Warmth warmth,
+            Chemical medium) {
         this.minTemperature = minTemperature;
         this.maxTemperature = maxTemperature;
         this.minPressure = minPressure;
@@ -45,6 +49,44 @@ public final class Conditions {
         this.catalysts = Collections.unmodifiableSet(new LinkedHashSet<>(catalysts));
         this.phase = phase;
         this.current = current;
+        this.warmth = warmth;
+        this.medium = medium;
+    }
+
+    /**
+     * The setting a vessel is run at, the three-value temperature of the organic side.
+     *
+     * @param warmth the setting, {@code null} for one not named
+     * @return the conditions
+     */
+    public static Conditions at(Warmth warmth) {
+        return builder().warmth(warmth).build();
+    }
+
+    /**
+     * The setting a vessel is run at, in the medium it stands in.
+     *
+     * @param warmth the setting, {@code null} for one not named
+     * @param medium the substance the vessel is filled with, {@code null} for any
+     * @return the conditions
+     */
+    public static Conditions at(Warmth warmth, Chemical medium) {
+        return builder().warmth(warmth).medium(medium).build();
+    }
+
+    /**
+     * The setting a vessel is run at, over the catalysts that stand in it.
+     *
+     * @param warmth the setting, {@code null} for one not named
+     * @param catalysts the catalysts that stand in the vessel
+     * @return the conditions
+     */
+    public static Conditions at(Warmth warmth, Set<Chemical> catalysts) {
+        Builder builder = builder().warmth(warmth);
+        for (Chemical catalyst : catalysts) {
+            builder.catalyst(catalyst);
+        }
+        return builder.build();
     }
 
     /** The conditions that name nothing. */
@@ -108,6 +150,12 @@ public final class Conditions {
         if (phase != null && offered.phase != null && offered.phase != phase) {
             return false;
         }
+        if (warmth != null && offered.warmth != null && offered.warmth != warmth) {
+            return false;
+        }
+        if (medium != null && offered.medium != null && !offered.medium.equals(medium)) {
+            return false;
+        }
         return catalysts.isEmpty() || offered.catalysts.isEmpty()
                 || offered.catalysts.containsAll(catalysts);
     }
@@ -152,6 +200,32 @@ public final class Conditions {
     }
 
     /**
+     * The setting a recipe asks for or a vessel is run at, {@code null} when neither names one.
+     * <p>
+     * The three-value temperature of the organic side, see {@link Warmth}: a route names the one setting it
+     * goes at - over a flame, in the cold, or as the vessel stands - and a machine names the one it is set
+     * to. A route that names none is a route that does not care.
+     *
+     * @return the setting, {@code null} when not named
+     */
+    public Warmth warmth() {
+        return warmth;
+    }
+
+    /**
+     * The substance a vessel is filled with, {@code null} when neither names one.
+     * <p>
+     * The solvent of a reaction: what a chemist means by running something "in water" or "in ethanol". It is
+     * a substance and not a word, so a route may also be held back by it - a route written to run in water
+     * does not run in a vessel filled with an alcohol that would only put its product back.
+     *
+     * @return the medium, {@code null} when not named
+     */
+    public Chemical medium() {
+        return medium;
+    }
+
+    /**
      * {@code true} when a current drives this vessel, or when a route of this kind is one a current drives.
      * <p>
      * <b>A current is the one condition that is asked and not merely wondered at.</b> A route that needs a
@@ -170,7 +244,8 @@ public final class Conditions {
     public String toString() {
         return "Conditions(temperature " + minTemperature + ".." + maxTemperature + ", pressure "
                 + minPressure + ".." + maxPressure + ", catalysts " + catalysts.size() + ", phase "
-                + phase + (current ? ", a current" : "") + ")";
+                + phase + ", warmth " + warmth + ", medium " + medium + (current ? ", a current" : "")
+                + ")";
     }
 
     /** Builds a set of conditions a range at a time. */
@@ -183,6 +258,8 @@ public final class Conditions {
         private final Set<Chemical> catalysts = new LinkedHashSet<>();
         private Phase phase;
         private boolean current;
+        private Warmth warmth;
+        private Chemical medium;
 
         private Builder() {
             // A builder holds nothing until it is told.
@@ -267,10 +344,32 @@ public final class Conditions {
             return this;
         }
 
+        /**
+         * Asks for one of the three settings, or names the one a vessel is set to.
+         *
+         * @param warmth the setting, {@code null} for one not named
+         * @return this builder
+         */
+        public Builder warmth(Warmth warmth) {
+            this.warmth = warmth;
+            return this;
+        }
+
+        /**
+         * Names the substance a vessel is filled with.
+         *
+         * @param medium the medium, {@code null} for any
+         * @return this builder
+         */
+        public Builder medium(Chemical medium) {
+            this.medium = medium;
+            return this;
+        }
+
         /** Builds the conditions. */
         public Conditions build() {
             return new Conditions(minTemperature, maxTemperature, minPressure, maxPressure, catalysts,
-                    phase, current);
+                    phase, current, warmth, medium);
         }
     }
 }
