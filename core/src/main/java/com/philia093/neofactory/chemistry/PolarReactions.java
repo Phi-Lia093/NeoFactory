@@ -1714,9 +1714,10 @@ public final class PolarReactions {
             }
             int position = place[0];
             int beside = place[1];
-            if (pot.sharesAMolecule(position, electrophile)) {
-                // The electrophile and the ring stand in one molecule, which is a ring being closed on
-                // itself - a bridge, and no reaction of this table draws one.
+            if (!mayJoin(pot, position, electrophile)) {
+                // Two places of one molecule may close a ring of five or six - the ketone a ring is closed
+                // on itself into, the imidazole a diamine is closed into - and two places of two molecules
+                // may always be joined; a ring of three or four is what mayJoin refuses.
                 continue;
             }
             int hydrogen = hydrogenOn(ready, position);
@@ -2284,10 +2285,10 @@ public final class PolarReactions {
      * <p>
      * <b>Two places of two molecules are two molecules standing beside one another, and two places of one
      * molecule close a ring.</b> The first is the reaction the trade runs by the thousand and the second is
-     * the one a ring is made by, and both are wanted - the closing of a lactone, the aldol that folds a
-     * chain into a ring - but a ring of three is not one a rule of this table may draw: a bond joining the
-     * ends of a chain that are only two atoms apart is a triangle nobody's geometry allows. So the two
-     * places have to stand four bonds apart or more, and a rule asks this before it carries its change out.
+     * the one a ring is made by - the lactone an acid closes with its own alcohol, the ketone a ring is
+     * closed on itself into, the imidazole a diamine is closed into - and both are wanted. What is not
+     * wanted is a ring of three: a bond joining two places only two atoms apart is a triangle nobody's
+     * geometry allows, so those two are refused and a ring of four or more is not.
      *
      * @param pot the vessel
      * @param first index of one atom the rule would join
