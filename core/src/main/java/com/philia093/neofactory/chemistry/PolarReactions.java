@@ -157,7 +157,8 @@ public final class PolarReactions {
                         Arrow.betweenBonds(alpha, hydrogen, alpha, carbon),
                         Arrow.toLonePair(carbon, oxygen),
                         Arrow.fromLonePair(oxygen, oxygen, hydrogen));
-                Molecule product = ElementaryStep.of("aldol", arrows).apply(molecule);
+                Molecule product = ElementaryStep.of("aldol", arrows, carbon, alpha,
+                        Steric.faceFor(molecule, carbon, alpha)).apply(molecule);
                 return pot.react(product, 0, alpha, carbon);
             }
         }
@@ -174,7 +175,7 @@ public final class PolarReactions {
      * is what closes the ring.
      */
     private static ReactionRule dielsAlder() {
-        return new ReactionRule("dielsAlder", "pericyclic", 1, EnumSet.of(FunctionalGroup.ALKENE),
+        return new ReactionRule("dielsAlder", "pericyclic", 2, EnumSet.of(FunctionalGroup.ALKENE),
                 Conditions.at(Warmth.HEATED), PolarReactions::dielsAlder);
     }
 
@@ -196,7 +197,8 @@ public final class PolarReactions {
                     Arrow.betweenBonds(first, second, second, diene[1][1]),
                     Arrow.betweenBonds(diene[1][0], diene[1][1], diene[0][1], diene[1][0]));
             Molecule product = ElementaryStep.of("dielsAlder", arrows).apply(molecule);
-                return pot.react(product, 0, diene[0][0], first);
+            product = setFaces(product, molecule, first, diene[0][0], second, diene[1][1]);
+            return pot.react(product, 0, diene[0][0], first);
         }
         return null;
     }
@@ -2310,6 +2312,7 @@ public final class PolarReactions {
                 Arrow.betweenBonds(chain[0], chain[1], chain[0], chain[5]),
                 Arrow.betweenBonds(chain[2], chain[3], chain[1], chain[2]));
         Molecule product = ElementaryStep.of("electrocyclicClosing", arrows).apply(molecule);
+        product = setFaces(product, molecule, first, last, last, first);
         return pot.react(product, 0, first, last);
     }
 
@@ -3534,6 +3537,41 @@ public final class PolarReactions {
             }
         }
         return false;
+    }
+
+    /**
+     * Gives the two centres a ring was closed between the hand the shape of the vessel gives them.
+     * <p>
+     * A ring closed between two flat centres - the two carbons of a dienophile and the two ends of a diene,
+     * the two ends of a chain folding onto itself - comes out with a stereocentre on each of them, and which
+     * hand follows from the shape of the vessel and not from the arrows: the two new bonds are made on one
+     * side of the molecule that is attacked, so the two centres are read off the face the shape leaves open
+     * and both are written from that one face. That is the whole of what the trade means by a diene coming in
+     * on one face of a dienophile and by a closing that is suprafacial on both halves, and it is read the very
+     * way an addition to a single flat centre is, see {@link Steric}. A centre that has no four ligands to
+     * order is left as it was, because a hand written where none was asked for would be a lie.
+     *
+     * @param product the molecule the ring closed in
+     * @param vessel the molecule the shape is read from, before it closed
+     * @param first one of the two centres
+     * @param firstIncoming the ligand that came in on it
+     * @param second the other centre
+     * @param secondIncoming the ligand that came in on that one
+     * @return the molecule, both centres written with the hand they came out with
+     */
+    private static Molecule setFaces(Molecule product, Molecule vessel, int first, int firstIncoming,
+            int second, int secondIncoming) {
+        Face face = Steric.faceFor(vessel, first, firstIncoming);
+        Molecule drawn = product;
+        char one = Cip.afterFace(drawn, first, firstIncoming, face);
+        if (one != 0) {
+            drawn = Stereocentre.set(drawn, first, one);
+        }
+        char two = Cip.afterFace(drawn, second, secondIncoming, face);
+        if (two != 0) {
+            drawn = Stereocentre.set(drawn, second, two);
+        }
+        return drawn;
     }
 
     /** {@code true} when an atom of a molecule is of a named element. */

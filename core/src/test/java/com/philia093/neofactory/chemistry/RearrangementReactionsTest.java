@@ -9,6 +9,7 @@ import java.util.TreeSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Checks the rearrangements a molecule runs on itself, in which nothing is added and nothing leaves and only
@@ -52,6 +53,34 @@ class RearrangementReactionsTest {
         // An allyl group on its own is no sigmatropic chain: the six atoms a shift runs along are not there.
         assertEquals(null, best(Warmth.AMBIENT, "C=CCC(C)(C)C"),
                 "a chain too short is no sigmatropic chain");
+    }
+
+    @Test
+    void aRingClosedBetweenTwoFlatCentresComesOutWithAHandOnEachOfThem() {
+        // A Diels-Alder of butadiene with propene: the dienophile carbon that carries the methyl comes out a
+        // stereocentre, because the diene came in on one face of it and not the other.
+        Reaction adduct = best("C=CC=C", "C=CC");
+        assertNotNull(adduct, "butadiene and propene");
+        assertTrue(chiralCentres(only(adduct.products()).structure()) >= 1,
+                "the junction the diene attacked came out with a defined hand");
+
+        // A chain of three double bonds closing on itself: the two ends become centres too, and the closing
+        // is disrotatory, so both are written from one face of the vessel.
+        Reaction ring = best("CC=CC=CC=C");
+        assertNotNull(ring, "a substituted triene closing");
+        assertTrue(chiralCentres(only(ring.products()).structure()) >= 1,
+                "the ends of the chain came out with a hand as well");
+    }
+
+    /** How many atoms of a molecule are written as stereocentres. */
+    private static int chiralCentres(Molecule molecule) {
+        int centres = 0;
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (molecule.atom(atom).isChiral()) {
+                centres++;
+            }
+        }
+        return centres;
     }
 
     /** The one reaction an engine would run at a flame in a vessel of the substances named. */

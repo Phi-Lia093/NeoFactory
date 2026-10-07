@@ -138,26 +138,91 @@ public final class Reactivity {
      * @return {@code true} when the electrophile is sent beside the group, {@code false} when past one carbon
      */
     public static boolean directsToTheSides(Molecule molecule, int substituent) {
-        switch (molecule.atom(substituent).element()) {
-            case "N":
-            case "S":
-            case "C":
-                // An amine lends the pair of its nitrogen to the ring and a thiol the one of its sulfur,
-                // while a nitro, a sulfonyl, a carbonyl and a nitrile take the electrons of the ring away
-                // instead: the difference is whether the atom beside the ring is held by a double bond. A
-                // carbon left short of electrons by the atoms on it - a trifluoromethyl, a trichloromethyl -
-                // takes them away as well rather than lending them.
-                return !carriesWithdrawingDoubleBond(molecule, substituent)
-                        && !shortOfElectrons(molecule, substituent);
+        return directingStrength(molecule, substituent) >= 0;
+    }
+
+    /**
+     * The whole of what a group on a ring does to it, counted in electrons.
+     * <p>
+     * A ring is read by every way its group can reach the electrons of it, and they are four. <b>Resonance</b>
+     * is the pair a nitrogen or an oxygen or a halogen lends straight into the ring, which is the strongest
+     * of the four and sends an electrophile beside the group and across from it. <b>The other resonance</b>
+     * is a double bond beside the ring: it takes the ring's electrons away when it ends on an oxygen or a
+     * nitrogen - a carbonyl, a nitro, a nitrile, a sulfonyl - and lends its own back when it ends on a carbon,
+     * which is what makes a vinyl or a phenyl a weaker friend of the ring than an enemy of it. <b>Induction</b>
+     * is the drag of an electronegative atom on the electrons of the atom beside the ring, and it is read for
+     * the atom itself and for the atoms hanging on a carbon beside it: a trifluoromethyl leaves that carbon
+     * short enough to take from the ring. <b>Hyperconjugation</b> is the pair of a carbon to hydrogen bond of
+     * a methyl lent to the ring, which is the whole of why a methyl is a friend of the ring at all.
+     * <p>
+     * The count is positive for a group that leaves the ring the richer, and an electrophile then goes beside
+     * the group and across from it; it is negative for one that leaves it the poorer and the electrophile goes
+     * past a carbon instead. A group that comes out at nothing is read as the friend, which is what a group
+     * nobody has written a rule for falls back on.
+     *
+     * @param molecule molecule to read
+     * @param substituent the atom that hangs on the ring
+     * @return the count, positive for a group that lends the ring electrons
+     */
+    public static int directingStrength(Molecule molecule, int substituent) {
+        Atom value = molecule.atom(substituent);
+        int strength = 0;
+        if (lendsAPair(molecule, substituent)) {
+            strength += value.element().equals("N") ? 3 : 2;
+        }
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() > 1 && bond.touches(substituent)) {
+                String other = molecule.atom(bond.other(substituent)).element();
+                if (other.equals("O") || other.equals("N")) {
+                    strength -= 3;
+                } else if (other.equals("C")) {
+                    strength += 1;
+                }
+            }
+        }
+        strength -= 2 * value.charge();
+        if (value.element().equals("C")) {
+            strength += Sites.hydrogensOn(molecule, substituent) > 0 ? 1 : 0;
+            strength -= shortOfElectrons(molecule, substituent) ? 3 : 0;
+        }
+        switch (value.element()) {
             case "O":
             case "F":
             case "Cl":
             case "Br":
             case "I":
-                return true;
+                strength -= 1;
+                break;
             default:
-                return true;
+                break;
         }
+        return strength;
+    }
+
+    /**
+     * {@code true} when an atom holds a pair it may lend a ring it hangs on.
+     * <p>
+     * A nitrogen, an oxygen, a sulfur, a phosphorus and a halogen all bring such a pair, but only while the
+     * pair is their own: a nitrogen of a nitro group has spent both of its hands on double bonds to oxygen
+     * and has none left, and a positively charged atom has handed the pair over already.
+     */
+    private static boolean lendsAPair(Molecule molecule, int atom) {
+        String element = molecule.atom(atom).element();
+        boolean holds = element.equals("N") || element.equals("O") || element.equals("S")
+                || element.equals("P") || element.equals("F") || element.equals("Cl")
+                || element.equals("Br") || element.equals("I");
+        if (!holds || molecule.atom(atom).charge() > 0) {
+            return false;
+        }
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() > 1 && bond.touches(atom)) {
+                String other = molecule.atom(bond.other(atom)).element();
+                if (other.equals("N") || other.equals("O")) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** {@code true} when an atom is held by a double bond to an oxygen or a nitrogen, which takes electrons. */
