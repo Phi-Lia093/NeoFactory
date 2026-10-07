@@ -14,11 +14,12 @@ import java.util.List;
  * no route fits does nothing at all. Nothing is inferred here, which is the whole point of writing the
  * routes down - the machine may say "not this" and never "something like this".
  * <p>
- * <b>Four slots and four tanks, in and out.</b> A route names substances and millibuckets: what is a solid
- * arrives as a dust in one of the four slots and what is a gas or a liquid arrives in one of the two tanks
- * at the foot of the panel. The products leave the same way - four slots for what is a solid, two tanks for
+ * <b>Two slots and two tanks, in and out.</b> A route names substances and millibuckets: what is a solid
+ * arrives as a dust in one of the two slots and what is a gas or a liquid arrives in one of the two tanks
+ * at the foot of the panel. The products leave the same way - two slots for what is a solid, two tanks for
  * what flows - so the reactor of the low voltage and the one of the high voltage hold the very same thing
- * on a line of another strength.
+ * on a line of another strength. The panel arranges itself: a square of two slots stands for the two of a
+ * side, see {@link MachineScreen#columns(int)}, so nothing here counts a pixel.
  * <p>
  * A machine of the line exists three times, once per tier of the casing, and what a player reads at it is
  * the tier in front of its name: {@code LV Chemical Reactor}, {@code HV Chemical Reactor}. Everything else
@@ -26,11 +27,11 @@ import java.util.List;
  */
 public class ChemicalReactorMachine extends ElectricMachine {
 
-    /** First of the four slots a route is fed with. */
+    /** First of the two slots a route is fed with. */
     public static final int FIRST_INPUT = 0;
 
-    /** Last of the four slots a route hands its products into. */
-    public static final int LAST_OUTPUT = 7;
+    /** Last of the two slots a route hands its products into. */
+    public static final int LAST_OUTPUT = 3;
 
     /** Fluid one tank of the reactor holds, which is four cells of a substance. */
     public static final int TANK_CAPACITY = 4_000;
@@ -47,8 +48,8 @@ public class ChemicalReactorMachine extends ElectricMachine {
     /** The row of {@link MachineFamilies} this machine is built from. */
     public static final MachineFamilies.Family FAMILY = new MachineFamilies.Family(
             "chemical_reactor", "Chemical Reactor", List.of(RecipeType.CHEMICAL_REACTING),
-            List.of(SlotKind.GENERIC, SlotKind.GENERIC, SlotKind.GENERIC, SlotKind.GENERIC),
-            List.of(SlotKind.GENERIC, SlotKind.GENERIC, SlotKind.GENERIC, SlotKind.GENERIC),
+            List.of(SlotKind.GENERIC, SlotKind.GENERIC),
+            List.of(SlotKind.GENERIC, SlotKind.GENERIC),
             2, 2, FOUR_AMPS, ChemicalReactorMachine::new);
 
     /**
