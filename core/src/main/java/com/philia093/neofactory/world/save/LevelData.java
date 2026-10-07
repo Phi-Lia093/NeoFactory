@@ -36,8 +36,17 @@ public final class LevelData {
 
     private String worldName = SaveFormat.DEFAULT_NAME;
 
-    /** Mode the world is played in, {@link GameMode#SURVIVAL} until a player says otherwise. */
-    private GameMode gameMode = GameMode.SURVIVAL;
+    /**
+     * Mode the world is played in, {@link GameMode#CREATIVE} until a player says otherwise.
+     * <p>
+     * <b>A new world is a workshop and not a struggle.</b> What this game is for is building the industry -
+     * the routes, the machines and the materials of it - and a player who starts it holding nothing is a
+     * player who has to gather iron by hand before the first machine stands. A new world therefore opens in
+     * the creative mode, which is where the catalogue of the game is at hand and where the inventory begins
+     * empty: the mode says what a player owns, and the inventory of a fresh world holds nothing at all. A
+     * world already stored keeps the mode it was played in, since the field of it is written down with it.
+     */
+    private GameMode gameMode = GameMode.CREATIVE;
 
     /** Terrain the world is made of, {@link WorldType#NORMAL} until a player says otherwise. */
     private WorldType worldType = WorldType.NORMAL;
