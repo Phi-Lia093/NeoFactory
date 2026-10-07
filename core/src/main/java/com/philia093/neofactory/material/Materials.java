@@ -746,6 +746,85 @@ public final class Materials {
         register(Material.builder("iodine", "Iodine").color(new Color(0.62f, 0.52f, 0.72f, 1f))
                 .formula("I").onlyForms(MaterialForm.DUST, MaterialForm.SMALL_DUST,
                         MaterialForm.TINY_DUST).build());
+
+        // The minerals of the ground, which are the stones a player meets: crushed, ground to a dust and, when
+        // they are worth it, cut. A mineral is never worked into a machine, which is what its kind says, and
+        // the formulas are the real ones of the stone - written without brackets, because a balance of the
+        // industry is read in that shape.
+        register(Material.builder("calcite", "Calcite").color(new Color(0.94f, 0.94f, 0.90f, 1f))
+                .kind(MaterialKind.MINERAL).formula("CaCO3").build());
+        register(Material.builder("gypsum", "Gypsum").color(new Color(0.92f, 0.92f, 0.88f, 1f))
+                .kind(MaterialKind.MINERAL).formula("CaSO4").build());
+        register(Material.builder("talc", "Talc").color(new Color(0.88f, 0.90f, 0.86f, 1f))
+                .kind(MaterialKind.MINERAL).formula("Mg3Si4O10").build());
+        register(Material.builder("mica", "Mica").color(new Color(0.82f, 0.80f, 0.76f, 1f))
+                .kind(MaterialKind.MINERAL).formula("KAl3Si3O10").build());
+        register(Material.builder("asbestos", "Asbestos").color(new Color(0.80f, 0.82f, 0.78f, 1f))
+                .kind(MaterialKind.MINERAL).formula("Mg3Si2O9H4").build());
+        register(Material.builder("borax", "Borax").color(new Color(0.90f, 0.90f, 0.94f, 1f))
+                .kind(MaterialKind.MINERAL).formula("Na2B4O7").build());
+        register(Material.builder("cryolite", "Cryolite").color(new Color(0.84f, 0.88f, 0.92f, 1f))
+                .kind(MaterialKind.MINERAL).formula("Na3AlF6").build());
+        register(Material.builder("fluorite", "Fluorite").color(new Color(0.76f, 0.88f, 0.86f, 1f))
+                .kind(MaterialKind.MINERAL).formula("CaF2").build());
+        register(Material.builder("rock_salt", "Rock Salt").color(new Color(0.92f, 0.90f, 0.88f, 1f))
+                .kind(MaterialKind.MINERAL).formula("KCl").build());
+        register(Material.builder("salt", "Salt").color(new Color(0.96f, 0.96f, 0.96f, 1f))
+                .kind(MaterialKind.MINERAL).formula("NaCl").build());
+        register(Material.builder("quartz", "Quartz").color(new Color(0.92f, 0.92f, 0.94f, 1f))
+                .kind(MaterialKind.MINERAL).formula("SiO2").build());
+        register(Material.builder("sodalite", "Sodalite").color(new Color(0.72f, 0.76f, 0.88f, 1f))
+                .kind(MaterialKind.MINERAL).formula("Na4Al3Si3O12Cl").build());
+        register(Material.builder("apatite", "Apatite").color(new Color(0.86f, 0.90f, 0.82f, 1f))
+                .kind(MaterialKind.MINERAL).formula("Ca5P3O12F").build());
+
+        // The stones cut into jewels: a gem is held and not built with, so it comes as the stone, the crushed
+        // ore of it and the dust of that, see the kind of it.
+        register(Material.builder("diamond", "Diamond").color(new Color(0.86f, 0.96f, 0.98f, 1f))
+                .kind(MaterialKind.GEM).formula("C").build());
+        register(Material.builder("amethyst", "Amethyst").color(new Color(0.68f, 0.48f, 0.86f, 1f))
+                .kind(MaterialKind.GEM).formula("SiO2").build());
+        register(Material.builder("ruby", "Ruby").color(new Color(0.86f, 0.20f, 0.24f, 1f))
+                .kind(MaterialKind.GEM).formula("Al2O3").build());
+        register(Material.builder("sapphire", "Sapphire").color(new Color(0.24f, 0.36f, 0.86f, 1f))
+                .kind(MaterialKind.GEM).formula("Al2O3").build());
+        register(Material.builder("spinel", "Spinel").color(new Color(0.78f, 0.34f, 0.44f, 1f))
+                .kind(MaterialKind.GEM).formula("MgAl2O4").build());
+        register(Material.builder("olivine", "Olivine").color(new Color(0.62f, 0.78f, 0.36f, 1f))
+                .kind(MaterialKind.GEM).formula("Mg2SiO4").build());
+        register(Material.builder("zircon", "Zircon").color(new Color(0.84f, 0.72f, 0.52f, 1f))
+                .kind(MaterialKind.GEM).formula("ZrSiO4").build());
+        register(Material.builder("garnet", "Garnet").color(new Color(0.70f, 0.20f, 0.26f, 1f))
+                .kind(MaterialKind.GEM).formula("Fe3Al2Si3O12").build());
+        register(Material.builder("emerald", "Emerald").color(new Color(0.20f, 0.82f, 0.44f, 1f))
+                .kind(MaterialKind.GEM).formula("Be3Al2Si6O18").build());
+        register(Material.builder("topaz", "Topaz").color(new Color(0.94f, 0.86f, 0.46f, 1f))
+                .kind(MaterialKind.GEM).formula("Al2SiO4F2").build());
+        register(Material.builder("malachite", "Malachite").color(new Color(0.22f, 0.72f, 0.48f, 1f))
+                .kind(MaterialKind.GEM).formula("Cu2CH2O5").build());
+        register(Material.builder("lazurite", "Lazurite").color(new Color(0.24f, 0.34f, 0.80f, 1f))
+                .kind(MaterialKind.GEM).formula("Na8Al6Si6O24S2").build());
+
+        // The polymers of a workshop of plastic: drawn out of a vessel as a bar or a long rod and rolled from
+        // there, and never cast into an ingot, see the kind of it.
+        register(Material.builder("polypropylene", "Polypropylene").color(new Color(0.90f, 0.90f, 0.88f, 1f))
+                .kind(MaterialKind.POLYMER).formula("C3H6").build());
+        register(Material.builder("polyvinyl_chloride", "Polyvinyl Chloride")
+                .color(new Color(0.86f, 0.86f, 0.82f, 1f)).kind(MaterialKind.POLYMER)
+                .formula("C2H3Cl").build());
+        register(Material.builder("polystyrene", "Polystyrene").color(new Color(0.92f, 0.92f, 0.94f, 1f))
+                .kind(MaterialKind.POLYMER).formula("C8H8").build());
+        register(Material.builder("nylon", "Nylon").color(new Color(0.92f, 0.90f, 0.86f, 1f))
+                .kind(MaterialKind.POLYMER).formula("C6H11NO").build());
+        register(Material.builder("kevlar", "Kevlar").color(new Color(0.94f, 0.88f, 0.60f, 1f))
+                .kind(MaterialKind.POLYMER).formula("C14H10N2O2").build());
+        register(Material.builder("rubber", "Rubber").color(new Color(0.30f, 0.30f, 0.32f, 1f))
+                .kind(MaterialKind.POLYMER).formula("C5H8").build());
+        register(Material.builder("silicone_rubber", "Silicone Rubber")
+                .color(new Color(0.86f, 0.80f, 0.84f, 1f)).kind(MaterialKind.POLYMER)
+                .formula("C2H6OSi").build());
+        register(Material.builder("epoxy", "Epoxy Resin").color(new Color(0.88f, 0.86f, 0.78f, 1f))
+                .kind(MaterialKind.POLYMER).formula("C21H24O4").build());
     }
 
     /** Writes a material into the registry and hands it back. */

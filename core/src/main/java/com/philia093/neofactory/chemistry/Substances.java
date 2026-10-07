@@ -378,6 +378,30 @@ public final class Substances {
         catalog.register("plutonium-238", "[238Pu]", Phase.SOLID);
         catalog.register("plutonium-239", "[239Pu]", Phase.SOLID);
         catalog.register("plutonium-241", "[241Pu]", Phase.SOLID);
+        // The alloys the trade really makes, as mixtures of the metals they are made of and never as
+        // molecules, see {@link Alloy}: the parts are substances this catalog already holds and the shares
+        // are the small whole numbers a workshop works by. An alloy is registered beside the substances and
+        // looked up by its name, so a route or a machine that names bronze finds the two metals in it.
+        catalog.registerAlloy(Alloy.of("bronze", Phase.SOLID,
+                Alloy.part(catalog.byName("copper"), 3), Alloy.part(catalog.byName("tin"), 1)));
+        catalog.registerAlloy(Alloy.of("brass", Phase.SOLID,
+                Alloy.part(catalog.byName("copper"), 3), Alloy.part(catalog.byName("zinc"), 1)));
+        catalog.registerAlloy(Alloy.of("solder", Phase.SOLID,
+                Alloy.part(catalog.byName("tin"), 1), Alloy.part(catalog.byName("lead"), 1)));
+        catalog.registerAlloy(Alloy.of("cupronickel", Phase.SOLID,
+                Alloy.part(catalog.byName("copper"), 3), Alloy.part(catalog.byName("nickel"), 1)));
+        catalog.registerAlloy(Alloy.of("electrum", Phase.SOLID,
+                Alloy.part(catalog.byName("silver"), 1), Alloy.part(catalog.byName("gold"), 1)));
+        catalog.registerAlloy(Alloy.of("invar", Phase.SOLID,
+                Alloy.part(catalog.byName("iron"), 2), Alloy.part(catalog.byName("nickel"), 1)));
+        catalog.registerAlloy(Alloy.of("nichrome", Phase.SOLID,
+                Alloy.part(catalog.byName("nickel"), 4), Alloy.part(catalog.byName("chromium"), 1)));
+        catalog.registerAlloy(Alloy.of("stainless steel", Phase.SOLID,
+                Alloy.part(catalog.byName("iron"), 9), Alloy.part(catalog.byName("chromium"), 4),
+                Alloy.part(catalog.byName("nickel"), 1)));
+        catalog.registerAlloy(Alloy.of("bismuth bronze", Phase.SOLID,
+                Alloy.part(catalog.byName("copper"), 7), Alloy.part(catalog.byName("tin"), 2),
+                Alloy.part(catalog.byName("bismuth"), 1)));
         catalog.register("methylenetriphenylphosphorane",
                 "C=P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
         catalog.register("methylmagnesium bromide", "C[Mg]Br", Phase.SOLID);

@@ -1,0 +1,9 @@
+{
+  "inputs": { "sodium chloride": 200 },
+  "outputs": { "sodium": 200, "chlorine": 100 },
+  "primary": "sodium",
+  "temperature": [1100, 1400],
+  "time": 15.0,
+  "power": 40,
+  "voltage": 32
+}

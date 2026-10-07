@@ -79,8 +79,8 @@ class ChemicalRecipeTest {
     @Test
     void theRoutesOfTheGameAreFilesAndEveryOneOfThemBalances() {
         assertEquals(13, shipped(RecipeType.CHEMICAL_REACTING).size(), "the routes of the reactor");
-        assertEquals(2, shipped(RecipeType.ELECTROLYSIS).size(), "and the two a current drives");
-        assertEquals(15, book().count(), "no file was refused while it was read");
+        assertEquals(3, shipped(RecipeType.ELECTROLYSIS).size(), "and the three a current drives");
+        assertEquals(16, book().count(), "no file was refused while it was read");
     }
 
     @Test
