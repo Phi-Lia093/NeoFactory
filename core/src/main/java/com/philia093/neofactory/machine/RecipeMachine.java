@@ -323,9 +323,26 @@ public abstract class RecipeMachine extends Machine implements ProgressMachine {
     private MachineRecipe restoredCraft(String name) {
         Recipe recipe = RecipeRegistry.byName(name);
         if (!(recipe instanceof MachineRecipe machine) || !recipeTypes().contains(machine.type())) {
-            return null;
+            return unknownCraft(name);
         }
         return machine;
+    }
+
+    /**
+     * The recipe a stored machine was working on that no file of the game answers to, or {@code null}.
+     * <p>
+     * <b>A recipe may live in the machine and not in a file.</b> A reactor that reads the molecules of its
+     * own vessel infers a reaction nobody wrote down, and what it swallowed to begin is gone from the slots
+     * and the tanks the moment the work starts: a machine that came back from a save would hold the products
+     * of a reaction it can no longer remember, which is matter that arrived out of nothing. A machine that
+     * runs recipes of its own therefore writes the one it is working on into its own save state and answers
+     * here with it, see {@code ChemicalReactorMachine}.
+     *
+     * @param name name of the recipe that was stored
+     * @return the recipe, or {@code null} when the machine has to start over
+     */
+    protected MachineRecipe unknownCraft(String name) {
+        return null;
     }
 
     @Override
