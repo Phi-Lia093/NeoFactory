@@ -43,9 +43,13 @@ class RearrangementReactionsTest {
 
         assertNotNull(reaction, "a branched 1,5-diene over a flame");
         assertEquals(Set.of("C7H12"), formulas(reaction.products()), "the same atoms, rearranged");
-        assertEquals(StereoKey.of(Chemical.parse("CC=CCCC=C").structure()),
-                StereoKey.of(only(reaction.products()).structure()),
-                "and the branch has walked to the end of the chain");
+        // The branch has walked to the end of the chain, and the one double bond of the product that has room
+        // to settle settles trans: a Cope runs through a chair and the chain folds on one face of it.
+        Molecule product = only(reaction.products()).structure();
+        String skeleton = SmilesWriter.write(product).replace("/", "").replace("\\", "");
+        assertEquals(Chemical.parse("C=CCCC=CC").structure().canonicalKey(),
+                SmilesParser.parse(skeleton).canonicalKey(), "the branch has walked to the end of the chain");
+        assertEquals('E', descriptorOf(product), "and the double bond that could settle settles trans");
     }
 
     @Test
@@ -81,6 +85,17 @@ class RearrangementReactionsTest {
             }
         }
         return centres;
+    }
+
+    /** The configuration a molecule's double bond reads, or {@code 0} when it reads none. */
+    private static char descriptorOf(Molecule molecule) {
+        for (Bond bond : molecule.bonds()) {
+            char descriptor = Cip.descriptor(molecule, bond);
+            if (descriptor != 0) {
+                return descriptor;
+            }
+        }
+        return 0;
     }
 
     /** The one reaction an engine would run at a flame in a vessel of the substances named. */

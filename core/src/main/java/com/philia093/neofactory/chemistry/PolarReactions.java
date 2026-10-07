@@ -400,6 +400,10 @@ public final class PolarReactions {
                 Molecule product = ElementaryStep
                         .elimination("dehydration", alpha, alcoholOxygen, beta, hydrogen)
                         .apply(molecule);
+                // The hydrogen a base takes stands across from the leaving group, so the two groups left on
+                // the carbons settle on opposite sides of the new bond: the more stable alkene, which is the
+                // one an elimination is read to give.
+                product = DoubleBond.set(product, bondBetween(product, alpha, beta), 'E');
                 return pot.react(product, 0, alpha);
             }
         }
@@ -2150,6 +2154,9 @@ public final class PolarReactions {
                 Arrow.toLonePair(carbon, oxygen),
                 Arrow.fromLonePair(oxygen, oxygen, aldehydeHydrogen));
         Molecule product = ElementaryStep.of("knoevenagel", arrows).apply(molecule);
+        // A condensation is read to give the trans alkene, the two groups that make the carbon bigger being
+        // left apart: it is the one the trade names first because it is the one that comes out.
+        product = DoubleBond.set(product, bondBetween(product, carbon, giving), 'E');
         return pot.react(product, 0, carbon, giving);
     }
 
@@ -2405,6 +2412,9 @@ public final class PolarReactions {
                         Arrow.betweenBonds(third, fourth, third, second),
                         Arrow.betweenBonds(first, second, first, fourth));
                 Molecule product = ElementaryStep.of("photocycloaddition", arrows).apply(molecule);
+                // Two double bonds come together from one side of both, so the two carbons of each that are
+                // joined read their hand off that one face, exactly as a diene and a dienophile do.
+                product = setFaces(product, molecule, first, fourth, third, second);
                 return pot.react(product, 0, first, third);
             }
         }
@@ -3267,6 +3277,12 @@ public final class PolarReactions {
                 Arrow.betweenBonds(first, second, second, third),
                 Arrow.betweenBonds(fifth, sixth, fourth, fifth));
         Molecule product = ElementaryStep.of("sigmatropicShift", arrows).apply(molecule);
+        // The chain folds into a chair and the two ends that are joined came round on one face of it, which is
+        // what the trade means by a shift that is suprafacial on both halves; the two double bonds that are
+        // left are read trans by the same token.
+        product = setFaces(product, molecule, first, sixth, sixth, first);
+        product = DoubleBond.set(product, bondBetween(product, second, third), 'E');
+        product = DoubleBond.set(product, bondBetween(product, fourth, fifth), 'E');
         return pot.react(product, 0, first, third, fifth);
     }
 
@@ -3372,6 +3388,9 @@ public final class PolarReactions {
                 Arrow.betweenBonds(ylideCarbon, phosphorus, ylideCarbon, carbon),
                 Arrow.betweenBonds(carbon, oxygen, phosphorus, oxygen));
         Molecule product = ElementaryStep.of("wittig", arrows).apply(molecule);
+        // An unstabilised ylide holds its carbon flat against the carbonyl carbon and the two come together
+        // with their groups on the same side, which is the Z alkene the reagent is used for.
+        product = DoubleBond.set(product, bondBetween(product, ylideCarbon, carbon), 'Z');
         return pot.react(product, 0, phosphorus, ylideCarbon, carbon, oxygen);
     }
 
