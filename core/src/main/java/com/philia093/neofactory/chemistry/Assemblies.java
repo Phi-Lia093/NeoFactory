@@ -200,43 +200,148 @@ public final class Assemblies {
      * @return the molecule with the rings of it written as single and double bonds
      */
     public static Molecule kekulized(Molecule molecule) {
-        List<Atom> atoms = new ArrayList<>();
-        for (int atom = 0; atom < molecule.atomCount(); atom++) {
-            Atom value = molecule.atom(atom);
-            atoms.add(Atom.bracketed(value.element(), value.charge(), value.isotope(), false,
-                    value.hydrogens(), value.mapClass(), value.chirality(), value.radicals()));
-            atoms.get(atom).markWrittenOrder(value.writtenNeighbours());
+        int count = molecule.atomCount();
+        boolean[] aromatic = new boolean[count];
+        for (int atom = 0; atom < count; atom++) {
+            aromatic[atom] = molecule.atom(atom).isAromatic();
         }
-        List<Bond> bonds = new ArrayList<>();
-        Map<Long, Integer> indexOfBond = new HashMap<>();
+        List<int[]> edges = new ArrayList<>();
+        List<List<Integer>> edgesOfAtom = new ArrayList<>();
+        for (int atom = 0; atom < count; atom++) {
+            edgesOfAtom.add(new ArrayList<>());
+        }
         for (Bond bond : molecule.bonds()) {
-            indexOfBond.put(pairKey(bond.first(), bond.second()), bonds.size());
-            bonds.add(Bond.of(bond.first(), bond.second(), bond.order(), bond.stereo()));
+            if (aromatic[bond.first()] && aromatic[bond.second()]) {
+                edgesOfAtom.get(bond.first()).add(edges.size());
+                edgesOfAtom.get(bond.second()).add(edges.size());
+                edges.add(new int[] {bond.first(), bond.second()});
+            }
         }
-        for (List<Integer> ring : Rings.cycles(molecule)) {
-            int size = ring.size();
-            if (size % 2 != 0 || !allAromatic(molecule, ring)) {
+        int[] need = new int[count];
+        for (int atom = 0; atom < count; atom++) {
+            if (!aromatic[atom]) {
                 continue;
             }
-            boolean untouched = true;
-            for (int step = 0; step < size; step++) {
-                Bond bond = molecule.bonds().get(indexOfBond.get(
-                        pairKey(ring.get(step), ring.get((step + 1) % size))));
-                if (!bond.isAromatic()) {
-                    untouched = false;
+            int wanted = 1;
+            for (int bondIndex : molecule.bondsOf(atom)) {
+                Bond bond = molecule.bonds().get(bondIndex);
+                if (bond.order() > 1 && !aromatic[bond.other(atom)]) {
+                    // The atom already carries a double bond of its own - a ring carbon of a ketone - so it
+                    // takes no part in the alternating ring and is left without one.
+                    wanted = 0;
                     break;
                 }
             }
-            if (!untouched) {
+            need[atom] = wanted;
+        }
+        boolean[] matched = new boolean[count];
+        boolean[] doubled = new boolean[edges.size()];
+        boolean[] written = new boolean[count];
+        boolean[] seen = new boolean[count];
+        for (int start = 0; start < count; start++) {
+            if (!aromatic[start] || seen[start]) {
                 continue;
             }
-            for (int step = 0; step < size; step += 2) {
-                int at = indexOfBond.get(pairKey(ring.get(step), ring.get((step + 1) % size)));
-                Bond bond = bonds.get(at);
-                bonds.set(at, Bond.of(bond.first(), bond.second(), 2, bond.stereo()));
+            List<Integer> component = new ArrayList<>();
+            List<Integer> pending = new ArrayList<>();
+            pending.add(start);
+            seen[start] = true;
+            while (!pending.isEmpty()) {
+                int atom = pending.remove(pending.size() - 1);
+                component.add(atom);
+                for (int edge : edgesOfAtom.get(atom)) {
+                    int other = edges.get(edge)[0] == atom ? edges.get(edge)[1] : edges.get(edge)[0];
+                    if (!seen[other]) {
+                        seen[other] = true;
+                        pending.add(other);
+                    }
+                }
+            }
+            List<Integer> order = new ArrayList<>();
+            for (int atom : component) {
+                if (need[atom] == 1) {
+                    order.add(atom);
+                }
+            }
+            for (int atom : component) {
+                matched[atom] = false;
+            }
+            if (assignKekule(order, 0, need, edgesOfAtom, edges, matched, doubled)) {
+                for (int atom : component) {
+                    written[atom] = true;
+                }
+            }
+        }
+        List<Atom> atoms = new ArrayList<>();
+        for (int atom = 0; atom < count; atom++) {
+            Atom value = molecule.atom(atom);
+            atoms.add(Atom.bracketed(value.element(), value.charge(), value.isotope(),
+                    aromatic[atom] && !written[atom], value.hydrogens(), value.mapClass(),
+                    value.chirality(), value.radicals()));
+            atoms.get(atom).markWrittenOrder(value.writtenNeighbours());
+        }
+        Map<Long, Integer> edgeIndex = new HashMap<>();
+        for (int index = 0; index < edges.size(); index++) {
+            edgeIndex.put(pairKey(edges.get(index)[0], edges.get(index)[1]), index);
+        }
+        List<Bond> bonds = new ArrayList<>();
+        for (Bond bond : molecule.bonds()) {
+            Integer edge = edgeIndex.get(pairKey(bond.first(), bond.second()));
+            if (edge == null) {
+                bonds.add(Bond.of(bond.first(), bond.second(), bond.order(), bond.stereo()));
+            } else if (!written[bond.first()]) {
+                bonds.add(Bond.aromatic(bond.first(), bond.second()));
+            } else {
+                bonds.add(Bond.of(bond.first(), bond.second(), doubled[edge] ? 2 : 1, bond.stereo()));
             }
         }
         return new Molecule(atoms, bonds);
+    }
+
+    /**
+     * Gives every atom of one aromatic ring system the one double bond it needs, or answers that it cannot.
+     * <p>
+     * The double bonds of a Kekulé ring are a pairing of its atoms, so what is looked for is a matching of
+     * the aromatic bonds that covers every atom that needs one and touches no atom twice: an atom is taken
+     * by the first bond it is paired with and the search moves on, and a choice that leads to a dead end is
+     * taken back. A ring system that cannot be paired this way - a ring of an odd count of atoms, which no
+     * alternation fits - answers {@code false}, and the caller leaves that system aromatic rather than
+     * drawing a molecule that cannot exist.
+     *
+     * @param order the atoms that each still need a double bond, in the order they are tried
+     * @param index how far the search has come
+     * @param need per atom, {@code 1} when it still needs a double bond
+     * @param edgesOfAtom the aromatic bonds that end at every atom
+     * @param edges the aromatic bonds, each as its two atoms
+     * @param matched per atom, whether a bond has already been given it
+     * @param doubled per bond, whether it was made one of the double bonds
+     * @return {@code true} when every atom got its bond
+     */
+    private static boolean assignKekule(List<Integer> order, int index, int[] need,
+            List<List<Integer>> edgesOfAtom, List<int[]> edges, boolean[] matched, boolean[] doubled) {
+        if (index == order.size()) {
+            return true;
+        }
+        int atom = order.get(index);
+        if (matched[atom]) {
+            return assignKekule(order, index + 1, need, edgesOfAtom, edges, matched, doubled);
+        }
+        for (int edge : edgesOfAtom.get(atom)) {
+            int other = edges.get(edge)[0] == atom ? edges.get(edge)[1] : edges.get(edge)[0];
+            if (need[other] != 1 || matched[other]) {
+                continue;
+            }
+            matched[atom] = true;
+            matched[other] = true;
+            doubled[edge] = true;
+            if (assignKekule(order, index + 1, need, edgesOfAtom, edges, matched, doubled)) {
+                return true;
+            }
+            matched[atom] = false;
+            matched[other] = false;
+            doubled[edge] = false;
+        }
+        return false;
     }
 
     /**

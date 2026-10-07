@@ -1,8 +1,6 @@
 package com.philia093.neofactory.chemistry;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 
@@ -16,18 +14,19 @@ import java.util.Set;
  * things would carry the same substance twice and balance a reaction against the wrong one, so exactly one
  * of them may survive into a molecule and this class is what makes that happen.
  * <p>
- * <b>Only the rings that are understood are touched.</b> The full rule for aromaticity counts the shared
- * electrons of a whole conjugated system, which for a ring joined to another one - naphthalene, anthracene -
- * is the system and not the ring; that rule is deliberately not attempted here. This class handles a single
- * ring of the common elements, which is benzene, pyridine, pyrrole, furan and thiophene and the rings the
- * catalog is built from today, and it leaves every other ring as it found it. A ring it does not understand
- * stays non-aromatic rather than being guessed at, because a guessed ring is a wrong species.
+ * <b>Every ring of a molecule is read, fused ones included.</b> The rings are taken from {@link Rings}, which
+ * answers the smallest set of smallest rings - a naphthalene is two hexagons and not one ring of ten - and
+ * each of them is decided on its own. A molecule may therefore carry a benzene beside a cyclohexane, or two
+ * rings joined along one bond, and every ring that is aromatic comes out marked while the rings around it
+ * are left as they were. What is not attempted is the shared count of a whole conjugated system: a ring is
+ * called aromatic for the electrons its own six atoms bring, which is what the trade means by benzene,
+ * pyridine, pyrrole, furan and thiophene.
  * <p>
  * <b>A lower-case ring is taken at its word, a Kekulé one is counted.</b> A ring whose atoms were written
- * in the lower case is already aromatic and this class only makes sure its bonds say so; a ring drawn as an
- * all-carbon Kekulé ring is aromatic when it alternates single and double bonds around a size of four n plus
- * two, which is the benzene count. A ring that is neither - a cyclohexene with one double bond, a
- * cyclobutadiene with two across four atoms - is left alone.
+ * in the lower case is already aromatic and this class only makes sure its bonds say so; a ring drawn with
+ * plain and double bonds is aromatic when they alternate around a size of four n plus two, which is the
+ * benzene count - and a ring written any other way is left alone rather than guessed at, because a guessed
+ * ring is a wrong species.
  */
 public final class Aromatizer {
 
@@ -52,159 +51,39 @@ public final class Aromatizer {
         if (atoms.isEmpty() || bonds.isEmpty()) {
             return;
         }
-        List<List<Integer>> bondOfAtom = buildAdjacency(atoms.size(), bonds);
-        List<Integer> ring = singleRing(atoms.size(), bonds, bondOfAtom);
-        if (ring == null) {
-            return;
+        List<List<Integer>> aromatic = new ArrayList<>();
+        for (List<Integer> ring : Rings.cycles(atoms.size(), bonds)) {
+            if (isAromaticRing(atoms, bonds, ring)) {
+                aromatic.add(ring);
+            }
         }
-        perceive(atoms, bonds, bondOfAtom, ring);
-    }
-
-    /** Indices of the bonds that end at every atom. */
-    private static List<List<Integer>> buildAdjacency(int atomCount, List<Bond> bonds) {
-        List<List<Integer>> adjacency = new ArrayList<>(atomCount);
-        for (int index = 0; index < atomCount; index++) {
-            adjacency.add(new ArrayList<>());
+        // Every ring is decided before any of them is marked, because marking one blurs the bonds it shares
+        // with the next - and the next has to be read from the plain bonds it was drawn with.
+        for (List<Integer> ring : aromatic) {
+            markAromatic(atoms, bonds, ring);
         }
-        for (int index = 0; index < bonds.size(); index++) {
-            Bond bond = bonds.get(index);
-            adjacency.get(bond.first()).add(index);
-            adjacency.get(bond.second()).add(index);
-        }
-        return adjacency;
     }
 
     /**
-     * The atoms of the one simple ring of a molecule, or {@code null} when it has none or more than one.
+     * Decides whether one ring is aromatic.
      * <p>
-     * The atoms that lie in no ring are peeled away one by one - an atom with a single bond cannot be part
-     * of a ring, and once it is gone its neighbour may have become one too - and what is left is the ring
-     * system. A system that is a single ring has every atom with exactly two bonds inside it, which is the
-     * one shape this class reads; a fused or branched system fails that test and answers {@code null}, and
-     * so does a molecule without a ring at all.
-     *
-     * @param atomCount amount of atoms
-     * @param bonds bonds of the molecule
-     * @param bondOfAtom adjacency
-     * @return the ring atoms in the order they are joined, or {@code null}
-     */
-    private static List<Integer> singleRing(int atomCount, List<Bond> bonds,
-            List<List<Integer>> bondOfAtom) {
-        int[] degree = new int[atomCount];
-        for (int index = 0; index < atomCount; index++) {
-            degree[index] = bondOfAtom.get(index).size();
-        }
-        boolean[] peeled = new boolean[atomCount];
-        Deque<Integer> leaves = new ArrayDeque<>();
-        for (int index = 0; index < atomCount; index++) {
-            if (degree[index] <= 1) {
-                leaves.push(index);
-            }
-        }
-        while (!leaves.isEmpty()) {
-            int atom = leaves.pop();
-            if (peeled[atom]) {
-                continue;
-            }
-            peeled[atom] = true;
-            for (int bondIndex : bondOfAtom.get(atom)) {
-                int other = bonds.get(bondIndex).other(atom);
-                if (!peeled[other] && --degree[other] <= 1) {
-                    leaves.push(other);
-                }
-            }
-        }
-        List<Integer> ringAtoms = new ArrayList<>();
-        for (int index = 0; index < atomCount; index++) {
-            if (!peeled[index]) {
-                ringAtoms.add(index);
-            }
-        }
-        if (ringAtoms.isEmpty()) {
-            return null;
-        }
-        for (int atom : ringAtoms) {
-            int insideRing = 0;
-            for (int bondIndex : bondOfAtom.get(atom)) {
-                if (!peeled[bonds.get(bondIndex).other(atom)]) {
-                    insideRing++;
-                }
-            }
-            if (insideRing != 2) {
-                return null;
-            }
-        }
-        List<Integer> ring = walkRing(ringAtoms.get(0), bonds, bondOfAtom, peeled);
-        if (ring == null || ring.size() != ringAtoms.size()) {
-            // More than one ring, or a ring the walk could not close: not a shape this class reads.
-            return null;
-        }
-        return ring;
-    }
-
-    /** Walks the single ring once, in the order its atoms are joined. */
-    private static List<Integer> walkRing(int start, List<Bond> bonds,
-            List<List<Integer>> bondOfAtom, boolean[] peeled) {
-        List<Integer> ring = new ArrayList<>();
-        int previous = -1;
-        int current = start;
-        while (true) {
-            ring.add(current);
-            int next = -1;
-            for (int bondIndex : bondOfAtom.get(current)) {
-                int other = bonds.get(bondIndex).other(current);
-                if (!peeled[other] && other != previous) {
-                    next = other;
-                    break;
-                }
-            }
-            if (next == -1 || next == start) {
-                break;
-            }
-            previous = current;
-            current = next;
-        }
-        return ring.size() < 3 ? null : ring;
-    }
-
-    /**
-     * Decides whether the one ring of a molecule is aromatic, and marks it if it is.
-     * <p>
-     * A ring written in the lower case of an aromatic atom is taken at its word; a ring drawn as an
-     * all-carbon Kekulé ring is aromatic when the double bonds and the plain ones alternate around a size
-     * of four n plus two. Every other ring - a ring of an element this class does not read, a ring of a
-     * size the rule does not fit, a ring whose double bonds stand next to each other - is left as it was,
-     * see the class comment.
+     * A ring written in the lower case of an aromatic atom is taken at its word; a ring drawn with plain and
+     * double bonds is aromatic when its atoms are all content, see {@link #isKekuleAromatic}. Every other
+     * ring - a ring of an element this class does not read, a ring of a size the rule does not fit, a ring
+     * whose atoms are not content - is left as it was.
      *
      * @param atoms atoms of the molecule
      * @param bonds bonds of the molecule
-     * @param bondOfAtom adjacency
      * @param ring the atoms of the ring, in the order they are joined
+     * @return {@code true} when the ring is aromatic
      */
-    private static void perceive(List<Atom> atoms, List<Bond> bonds,
-            List<List<Integer>> bondOfAtom, List<Integer> ring) {
-        boolean[] inRing = new boolean[atoms.size()];
+    private static boolean isAromaticRing(List<Atom> atoms, List<Bond> bonds, List<Integer> ring) {
         for (int atom : ring) {
-            inRing[atom] = true;
             if (!RING_ELEMENTS.contains(atoms.get(atom).element())) {
-                return;
+                return false;
             }
         }
-        List<Integer> ringBonds = new ArrayList<>();
-        for (int index = 0; index < bonds.size(); index++) {
-            Bond bond = bonds.get(index);
-            if (inRing[bond.first()] && inRing[bond.second()]) {
-                ringBonds.add(index);
-            }
-        }
-        if (everyAtomAromatic(atoms, ring)) {
-            markAromatic(atoms, bonds, ring, ringBonds);
-            return;
-        }
-        if (!isKekuleAromatic(atoms, bonds, bondOfAtom, ring, ringBonds, inRing)) {
-            return;
-        }
-        markAromatic(atoms, bonds, ring, ringBonds);
+        return everyAtomAromatic(atoms, ring) || isKekuleAromatic(atoms, bonds, ring);
     }
 
     /** {@code true} when every atom of the ring was written in the lower case of an aromatic atom. */
@@ -218,56 +97,60 @@ public final class Aromatizer {
     }
 
     /**
-     * {@code true} when an all-carbon ring is written as an alternating Kekulé ring of a size that fits.
+     * {@code true} when a ring drawn with plain and double bonds is one of the aromatic ones.
      * <p>
-     * The size has to be four n plus two, the count of shared electrons an aromatic ring holds, and the
-     * double bonds have to be half of the ring and never two on one atom, which is what alternation means.
-     * A ring that fails either test - a cyclohexene, a cyclobutadiene - is no aromatic ring.
+     * The ring is read by its atoms and not by its own bonds alone, because a ring joined along one bond to
+     * another - a naphthalene - shares that bond and may hold fewer double bonds than half of itself while
+     * still being aromatic. So what is asked is that every atom of the ring is content: it carries exactly
+     * one double bond, or it is an element that lends the ring a pair of its own electrons instead - which is
+     * how a pyridine nitrogen and a furan oxygen are written. A ring of the wrong size, or one whose atoms
+     * are not all content, is no aromatic ring: a cyclohexene has plain carbons in it and a cyclobutadiene
+     * a size the rule of four n plus two does not fit.
+     *
+     * @param atoms atoms of the molecule
+     * @param bonds bonds of the molecule
+     * @param ring the atoms of the ring, in the order they are joined
+     * @return {@code true} when the ring is aromatic
      */
-    private static boolean isKekuleAromatic(List<Atom> atoms, List<Bond> bonds,
-            List<List<Integer>> bondOfAtom, List<Integer> ring, List<Integer> ringBonds,
-            boolean[] inRing) {
-        for (int atom : ring) {
-            if (!atoms.get(atom).element().equals("C")) {
-                return false;
-            }
-        }
+    private static boolean isKekuleAromatic(List<Atom> atoms, List<Bond> bonds, List<Integer> ring) {
         int size = ring.size();
-        if (size % 4 != 2) {
-            return false;
-        }
-        int doubles = 0;
-        for (int bondIndex : ringBonds) {
-            if (bonds.get(bondIndex).order() == 2) {
-                doubles++;
-            }
-        }
-        if (doubles != size / 2) {
+        if (size % 4 != 2 && size != 5) {
             return false;
         }
         for (int atom : ring) {
-            int doubleHere = 0;
-            for (int bondIndex : bondOfAtom.get(atom)) {
-                if (inRing[bonds.get(bondIndex).other(atom)]
-                        && bonds.get(bondIndex).order() == 2) {
-                    doubleHere++;
+            int doubles = 0;
+            for (Bond bond : bonds) {
+                if (bond.order() == 2 && bond.touches(atom)) {
+                    doubles++;
                 }
             }
-            if (doubleHere > 1) {
+            if (doubles > 1) {
+                return false;
+            }
+            if (doubles == 0 && !lendsAPair(atoms.get(atom).element())) {
                 return false;
             }
         }
         return true;
     }
 
-    /** Marks every atom and every bond of a ring as aromatic. */
-    private static void markAromatic(List<Atom> atoms, List<Bond> bonds, List<Integer> ring,
-            List<Integer> ringBonds) {
+    /** {@code true} when an element of a ring may take part in it with a lone pair instead of a double bond. */
+    private static boolean lendsAPair(String element) {
+        return element.equals("N") || element.equals("O") || element.equals("S")
+                || element.equals("P");
+    }
+
+    /** Marks every atom of a ring as aromatic and every bond between two of them as one of the blurred ones. */
+    private static void markAromatic(List<Atom> atoms, List<Bond> bonds, List<Integer> ring) {
+        boolean[] inRing = new boolean[atoms.size()];
         for (int atom : ring) {
+            inRing[atom] = true;
             atoms.get(atom).markAromatic();
         }
-        for (int bondIndex : ringBonds) {
-            bonds.get(bondIndex).makeAromatic();
+        for (Bond bond : bonds) {
+            if (inRing[bond.first()] && inRing[bond.second()]) {
+                bond.makeAromatic();
+            }
         }
     }
 }

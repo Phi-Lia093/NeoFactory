@@ -2,6 +2,7 @@ package com.philia093.neofactory.chemistry;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -1121,16 +1122,17 @@ public final class PolarReactions {
      *         place to give
      */
     private static int[] attackPlace(Molecule molecule, List<Integer> ring) {
+        Set<Integer> ringSystem = ringAtoms(molecule);
         int size = ring.size();
         int director = -1;
         for (int step = 0; step < size; step++) {
-            if (substituentOf(molecule, ring, ring.get(step)) >= 0) {
+            if (directorOf(molecule, ring, ring.get(step), ringSystem) >= 0) {
                 director = step;
                 break;
             }
         }
-        boolean sides = director < 0
-                || Reactivity.directsToTheSides(molecule, substituentOf(molecule, ring, ring.get(director)));
+        boolean sides = director < 0 || Reactivity.directsToTheSides(molecule,
+                directorOf(molecule, ring, ring.get(director), ringSystem));
         for (int step = 1; step <= size / 2; step++) {
             // Beside the group and across from it are the positions a group that lends electrons fills, and
             // the ones past a carbon are the two a group that pulls them leaves - see Reactivity. A ring of
@@ -1165,6 +1167,34 @@ public final class PolarReactions {
             }
         }
         return -1;
+    }
+
+    /**
+     * The group that sends an electrophile along a ring, which is a neighbour of the ring that lies in no
+     * ring of its own.
+     * <p>
+     * A carbon the ring shares with the next one - the two of a naphthalene - is no group and sends nothing:
+     * it is a mouth of the ring system and not something hanging off it, so the search passes over it and
+     * takes the first neighbour that really stands there.
+     */
+    private static int directorOf(Molecule molecule, List<Integer> ring, int atom,
+            Set<Integer> ringSystem) {
+        for (int neighbour : molecule.neighbours(atom)) {
+            if (!ring.contains(neighbour) && !isElement(molecule, neighbour, "H")
+                    && !ringSystem.contains(neighbour)) {
+                return neighbour;
+            }
+        }
+        return -1;
+    }
+
+    /** Every atom of a molecule that lies in a ring of it. */
+    private static Set<Integer> ringAtoms(Molecule molecule) {
+        Set<Integer> atoms = new HashSet<>();
+        for (List<Integer> ring : Rings.cycles(molecule)) {
+            atoms.addAll(ring);
+        }
+        return atoms;
     }
 
     /** The sulfur of a molecule of sulfur trioxide, or {@code -1} when the vessel holds none. */

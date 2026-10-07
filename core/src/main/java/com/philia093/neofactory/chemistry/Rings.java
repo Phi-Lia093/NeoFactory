@@ -88,7 +88,23 @@ public final class Rings {
      */
     public static List<List<Integer>> cycles(Molecule molecule) {
         Objects.requireNonNull(molecule, "molecule");
-        List<Bond> bonds = molecule.bonds();
+        return cycles(molecule.atomCount(), molecule.bonds());
+    }
+
+    /**
+     * The smallest rings of a molecule that is still being assembled, its hydrogens not counted yet.
+     * <p>
+     * The same question as {@link #cycles(Molecule)} and the same answer, asked of the atoms and the bonds
+     * alone instead of a finished molecule: a reader that has to decide whether a ring is aromatic must ask
+     * it before the hydrogens are filled in - an aromatic carbon holds one hydrogen and an alkane carbon four,
+     * and which of the two it is follows from the answer.
+     *
+     * @param atomCount amount of atoms
+     * @param bonds bonds of the molecule, in the order they were drawn
+     * @return the rings, each one an ordered list of atoms, shortest first
+     */
+    public static List<List<Integer>> cycles(int atomCount, List<Bond> bonds) {
+        List<List<Integer>> bondOfAtom = adjacency(atomCount, bonds);
         Map<Long, Integer> indexOfBond = new HashMap<>();
         for (int index = 0; index < bonds.size(); index++) {
             indexOfBond.put(pairKey(bonds.get(index).first(), bonds.get(index).second()), index);
@@ -98,7 +114,8 @@ public final class Rings {
         Set<String> seen = new HashSet<>();
         for (int index = 0; index < bonds.size(); index++) {
             Bond bond = bonds.get(index);
-            List<Integer> path = shortestPath(molecule, bond.first(), bond.second(), index);
+            List<Integer> path = shortestPath(atomCount, bonds, bondOfAtom, bond.first(), bond.second(),
+                    index);
             if (path == null || path.size() < 3) {
                 continue;
             }
@@ -129,6 +146,19 @@ public final class Rings {
         return smallest;
     }
 
+    /** Indices of the bonds that end at every atom. */
+    private static List<List<Integer>> adjacency(int atomCount, List<Bond> bonds) {
+        List<List<Integer>> bondOfAtom = new ArrayList<>(atomCount);
+        for (int index = 0; index < atomCount; index++) {
+            bondOfAtom.add(new ArrayList<>());
+        }
+        for (int index = 0; index < bonds.size(); index++) {
+            bondOfAtom.get(bonds.get(index).first()).add(index);
+            bondOfAtom.get(bonds.get(index).second()).add(index);
+        }
+        return bondOfAtom;
+    }
+
     /**
      * How many bonds apart two atoms of a molecule stand, counted the short way.
      * <p>
@@ -146,7 +176,9 @@ public final class Rings {
         if (first == second) {
             return 0;
         }
-        List<Integer> path = shortestPath(molecule, first, second, -1);
+        int atomCount = molecule.atomCount();
+        List<Bond> bonds = molecule.bonds();
+        List<Integer> path = shortestPath(atomCount, bonds, adjacency(atomCount, bonds), first, second, -1);
         return path == null ? -1 : path.size() - 1;
     }
 
@@ -159,10 +191,10 @@ public final class Rings {
      * @param skipBond bond that may not be used
      * @return the atoms of the path, both ends included, or {@code null} when no path exists
      */
-    private static List<Integer> shortestPath(Molecule molecule, int from, int to, int skipBond) {
-        int count = molecule.atomCount();
-        boolean[] seen = new boolean[count];
-        int[] parent = new int[count];
+    private static List<Integer> shortestPath(int atomCount, List<Bond> bonds,
+            List<List<Integer>> bondOfAtom, int from, int to, int skipBond) {
+        boolean[] seen = new boolean[atomCount];
+        int[] parent = new int[atomCount];
         Arrays.fill(parent, -1);
         Deque<Integer> pending = new ArrayDeque<>();
         pending.add(from);
@@ -174,11 +206,11 @@ public final class Rings {
                 found = true;
                 break;
             }
-            for (int bondIndex : molecule.bondsOf(atom)) {
+            for (int bondIndex : bondOfAtom.get(atom)) {
                 if (bondIndex == skipBond) {
                     continue;
                 }
-                int neighbour = molecule.bonds().get(bondIndex).other(atom);
+                int neighbour = bonds.get(bondIndex).other(atom);
                 if (!seen[neighbour]) {
                     seen[neighbour] = true;
                     parent[neighbour] = atom;
