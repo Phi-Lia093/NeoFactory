@@ -1,8 +1,10 @@
 package com.philia093.neofactory.chemistry;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * The catalog of substances the module knows, the closed world every reaction is written inside.
@@ -28,6 +30,11 @@ public final class Substances {
 
     private final Map<Key, Substance> byKey = new LinkedHashMap<>();
     private final Map<String, Substance> byName = new LinkedHashMap<>();
+    /** Alloys of this catalog, by the name a screen prints, see {@link #registerAlloy}. */
+    private final Map<String, Alloy> alloysByName = new LinkedHashMap<>();
+
+    /** Every alloy of this catalog, in the order it was added. */
+    private final List<Alloy> alloys = new ArrayList<>();
 
     /** Creates an empty catalog. */
     public Substances() {
@@ -75,6 +82,56 @@ public final class Substances {
      */
     public Substance byName(String name) {
         return name == null ? null : byName.get(name);
+    }
+
+    /**
+     * Adds an alloy to the catalog.
+     * <p>
+     * <b>An alloy is several substances and not one,</b> so it cannot be a line of this catalog the way a
+     * molecule is: it is kept beside the substances, looked up by the name a screen prints, and every part of
+     * it has to be a substance the catalog already holds, see {@link Alloy}. Two names for one alloy are
+     * allowed and two alloys under one name are not, which is the rule a substance is held to as well.
+     *
+     * @param alloy the alloy to add
+     * @return this catalog, for chaining
+     * @throws IllegalArgumentException when a part is no substance of this catalog, or when the name is
+     *         already used by another alloy
+     */
+    public Substances registerAlloy(Alloy alloy) {
+        Objects.requireNonNull(alloy, "alloy");
+        for (Alloy.Part part : alloy.parts()) {
+            if (byName(part.substance().name()) == null) {
+                throw new IllegalArgumentException("An alloy is made of substances of the catalog, and "
+                        + part.substance().name() + " is none");
+            }
+        }
+        Alloy existing = alloysByName.get(alloy.name());
+        if (existing != null) {
+            if (!existing.key().equals(alloy.key())) {
+                throw new IllegalArgumentException("The catalog already holds " + existing
+                        + " for the name of " + alloy);
+            }
+            // The same alloy written another way - the parts in another order - is already here.
+            return this;
+        }
+        alloysByName.put(alloy.name(), alloy);
+        alloys.add(alloy);
+        return this;
+    }
+
+    /**
+     * Looks an alloy up by the name a screen prints.
+     *
+     * @param name the name a screen prints
+     * @return the alloy, or {@code null} when no alloy uses that name
+     */
+    public Alloy alloy(String name) {
+        return name == null ? null : alloysByName.get(name);
+    }
+
+    /** Every alloy of the catalog, in the order it was added. */
+    public List<Alloy> alloys() {
+        return List.copyOf(alloys);
     }
 
     /**
