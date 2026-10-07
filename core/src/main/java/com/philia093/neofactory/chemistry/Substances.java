@@ -362,6 +362,22 @@ public final class Substances {
         catalog.register("krypton", "[Kr]", Phase.GAS);
         catalog.register("xenon", "[Xe]", Phase.GAS);
         catalog.register("radon", "[Rn]", Phase.GAS);
+        // The isotopes the trade really works with: the heavy hydrogens of a reactor, the helium of a
+        // cryostat and the metals a pile is built from. An isotope is a substance of its own and not a label
+        // on one - the catalog is looked up by the molecule, and a molecule carries its mass numbers - so
+        // lithium and lithium-7 stand beside one another as two entries and a route may name either.
+        catalog.register("deuterium", "[2H][2H]", Phase.GAS);
+        catalog.register("tritium", "[3H][3H]", Phase.GAS);
+        catalog.register("helium-3", "[3He]", Phase.GAS);
+        catalog.register("lithium-7", "[7Li]", Phase.SOLID);
+        catalog.register("thorium-232", "[232Th]", Phase.SOLID);
+        catalog.register("uranium-232", "[232U]", Phase.SOLID);
+        catalog.register("uranium-233", "[233U]", Phase.SOLID);
+        catalog.register("uranium-235", "[235U]", Phase.SOLID);
+        catalog.register("uranium-238", "[238U]", Phase.SOLID);
+        catalog.register("plutonium-238", "[238Pu]", Phase.SOLID);
+        catalog.register("plutonium-239", "[239Pu]", Phase.SOLID);
+        catalog.register("plutonium-241", "[241Pu]", Phase.SOLID);
         catalog.register("methylenetriphenylphosphorane",
                 "C=P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
         catalog.register("methylmagnesium bromide", "C[Mg]Br", Phase.SOLID);
