@@ -12,7 +12,9 @@ import com.philia093.neofactory.chemistry.PolarReactions;
 import com.philia093.neofactory.chemistry.ReactionRouter;
 import com.philia093.neofactory.chemistry.Substance;
 import com.philia093.neofactory.chemistry.Warmth;
+import com.philia093.neofactory.fluid.Fluid;
 import com.philia093.neofactory.fluid.FluidStorage;
+import com.philia093.neofactory.fluid.Fluids;
 import com.philia093.neofactory.item.ChemicalItems;
 import com.philia093.neofactory.item.Item;
 import com.philia093.neofactory.item.ItemStack;
@@ -162,6 +164,9 @@ public class ChemicalReactorMachine extends ElectricMachine {
             return null;
         }
         Chemical primary = outcome.produced().components().keySet().iterator().next();
+        if (!deliverable(outcome.produced())) {
+            return null;
+        }
         Item result = ChemicalItems.itemOf(primary);
         if (result == null) {
             return null;
@@ -219,5 +224,51 @@ public class ChemicalReactorMachine extends ElectricMachine {
     /** Millibuckets one piece of a substance carries, read from the shape it travels in. */
     private static long pieceOf(Substance substance) {
         return substance.phase() == Phase.SOLID ? SOLID_PIECE : FLUID_PIECE;
+    }
+
+    /**
+     * {@code true} when the game can hand over every product of a reaction.
+     * <p>
+     * <b>What leaves a machine leaves as an item or as a cell, and a pot that would make anything else is
+     * refused.</b> An inferred reaction is a reading of a shape and it may well name a molecule the catalog
+     * never heard of - which is exactly what the organic side is for - but a reactor hands its products to
+     * the slots and the tanks of a player, and only a substance of the catalog travels as an item and only
+     * one whose state flows travels in a cell. Such a pot is therefore left where it stands, and the machine
+     * invents neither a substance nor a picture of one.
+     *
+     * @param produced what the reaction makes
+     * @return {@code true} when every product of it can be handed over
+     */
+    private static boolean deliverable(Blend produced) {
+        for (Chemical chemical : produced.components().keySet()) {
+            Item item = ChemicalItems.itemOf(chemical);
+            if (item == null) {
+                return false;
+            }
+            Substance substance = ChemicalItems.substanceOf(item);
+            if (substance != null && substance.phase() != Phase.SOLID && !flows(substance)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * {@code true} when a fluid of the game carries a substance.
+     * <p>
+     * The fluid of a substance is looked for by the substance and never by its name: a fluid is named for
+     * the trade - {@code steam} is the vapour of water - while a substance is named for the catalog, and the
+     * two are allowed to disagree. What a machine needs to know is only whether a cell of it exists.
+     *
+     * @param substance substance a reaction would make
+     * @return {@code true} when some fluid of the game carries it
+     */
+    private static boolean flows(Substance substance) {
+        for (Fluid fluid : Fluids.all()) {
+            if (fluid.substances().contains(substance)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

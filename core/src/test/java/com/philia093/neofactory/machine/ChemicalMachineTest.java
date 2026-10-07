@@ -124,6 +124,41 @@ class ChemicalMachineTest {
                 "a stick is no route of the industry and stays where it stands");
     }
 
+    @Test
+    void aReactorAccountsForEveryPotItRuns() {
+        // Butane is a pot no written route of the industry names, so the simple side of the table is asked
+        // for it. Whether the rule that fits it is allowed to run or is refused for a product the game
+        // cannot hand over, one thing may never happen: molecules that leave the tank and arrive nowhere.
+        ChemicalReactorMachine reactor = new ChemicalReactorMachine(
+                com.philia093.neofactory.cable.Voltage.LOW);
+        var butane = com.philia093.neofactory.fluid.Fluids.byName("butane");
+        assertTrue(butane != null, "the catalog holds the fluid of butane");
+        reactor.tank(0).storage().fill(butane, 1_000, false);
+        power(reactor);
+
+        run(reactor, 60.0f);
+
+        int spent = 1_000 - reactor.tank(0).storage().amount();
+        int arrived = reactor.tank(2).storage().amount() + reactor.tank(3).storage().amount();
+        assertTrue(spent == 0 || arrived > 0,
+                "a pot that was run left its molecules in an output tank, and one that was not is untouched");
+    }
+
+    @Test
+    void aReactorLeavesAPotAloneWhenNoWrittenRouteAndNoSimpleRuleAnswersIt() {
+        ChemicalReactorMachine reactor = new ChemicalReactorMachine(
+                com.philia093.neofactory.cable.Voltage.LOW);
+        var ethanol = com.philia093.neofactory.fluid.Fluids.byName("ethanol");
+        assertTrue(ethanol != null, "the catalog holds the fluid of ethanol");
+        reactor.tank(0).storage().fill(ethanol, 1_000, false);
+        power(reactor);
+
+        run(reactor, 60.0f);
+
+        assertEquals(1_000, reactor.tank(0).storage().amount(),
+                "the ethanol of a pot nothing answers is left exactly where it stands");
+    }
+
     /** A substance of the catalog by name. */
     private static com.philia093.neofactory.chemistry.Chemical chemical(String name) {
         com.philia093.neofactory.chemistry.Substance substance =
