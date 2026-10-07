@@ -159,6 +159,23 @@ class ChemicalMachineTest {
                 "the ethanol of a pot nothing answers is left exactly where it stands");
     }
 
+    @Test
+    void everyWrittenRouteFitsTheTwoSlotsAndTwoTanksOfASmallReactor() {
+        // The routes written by hand have to be feedable by the machine that runs them: two solids and two
+        // fluids in, two solids and two fluids out. A route that asked for more would be a route no player
+        // could ever put into a reactor of one block.
+        for (com.philia093.neofactory.recipe.Recipe recipe : com.philia093.neofactory.recipe.RecipeRegistry
+                .recipes(com.philia093.neofactory.recipe.RecipeType.CHEMICAL_REACTING)) {
+            var machine = (com.philia093.neofactory.recipe.ChemicalRecipe) recipe;
+            String name = machine.name();
+            assertTrue(machine.products().size() <= 2, name + " makes at most two solids");
+            assertTrue(machine.fluidIngredients().size() <= 2, name + " takes at most two fluids");
+            assertTrue(machine.fluidProducts().size() <= 2, name + " makes at most two fluids");
+            long solids = machine.route().inputs().components().size() - machine.fluidIngredients().size();
+            assertTrue(solids <= 2, name + " takes at most two solids, and takes " + solids);
+        }
+    }
+
     /** A substance of the catalog by name. */
     private static com.philia093.neofactory.chemistry.Chemical chemical(String name) {
         com.philia093.neofactory.chemistry.Substance substance =
