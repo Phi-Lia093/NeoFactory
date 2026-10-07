@@ -306,6 +306,62 @@ public final class Substances {
         // with. A metal that carries a carbon is written as the plain molecule it is, exactly as the oxides
         // and the salts of the industry are.
         catalog.register("triphenylphosphine", "P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
+        // The rest of the elements the periodic table holds, each in the state it is met in: the metals of
+        // the table are solids, the noble gases are single atoms of a gas, and the few non-metals that are
+        // neither have written down here the molecule the trade meets them as. Every one of them is a real
+        // substance with a real formula, so a route that makes one may be written down - and a route is the
+        // only way a player ever gets one, since the catalog is a closed world, see the class comment.
+        catalog.register("lithium", "[Li]", Phase.SOLID);
+        catalog.register("beryllium", "[Be]", Phase.SOLID);
+        catalog.register("sodium", "[Na]", Phase.SOLID);
+        catalog.register("magnesium", "[Mg]", Phase.SOLID);
+        catalog.register("potassium", "[K]", Phase.SOLID);
+        catalog.register("calcium", "[Ca]", Phase.SOLID);
+        catalog.register("scandium", "[Sc]", Phase.SOLID);
+        catalog.register("titanium", "[Ti]", Phase.SOLID);
+        catalog.register("vanadium", "[V]", Phase.SOLID);
+        catalog.register("chromium", "[Cr]", Phase.SOLID);
+        catalog.register("manganese", "[Mn]", Phase.SOLID);
+        catalog.register("cobalt", "[Co]", Phase.SOLID);
+        catalog.register("gallium", "[Ga]", Phase.SOLID);
+        catalog.register("germanium", "[Ge]", Phase.SOLID);
+        catalog.register("rubidium", "[Rb]", Phase.SOLID);
+        catalog.register("strontium", "[Sr]", Phase.SOLID);
+        catalog.register("yttrium", "[Y]", Phase.SOLID);
+        catalog.register("zirconium", "[Zr]", Phase.SOLID);
+        catalog.register("niobium", "[Nb]", Phase.SOLID);
+        catalog.register("molybdenum", "[Mo]", Phase.SOLID);
+        catalog.register("technetium", "[Tc]", Phase.SOLID);
+        catalog.register("ruthenium", "[Ru]", Phase.SOLID);
+        catalog.register("rhodium", "[Rh]", Phase.SOLID);
+        catalog.register("palladium", "[Pd]", Phase.SOLID);
+        catalog.register("cadmium", "[Cd]", Phase.SOLID);
+        catalog.register("indium", "[In]", Phase.SOLID);
+        catalog.register("antimony", "[Sb]", Phase.SOLID);
+        catalog.register("caesium", "[Cs]", Phase.SOLID);
+        catalog.register("barium", "[Ba]", Phase.SOLID);
+        catalog.register("hafnium", "[Hf]", Phase.SOLID);
+        catalog.register("tantalum", "[Ta]", Phase.SOLID);
+        catalog.register("rhenium", "[Re]", Phase.SOLID);
+        catalog.register("osmium", "[Os]", Phase.SOLID);
+        catalog.register("iridium", "[Ir]", Phase.SOLID);
+        catalog.register("mercury", "[Hg]", Phase.LIQUID);
+        catalog.register("thallium", "[Tl]", Phase.SOLID);
+        catalog.register("bismuth", "[Bi]", Phase.SOLID);
+        catalog.register("polonium", "[Po]", Phase.SOLID);
+        catalog.register("francium", "[Fr]", Phase.SOLID);
+        catalog.register("radium", "[Ra]", Phase.SOLID);
+        catalog.register("boron", "[B]", Phase.SOLID);
+        catalog.register("arsenic", "[As]", Phase.SOLID);
+        catalog.register("selenium", "[Se]", Phase.SOLID);
+        catalog.register("tellurium", "[Te]", Phase.SOLID);
+        catalog.register("iodine", "II", Phase.SOLID);
+        catalog.register("helium", "[He]", Phase.GAS);
+        catalog.register("neon", "[Ne]", Phase.GAS);
+        catalog.register("argon", "[Ar]", Phase.GAS);
+        catalog.register("krypton", "[Kr]", Phase.GAS);
+        catalog.register("xenon", "[Xe]", Phase.GAS);
+        catalog.register("radon", "[Rn]", Phase.GAS);
         catalog.register("methylenetriphenylphosphorane",
                 "C=P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
         catalog.register("methylmagnesium bromide", "C[Mg]Br", Phase.SOLID);

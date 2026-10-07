@@ -49,7 +49,8 @@ class SubstancesTest {
         assertEquals(0, catalog.byName("sodium chloride").charge(), "a salt is read as one molecule and carries no charge");
         assertEquals("H2O4S", catalog.byName("sulfuric acid").formula(), "the Hill formula H2SO4 written out");
         assertTrue(catalog.count() > 40, "the starter catalog is a real handful of substances");
-        assertFalse(catalog.contains(Chemical.parse("[Xe]"), Phase.GAS), "a rare gas is not named yet");
+        assertTrue(catalog.contains(Chemical.parse("[Xe]"), Phase.GAS),
+                "a rare gas is named, because a route may make one and a player may hold it");
     }
 
     @Test
