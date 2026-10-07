@@ -3593,6 +3593,46 @@ public final class PolarReactions {
         return drawn;
     }
 
+    /**
+     * The rules a reactor of one block may run: the ordinary reactions of a solution, and not the ones that
+     * ask for a vessel of their own.
+     * <p>
+     * A small reactor is a pot with two slots and two tanks on a line, and what a player expects of it is
+     * what a flask of the trade does - an acid that hydrolyses an ester, a base that takes the water out of
+     * an alcohol, an aldehyde that is oxidised, an amine that is put on a ring, a condensation that is run
+     * over a flame. What it does not do is the art that needs a workshop: a reaction of the light, a ring
+     * closed by six electrons going round, a chain that grows itself, and the reagents of a metal - a
+     * Grignard, an ylide - which are made and spent in a vessel built for them.
+     * <p>
+     * <b>What is left out is left out by category.</b> A rule is written with the family it belongs to, so
+     * the whole of the pericyclic side and the whole of the radical side stand outside this list without a
+     * second copy of their names, and a rule added to a family that is here is allowed at once.
+     *
+     * @return the rules a small reactor runs, in the order of the table
+     */
+    public static List<ReactionRule> simple() {
+        List<ReactionRule> simple = new ArrayList<>();
+        for (ReactionRule rule : all()) {
+            if (SIMPLE_FAMILIES.contains(rule.category()) && !rule.name().equals("grignard")
+                    && !rule.name().equals("wittig")) {
+                simple.add(rule);
+            }
+        }
+        return List.copyOf(simple);
+    }
+
+    /**
+     * The families of the table a small reactor is allowed to run.
+     * <p>
+     * The list is the families of the solution: the acid and the base, the water that takes a group off, the
+     * condensations, the additions to a carbonyl and to a double bond, the substitutions on a ring and on a
+     * carbon, the two redox families and the ketone that turns into its enol. The light, the six electrons of
+     * a ring, the chains of a radical and the reagents of a metal are not among them.
+     */
+    private static final Set<String> SIMPLE_FAMILIES = Set.of("acid and base", "acyl substitution",
+            "addition", "carbonyl addition", "condensation", "conjugate addition", "elimination",
+            "hydrolysis", "oxidation", "reduction", "substitution", "tautomerism");
+
     /** {@code true} when an atom of a molecule is of a named element. */
     private static boolean isElement(Molecule molecule, int atom, String element) {
         return molecule.atom(atom).element().equals(element);

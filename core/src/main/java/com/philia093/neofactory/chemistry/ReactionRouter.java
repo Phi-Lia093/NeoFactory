@@ -65,6 +65,22 @@ public final class ReactionRouter {
     }
 
     /**
+     * A router over the routes the game ships and a part of the organic table.
+     * <p>
+     * <b>The written routes are always the whole of them and the organic side is what a machine is allowed
+     * to infer.</b> A route of the industry is a fact somebody wrote down and is run by every vessel that
+     * fits it, while the inference is a reading of the shape of a molecule and belongs to the vessel that
+     * can measure it: a reactor of one block runs the simple side of the table and a workshop of the
+     * industry runs the whole of it, and the two are told apart by the engine and by nothing else.
+     *
+     * @param organic the engine a vessel infers with
+     * @return the router
+     */
+    public static ReactionRouter of(ReactionEngine organic) {
+        return new ReactionRouter(InorganicRecipeBook.of(writtenRoutes()), organic);
+    }
+
+    /**
      * Creates a router over the routes the game ships and the templates that came with it.
      * <p>
      * The routes are the files below {@code assets/recipes/chemical_reacting} and
