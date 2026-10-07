@@ -38,15 +38,20 @@ public final class Reactivity {
         int beside = 0;
         boolean nitrogen = false;
         for (int neighbour : molecule.neighbours(carbon)) {
-            if (!isElement(molecule, neighbour, "O")) {
-                nitrogen |= isElement(molecule, neighbour, "N");
+            String element = molecule.atom(neighbour).element();
+            if (element.equals("N")) {
+                nitrogen |= true;
                 continue;
             }
-            Bond bond = bondBetween(molecule, carbon, neighbour);
-            if (bond != null && bond.order() > 1) {
-                continue;
+            if (element.equals("O") || element.equals("S") || element.equals("P")) {
+                Bond bond = bondBetween(molecule, carbon, neighbour);
+                if (bond != null && bond.order() > 1) {
+                    continue;
+                }
+                // An oxygen holding a hydrogen is the hydroxyl of an acid, one holding a carbon the oxygen
+                // of an ester, and the same is read for a sulfur or a phosphorus beside the carbonyl.
+                beside = Math.max(beside, Sites.hydrogensOn(molecule, neighbour) > 0 ? 1 : 2);
             }
-            beside = Sites.hydrogensOn(molecule, neighbour) > 0 ? 1 : 2;
         }
         if (nitrogen) {
             return 0;
@@ -139,8 +144,11 @@ public final class Reactivity {
             case "C":
                 // An amine lends the pair of its nitrogen to the ring and a thiol the one of its sulfur,
                 // while a nitro, a sulfonyl, a carbonyl and a nitrile take the electrons of the ring away
-                // instead: the difference is whether the atom beside the ring is held by a double bond.
-                return !carriesWithdrawingDoubleBond(molecule, substituent);
+                // instead: the difference is whether the atom beside the ring is held by a double bond. A
+                // carbon left short of electrons by the atoms on it - a trifluoromethyl, a trichloromethyl -
+                // takes them away as well rather than lending them.
+                return !carriesWithdrawingDoubleBond(molecule, substituent)
+                        && !shortOfElectrons(molecule, substituent);
             case "O":
             case "F":
             case "Cl":
@@ -163,6 +171,19 @@ public final class Reactivity {
             }
         }
         return false;
+    }
+
+    /** {@code true} when the atoms hanging on a carbon take its electrons away - a CF3, a CCl3. */
+    private static boolean shortOfElectrons(Molecule molecule, int atom) {
+        int takers = 0;
+        for (int neighbour : molecule.neighbours(atom)) {
+            String element = molecule.atom(neighbour).element();
+            if (element.equals("O") || element.equals("N") || element.equals("F")
+                    || element.equals("Cl") || element.equals("Br") || element.equals("I")) {
+                takers++;
+            }
+        }
+        return takers >= 2;
     }
 
     /** How many atoms that are no hydrogen hang on an atom. */

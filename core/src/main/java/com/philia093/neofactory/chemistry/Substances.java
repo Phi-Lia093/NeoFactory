@@ -253,6 +253,11 @@ public final class Substances {
                 "C=P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
         catalog.register("methylmagnesium bromide", "C[Mg]Br", Phase.SOLID);
         catalog.register("phenylmagnesium bromide", "[Mg](Br)c1ccccc1", Phase.SOLID);
+        // The polymers the three monomers of a rubber plastic and of a fibre make: each is written as one
+        // turn of its own chain - the two ends of a single unit joined to one another - so that a polymer of
+        // any count of units is one substance, see Polymer.
+        catalog.register("polystyrene", "C1C(c2ccccc2)CC1c2ccccc2", Phase.SOLID);
+        catalog.register("polyacrylonitrile", "C1C(C#N)CC1C#N", Phase.SOLID);
         return catalog;
     }
 

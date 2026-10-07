@@ -145,12 +145,34 @@ public final class Aromatizer {
         boolean[] inRing = new boolean[atoms.size()];
         for (int atom : ring) {
             inRing[atom] = true;
-            atoms.get(atom).markAromatic();
+        }
+        for (int atom : ring) {
+            Atom value = atoms.get(atom);
+            if (!value.isAromatic() && value.hydrogens() == Atom.UNRESOLVED_HYDROGEN) {
+                // The ring is about to be blurred, and a blurred atom is counted against a different
+                // valence than a plain one - a ring nitrogen holds one hydrogen fewer than an amine one
+                // although a pyrrole nitrogen holds one. So the count the ring was drawn with is written
+                // down here, while the plain bonds that say which of the two it is still stand.
+                value.resolveHydrogens(DefaultValence.implicitHydrogens(value.element(), value.charge(),
+                        false, bondOrderSum(bonds, atom)));
+            }
+            value.markAromatic();
         }
         for (Bond bond : bonds) {
             if (inRing[bond.first()] && inRing[bond.second()]) {
                 bond.makeAromatic();
             }
         }
+    }
+
+    /** The shared pairs of every bond that ends at an atom. */
+    private static int bondOrderSum(List<Bond> bonds, int atom) {
+        int sum = 0;
+        for (Bond bond : bonds) {
+            if (bond.touches(atom)) {
+                sum += bond.order();
+            }
+        }
+        return sum;
     }
 }

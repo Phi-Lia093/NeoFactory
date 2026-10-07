@@ -64,6 +64,17 @@ class FusedRingChemistryTest {
     }
 
     @Test
+    void aFiveMemberedRingWrittenTheKekuleWayIsAromaticToo() {
+        assertEquals(1, Sites.aromaticRings(materialize("C1=COC=C1")).size(), "a furan");
+        assertEquals(1, Sites.aromaticRings(materialize("C1=CSC=C1")).size(), "a thiophene");
+
+        Molecule pyrrole = materialize("C1=CC=CN1");
+        assertEquals(1, Sites.aromaticRings(pyrrole).size(), "a pyrrole");
+        assertEquals(1, Sites.hydrogensOn(pyrrole, nitrogenOf(pyrrole)),
+                "and its nitrogen keeps the hydrogen it was drawn with");
+    }
+
+    @Test
     void aFusedRingIsSubstitutedAndComesBackAromatic() {
         Reaction reaction = best(NITRATION, "c1ccc2ccccc2c1", "O[N+](=O)[O-]", "OS(=O)(=O)O");
 
@@ -92,6 +103,16 @@ class FusedRingChemistryTest {
             }
         }
         return doubles;
+    }
+
+    /** The first nitrogen of a molecule. */
+    private static int nitrogenOf(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (molecule.atom(atom).element().equals("N")) {
+                return atom;
+            }
+        }
+        throw new IllegalStateException("no nitrogen");
     }
 
     /** The molecule a string names, as a vessel would hold it. */

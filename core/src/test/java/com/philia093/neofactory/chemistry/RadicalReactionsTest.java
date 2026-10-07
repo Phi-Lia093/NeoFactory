@@ -76,6 +76,19 @@ class RadicalReactionsTest {
         assertTrue(radicalIn(second.products()), "with the radical moved along the chain");
     }
 
+    @Test
+    void twoMonomersJoinIntoTheOneTurnAPolymerIsWritten() {
+        Reaction reaction = best(Warmth.HEATED, "C=Cc1ccccc1", "C=Cc1ccccc1");
+
+        assertNotNull(reaction, "two molecules of styrene over a flame");
+        Chemical polymer = reaction.products().components().keySet().iterator().next();
+        assertEquals(Chemical.parse("C1C(c2ccccc2)CC1c2ccccc2").composition().formula(),
+                polymer.composition().formula(), "the polymer holds the atoms of both monomers");
+        assertEquals(2, reaction.reactants().amountOf(Chemical.parse("C=Cc1ccccc1")),
+                "and both of them were spent");
+        assertNotNull(Polymer.repeatUnit(polymer.structure()), "read as one turn of its own chain");
+    }
+
     /** {@code true} when any substance of a pile carries an unpaired electron. */
     private static boolean radicalIn(Mixture mixture) {
         for (Chemical chemical : mixture.components().keySet()) {

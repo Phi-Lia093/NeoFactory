@@ -115,6 +115,7 @@ public final class PolarReactions {
         rules.add(sigmatropicShift());
         rules.add(wittig());
         rules.add(grignard());
+        rules.add(polymerization());
         return List.copyOf(rules);
     }
 
@@ -744,12 +745,16 @@ public final class PolarReactions {
     }
 
     /**
-     * A halogen taking the place of a hydrogen on a saturated carbon, the first step of the radical chemistry
-     * of the industry.
+     * A halogen taking the place of a hydrogen on a saturated carbon, the reaction the radical chemistry of
+     * the industry turns on.
      * <p>
-     * The two arrows are the chain written as one move: the pair of the halogen to halogen bond makes the
-     * bond to the carbon and the pair of the carbon to hydrogen bond makes the acid - so that one halogen
-     * ends up on the carbon and the other leaves with the hydrogen.
+     * The chain is written the way it really runs, with the arrows of a single electron: the bond of the
+     * halogen molecule goes evenly and the carbon to hydrogen bond goes evenly too, so that two pairs of
+     * unpaired electrons stand in the vessel - one on the carbon and one on the hydrogen, one on each of the
+     * two halogens. Then each halving is joined back up the other way: the carbon keeps one halogen and the
+     * hydrogen keeps the other, which is the halogenated carbon and the acid that leave. Nothing about the
+     * answer is a pair of electrons moving from one bond to another; it is a chain taken apart and put back
+     * together, and the answer is the very substances a pair of electrons would have written.
      */
     private static ReactionRule alkaneHalogenation() {
         return new ReactionRule("alkaneHalogenation", "radical", 1,
@@ -766,8 +771,10 @@ public final class PolarReactions {
         int carbon = alkyl.atom(0);
         int hydrogen = alkyl.atom(1);
         List<Arrow> arrows = List.of(
-                Arrow.betweenBonds(halogen[0], halogen[1], halogen[0], carbon),
-                Arrow.betweenBonds(carbon, hydrogen, hydrogen, halogen[1]));
+                Arrow.homolysis(hydrogen, carbon),
+                Arrow.homolysis(halogen[0], halogen[1]),
+                Arrow.couple(carbon, halogen[0]),
+                Arrow.couple(hydrogen, halogen[1]));
         Molecule product = ElementaryStep.of("alkaneHalogenation", arrows).apply(pot.molecule());
         return pot.react(product, 0, carbon, halogen[0]);
     }
@@ -1089,7 +1096,7 @@ public final class PolarReactions {
             return null;
         }
         Molecule drawn = Assemblies.kekulized(molecule);
-        for (Site ring : Sites.aromaticRings(molecule)) {
+        for (Site ring : directedRings(molecule)) {
             int[] place = attackPlace(drawn, ring.atoms());
             if (place == null) {
                 continue;
@@ -1135,9 +1142,11 @@ public final class PolarReactions {
                 directorOf(molecule, ring, ring.get(director), ringSystem));
         for (int step = 1; step <= size / 2; step++) {
             // Beside the group and across from it are the positions a group that lends electrons fills, and
-            // the ones past a carbon are the two a group that pulls them leaves - see Reactivity. A ring of
-            // anything but six is not read that way: its positions are of five kinds and not of four.
-            if (size == 6 && director >= 0 && (step % 2 == 1) != sides) {
+            // the ones past a carbon are the two a group that pulls them leaves - see Reactivity. It is read
+            // by how far round the ring a position stands and not by the size of the ring, so a ring of five
+            // is read as well as a ring of six: its first pair of positions is the one beside the group and
+            // its second the one past it.
+            if (director >= 0 && (step % 2 == 1) != sides) {
                 continue;
             }
             int index = Math.floorMod(director < 0 ? step - 1 : director + step, size);
@@ -1195,6 +1204,38 @@ public final class PolarReactions {
             atoms.addAll(ring);
         }
         return atoms;
+    }
+
+    /**
+     * The aromatic rings of a vessel, the ones a group has lent electrons to first.
+     * <p>
+     * A molecule may carry more than one aromatic ring - a pair of rings joined by a bond, a fused pair - and
+     * an electrophile goes to the ring that is the richer of the two, which is the ring that already carries
+     * a group sending electrons into it. A ring with no such group comes next, and a ring left the poorer by
+     * a group that takes electrons away comes last, so the first ring a rule is offered is the one the trade
+     * would send its reagent to. The order is stable, so two rings that stand alike keep the order they were
+     * found in.
+     */
+    private static List<Site> directedRings(Molecule molecule) {
+        Set<Integer> ringSystem = ringAtoms(molecule);
+        List<Site> rings = new ArrayList<>(Sites.aromaticRings(molecule));
+        rings.sort((first, second) -> Integer.compare(activatedness(molecule, second, ringSystem),
+                activatedness(molecule, first, ringSystem)));
+        return rings;
+    }
+
+    /** How richly the groups of a ring lend it electrons: higher for the ring an electrophile goes to. */
+    private static int activatedness(Molecule molecule, Site ring, Set<Integer> ringSystem) {
+        int score = 0;
+        for (int atom : ring.atoms()) {
+            for (int neighbour : molecule.neighbours(atom)) {
+                if (ringSystem.contains(neighbour) || isElement(molecule, neighbour, "H")) {
+                    continue;
+                }
+                score += Reactivity.directsToTheSides(molecule, neighbour) ? 1 : -1;
+            }
+        }
+        return score;
     }
 
     /** The sulfur of a molecule of sulfur trioxide, or {@code -1} when the vessel holds none. */
@@ -1748,7 +1789,7 @@ public final class PolarReactions {
             int landing, int... touched) {
         Molecule molecule = pot.molecule();
         Molecule drawn = Assemblies.kekulized(molecule);
-        for (Site ring : Sites.aromaticRings(molecule)) {
+        for (Site ring : directedRings(molecule)) {
             Molecule ready = drawn;
             for (Arrow arrow : before) {
                 ready = arrow.apply(ready);
@@ -3427,6 +3468,72 @@ public final class PolarReactions {
             }
         }
         return null;
+    }
+
+    /**
+     * Two molecules of a vinyl monomer joined head to tail, which is the one turn of the chain a polymer is
+     * written as.
+     * <p>
+     * Two arrows are drawn: the plain carbon of one monomer keeps the carbon that carries the group of the
+     * other, and the same the other way round, so that the two double bonds open into single ones and the two
+     * monomers close into a small ring between them. <b>The ring is the whole of what a polymer is here</b>:
+     * the ends of one unit are joined to one another instead of running on into the next unit, so that a
+     * polymer of any count of units is written as one substance and not as a molecule of a thousand atoms,
+     * see {@link Polymer}. What is left out is the count, and the count is what a drawing writes beside the
+     * unit.
+     * <p>
+     * <b>Only a monomer with a plain end and a carrying end is taken.</b> The plain carbon has to carry two
+     * hydrogens and the other one hydrogen and a group, which is what a vinyl monomer is: an alkene that
+     * carries groups on both of its carbons is no monomer of this kind, and neither is the plain ethene, whose
+     * two ends cannot be told apart.
+     */
+    private static ReactionRule polymerization() {
+        return new ReactionRule("polymerization", "radical", 2, EnumSet.of(FunctionalGroup.ALKENE),
+                Conditions.at(Warmth.HEATED), PolarReactions::polymerise);
+    }
+
+    private static Reaction polymerise(Pot pot) {
+        Molecule molecule = pot.molecule();
+        List<Site> alkenes = Sites.alkenes(molecule);
+        for (Site first : alkenes) {
+            int plain = plainerCarbonOf(molecule, first);
+            int carrying = plain == first.atom(0) ? first.atom(1) : first.atom(0);
+            if (!vinylMonomer(molecule, plain, carrying)) {
+                continue;
+            }
+            for (Site second : alkenes) {
+                if (second == first) {
+                    continue;
+                }
+                int otherPlain = plainerCarbonOf(molecule, second);
+                int otherCarrying = otherPlain == second.atom(0) ? second.atom(1) : second.atom(0);
+                if (!vinylMonomer(molecule, otherPlain, otherCarrying)
+                        || pot.sharesAMolecule(plain, otherPlain)
+                        || bondBetween(molecule, carrying, otherPlain) != null
+                        || bondBetween(molecule, otherCarrying, plain) != null) {
+                    continue;
+                }
+                List<Arrow> arrows = List.of(
+                        Arrow.betweenBonds(plain, carrying, carrying, otherPlain),
+                        Arrow.betweenBonds(otherPlain, otherCarrying, otherCarrying, plain));
+                Molecule product = ElementaryStep.of("polymerization", arrows).apply(molecule);
+                return pot.react(product, 0, plain, otherPlain);
+            }
+        }
+        return null;
+    }
+
+    /** {@code true} when two carbons of a double bond are the ends of a vinyl monomer. */
+    private static boolean vinylMonomer(Molecule molecule, int plain, int carrying) {
+        if (Sites.hydrogensOn(molecule, plain) < 2 || Sites.hydrogensOn(molecule, carrying) > 1) {
+            return false;
+        }
+        for (int neighbour : molecule.neighbours(carrying)) {
+            if (neighbour != plain && !isElement(molecule, neighbour, "H")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** {@code true} when an atom of a molecule is of a named element. */

@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.philia093.neofactory.chemistry.Atom;
 import com.philia093.neofactory.chemistry.Bond;
 import com.philia093.neofactory.chemistry.Molecule;
+import com.philia093.neofactory.chemistry.Polymer;
 import com.philia093.neofactory.chemistry.SkeletalStructure;
 
 import java.util.ArrayList;
@@ -98,6 +99,11 @@ public final class SkeletalRenderer {
             }
             labels.add(new Label(name(molecule, atom), view.across(structure.x(atom)),
                     view.down(structure.y(atom))));
+        }
+        if (Polymer.isPolymer(molecule)) {
+            // A polymer is drawn as the one turn of its chain that a molecule holds, and the count of turns
+            // stands beside it: a drawing of a polystyrene says how many units are in it without drawing them.
+            labels.add(new Label("N", view.across(structure.maxX()), view.down(structure.maxY())));
         }
         return labels;
     }
