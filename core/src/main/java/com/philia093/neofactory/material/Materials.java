@@ -609,6 +609,143 @@ public final class Materials {
                 .onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.ROD,
                         MaterialForm.FINE_WIRE)
                 .build());
+
+        // The metals of the periodic table the game did not have, each as the material of the element it is:
+        // a dust, an ingot, a nugget and a plate, the formula of the element under the name, and the SMILES
+        // the catalog knows the same substance by. A material is a colour and a list of shapes and owns no
+        // art, see {@link Material}, so a metal of the table costs a few lines here and no picture at all -
+        // and the shapes it does not name are the ones a metal of the trade is not worked into.
+        register(Material.builder("lithium", "Lithium").color(new Color(0.85f, 0.87f, 0.90f, 1f))
+                .formula("Li").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("beryllium", "Beryllium").color(new Color(0.88f, 0.90f, 0.88f, 1f))
+                .formula("Be").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("sodium", "Sodium").color(new Color(0.90f, 0.90f, 0.92f, 1f))
+                .formula("Na").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("magnesium", "Magnesium").color(new Color(0.86f, 0.87f, 0.88f, 1f))
+                .formula("Mg").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("potassium", "Potassium").color(new Color(0.88f, 0.88f, 0.90f, 1f))
+                .formula("K").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("calcium", "Calcium").color(new Color(0.90f, 0.90f, 0.88f, 1f))
+                .formula("Ca").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("scandium", "Scandium").color(new Color(0.90f, 0.90f, 0.92f, 1f))
+                .formula("Sc").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        // Titanium already stands above with the shapes a metal of the shop comes in.
+        register(Material.builder("vanadium", "Vanadium").color(new Color(0.78f, 0.80f, 0.82f, 1f))
+                .formula("V").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("chromium", "Chromium").color(new Color(0.72f, 0.75f, 0.78f, 1f))
+                .formula("Cr").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("manganese", "Manganese").color(new Color(0.80f, 0.78f, 0.76f, 1f))
+                .formula("Mn").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        // Cobalt already stands above with the shapes a metal of the shop comes in.
+        register(Material.builder("gallium", "Gallium").color(new Color(0.80f, 0.82f, 0.88f, 1f))
+                .formula("Ga").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("germanium", "Germanium").color(new Color(0.78f, 0.80f, 0.82f, 1f))
+                .formula("Ge").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("rubidium", "Rubidium").color(new Color(0.86f, 0.84f, 0.86f, 1f))
+                .formula("Rb").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("zirconium", "Zirconium").color(new Color(0.80f, 0.82f, 0.85f, 1f))
+                .formula("Zr").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("strontium", "Strontium").color(new Color(0.88f, 0.88f, 0.86f, 1f))
+                .formula("Sr").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("yttrium", "Yttrium").color(new Color(0.82f, 0.84f, 0.86f, 1f))
+                .formula("Y").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("niobium", "Niobium").color(new Color(0.76f, 0.78f, 0.82f, 1f))
+                .formula("Nb").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("molybdenum", "Molybdenum").color(new Color(0.70f, 0.72f, 0.76f, 1f))
+                .formula("Mo").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("technetium", "Technetium").color(new Color(0.72f, 0.74f, 0.78f, 1f))
+                .formula("Tc").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("ruthenium", "Ruthenium").color(new Color(0.66f, 0.68f, 0.72f, 1f))
+                .formula("Ru").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("rhodium", "Rhodium").color(new Color(0.75f, 0.78f, 0.82f, 1f))
+                .formula("Rh").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("palladium", "Palladium").color(new Color(0.80f, 0.82f, 0.86f, 1f))
+                .formula("Pd").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("cadmium", "Cadmium").color(new Color(0.76f, 0.78f, 0.80f, 1f))
+                .formula("Cd").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("indium", "Indium").color(new Color(0.82f, 0.84f, 0.88f, 1f))
+                .formula("In").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("antimony", "Antimony").color(new Color(0.80f, 0.78f, 0.80f, 1f))
+                .formula("Sb").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("caesium", "Caesium").color(new Color(0.85f, 0.82f, 0.80f, 1f))
+                .formula("Cs").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("barium", "Barium").color(new Color(0.88f, 0.90f, 0.88f, 1f))
+                .formula("Ba").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("hafnium", "Hafnium").color(new Color(0.74f, 0.76f, 0.80f, 1f))
+                .formula("Hf").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("tantalum", "Tantalum").color(new Color(0.72f, 0.74f, 0.78f, 1f))
+                .formula("Ta").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("iridium", "Iridium").color(new Color(0.72f, 0.75f, 0.78f, 1f))
+                .formula("Ir").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("rhenium", "Rhenium").color(new Color(0.72f, 0.74f, 0.78f, 1f))
+                .formula("Re").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        // Osmium already stands above with the shapes a metal of the shop comes in.
+        register(Material.builder("mercury", "Mercury").color(new Color(0.85f, 0.87f, 0.90f, 1f))
+                .formula("Hg").onlyForms(MaterialForm.DUST, MaterialForm.NUGGET,
+                        MaterialForm.FLUID_CELL).build());
+        register(Material.builder("thallium", "Thallium").color(new Color(0.78f, 0.80f, 0.82f, 1f))
+                .formula("Tl").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("bismuth", "Bismuth").color(new Color(0.82f, 0.78f, 0.86f, 1f))
+                .formula("Bi").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("polonium", "Polonium").color(new Color(0.84f, 0.82f, 0.80f, 1f))
+                .formula("Po").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("francium", "Francium").color(new Color(0.86f, 0.84f, 0.82f, 1f))
+                .formula("Fr").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        register(Material.builder("radium", "Radium").color(new Color(0.88f, 0.90f, 0.84f, 1f))
+                .formula("Ra").onlyForms(MaterialForm.DUST, MaterialForm.INGOT, MaterialForm.NUGGET,
+                        MaterialForm.PLATE).build());
+        // The non-metals of the table, which are ground and never cast: a stone of boron or of iodine is a
+        // dust of it, and the smallest piles of that dust are what a recipe of the trade asks for.
+        register(Material.builder("boron", "Boron").color(new Color(0.70f, 0.68f, 0.62f, 1f))
+                .formula("B").onlyForms(MaterialForm.DUST, MaterialForm.SMALL_DUST,
+                        MaterialForm.TINY_DUST).build());
+        register(Material.builder("arsenic", "Arsenic").color(new Color(0.72f, 0.74f, 0.70f, 1f))
+                .formula("As").onlyForms(MaterialForm.DUST, MaterialForm.SMALL_DUST,
+                        MaterialForm.TINY_DUST).build());
+        register(Material.builder("selenium", "Selenium").color(new Color(0.70f, 0.72f, 0.68f, 1f))
+                .formula("Se").onlyForms(MaterialForm.DUST, MaterialForm.SMALL_DUST,
+                        MaterialForm.TINY_DUST).build());
+        register(Material.builder("tellurium", "Tellurium").color(new Color(0.76f, 0.76f, 0.72f, 1f))
+                .formula("Te").onlyForms(MaterialForm.DUST, MaterialForm.SMALL_DUST,
+                        MaterialForm.TINY_DUST).build());
+        register(Material.builder("iodine", "Iodine").color(new Color(0.62f, 0.52f, 0.72f, 1f))
+                .formula("I").onlyForms(MaterialForm.DUST, MaterialForm.SMALL_DUST,
+                        MaterialForm.TINY_DUST).build());
     }
 
     /** Writes a material into the registry and hands it back. */
