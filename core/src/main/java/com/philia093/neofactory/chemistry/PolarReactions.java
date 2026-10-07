@@ -111,6 +111,9 @@ public final class PolarReactions {
         rules.add(halogenHomolysis());
         rules.add(radicalAddition());
         rules.add(radicalCoupling());
+        rules.add(sigmatropicShift());
+        rules.add(wittig());
+        rules.add(grignard());
         return List.copyOf(rules);
     }
 
@@ -3149,6 +3152,251 @@ public final class PolarReactions {
         Molecule product = ElementaryStep.of("radicalCoupling", List.of(Arrow.couple(first, second)))
                 .apply(molecule);
         return pot.react(product, 0, first, second);
+    }
+
+    /**
+     * A chain of six atoms of the shape {@code 1=2-3-4-5=6} rearranging itself, which is the one reaction
+     * the trade calls by two names: the Claisen rearrangement, where the fourth atom is an oxygen and the
+     * answer is a carbonyl, and the Cope rearrangement, where all six are carbons and the answer is another
+     * diene.
+     * <p>
+     * Three arrows are drawn and the six electrons move round the ring they make together: the plain bond in
+     * the middle of the chain becomes the bond that closes the two far ends, and each of the two double
+     * bonds shifts one place inward - so that what stood between positions three and four has walked to the
+     * far end, which is the whole of what a rearrangement of this kind does. Nothing is added and nothing
+     * leaves: the answer is the same atoms arranged another way, which is what a sigmatropic shift means.
+     * <p>
+     * <b>The middle of the chain has to be plain.</b> The two atoms the bond is made between, and the one
+     * broken, have to be single-bonded ones - an atom that already carries a double bond has no room for the
+     * bond that comes to it - and the chain may carry an oxygen at the fourth place (the Claisen) or none at
+     * all (the Cope), so one finder answers for both.
+     */
+    private static ReactionRule sigmatropicShift() {
+        return new ReactionRule("sigmatropicShift", "pericyclic", 3, EnumSet.of(FunctionalGroup.ALKENE),
+                Conditions.at(Warmth.HEATED), PolarReactions::shiftSigmatropic);
+    }
+
+    private static Reaction shiftSigmatropic(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] chain = sigmatropicChain(molecule);
+        if (chain == null) {
+            return null;
+        }
+        int first = chain[0];
+        int second = chain[1];
+        int third = chain[2];
+        int fourth = chain[3];
+        int fifth = chain[4];
+        int sixth = chain[5];
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(third, fourth, first, sixth),
+                Arrow.betweenBonds(first, second, second, third),
+                Arrow.betweenBonds(fifth, sixth, fourth, fifth));
+        Molecule product = ElementaryStep.of("sigmatropicShift", arrows).apply(molecule);
+        return pot.react(product, 0, first, third, fifth);
+    }
+
+    /**
+     * The six atoms of a chain a sigmatropic shift runs along, in the order they are joined.
+     *
+     * @param molecule molecule to read
+     * @return the atoms written {@code 1=2-3-4-5=6}, or {@code null} when the vessel holds no such chain
+     */
+    private static int[] sigmatropicChain(Molecule molecule) {
+        for (Site alkene : Sites.alkenes(molecule)) {
+            for (int second : alkene.atoms()) {
+                int first = second == alkene.atom(0) ? alkene.atom(1) : alkene.atom(0);
+                for (int third : molecule.neighbours(second)) {
+                    if (third == first || !plainLinker(molecule, third)) {
+                        continue;
+                    }
+                    for (int fourth : molecule.neighbours(third)) {
+                        if (fourth == second || !plainLinker(molecule, fourth)) {
+                            continue;
+                        }
+                        for (int fifth : molecule.neighbours(fourth)) {
+                            if (fifth == third) {
+                                continue;
+                            }
+                            for (int sixth : molecule.neighbours(fifth)) {
+                                Bond bond = bondBetween(molecule, fifth, sixth);
+                                if (sixth != fourth && bond != null && bond.order() == 2
+                                        && !bond.isAromatic() && isElement(molecule, fifth, "C")
+                                        && isElement(molecule, sixth, "C")
+                                        && oneDoubleBondTo(molecule, fifth, sixth)) {
+                                    return new int[] {first, second, third, fourth, fifth, sixth};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** {@code true} when an atom may stand in the middle of a sigmatropic chain: a single-bonded C or O. */
+    private static boolean plainLinker(Molecule molecule, int atom) {
+        return (isElement(molecule, atom, "C") || isElement(molecule, atom, "O"))
+                && !carriesDoubleBond(molecule, atom);
+    }
+
+    /** {@code true} when the only multiple bond of an atom is the one it holds to a named partner. */
+    private static boolean oneDoubleBondTo(Molecule molecule, int atom, int partner) {
+        int doubles = 0;
+        for (int neighbour : molecule.neighbours(atom)) {
+            Bond bond = bondBetween(molecule, atom, neighbour);
+            if (bond != null && bond.order() > 1) {
+                if (neighbour != partner) {
+                    return false;
+                }
+                doubles++;
+            }
+        }
+        return doubles == 1;
+    }
+
+    /**
+     * A phosphorane and a carbonyl giving a double bond between two carbons and a phosphine oxide, the
+     * reaction a chemist reaches for when a double bond has to be put exactly where it is wanted and
+     * nowhere else.
+     * <p>
+     * The ylide - the phosphorus held to its carbon by a double bond, three of its four hands being rings -
+     * is drawn with its pair of electrons running round a ring of four with the carbonyl, and four arrows
+     * are needed because two pairs of electrons move and no single one of them is the whole story: the bond
+     * between the phosphorus and the carbon of the ylide becomes the bond between that carbon and the carbon
+     * of the carbonyl, the bond of the carbonyl becomes the bond to the phosphorus, and then both are made
+     * whole again the other way round - the carbon to carbon one a double bond and the phosphorus to oxygen
+     * one too.
+     * <p>
+     * <b>What comes out is the alkene and the phosphine oxide and nothing else</b>, which is what makes the
+     * reaction worth its cost: the oxygen the carbonyl carried is taken away entirely by the phosphorus, so
+     * the carbon it hung on is left free to close a double bond with the carbon of the ylide.
+     */
+    private static ReactionRule wittig() {
+        return new ReactionRule("wittig", "carbonyl addition", 2, EnumSet.of(FunctionalGroup.CARBONYL),
+                Conditions.at(Warmth.AMBIENT), PolarReactions::reactWittig);
+    }
+
+    private static Reaction reactWittig(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] ylide = phosphorane(molecule);
+        Site carbonyl = bestCarbonyl(molecule);
+        if (ylide == null || carbonyl == null) {
+            return null;
+        }
+        int phosphorus = ylide[0];
+        int ylideCarbon = ylide[1];
+        int carbon = carbonyl.atom(0);
+        int oxygen = carbonyl.atom(1);
+        if (pot.sharesAMolecule(phosphorus, carbon) || bondBetween(molecule, ylideCarbon, carbon) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(phosphorus, ylideCarbon, ylideCarbon, carbon),
+                Arrow.betweenBonds(carbon, oxygen, phosphorus, oxygen),
+                Arrow.betweenBonds(ylideCarbon, phosphorus, ylideCarbon, carbon),
+                Arrow.betweenBonds(carbon, oxygen, phosphorus, oxygen));
+        Molecule product = ElementaryStep.of("wittig", arrows).apply(molecule);
+        return pot.react(product, 0, phosphorus, ylideCarbon, carbon, oxygen);
+    }
+
+    /**
+     * The phosphorus of a phosphorane and the carbon it is held to by a double bond.
+     *
+     * @param molecule molecule to read
+     * @return the phosphorus and the carbon of the ylide, or {@code null} when the vessel holds no ylide
+     */
+    private static int[] phosphorane(Molecule molecule) {
+        for (int atom = 0; atom < molecule.atomCount(); atom++) {
+            if (!isElement(molecule, atom, "P")) {
+                continue;
+            }
+            int ylide = -1;
+            int singles = 0;
+            boolean phosphorane = true;
+            for (int neighbour : molecule.neighbours(atom)) {
+                Bond bond = bondBetween(molecule, atom, neighbour);
+                if (bond == null || !isElement(molecule, neighbour, "C")) {
+                    phosphorane = false;
+                    break;
+                }
+                if (bond.order() == 2) {
+                    ylide = neighbour;
+                } else if (bond.order() == 1) {
+                    singles++;
+                } else {
+                    phosphorane = false;
+                    break;
+                }
+            }
+            if (phosphorane && ylide >= 0 && singles == 3) {
+                return new int[] {atom, ylide};
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A carbon held to a magnesium attacking the carbon of a carbonyl and taking its place, the reaction a
+     * chemist builds a carbon skeleton with.
+     * <p>
+     * The bond between the carbon and the metal is the nucleophile - a Grignard reagent is a carbanion that
+     * the metal keeps in its pocket - so three arrows are drawn: that bond becomes the bond between the two
+     * carbons, the pair of the carbonyl goes to its oxygen, and the oxygen takes the metal - so that the
+     * oxygen is left on the magnesium and the carbon the carbonyl was is left holding the new carbon, which
+     * is what a vessel gets before anything is poured on top of it.
+     * <p>
+     * <b>The carbon of the reagent has to be a plain one</b>, held to the metal and to nothing that would not
+     * stand for a carbanion, and the two have to stand in two molecules: what this rule draws is a reagent
+     * meeting a carbonyl and never a chain folding back on itself.
+     */
+    private static ReactionRule grignard() {
+        return new ReactionRule("grignard", "carbonyl addition", 2, EnumSet.of(FunctionalGroup.CARBONYL),
+                Conditions.at(Warmth.AMBIENT), PolarReactions::reactGrignard);
+    }
+
+    private static Reaction reactGrignard(Pot pot) {
+        Molecule molecule = pot.molecule();
+        int[] reagent = grignard(molecule);
+        Site carbonyl = bestCarbonyl(molecule);
+        if (reagent == null || carbonyl == null) {
+            return null;
+        }
+        int carbon = reagent[0];
+        int magnesium = reagent[1];
+        int centre = carbonyl.atom(0);
+        int oxygen = carbonyl.atom(1);
+        if (pot.sharesAMolecule(carbon, centre) || bondBetween(molecule, carbon, centre) != null) {
+            return null;
+        }
+        List<Arrow> arrows = List.of(
+                Arrow.betweenBonds(carbon, magnesium, carbon, centre),
+                Arrow.toLonePair(centre, oxygen),
+                Arrow.fromLonePair(oxygen, oxygen, magnesium));
+        Molecule product = ElementaryStep.of("grignard", arrows).apply(molecule);
+        return pot.react(product, 0, carbon, magnesium, centre, oxygen);
+    }
+
+    /**
+     * The carbon a Grignard reagent brings and the metal that holds it.
+     *
+     * @param molecule molecule to read
+     * @return the carbon first and the magnesium second, or {@code null} when the vessel holds no such bond
+     */
+    private static int[] grignard(Molecule molecule) {
+        for (Bond bond : molecule.bonds()) {
+            if (bond.order() != 1) {
+                continue;
+            }
+            if (isElement(molecule, bond.first(), "C") && isElement(molecule, bond.second(), "Mg")) {
+                return new int[] {bond.first(), bond.second()};
+            }
+            if (isElement(molecule, bond.first(), "Mg") && isElement(molecule, bond.second(), "C")) {
+                return new int[] {bond.second(), bond.first()};
+            }
+        }
+        return null;
     }
 
     /** {@code true} when an atom of a molecule is of a named element. */

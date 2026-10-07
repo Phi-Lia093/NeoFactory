@@ -244,6 +244,15 @@ public final class Substances {
         catalog.register("o-phenylenediamine", "Nc1ccccc1N", Phase.SOLID);
         catalog.register("p-phenylenediamine", "Nc1ccc(N)cc1", Phase.SOLID);
         catalog.register("p-nitroaniline", "Nc1ccc([N+](=O)[O-])cc1", Phase.SOLID);
+        // The reagents a double bond and a carbon skeleton are built with: the phosphorus a chemist puts a
+        // double bond where they want it with, and the magnesium reagents a carbon is put on a carbonyl
+        // with. A metal that carries a carbon is written as the plain molecule it is, exactly as the oxides
+        // and the salts of the industry are.
+        catalog.register("triphenylphosphine", "P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
+        catalog.register("methylenetriphenylphosphorane",
+                "C=P(c1ccccc1)(c1ccccc1)c1ccccc1", Phase.SOLID);
+        catalog.register("methylmagnesium bromide", "C[Mg]Br", Phase.SOLID);
+        catalog.register("phenylmagnesium bromide", "[Mg](Br)c1ccccc1", Phase.SOLID);
         return catalog;
     }
 
