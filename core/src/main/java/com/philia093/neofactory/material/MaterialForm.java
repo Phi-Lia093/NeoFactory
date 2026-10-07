@@ -48,6 +48,21 @@ public enum MaterialForm {
     /** A rolled plate. */
     PLATE("plate", "Plate", Item.DEFAULT_MAX_STACK, "generic_plate", null),
 
+    /**
+     * A cut gem, the shape a stone of the ground is polished into.
+     * <p>
+     * <b>The two layers of this shape are the other way round,</b> because the art of a gem was cut that way:
+     * the gem of the trade is a sheet of white where the colour of the material goes with a dark drawing of
+     * its facets over it, see {@link #overlayTexture()}. What the item is drawn with is therefore the white
+     * sheet - which is the picture the colour is multiplied over - and the facets are laid over it as they
+     * are.
+     */
+    GEM("gem", "Gem", Item.DEFAULT_MAX_STACK, "generic_gem", "generic_gem_overlay"),
+
+    /** Crushed ore, the first thing a grinder makes of a stone. */
+    CRUSHED("crushed", "Crushed Ore", Item.DEFAULT_MAX_STACK, "generic_crushed",
+            "generic_crushed_overlay"),
+
     /** A rolled foil, thinner than a plate. */
     FOIL("foil", "Foil", Item.DEFAULT_MAX_STACK, "generic_foil", null),
 

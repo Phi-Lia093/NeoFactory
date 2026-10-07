@@ -33,7 +33,30 @@ public enum MaterialKind {
             MaterialForm.ROD, MaterialForm.LONG_ROD, MaterialForm.BOLT, MaterialForm.SCREW,
             MaterialForm.RING, MaterialForm.ROUND, MaterialForm.FINE_WIRE, MaterialForm.SPRING,
             MaterialForm.SMALL_SPRING, MaterialForm.GEAR, MaterialForm.SMALL_GEAR,
-            MaterialForm.ROTOR));
+            MaterialForm.ROTOR)),
+
+    /**
+     * A stone of the ground, which is ground, crushed and cut and is never cast into a machine.
+     * <p>
+     * A mineral is met the way it lies: the ore of it is crushed, the dust of it is what a grinder leaves,
+     * and the stones of it that are worth it are cut. It is not worked - no plate, no gear, no wire comes
+     * out of a stone - which is the whole difference between a mineral and a metal.
+     */
+    MINERAL(EnumSet.of(MaterialForm.DUST, MaterialForm.SMALL_DUST, MaterialForm.TINY_DUST,
+            MaterialForm.CRUSHED, MaterialForm.GEM, MaterialForm.NUGGET)),
+
+    /** A stone cut and polished into a jewel, which is held and not built with. */
+    GEM(EnumSet.of(MaterialForm.GEM, MaterialForm.CRUSHED, MaterialForm.DUST)),
+
+    /**
+     * A polymer, drawn out of a reactor as a bar and rolled from there.
+     * <p>
+     * A polymer is not cast: it comes out of a vessel as a bar or a long rod and is rolled into a plate or a
+     * foil, which is why a plastic is never an ingot - the shapes of this kind are the ones a workshop of
+     * rubber and plastic really makes.
+     */
+    POLYMER(EnumSet.of(MaterialForm.ROD, MaterialForm.LONG_ROD, MaterialForm.PLATE,
+            MaterialForm.FOIL, MaterialForm.DUST, MaterialForm.GEAR, MaterialForm.SMALL_GEAR));
 
     private final Set<MaterialForm> defaultForms;
 
